@@ -1,0 +1,48 @@
+package demos.TwoParties;
+
+import java.net.ServerSocket;
+import java.io.IOException;
+
+class Bob typestate BobProtocol {
+	private SessionSocket alice;
+	private int port;
+
+	public Bob(int port) {
+		this.port = port;
+	}
+
+	void connect() {
+		try {
+			ServerSocket listener = new ServerSocket(port);
+			alice = new SessionSocket(listener.accept());
+		}
+		catch(IOException e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
+	}
+
+	void sendStringToAlice(String s) {
+		alice.send(s);
+	}
+
+	void sendTimeChoiceToAlice() {
+		alice.send(new BobChoice(BobChoice.TIME));
+	}
+
+	void sendGreetingChoiceToAlice() {
+		alice.send(new BobChoice(BobChoice.GREET));
+	}
+
+	String recvGreetingFromAlice() {
+		return alice.recvString();
+	}
+
+	int recvTimeFromAlice() {
+		return alice.recvInt();
+	}
+
+	void endCommunication() {
+		alice.close();
+	}
+}

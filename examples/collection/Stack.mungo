@@ -1,0 +1,58 @@
+package demos.collection;
+
+public class Stack typestate CollectionProtocol {
+	private Node head;
+	public Stack () {
+	}
+
+	public void initialise(int i) {
+		head = null;
+	}
+
+	public 	void put(Node n) {
+		head = n.next(head);
+	}
+
+	public 	Node get() {
+		Node tmp = head;
+		head = head.next();
+		return tmp;
+	}
+
+	public 	BooleanChoice isEmpty() {
+		if(head == null)
+			return new BooleanChoice(BooleanChoice.TRUE);
+		return new BooleanChoice(BooleanChoice.FALSE);
+	}
+
+	public 	void close() {
+	}
+
+	public static void main(String []args) {
+		Stack s = new Stack();
+		s.initialise(0);
+
+		s.put(new Node(0));
+		s.put(new Node(1));
+
+		int i = 2;
+
+		do {
+			s.put(new Node(i++));
+		} while(i < 42);
+
+		loop: do {
+			Node n = s.get();
+			System.out.println(n.get());
+			switch(s.isEmpty().getEnum()) {
+				case BooleanChoice.TRUE:
+				break loop;
+				
+				case BooleanChoice.FALSE:
+				continue loop;
+			}
+		} while(true);
+
+		s.close();
+	}
+}

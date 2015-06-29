@@ -1,0 +1,21 @@
+package demos.ThreeParties;
+
+typestate FriendProtocol {
+	Init = {
+		void connect(): {
+			String recvHelloFromBob(): ReceiveChoice
+		}
+	}
+
+	ReceiveChoice = {
+		BobChoice recvChoiceFromBob() : <TIME: SendTime, END: EndProtocol>
+	}
+
+	SendTime = {
+		void sendTimeToBob(int) : EndProtocol
+	}
+
+	EndProtocol = {
+		void endCommunication() : end
+	}
+}
