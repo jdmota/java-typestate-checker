@@ -1,8 +1,8 @@
-package demos.collection.StackUser2;
+package examples.collection.StackUser2;
 
-import demos.collection.Stack;
-import demos.collection.Node;
-import demos.collection.BooleanChoice;
+import examples.collection.Stack;
+import examples.collection.Node;
+import examples.collection.BooleanChoice;
 
 class StackUser typestate StackUserProtocol {
 	private Stack s;

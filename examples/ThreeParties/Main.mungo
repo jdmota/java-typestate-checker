@@ -1,4 +1,4 @@
-package demos.ThreeParties;
+package examples.ThreeParties;
 
 class Main {
 	public static void main(String [] args) {

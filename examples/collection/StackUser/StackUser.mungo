@@ -1,8 +1,8 @@
-package demos.collection.StackUser;
+package examples.collection.StackUser;
 
-import demos.collection.Node;
-import demos.collection.BooleanChoice;
-import demos.collection.Stack;
+import examples.collection.Node;
+import examples.collection.BooleanChoice;
+import examples.collection.Stack;
 
 class StackUser typestate StackUserProtocol {
 	Stack produce(Stack s) {

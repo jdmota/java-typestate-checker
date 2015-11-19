@@ -1,4 +1,4 @@
-package demos.TwoParties;
+package examples.TwoParties;
 
 class AliceRunner implements Runnable {
 	private int port;

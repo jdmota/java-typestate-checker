@@ -1,4 +1,4 @@
-package demos.ThreeParties;
+package examples.ThreeParties;
 
 class BobRunner implements Runnable {
 	private int alicePort;

@@ -1,6 +1,6 @@
-package CoCoPOPS.demos.collection.StackUser;
+package examples.collection.StackUser;
 
-import CoCoPOPS.demos.collection.Stack;
+import examples.collection.Stack;
 
 typestate StackUserProtocol {
 	Init = {

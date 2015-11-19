@@ -10,22 +10,22 @@ How to run:
 
 	performs type check on the files specified by FILES with the options specified by [options]
 
-Demos:
+Examples:
 	type checks and produces .java files for the corresponding .mungo file
 
-Collection demo
+Collection examples
 -
-		java -jar mungo.jar demos/collection/Stack.mungo
+		java -jar mungo.jar examples/collection/Stack.mungo
 -
-		java -jar mungo.jar demos/collection/StackUser/StackUser.mungo
+		java -jar mungo.jar examples/collection/StackUser/StackUser.mungo
 -
-		java -jar mungo.jar demos/collection/StackUser2/StackUser.mungo
+		java -jar mungo.jar examples/collection/StackUser2/StackUser.mungo
 
 
 
-Hello World demo
+Hello World examples
 -
-		java -jar mungo.jar demos/collection/TwoParties/Main.mungo
+		java -jar mungo.jar examples/collection/TwoParties/Main.mungo
 -
-		java -jar mungo.jar demos/collection/ThreeParties/Main.mungo
+		java -jar mungo.jar examples/collection/ThreeParties/Main.mungo
 

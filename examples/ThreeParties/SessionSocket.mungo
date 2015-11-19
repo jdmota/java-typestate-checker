@@ -1,4 +1,4 @@
-package demos.ThreeParties;
+package examples.ThreeParties;
 
 import java.net.ServerSocket;
 import java.net.Socket;

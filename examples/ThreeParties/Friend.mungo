@@ -1,4 +1,4 @@
-package demos.ThreeParties;
+package examples.ThreeParties;
 
 import java.net.Socket;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package demos.ThreeParties;
+package examples.ThreeParties;
 
 class CarolRunner implements Runnable {
 	private int port;
