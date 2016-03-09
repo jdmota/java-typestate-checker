@@ -27,11 +27,11 @@ class Bob typestate BobProtocol {
 	}
 
 	void sendTimeChoiceToAlice() {
-		alice.send(new BobChoice(BobChoice.TIME));
+		alice.send(BobChoice.TIME);
 	}
 
 	void sendGreetingChoiceToAlice() {
-		alice.send(new BobChoice(BobChoice.GREET));
+		alice.send(BobChoice.GREET);
 	}
 
 	String recvGreetingFromAlice() {

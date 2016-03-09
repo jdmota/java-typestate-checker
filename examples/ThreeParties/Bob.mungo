@@ -36,13 +36,13 @@ class Bob typestate BobProtocol {
 	}
 
 	void sendTimeChoiceToAlice() {
-		alice.send(new BobChoice(BobChoice.TIME));
-		carol.send(new BobChoice(BobChoice.END));
+		alice.send(BobChoice.TIME);
+		carol.send(BobChoice.END);
 	}
 
 	void sendTimeChoiceToCarol() {
-		carol.send(new BobChoice(BobChoice.TIME));
-		alice.send(new BobChoice(BobChoice.END));
+		carol.send(BobChoice.TIME);
+		alice.send(BobChoice.END);
 	}
 
 	int recvTimeFromAlice() {

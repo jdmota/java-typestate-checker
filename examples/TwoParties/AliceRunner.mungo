@@ -13,13 +13,13 @@ class AliceRunner implements Runnable {
 
 		System.out.println("Alice received: " + alice.recvStringFromBob());
 
-		switch(alice.choiceFromBob().getEnum()) {
-			case BobChoice.TIME:
+		switch(alice.choiceFromBob()){
+			case TIME:
 				System.out.println("Alice received: What is the time?");
 				alice.sendTimeToBob(1900);
 				break;
 
-			case BobChoice.GREET:
+			case GREET:
 				alice.sendGreetToBob("Hello Bob!");
 				break;
 		}

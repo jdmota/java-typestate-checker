@@ -12,13 +12,13 @@ class CarolRunner implements Runnable {
 		carol.connect();
 
 		System.out.println("Carol received from Bob: " + carol.recvHelloFromBob());
-		switch(carol.recvChoiceFromBob().getEnum()) {
-			case BobChoice.TIME:
+		switch(carol.recvChoiceFromBob()) {
+			case TIME:
 				System.out.println("Carol received from Bob: What is the time?");
 				carol.sendTimeToBob(1500);
 				break;
 
-			case BobChoice.END:
+			case END:
 				break;
 		}
 		carol.endCommunication();

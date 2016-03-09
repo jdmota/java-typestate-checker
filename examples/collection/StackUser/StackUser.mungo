@@ -27,11 +27,11 @@ class StackUser typestate StackUserProtocol {
 		loop: do {
 			System.out.println(s.get().get() + " ");
 
-			switch(s.isEmpty().getEnum()) {
-				case BooleanChoice.TRUE:
+			switch(s.isEmpty()) {
+				case TRUE:
 					break loop;
 
-				case BooleanChoice.FALSE:
+				case FALSE:
 					continue loop;
 			}
 		} while(true);

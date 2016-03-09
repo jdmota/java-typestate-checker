@@ -21,8 +21,8 @@ public class Stack typestate CollectionProtocol {
 
 	public 	BooleanChoice isEmpty() {
 		if(head == null)
-			return new BooleanChoice(BooleanChoice.TRUE);
-		return new BooleanChoice(BooleanChoice.FALSE);
+			return BooleanChoice.TRUE;
+		return BooleanChoice.FALSE;
 	}
 
 	public 	void close() {
@@ -44,12 +44,12 @@ public class Stack typestate CollectionProtocol {
 		loop: do {
 			Node n = s.get();
 			System.out.println(n.get());
-			switch(s.isEmpty().getEnum()) {
-				case BooleanChoice.TRUE:
-				break loop;
-				
-				case BooleanChoice.FALSE:
-				continue loop;
+			switch(s.isEmpty()) {
+				case TRUE:
+					break loop;
+
+				case FALSE:
+					continue loop;
 			}
 		} while(true);
 

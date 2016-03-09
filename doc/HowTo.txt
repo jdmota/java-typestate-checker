@@ -1,12 +1,12 @@
 How to run:
 
 -
-		java -jar mungo.jar
+		java -jar bin/mungo.jar
 
 	give you a description of the usage of the mungo typechecker.
 
 -
-		java -jar mungo.jar [options] [FILES]
+		java -jar bin/mungo.jar [options] [FILES]
 
 	performs type check on the files specified by FILES with the options specified by [options]
 
@@ -15,17 +15,16 @@ Examples:
 
 Collection examples
 -
-		java -jar mungo.jar examples/collection/Stack.mungo
+		java -jar bin/mungo.jar examples/collection/Stack.mungo
 -
-		java -jar mungo.jar examples/collection/StackUser/StackUser.mungo
+		java -jar bin/mungo.jar examples/collection/StackUser/StackUser.mungo
 -
-		java -jar mungo.jar examples/collection/StackUser2/StackUser.mungo
+		java -jar bin/mungo.jar examples/collection/StackUser2/StackUser.mungo
 
 
 
 Hello World examples
 -
-		java -jar mungo.jar examples/collection/TwoParties/Main.mungo
+		java -jar bin/mungo.jar examples/TwoParties/Main.mungo
 -
-		java -jar mungo.jar examples/collection/ThreeParties/Main.mungo
-
+		java -jar bin/mungo.jar examples/ThreeParties/Main.mungo
