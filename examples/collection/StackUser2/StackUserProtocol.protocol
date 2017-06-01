@@ -1,6 +1,4 @@
-package demos.collection.StackUser2;
-
-import demos.collection.Stack;
+package examples.collection.StackUser2;
 
 typestate StackUserProtocol {
 	Init = {

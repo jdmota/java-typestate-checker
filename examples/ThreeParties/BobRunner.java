@@ -16,14 +16,8 @@ class BobRunner implements Runnable {
 		bob.sendHelloToAlice("Hello Alice!");
 		bob.sendHelloToCarol("Hello Carol!");
 
-//		if(false) {
-//			bob.sendTimeChoiceToAlice();
-//			System.out.println("Bob received the time from Alice: " + bob.recvTimeFromAlice());
-//		}
-//		else {
-			bob.sendTimeChoiceToCarol();
-			System.out.println("Bob received the time from Carol: " + bob.recvTimeFromCarol());
-//		}
+		bob.sendTimeChoiceToCarol();
+		System.out.println("Bob received the time from Carol: " + bob.recvTimeFromCarol());
 
 		bob.endCommunication();
 	}

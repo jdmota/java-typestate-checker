@@ -1,6 +1,10 @@
 package examples.collection;
 
-public class Stack typestate CollectionProtocol {
+
+import mungo.lib.Typestate;
+
+@Typestate("CollectionProtocol")
+public class Stack{
 	private Node head;
 	public Stack () {
 	}

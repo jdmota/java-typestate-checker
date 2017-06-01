@@ -1,9 +1,12 @@
 package examples.ThreeParties;
 
+import mungo.lib.Typestate;
+
 import java.net.Socket;
 import java.io.IOException;
 
-class Friend typestate FriendProtocol {
+@Typestate("FriendProtocol")
+class Friend{
 	private SessionSocket bob;
 	private int port;
 
@@ -32,10 +35,6 @@ class Friend typestate FriendProtocol {
 	BobChoice recvChoiceFromBob() {
 		return (BobChoice) bob.recvObject();
 	}
-
-//	void sendGreetToBob(String s) {
-//		bob.send(s);
-//	}
 
 	void endCommunication() {
 		bob.close();

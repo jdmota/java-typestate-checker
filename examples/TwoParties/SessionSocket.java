@@ -1,21 +1,7 @@
 package examples.TwoParties;
 
-import java.net.ServerSocket;
+import java.io.*;
 import java.net.Socket;
-
-import java.io.IOException;
-import java.lang.ClassNotFoundException;
-
-import java.io.DataOutputStream;
-import java.io.DataInputStream;
-
-import java.io.PrintWriter;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-
-import java.io.ObjectOutputStream;
-import java.io.ObjectInputStream;
 
 class SessionSocket {
 	private Socket socket;

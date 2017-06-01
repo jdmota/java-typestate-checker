@@ -1,10 +1,11 @@
 package examples.collection.StackUser;
 
 import examples.collection.Node;
-import examples.collection.BooleanChoice;
 import examples.collection.Stack;
+import mungo.lib.Typestate;
 
-class StackUser typestate StackUserProtocol {
+@Typestate("StackUserProtocol")
+class StackUser{
 	Stack produce(Stack s) {
 		s.put(new Node(0));
 		s.put(new Node(1));

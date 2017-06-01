@@ -1,9 +1,13 @@
 package examples.TwoParties;
 
-import java.net.ServerSocket;
-import java.io.IOException;
+import mungo.lib.Typestate;
 
-class Bob typestate BobProtocol {
+import java.io.IOException;
+import java.net.ServerSocket;
+
+
+@Typestate("BobProtocol")
+class Bob{
 	private SessionSocket alice;
 	private int port;
 

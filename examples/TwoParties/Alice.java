@@ -1,9 +1,12 @@
 package examples.TwoParties;
 
+import mungo.lib.Typestate;
+
 import java.net.Socket;
 import java.io.IOException;
 
-class Alice typestate AliceProtocol {
+@Typestate("AliceProtocol")
+class Alice{
 	private SessionSocket bob;
 	private int port;
 

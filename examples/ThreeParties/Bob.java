@@ -1,9 +1,12 @@
 package examples.ThreeParties;
 
+import mungo.lib.Typestate;
+
 import java.net.ServerSocket;
 import java.io.IOException;
 
-class Bob typestate BobProtocol {
+@Typestate("BobProtocol")
+class Bob{
 	private SessionSocket alice;
 	private SessionSocket carol;
 
