@@ -24,10 +24,10 @@ Collection examples
 
 Hello World examples
 -
-		java -jar mungo.jar -classpath .:bin/mungo.jar examples/TwoParties/Main.mungo
--
-		java -jar mungo.jar -classpath .:bin/mungo.jar examples/ThreeParties/Main.mungo
+		java -jar mungo.jar -classpath .:bin/mungo.jar examples/TwoParties/Main.java
 
+-
+		java -jar mungo.jar -classpath .:bin/mungo.jar examples/ThreeParties/Main.java
 
 If no errors are detected the program can be compiled and run using `javac,
 like any other Java program.
