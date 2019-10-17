@@ -1,0 +1,89 @@
+aspect LookupTSMethod {
+
+	syn lazy TypeDecl[] MethodAccess.getParameterTypes() {
+		TypeDecl[] ParameterAccess = new TypeDecl[getNumArg()];
+		for(int i = 0; i < getNumArg(); i++){
+			ParameterAccess[i] = getArg(i).type();
+		}
+		return ParameterAccess;
+	}
+
+	syn lazy TypeDecl[] TypestateMethod.getParameterTypes() {
+		TypeDecl[] ParameterAccess = new TypeDecl[getTTypeList().getNumTType()];
+		for(int i = 0; i <  getTTypeList().getNumTType(); i++)
+			ParameterAccess[i] = getTTypeList().getTType(i).getAccess().type();
+		return ParameterAccess;
+	}
+
+	syn lazy MethodDecl MethodAccess.lookupTSMethod(TypeDecl t){
+		return t != null ? t.lookupTSMethod(getID(), getParameterTypes()) : null;
+	}
+
+	syn lazy MethodDecl TypestateMethod.lookupTSMethod(TypeDecl t) {
+		if(t != null) {
+			MethodDecl md = t.lookupTSMethod(getID(), getParameterTypes());
+			TypeDecl td = getTType().getAccess().lookupTSType();
+			if(md != null && (md.getTypeAccess().lookupTSType().toString().equals(td.toString())
+			|| (td instanceof UnknownType))){
+				return md;
+			}
+		}
+
+		return null;
+	}
+
+	syn MethodDecl TypeDecl.lookupTSMethod(String method, TypeDecl[] parameters){
+		return null;
+	}
+	eq ClassDecl.lookupTSMethod(String method, TypeDecl[] parameters) {
+		ArrayList<MethodDecl> a = lookupTSMethodTargets(method, parameters);
+		return (a.size() == 1) ? a.get(0) : null;
+	}
+
+	coll Set<MethodDecl> ClassDecl.getMethodDecls() [new HashSet<MethodDecl>()] with add root ClassDecl;
+	MethodDecl contributes this to ClassDecl.getMethodDecls() for getClassDeclAncestor();
+
+
+	syn boolean MethodDecl.isTarget(String method, TypeDecl[] parameters) {
+		if(!getID().equals(method) || getNumParameter() != parameters.length)
+			return false;
+
+		for(int i = 0; i < getNumParameter(); i++) {
+			TypeDecl t = getParameter(i).getTypeAccess().type();
+			if(!parameters[i].equals(t) && !(t instanceof UnknownType))
+				return false;
+		}
+
+		return true;
+	}
+
+	syn ArrayList<MethodDecl> TypeDecl.lookupTSMethodTargets(String method, TypeDecl[] parameters) {
+	 	return new ArrayList<MethodDecl>();
+ }
+
+	eq ClassDecl.lookupTSMethodTargets(String method, TypeDecl[] parameters) {
+		ArrayList<MethodDecl> a = new ArrayList<MethodDecl>();
+
+		for(MethodDecl m : getMethodDecls()){
+			if(m.isTarget(method, parameters)){
+				a.add(m);
+				}
+			}
+
+		//Implementing super class access
+		if((a.size() == 0) && hasSuperClass()) {
+			//TODO check if lookupTSType() really exists
+			if(!getSuperClass().lookupTSType().isUnknown()){
+				return getSuperClass().lookupTSType().lookupTSMethodTargets(method, parameters);
+			}
+		}
+
+		return a;
+	}
+
+	syn lazy ArrayList<MethodDecl> MethodAccess.lookupTSMethodTargets(TypeDecl t) {
+		return t != null ? t.lookupTSMethodTargets(getID(), getParameterTypes()) : new ArrayList<MethodDecl>();
+	}
+
+
+}

@@ -1,0 +1,32 @@
+package examples.BuyTicket;
+//type <java> "java.lang.String" from "java.lang.String" as String;
+//type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+
+
+typestate AProtocol {
+	State0 = {
+		String receive_requestStringFromR(): State1
+	}
+	State1 = {
+		void send_quoteintToR(int): State2
+	}
+	State2 = {
+		Choice1 receive_Choice1LabelFromF():
+		<APPROVE: State3, REFUSE: State7>
+	}
+	State3 = {
+		int receive_approveintFromF(): State4
+	}
+	State4 = {
+		void send_ticketStringToR(String): State5
+	}
+	State5 = {
+		void send_invoiceintToF(int): State6
+	}
+	State6 = {
+		int receive_paymentintFromF(): end
+	}
+	State7 = {
+		String receive_refuseStringFromF(): end
+	}
+}

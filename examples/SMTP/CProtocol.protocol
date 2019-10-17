@@ -1,0 +1,137 @@
+package demos.SMTP;
+
+//type <java> "java.lang.String" from "rt.jar" as String;
+typestate CProtocol {
+	State0 = {
+		String receive_220StringFromS(): State1
+	}
+	State1 = {
+		Choice1 send_Choice1LabelToS(String):
+		<EHLO: State2, QUIT: State39>
+	}
+	State2 = {
+		void send_ehloStringToS(String): State3
+	}
+	State3 = {
+		Choice2 receive_Choice2LabelFromS():
+		<_250DASH: State4, _250: State5>
+	}
+	State4 = {
+		String receive_250dashStringFromS(): State3
+	}
+	State5 = {
+		String receive_250StringFromS(): State6
+	}
+	State6 = {
+		Choice3 send_Choice3LabelToS(String):
+		<STARTTLS: State7, QUIT: State38>
+	}
+	State7 = {
+		void send_starttlsStringToS(String): State8
+	}
+	State8 = {
+		String receive_220StringFromS(): State9
+	}
+	State9 = {
+		Choice1 send_Choice1LabelToS(String):
+		<EHLO: State10, QUIT: State37>
+	}
+	State10 = {
+		void send_ehloStringToS(String): State11
+	}
+	State11 = {
+		Choice2 receive_Choice2LabelFromS():
+		<_250DASH: State12, _250: State13>
+	}
+	State12 = {
+		String receive_250dashStringFromS(): State11
+	}
+	State13 = {
+		String receive_250StringFromS(): State14
+	}
+	State14 = {
+		Choice4 send_Choice4LabelToS(String):
+		<AUTH: State15, QUIT: State36>
+	}
+	State15 = {
+		void send_authStringToS(String): State16
+	}
+	State16 = {
+		Choice5 receive_Choice5LabelFromS():
+		<_235: State17, _535: State35>
+	}
+	State17 = {
+		String receive_235StringFromS(): State18
+	}
+	State18 = {
+		Choice6 send_Choice6LabelToS(String):
+		<MAIL: State19, QUIT: State34>
+	}
+	State19 = {
+		void send_mailStringToS(String): State20
+	}
+	State20 = {
+		Choice7 receive_Choice7LabelFromS():
+		<_501: State21, _250: State22>
+	}
+	State21 = {
+		String receive_501StringFromS(): State18
+	}
+	State22 = {
+		String receive_250StringFromS(): State23
+	}
+	State23 = {
+		Choice8 send_Choice8LabelToS(String):
+		<RCPT: State24, DATA: State27>
+	}
+	State24 = {
+		void send_rcptStringToS(String): State25
+	}
+	State25 = {
+		Choice9 receive_Choice9LabelFromS():
+		<_250: State26>
+	}
+	State26 = {
+		String receive_250StringFromS(): State23
+	}
+	State27 = {
+		void send_dataStringToS(String): State28
+	}
+	State28 = {
+		String receive_354StringFromS(): State29
+	}
+	State29 = {
+		Choice10 send_Choice10LabelToS(String):
+		<DATALINE: State30, SUBJECT: State31, ATAD: State32>
+	}
+	State30 = {
+		void send_datalineStringToS(String): State29
+	}
+	State31 = {
+		void send_subjectStringToS(String): State29
+	}
+	State32 = {
+		void send_atadStringToS(String): State33
+	}
+	State33 = {
+		String receive_250StringFromS(): State18
+	}
+	State34 = {
+		void send_quitStringToS(String): end
+	}
+	State35 = {
+		String receive_535StringFromS(): State14
+	}
+	State36 = {
+		void send_quitStringToS(String): end
+	}
+	State37 = {
+		void send_quitStringToS(String): end
+	}
+	State38 = {
+		void send_quitStringToS(String): end
+	}
+	State39 = {
+		void send_quitStringToS(String): end
+	}
+}

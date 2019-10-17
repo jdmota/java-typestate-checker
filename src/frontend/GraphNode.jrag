@@ -1,0 +1,799 @@
+aspect GraphNode {
+	/*
+	 * Class GraphNode represents a node in the graph structure that
+	 * represents a typestate type.
+	 * **
+	 * The class is abstract and it is inherited by classes:
+	 * - MethodNode:	represents a state where a method call should be done.
+	 * - LoopNode:		a node representing a state where you can choose on a set of continuations.
+	 * - SwithNode:		represents a state where a method call must be done and depending
+	 *			on the method call return value the state proceeds accordingly.
+	 * - InitNode:		It is the initial node
+	 * - EndNode:		Used as the final state
+	 * **
+	 * The class is equipped with methods for:
+	 * - Traversing a graph:
+	 * - Checking equality between graphs.
+	 * - Normalise a graph by removing all empty nodes.
+	 * - Check if a graph has empty/loop nodes.
+	 */
+
+	abstract class GraphNode {
+		private Access type;
+		private String id;
+		private TypeDecl[] parameters;
+		private ASTNode expr;
+		protected ArrayList<GraphNode> next;
+
+		protected GraphNode(Access type, String id, TypeDecl[] parameters, ASTNode expr) {
+			this.type = type;
+			this.id = id;
+			this.parameters = parameters;
+			this.expr = expr;
+			signature = null;
+			next = new ArrayList<GraphNode>();
+		}
+
+		private String signature;
+
+		public String toString() {
+			if (signature != null)
+				return signature;
+
+			if(id == null)
+				return signature = "";
+
+			if(parameters == null)
+				return signature = id;
+
+			signature = type.toString() + " " + id + "(";
+			for(int i = 0; i < parameters.length; i++) {
+				if(i != 0)
+					signature += ", ";
+				signature += parameters[i].getID();
+			}
+			return signature += ")";
+		}
+
+		protected Access getType() {
+			return type;
+		}
+
+		protected String getId() {
+			return id;
+		}
+
+		protected TypeDecl[] getParameters() {
+			return parameters;
+		}
+
+		protected ASTNode getExpr() {
+			return expr;
+		}
+
+		public GraphNode addNext(GraphNode n) {
+			if(n != null)
+				next.add(n);
+			return this;
+		}
+
+		protected boolean hasNext() {
+			return next.size() != 0;
+		}
+
+		/**********************************************************/
+		/*                Equivalence relations                   */
+		/**********************************************************/
+
+		/*
+		 * Create a structure to store tuples (doubles) of GraphNode elements
+		 * Tuples construct a closure of GraphNode to co-inductively check that two nodes were
+		 * revisited at the same time by the "includes" algorithm.
+		 */
+
+		protected class TupleSet {
+			private class TupleEntry {
+				private GraphNode n1, n2;
+				TupleEntry(GraphNode n1, GraphNode n2) {
+					this.n1 = n1;
+					this.n2 = n2;
+				}
+
+				public int hashCode() {
+					return n1.hashCode() ^ n2.hashCode();
+				}
+
+				public boolean equals(Object o) {
+					if(o instanceof TupleEntry) {
+						TupleEntry te = (TupleEntry) o;
+						return n1.equals(te.n1) && n2.equals(te.n2);
+					}
+					return false;
+				}
+			}
+
+			Set<TupleEntry> relation;
+
+			protected TupleSet() {
+				relation = new HashSet<TupleEntry>();
+			}
+
+			protected boolean has(GraphNode firstNode, GraphNode secondNode) {
+				return relation.contains(new TupleEntry(firstNode, secondNode));
+			}
+
+			protected boolean insert(GraphNode firstNode, GraphNode secondNode) {
+				return relation.add(new TupleEntry(firstNode, secondNode));
+			}
+
+			protected boolean remove(GraphNode firstNode, GraphNode secondNode) {
+				return relation.remove(new TupleEntry(firstNode, secondNode));
+			}
+		}
+
+
+		private static GraphNode errorNode;
+		private static GraphNode expectedNode;
+
+		public GraphNode getErrorNode() {
+			return errorNode;
+		}
+
+		public GraphNode getExpectedNode() {
+			return expectedNode;
+		}
+
+		/*
+			Algorithm:
+
+			1.	G_1 <= G_2			if	emptyset |- G_1 <= G_2	(Start)
+			2.	R |- EndNode <= EndNode						(End)
+			3.	R |- G_1 <= G_2			if	(G_1, G_2) in R		(Terminate)
+			4.	R |- {G_1} <= {G_2}		if	i) {G_1} not empty and
+									ii) for all G_1 in {G_1}, exists G_2 in G_2 such that
+									R union {({G_1}, {G_2})} |- G_1 <= G_2	(Set)
+		*/
+
+		//TODO Test a case for Set Rule precondition i)
+		protected boolean includes(GraphNode n, TupleSet ts) {
+			//Terminate Rule and End Rule
+			if(ts.has(this, n) || (!hasNext() && !n.hasNext()))
+				return true;
+
+			ts.insert(this, n);
+
+			//Set Rule
+			//Set rule: precondition i)
+			if(!n.hasNext())
+				return false;
+
+			//Set rule: precondition ii)
+			for(GraphNode n1 : n.next) {
+				boolean b = false;
+				for(GraphNode n2 : next)
+					if((b = n2.includes(n1, ts)) == true)
+						break;
+
+				if(b == false) {
+					if(errorNode == null) {
+						errorNode = n;
+						expectedNode = this;
+					}
+					ts.remove(this, n);
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public boolean includes(GraphNode n) {
+			//Start Rule
+			errorNode = null;
+			expectedNode = null;
+			return includes(n, new TupleSet());
+		}
+
+		//TODO rewrite this (maybe it is a bit of over-engineering)
+		//TODO if next is switch node it returns an empty string.
+		public String nextToString() {
+			if(next.isEmpty())
+				return "";
+			StringBuilder s = new StringBuilder();
+			s.append(next.get(0).toString());
+			for(int i = 1; i < next.size(); i++){
+				s.append(", ");
+				s.append(next.get(i).toString());
+			}
+			return s.toString();
+		}
+
+		/**************************************************************/
+		/*                     Normalise Graph                        */
+		/**************************************************************/
+
+		protected boolean isNodeVisited(Set<GraphNode> visited) {
+			if(visited.contains(this))
+				return true;
+			visited.add(this);
+			return false;
+		}
+
+		protected void removeVisited(Set<GraphNode> visited) {
+			visited.remove(this);
+		}
+
+		// Polymorphic on LoopNode
+		protected boolean __hasLoopNode(Set<GraphNode> visited) {
+			if(isNodeVisited(visited))
+				return false;
+			for(GraphNode n: next)
+				if(n.__hasLoopNode(visited))
+					return true;
+			return false;
+		}
+
+		private boolean hasLoopNode() {
+			Set<GraphNode> visited = new HashSet<GraphNode>();
+			for(GraphNode n: next)
+				if(n.__hasLoopNode(visited))
+					return true;
+			return false;
+		}
+
+		// Polymorphic on LoopNode
+		protected ArrayList<GraphNode> nextArrayList() {
+			ArrayList<GraphNode> a = new ArrayList<GraphNode>();
+			a.add(this);
+			return a;
+		}
+
+		// Polymorphic on LoopNode
+		protected ArrayList<GraphNode> computeNextArrayList(int i, Set<GraphNode> visited) {
+			return next.get(i).normalise(visited);
+		}
+
+		/*
+		 * Remove LoopNodes from its graph
+		 */
+		protected ArrayList<GraphNode> normalise(Set<GraphNode> visited) {
+			if(isNodeVisited(visited))
+				return nextArrayList();
+			ArrayList<GraphNode> tmpNext = new ArrayList<GraphNode>();
+			for(int i = 0; i < next.size(); i++)
+				for(GraphNode n : computeNextArrayList(i, visited))
+					if(!tmpNext.contains(n))
+						tmpNext.add(n);
+			next = tmpNext;
+
+			return nextArrayList();
+		}
+
+		public GraphNode normalise() {
+			Set<GraphNode> visited = new HashSet<GraphNode>();
+			ArrayList<GraphNode> alist = new ArrayList<GraphNode>();
+			for(GraphNode n: next){
+				if(!this.equals(n))
+					alist.addAll(n.normalise(visited));
+			}
+			next = alist;
+			return hasLoopNode() ? normalise() : this;
+		}
+
+		/***********************************************************/
+		/*               Count EndNodes/Ignore LoopNodes           */
+		/***********************************************************/
+
+		//polymorphic on LoopNode, EndNode
+		protected int onlyEndNodes(Set<GraphNode> visited) {
+			return -1;
+		}
+
+		protected int onlyEndNodes() {
+			return onlyEndNodes(new HashSet<GraphNode>());
+		}
+
+		protected boolean isPlugged() {
+			return isPlugged(new HashSet<GraphNode>());
+		}
+
+		//polymorphic on PlugNode
+		protected boolean isPlugged(Set<GraphNode> visited) {
+			if(visited.contains(this))
+				return false;
+
+			visited.add(this);
+
+			for(GraphNode n: next)
+				if(n.isPlugged(visited) == true)
+					return true;
+
+			return false;
+		}
+
+		protected boolean isReturnPlugged() {
+			return isReturnPlugged(new HashSet<GraphNode>());
+		}
+
+		//polymorphic on ReturnedPlug
+		protected boolean isReturnPlugged(Set<GraphNode> visited) {
+			if(visited.contains(this))
+				return false;
+
+			visited.add(this);
+
+			for(GraphNode n: next)
+				if(n.isReturnPlugged(visited) == true)
+					return true;
+			return false;
+		}
+
+		protected boolean isReturned() {
+			return isReturned(new HashSet<GraphNode>());
+		}
+
+		//polymorphic on ReturnNode
+		protected boolean isReturned(Set<GraphNode> visited) {
+			if(visited.contains(this))
+				return false;
+
+			visited.add(this);
+
+			for(GraphNode n: next)
+				if(n.isReturned(visited) == true)
+					return true;
+			return false;
+		}
+
+		/***********************************************************/
+		/*               Clone Graphs			           */
+		/***********************************************************/
+
+/*
+		abstract protected GraphNode cloneNode();
+
+		protected GraphNode cloneGraph(GraphNode end) {
+			return cloneGraph(end, new HashMap<GraphNode, GraphNode>());
+		}
+
+		//Polymorphic on LoopNode
+		protected GraphNode cloneGraph(GraphNode end, Map<GraphNode, GraphNode> visited) {
+			if(visited.get(this) != null)
+				return visited.get(this);
+
+			GraphNode r = cloneNode();
+			visited.put(this, r);
+
+			for(GraphNode n: next)
+				r.addNext(n.cloneGraph(end, visited));
+
+			return r;
+		}
+
+		protected GraphNode clonePlugGraph() {
+			return plugGraph(new HashMap<GraphNode, GraphNode>(), true);
+		}
+
+		protected GraphNode plugGraph() {
+			return plugGraph(new HashMap<GraphNode, GraphNode>(), false);
+		}
+
+		//Polymorphic on PlugNode
+		protected GraphNode plugGraph(Map<GraphNode, GraphNode> visited, boolean clone) {
+			if(visited.get(this) != null)
+				return visited.get(this);
+
+			GraphNode r = cloneNode();
+			visited.put(this, r);
+
+			for(GraphNode n: next)
+				r.addNext(n.plugGraph(visited, clone));
+
+			return r;
+		}
+*/
+		/***********************************************************/
+		/*                 Print Protocol                          */
+		/***********************************************************/
+
+		private static int count;
+
+		protected int getState(Map<GraphNode, Integer> stateMap) {
+			Integer state = null;
+			if((state = stateMap.get(this)) == null)
+				stateMap.put(this, state = new Integer(count++));
+			return state;
+		}
+
+		//polymorphic on SwitchNode and EndNode
+		//TODO I dont like here
+		protected boolean isState() {
+			if(next.size() == 1)
+				if((next.get(0) instanceof SwitchNode) || (next.get(0) instanceof EndNode))
+					return false;
+			return true;
+		}
+
+		//polymorphic on SwitchNode and EndNode
+		protected String toState(Map<GraphNode, Integer> stateMap) {
+			return toString() + ": " + (isState() ? "State_" + getState(stateMap) : next.get(0).toState(stateMap));
+		}
+
+		private TypestateStream printState(Set<GraphNode> visited, Map<GraphNode, Integer> stateMap, TypestateStream stream) {
+			if(isNodeVisited(visited))
+				return stream;
+
+			if(isState()) {
+				stream.println("State_" + getState(stateMap) + " = {");
+				stream.pushIndent();
+				for(int i = 0; i < next.size(); i++) {
+					if(i != 0)
+						stream.print(", ");
+					stream.print(next.get(i).toState(stateMap));
+				}
+				stream.popIndent();
+				stream.println("");
+				stream.println("}");
+			}
+
+			for(GraphNode n: next)
+				n.printState(visited, stateMap, stream);
+
+			return stream;
+		}
+
+		protected void printState(PrintStream out) {
+			out.println(stringState());
+		}
+
+		protected String stringState() {
+			count = 1;
+			TypestateStream stream = printState(new HashSet<GraphNode>(), new HashMap<GraphNode, Integer>(), new TypestateStream());
+			return stream.toString();
+		}
+
+		/***********************************************************/
+		/*                For Debug                                */
+		/***********************************************************/
+
+		private void printPaths(String s, Set<GraphNode> visited) {
+			if((next.size() == 0) || isNodeVisited(visited)) {
+				System.out.println(s + toString());
+				return;
+			}
+
+			for(int i = 0; i < next.size(); i++)
+				next.get(i).printPaths(s + toString(), visited);
+
+			removeVisited(visited);
+		}
+
+		public void printPaths() {
+			Set<GraphNode> s = new HashSet<GraphNode>();
+			printPaths("", s);
+		}
+	}
+
+	/********************************************************************************/
+	/*                       Graph Nodes                                            */
+	/********************************************************************************/
+
+
+	/*
+		A syntax for the Graphs:
+
+		Init	::=	init {S_i | i in I}
+		S	::=	T_1 m(T_2) {S_i | i in I}	(MethodNode)
+			 |	E m(T) <l:S_e | e in E>		(MethodNode) -> (SwitchNode) -> ({SwitchCases}
+
+		{} (empty set) corresponds to the EndNode
+
+		LoopNode and ReturnNode are auxiliary structures
+	*/
+
+
+
+	/*
+	 * MethodNode inherits GraphNode
+	 * Instantiates a class that represents a method call.
+	 */
+	public class MethodNode extends GraphNode {
+		public MethodNode(Access type, String id, TypeDecl[] parameters, ASTNode methodAccess) {
+			super(type, id, parameters, methodAccess);
+		}
+
+		public MethodNode(Access type, String id, TypeDecl[] parameters) {
+			this(type, id, parameters, null);
+		}
+
+		private boolean equalNode(GraphNode n) {
+			if(!(n instanceof MethodNode))
+				return false;
+
+			if(!n.getId().equals(getId()) || n.getParameters().length != getParameters().length)
+				return false;
+
+			for(int i = 0; i < n.getParameters().length; i++) {
+				TypeDecl t = n.getParameters()[i];
+				if(!t.equals(getParameters()[i]) && !(getParameters()[i] instanceof UnknownType))
+					return false;
+			}
+
+
+			return true;
+		}
+
+		protected boolean includes(GraphNode n, TupleSet ts) {
+			return equalNode(n) ? super.includes(n, ts) : false;
+		}
+
+//		protected GraphNode cloneNode() {
+//			return new MethodNode(getType(), getId(), getParameters(), getExpr());
+//		}
+	}
+
+	/*
+	 * SwitchNode inherits MethodNode.
+	 * Instantiates a class that represents a state where
+	 * the continuing state is depended on the result
+	 * of the method call.
+	 */
+	public class SwitchNode extends GraphNode {
+		public SwitchNode(ASTNode ss) {
+			super(null, null, null, ss);
+		}
+
+		public SwitchNode() {
+			this(null);
+		}
+
+		public String toString() {
+			return "<" + nextToString() + ">";
+		}
+
+		protected boolean isState() {
+			return false;
+		}
+
+		protected String toState(Map<GraphNode, Integer> stateMap) {
+			String s = "<";
+			for(int i = 0; i < next.size(); i++) {
+				if(i != 0)
+					s += ", ";
+				s += next.get(i).toState(stateMap);
+			}
+			s += ">";
+			return s;
+		}
+
+		protected boolean includes(GraphNode n, TupleSet ts) {
+			if(n instanceof SwitchNode)
+				return super.includes(n, ts);
+			return false;
+		}
+
+//		protected GraphNode cloneNode() {
+//			return new SwitchNode(getExpr());
+//		}
+	}
+
+	public class SwitchCase extends GraphNode {
+		public SwitchCase(String id, ASTNode c) {
+			super(null, id, null, c);
+		}
+
+		public SwitchCase(String id) {
+			this(id, null);
+		}
+
+		protected boolean includes(GraphNode n, TupleSet ts) {
+			if((n instanceof SwitchCase) && getId().equals(n.getId()))
+				return super.includes(n, ts);
+			return false;
+		}
+
+//		protected GraphNode cloneNode() {
+//			return new SwitchCase(getId(), getExpr());
+//		}
+	}
+
+	/*
+	 * LoopNode inherits GraphNode.
+	 * Auxiliary Node for creating a typestate graph
+	 * Represents a state where there is a possible recursion.
+	 */
+	public class LoopNode extends GraphNode {
+		public LoopNode() {
+			super(null, null, null, null);
+		}
+
+		public String toString() {
+			return "Loop Node;";
+		}
+
+		protected boolean __hasLoopNode(Set<GraphNode> visited) {
+			return true;
+		}
+
+		protected ArrayList<GraphNode> nextArrayList() {
+			return next;
+		}
+
+		protected ArrayList<GraphNode> computeNextArrayList(int i, Set<GraphNode> visited) {
+			return (!this.equals(next.get(i))) ? super.computeNextArrayList(i, visited) : new ArrayList<GraphNode>();
+		}
+
+//		protected GraphNode cloneNode() {
+//			return new LoopNode();
+//		}
+
+/*		protected GraphNode cloneGraph(GraphNode end, Map<GraphNode, GraphNode> visited) {
+			//This means that the graph ends in a LoopNode -> the graph is still incomplete
+			if(next.size() == 0)
+				return cloneNode().addNext(end);
+			return super.cloneGraph(end, visited);
+		}
+*/
+		protected int onlyEndNodes(Set<GraphNode> visited) {
+			if(isNodeVisited(visited))
+				return 0;
+
+			int sum = 0;
+			int result;
+			for(GraphNode n: next) {
+				result = n.onlyEndNodes(visited);
+				if(result == -1)
+					return -1;
+				sum += result;
+			}
+			return sum;
+		}
+	}
+
+	/*
+	 * EndNode inherits GraphNode
+	 * Represents the final state.
+	 */
+	public class EndNode extends GraphNode {
+		public EndNode() {
+			super(null, null, null, null);
+		}
+
+		public String toString() {
+			return "end";
+		}
+
+		protected boolean isState() {
+			return false;
+		}
+
+		protected String toState(Map<GraphNode, Integer> stateMap) {
+			return toString();
+		}
+
+		public GraphNode addNext(GraphNode n) {
+			return this;
+		}
+
+		protected boolean includes(GraphNode n, TupleSet ts) {
+			if(n instanceof EndNode)
+				return super.includes(n, ts);
+			return false;
+		}
+
+//		protected GraphNode cloneNode() {
+//			return new EndNode();
+//		}
+
+		protected int onlyEndNodes(Set<GraphNode> visited) {
+			return 1;
+		}
+	}
+
+	/*
+	 * InitNode inherits GraphNode
+	 * Represents the initial state.
+	 */
+	public class InitNode extends GraphNode {
+		public InitNode(ASTNode expr) {
+			super(null, null, null, expr);
+		}
+
+		public InitNode() {
+			this(null);
+		}
+
+		public String toString() {
+			return "Init Node;";
+		}
+
+		protected boolean includes(GraphNode n, TupleSet ts) {
+			if(n instanceof InitNode)
+				return super.includes(n, ts);
+			return false;
+		}
+
+//		protected GraphNode cloneNode() {
+//			return new InitNode(getExpr());
+//		}
+	}
+
+	public class ReturnNode extends EndNode {
+		public ReturnNode() {
+			super();
+		}
+
+		public String toString() {
+			return "ReturnNode;";
+		}
+
+		protected boolean isReturned(Set<GraphNode> visited) {
+			return true;
+		}
+	}
+
+	public class PlugNode extends LoopNode {
+		public PlugNode() {
+			super();
+		}
+
+		public String toString() {
+			return "PlugNode;";
+		}
+
+		protected boolean isPlugged(Set<GraphNode> visited) {
+			return true;
+		}
+	}
+
+	public class ReturnPlug extends PlugNode {
+		public ReturnPlug() {
+			super();
+		}
+
+		public String toString() {
+			return "ReturnPlug";
+		}
+
+		protected boolean isReturnPlugged(Set<GraphNode> visited) {
+			return true;
+		}
+	}
+/*
+	public class PlugNode extends LoopNode {
+		private TypestateVar typestate;		//TODO This is not a good programming practice. Should not use typestate in this module
+
+		public PlugNode(TypestateVar typestate) {
+			super();
+			this.typestate = typestate;
+		}
+
+		public String toString() {
+			return "PlugNode;";
+		}
+
+		protected boolean isPlugged(Set<GraphNode> visited) {
+			//this means that if there are next nodes then this is not plugged
+			//TODO why pluggedNode can have next nodes? It shouldn't have
+			if(next.size() == 0)
+				return true;
+			return super.isPlugged(visited);
+		}
+
+		protected GraphNode plugGraph(Map<GraphNode, GraphNode> visited, boolean clone) {
+			return (clone) ? typestate.current.cloneGraph(null) : typestate.current;
+		}
+	}
+
+
+	public class ReturnNode extends PlugNode {
+
+		public ReturnNode(TypestateVar typestate) {
+			super(typestate);
+		}
+
+		protected boolean isReturned(Set<GraphNode> visited) {
+			return true;
+		}
+	}
+*/
+}

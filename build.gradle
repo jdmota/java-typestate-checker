@@ -1,0 +1,96 @@
+plugins {
+  id 'java'
+  id 'org.jastadd' version '1.13.3'
+}
+
+defaultTasks 'jar'
+
+if (!file('extendj/jastadd_modules').exists()) {
+  throw new GradleException('ExtendJ seems to be missing. Please run "git submodule init", then "git submodule update".')
+}
+
+jastadd {
+  configureModuleBuild()
+
+  modules {
+    include("extendj/jastadd_modules") // Include core ExtendJ modules.
+
+    module "mungo", {
+      imports "java8 frontend" // ExtendJ dependency for template module.
+
+      jastadd {
+        include "src/frontend/*.jrag"
+        include "src/frontend/*.jadd"
+        include "src/grammar/*.ast"
+      }
+
+      scanner {
+        // basedir "src/scanner/"
+        // include "**/*.flex"
+        include "src/scanner/Keywords.flex"
+      }
+
+      parser {
+        // basedir "src/parser/"
+        // include "**/*.parser"
+        // include "src/parser/Java14.parser"
+        include "src/parser/Typestate.parser"
+        // include "src/parser/Annotations.parser"
+
+      }
+    }
+  }
+
+  // Target module to build:
+  module = 'mungo'
+
+  astPackage = 'org.extendj.ast'
+  parser.name = 'JavaParser'
+  scanner.name = 'OriginalScanner'
+
+}
+
+sourceSets.main {
+  java {
+      srcDir 'extendj/src/frontend-main'
+      srcDir 'src/java'
+  }
+  resources {
+    srcDir 'extendj/src/res'
+    srcDir jastadd.buildInfoDir
+  }
+}
+
+// Use JavaCompiler if you need bytecode generation.
+jar.manifest.attributes 'Main-Class': 'TypestateMain'
+// jar.manifest.attributes 'Main-Class': 'org.extendj.JavaChecker'
+//jar.manifest.attributes 'Main-Class': 'org.extendj.JavaCompiler'
+jar.destinationDir = projectDir
+
+// Java -source and -target version.
+sourceCompatibility = targetCompatibility = '1.8'
+
+task sourceZip(type: Zip) {
+  description 'Builds a Zip file with the entire repisotory (including the ExtendJ submodule).'
+  destinationDir = projectDir
+  archiveName = "mungo-src.zip"
+
+  from (projectDir) {
+    exclude '**/.git'
+    exclude '**/.gitignore'
+    exclude '**/.gitattributes'
+    exclude '**/.gitmodules'
+    exclude 'demos'
+    exclude 'build'
+    exclude 'bin'
+    exclude '.gradle'
+    exclude '.classpath'
+    exclude '.settings'
+    exclude '.project'
+    exclude '*.jar'
+    exclude '*.zip'
+    exclude '**/*.swp'
+  }
+
+  into 'mungo'
+}

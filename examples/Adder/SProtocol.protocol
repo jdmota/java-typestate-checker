@@ -1,0 +1,22 @@
+package examples.Adder;
+//type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+
+
+typestate SProtocol {
+	State0 = {
+		Choice1 receive_Choice1LabelFromC():
+		<ADD: State1, BYE: State4>
+	}
+	State1 = {
+		int receive_AddintFromC(): State2
+	}
+	State2 = {
+		int receive_AddintFromC(): State3
+	}
+	State3 = {
+		void send_ResintToC(int): State0
+	}
+	State4 = {
+		void receive_ByeFromC(): end
+	}
+}

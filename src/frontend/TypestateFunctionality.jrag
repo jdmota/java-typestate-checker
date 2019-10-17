@@ -1,0 +1,106 @@
+aspect typestateFunctionality {
+	eq TType.getAccess().nameType() = NameType.TYPE_NAME;
+
+	inh State TypestateLabel.getTarget(String name);
+	syn lazy State TypestateLabel.getTarget() = getTarget(getLabel());
+
+	eq TypestateDecl.getState(int i).getTarget(String name) = getStateMap().get(name);
+	eq TypestateDecl.getInitState().getTarget(String name) = getStateMap().get(name);
+
+	syn lazy Map<String, State> TypestateDecl.getStateMap() {
+		Map<String, State> m = new HashMap<String, State>();
+		m.put(getInitState().getID(), getInitState());
+		for(int i = 0; i < getNumState(); i++)
+			if(!m.containsKey(getState(i).getID()))
+				m.put(getState(i).getID(), getState(i));
+		return m;
+	}
+
+	inh boolean State.isDuplicate(String name);
+	syn lazy boolean State.isDuplicate() = isDuplicate(getID());
+
+	eq TypestateDecl.getState(int i).isDuplicate(String name) = isDuplicate(name);
+	eq TypestateDecl.getInitState().isDuplicate(String name) = isDuplicate(name);
+
+	syn boolean TypestateDecl.isDuplicate(String name) {
+		int count = 0;
+
+		if(getInitState().getID().equals(name))
+			count++;
+
+		for(int i = 0; i < getNumState(); i++)
+			if(getState(i).getID().equals(name))
+				count++;
+
+		return count > 1;
+	}
+
+	inh boolean State.isReachable(State tn);
+	syn lazy boolean State.isReachable() = isReachable(this);
+
+	eq TypestateDecl.getState(int i).isReachable(State tn) = getInitState().reachable().contains(tn);
+	eq TypestateDecl.getInitState().isReachable(State tn) = true;
+
+	syn Set<State> State.reachable() circular [new HashSet<State>()];
+
+	eq State.reachable() {
+		Set result = new HashSet<State>();
+		result.add(this);
+		for(State n: successors())
+			result.addAll(n.reachable());
+		return result;
+	}
+
+	coll Set<State> State.successors() [new HashSet<State>()] with add root State;
+	TypestateLabel contributes getTarget() when getTarget() != null to State.successors() for getStateAncestor();
+
+	inh State TypestateLabel.getStateAncestor();
+	eq State.getTypestate().getStateAncestor() = this;
+
+	syn lazy boolean State.isTypestateLabel() = getTypestate() instanceof TypestateLabel;
+
+	syn lazy String State.getCircularPath() {
+		if(!isTypestateLabel())
+			return null;
+
+		State s = this;
+		Set<State> visited = new HashSet<State>();
+		String path = "";
+		while(s != null && s.isTypestateLabel() && !visited.contains(s)) {
+			path = path + s.getID() + "-->";
+			visited.add(s);
+			s = ((TypestateLabel) s.getTypestate()).getTarget();
+		}
+		if(s != null && s.equals(this))
+			return path + getID();
+
+		return null;
+	}
+
+	coll Set<String> TypestateSwitch.getLabels() [new HashSet<String>()] with add root TypestateSwitch;
+	TypestateSwitchCase contributes getLabel() to TypestateSwitch.getLabels() for getTypestateSwitchAncestor();
+
+	inh TypestateSwitch TypestateSwitchCase.getTypestateSwitchAncestor();
+	eq TypestateSwitch.getTypestateSwitchCase(int i).getTypestateSwitchAncestor() = this;
+
+	coll Set<TypestateMethod> TypestateDecl.getMethods() [new HashSet<TypestateMethod>()] with add root TypestateDecl;
+	TypestateMethod contributes this to TypestateDecl.getMethods() for getTypestateDeclAncestor();
+
+	inh TypestateDecl Typestate.getTypestateDeclAncestor();
+	eq TypestateDecl.getState(int i).getTypestateDeclAncestor() = this;
+	eq TypestateDecl.getInitState().getTypestateDeclAncestor() = this;
+
+	syn int TTypeList.getNumTType() = 0;
+	syn TType TTypeList.getTType(int i) = null;
+
+	syn lazy String TypestateMethod.signature() {
+		String s = getTType().getAccess().toString() + " " + getID() + "(";
+		for(int i = 0; i < getTTypeList().getNumTType(); i ++) {
+			if(i != 0)
+				s += ", ";
+			s += getTTypeList().getTType(i).getAccess().toString();
+		}
+		return s + ")";
+	}
+
+}

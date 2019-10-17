@@ -1,0 +1,222 @@
+package examples.POP3;
+
+
+typestate CProtocol {
+	State0 = {
+		OKString receive_OKNStringFromS(): State1
+	}
+	State1 = {
+		void send_USERToS(): State2,
+		void send_QUITToS(): State62
+	}
+	State2 = {
+		void send_USERStringToS(String): State3
+	}
+	State3 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State4, ERR: State61>
+	}
+	State4 = {
+		OKString receive_OKStringFromS(): State5
+	}
+	State5 = {
+		void send_PASSToS(): State6,
+		void send_QUITToS(): State59
+	}
+	State6 = {
+		void send_PASSStringToS(String): State7
+	}
+	State7 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State8, ERR: State58>
+	}
+	State8 = {
+		OKString receive_OKStringFromS(): State9
+	}
+	State9 = {
+		void send_STATToS(): State10,
+		void send_LISTToS(): State12,
+		void send_LIST_NToS(): State19,
+		void send_RETR_NToS(): State23,
+		void send_DELE_NToS(): State30,
+		void send_RSETToS(): State34,
+		void send_TOP_NToS(): State36,
+		void send_NOOPToS(): State43,
+		void send_QUITToS(): State45,
+		void send_UIDLToS(): State47,
+		void send_UIDL_NToS(): State54
+	}
+	State10 = {
+		void send_STATVoidToS(Void): State11
+	}
+	State11 = {
+		TwoInt receive_OKNTwoIntFromS(): State9
+	}
+	State12 = {
+		void send_LISTVoidToS(Void): State13
+	}
+	State13 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State14, ERR: State18>
+	}
+	State14 = {
+		OKString receive_OKStringFromS(): State15
+	}
+	State15 = {
+		Choice2 receive_Choice2LabelFromS():
+		<DOT: State16, SUM: State17>
+	}
+	State16 = {
+		Void receive_DOTVoidFromS(): State9
+	}
+	State17 = {
+		SUMTwoInt receive_SUMTwoIntFromS(): State15
+	}
+	State18 = {
+		ERRString receive_ERRStringFromS(): State9
+	}
+	State19 = {
+		void send_LIST_nIntToS(int): State20
+	}
+	State20 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State21, ERR: State22>
+	}
+	State21 = {
+		TwoInt receive_OKTwoIntFromS(): State9
+	}
+	State22 = {
+		ERRString receive_ERRStringFromS(): State9
+	}
+	State23 = {
+		void send_RETR_nIntToS(int): State24
+	}
+	State24 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State25, ERR: State29>
+	}
+	State25 = {
+		OKString receive_OKStringFromS(): State26
+	}
+	State26 = {
+		Choice2 receive_Choice2LabelFromS():
+		<DOT: State27, SUM: State28>
+	}
+	State27 = {
+		Void receive_DOTVoidFromS(): State9
+	}
+	State28 = {
+		SUMString receive_SUMStringFromS(): State26
+	}
+	State29 = {
+		ERRString receive_ERRStringFromS(): State9
+	}
+	State30 = {
+		void send_DELE_nIntToS(int): State31
+	}
+	State31 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State32, ERR: State33>
+	}
+	State32 = {
+		OKString receive_OKStringFromS(): State9
+	}
+	State33 = {
+		ERRString receive_ERRStringFromS(): State9
+	}
+	State34 = {
+		void send_RSETVoidToS(Void): State35
+	}
+	State35 = {
+		OKString receive_OKNStringFromS(): State9
+	}
+	State36 = {
+		void send_TOP_nTwoIntToS(TwoInt): State37
+	}
+	State37 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State38, ERR: State42>
+	}
+	State38 = {
+		OKString receive_OKStringFromS(): State39
+	}
+	State39 = {
+		Choice2 receive_Choice2LabelFromS():
+		<DOT: State40, SUM: State41>
+	}
+	State40 = {
+		Void receive_DOTVoidFromS(): State9
+	}
+	State41 = {
+		SUMString receive_SUMStringFromS(): State39
+	}
+	State42 = {
+		ERRString receive_ERRStringFromS(): State9
+	}
+	State43 = {
+		void send_NOOPVoidToS(Void): State44
+	}
+	State44 = {
+		Void receive_OKNVoidFromS(): State9
+	}
+	State45 = {
+		void send_QUITVoidToS(Void): State46
+	}
+	State46 = {
+		OKString receive_OKNStringFromS(): end
+	}
+	State47 = {
+		void send_UIDLVoidToS(Void): State48
+	}
+	State48 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State49, ERR: State53>
+	}
+	State49 = {
+		OKString receive_OKStringFromS(): State50
+	}
+	State50 = {
+		Choice2 receive_Choice2LabelFromS():
+		<DOT: State51, SUM: State52>
+	}
+	State51 = {
+		Void receive_DOTVoidFromS(): State9
+	}
+	State52 = {
+		SUMIntString receive_SUMIntStringFromS(): State50
+	}
+	State53 = {
+		ERRString receive_ERRStringFromS(): State9
+	}
+	State54 = {
+		void send_UIDL_nIntToS(int): State55
+	}
+	State55 = {
+		Choice1 receive_Choice1LabelFromS():
+		<OK: State56, ERR: State57>
+	}
+	State56 = {
+		IntString receive_OKIntStringFromS(): State9
+	}
+	State57 = {
+		ERRString receive_ERRStringFromS(): State9
+	}
+	State58 = {
+		ERRString receive_ERRStringFromS(): State5
+	}
+	State59 = {
+		void send_QUITVoidToS(Void): State60
+	}
+	State60 = {
+		OKString receive_OKNStringFromS(): end
+	}
+	State61 = {
+		ERRString receive_ERRStringFromS(): State1
+	}
+	State62 = {
+		void send_QUITVoidToS(Void): State63
+	}
+	State63 = {
+		OKString receive_OKNStringFromS(): end
+	}
+}

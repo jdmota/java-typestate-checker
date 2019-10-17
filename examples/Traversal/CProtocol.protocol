@@ -1,0 +1,23 @@
+package demos.Traversal;
+
+typestate CProtocol {
+
+	ChoiceA			=	{
+							Choice choiceFromA(): <DATA: {Node nodeFromA(): ChoiceB}, NO_D: ChoiceB, END: end>
+						}
+
+	ChoiceB			=	{
+							Choice choiceFromB(): <DATA: {Node nodeFromB(): ChoiceC}, NO_D: ChoiceC, END: ChoiceC>
+						}
+
+	ChoiceC			=	{
+							void DATAToA(): {void nodeToA(Node): StateDataToB},
+							void NO_DToA(): StateDataToB,
+							void ENDToA(): StateDataToB
+						}
+
+	StateDataToB	=	{
+							void DATAToB(): {void nodeToB(Node): ChoiceA},
+							void NO_DToB(): ChoiceA
+						}
+}
