@@ -5,23 +5,6 @@ import org.extendj.scanner.OriginalScanner;
 
 aspect Compilation {
 
-	org.extendj.parser.JavaParser Program.parser;
-	protected String CompilationUnit.filePath;
-
-	private boolean Program.verbose = false;
-	public void Program.setVerbose() {
-		verbose = true;
-	}
-
-	private boolean Program.printInference = false;
-	public void Program.setPrintInference() {
-		printInference = true;
-	}
-
-	public boolean Program.printInference() {
-		return printInference;
-	}
-
 	private PrintStream Program.outStream = System.out;
 	private PrintStream Program.errorStream = System.err;
 
@@ -41,10 +24,6 @@ aspect Compilation {
 		return errorStream;
 	}
 
-	protected String CompilationUnit.getFilePath() {
-		return filePath;
-	}
-
 	private ArrayList<String> Program.compiledPaths = new ArrayList<String>();
 
 	protected static String Program.protocolSuffix() {
@@ -62,29 +41,33 @@ aspect Compilation {
 	protected CompilationUnit Program.compile(String path) {
 		CompilationUnit u = null;
 
-		for(int i = 0; i < compiledPaths.size(); i++)
+		for(int i = 0; i < compiledPaths.size(); i++){
 			if(compiledPaths.get(i).equals(path))
 				return null;
+			}
 
-		if(verbose)
+		if(this.options().hasOption("-v"))
 			outStream().println("Compiling file " + path);
 
 		compiledPaths.add(path);
 
 		try{
-			FileInputStream fileStream = new FileInputStream(path);
-			u = (CompilationUnit) parser.parse(fileStream, path);
-		}
-		catch(Exception e) {
+			u = addSourceFile(path);
+			String fullName = path.substring(0, path.indexOf(".")).replace("/", ".");
+			if (!sourceTypeMap.containsKey(fullName)) {
+	      sourceTypeMap.put(fullName, u.getTypeDecl(0));
+	    }else{
+				sourceTypeMap.replace(fullName, sourceTypeMap.get(fullName), u.getTypeDecl(0));
+				// System.out.println("****==***** " + fullName + " " + sourceTypeMap.get(fullName));
+			}
+
+		}catch(Exception e) {
+			outStream().println(e);
 			return null;
 		}
 
-
-		if(verbose)
+		if(this.options().hasOption("-v"))
 			outStream().println("Loading file " + path);
-
-		u.filePath = path;
-		addCompilationUnit(u);
 
 		return u;
 	}
@@ -98,16 +81,13 @@ aspect Compilation {
 			numWarnings += getCompilationUnit(i).numWarnings;
 		}
 
-		if(!hasErrors()) {
-			for(int i = 0; i < getNumCompilationUnit(); i++)
-				getCompilationUnit(i).collectTypestate();
+		for(int i = 0; i < getNumCompilationUnit(); i++)
+			getCompilationUnit(i).collectTypestate();
 
-			for(int i = 0; i < getNumCompilationUnit(); i++) {
-				errors.addAll(getCompilationUnit(i).errors);
-				numWarnings += getCompilationUnit(i).numWarnings;
-			}
+		for(int i = 0; i < getNumCompilationUnit(); i++) {
+			errors.addAll(getCompilationUnit(i).errors);
+			numWarnings += getCompilationUnit(i).numWarnings;
 		}
-
 	}
 
 	public boolean Program.compile(String[] args) {
@@ -115,58 +95,21 @@ aspect Compilation {
 			if(new File(args[i]).exists())
 				if(!args[i].endsWith(fileSuffix()) && !args[i].endsWith(protocolSuffix()))
 					errorStream().println("File " + args[i] + " should have suffix " + fileSuffix() + " or suffix " + protocolSuffix());
-				else
+				else{
+					compiledPaths.add(args[i]);
 					compile(args[i]);
+				}
 			else
 				errorStream().println("File " + args[i] + " not found.");
 		collect();
+
+		if(hasErrors()){
+			printErrors();
+		}else{
+			if(hasWarnings())
+				printErrors();
+		}
 		return !hasErrors();
 	}
 
-	public void Program.createJavaFiles() {
-		for(int i = 0; i < getNumCompilationUnit(); i++) {
-			CompilationUnit unit = getCompilationUnit(i);
-			for (int j = 0; j < unit.getNumTypeDecl(); j++) {
-      	TypeDecl type = unit.getTypeDecl(j);
-				if(!(type.isTypestateDeclType()))
-					unit.Rewrite(type + javaFileSuffix());
-				}
-		}
-	}
-
-	public class TypestateChecker extends Program {
-		public TypestateChecker(org.extendj.parser.JavaParser parser) {
-			this.parser = parser;
-		}
-
-		public TypestateChecker() {
-			this.parser = new org.extendj.parser.JavaParser();
-		}
-
-		private void printUnits() {
-			for(int i = 0; i < getNumCompilationUnit(); i++) {
-				CompilationUnit unit = getCompilationUnit(i);
-				unit.Rewrite(System.out);
-				for (int j = 0; j < unit.getNumTypeDecl(); j++) {
-					if(unit.getTypeDecl(j).isEnumDeclType())
-						((ClassDecl) unit.getTypeDecl(j)).getEnumDecl().Rewrite(System.out);
-					}
-			}
-
-		}
-
-		private void myDebug(String[] args) {
-			if(compile(args)) {
-				if(hasWarnings())
-					printErrors();
-			}
-			else {
-				printErrors();
-			}
-		}
-
-		public static void main(String [] args) {
-			new TypestateChecker(new org.extendj.parser.JavaParser()).myDebug(args);
-		}
-	}
 }

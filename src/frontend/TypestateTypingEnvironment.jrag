@@ -109,13 +109,14 @@ aspect TypestateTypingEnvironment {
 				// n.printPaths();
 				// System.out.println("------------------------");
 				if(!t.includes(n)) {
-					String filePath = ((CompilationUnit) startExpr.get(i).getCompilationUnitAncestor()).getFilePath();
+					CompilationUnit u  = (CompilationUnit) startExpr.get(i).getCompilationUnitAncestor();
+					String filePath = (u).pathName();
 					String errorMsg = "Object created at " + filePath + ": " + ASTNode.getLine(startExpr.get(i).getStart());
 					errorMsg += ". Typestate mismatch. Found: " + t.getErrorNode().nextToString() + ". Expected: " + t.getExpectedNode().nextToString() + ".";
 					t.getErrorNode().getExpr().addSemanticError(errorMsg);
 				}
 
-				if(startExpr.get(i).getProgramAncestor().printInference())
+				if(startExpr.get(i).getCompilationUnitAncestor().program().options().hasOption("-pi"))
 					//TODO have a proper format for the n.stringState() string
 					startExpr.get(i).addInfo(n.stringState());
 			}

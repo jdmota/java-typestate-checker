@@ -126,7 +126,7 @@ aspect Errors {
 
 	public void ASTNode.addError(TypestateError e) {
 		CompilationUnit u = (CompilationUnit) getCompilationUnitAncestor();
-		e.setFileName(u.getFilePath());
+		e.setFileName(u.pathName());
 		u.errors.add(e);
 		if(e instanceof TypestateWarning || e instanceof TypestateInfo)
 			u.numWarnings++;

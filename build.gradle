@@ -62,7 +62,7 @@ sourceSets.main {
 }
 
 // Use JavaCompiler if you need bytecode generation.
-jar.manifest.attributes 'Main-Class': 'TypestateMain'
+jar.manifest.attributes 'Main-Class': 'org.extendj.TypestateChecker'
 // jar.manifest.attributes 'Main-Class': 'org.extendj.JavaChecker'
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaCompiler'
 jar.destinationDir = projectDir
