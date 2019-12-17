@@ -1,25 +1,20 @@
 aspect javaASTFunctionality {
 
 	/*	ASTNode								*/
-//TODO	syn lazy CompilationUnit ASTNode.getCompilationUnitAncestor() {
-	protected CompilationUnit ASTNode.getCompilationUnitAncestor() {
+//TODO	
+	syn lazy CompilationUnit ASTNode.getCompilationUnitAncestor() {
 		ASTNode node = this;
 
 		while(node != null && !(node instanceof CompilationUnit))
 			node = node.getParent();
-		Program p = (Program) node.getParent().getParent();
+		Program p = program();
 		for(int i = 0; i < p.getNumCompilationUnit(); i++){
 			if( ((CompilationUnit) node).getPackageDecl().toString().equals(p.getCompilationUnit(i).getPackageDecl().toString())
 			&&  ((CompilationUnit) node).getTypeDecl(0).toString().equals(p.getCompilationUnit(i).getTypeDecl(0).toString()) ){
 				return  p.getCompilationUnit(i);
 			}
 		}
-
 		return this.compilationUnit();
-	}
-
-	protected Program ASTNode.getProgramAncestor() {
-		return (Program) getCompilationUnitAncestor().getParent().getParent();
 	}
 
 	syn boolean TypestateClassDecl.hasSuperclass(){

@@ -31,21 +31,36 @@ aspect LookupType {
 		return getPackageDecl().equals("") ? "" : getPackageDecl().replace('.', File.separatorChar) + File.separatorChar;
 	}
 
-	syn TypeDecl CompilationUnit.lookupTSType(String typeName) {
-		if(!(lookupType(PRIMITIVE_PACKAGE_NAME, typeName).isUnknown())){
+
+	syn TypeDecl CompilationUnit.primitiveOrDefault(String typeName){
+		if(typeName.equals("boolean") || typeName.equals("void") || typeName.equals("byte")
+			|| typeName.equals("short") || typeName.equals("int") || typeName.equals("long")
+			|| typeName.equals("char") || typeName.equals("float") || typeName.equals("double"))
 			return lookupType(PRIMITIVE_PACKAGE_NAME, typeName);
-		}
+
+		if(typeName.equals("String") || typeName.equals("Object") || typeName.equals("Cloneable"))
+			return lookupType("java.lang", "typeName");
+
+		return null;
+
+	}
+
+	syn TypeDecl CompilationUnit.lookupTSType(String typeName) {
 
 		String packageName = getPackageString();
 
+		if(primitiveOrDefault(typeName) != null)
+			return primitiveOrDefault(typeName);
+
+		//locallookup because we want to compile everything else
 		if(!localLookupType(typeName).isEmpty() && localLookupType(typeName).isSingleton()){
 			return localLookupType(typeName).singletonValue();
 		}
 
 		CompilationUnit cu;
-			if((cu = getCompilationUnit(packageName, typeName)) != null){
-				return cu.getTypeDecl(0);
-			}
+		if((cu = getCompilationUnit(packageName, typeName)) != null){
+			return cu.getTypeDecl(0);
+		}
 
 		String s = null;
 		if(!importedTypes(typeName).isEmpty()){
@@ -57,7 +72,7 @@ aspect LookupType {
 			}
 		}
 
-		return new UnknownType();
+		return lookupType(getPackageDecl(), typeName).singletonValue();
 	}
 
 	syn TypeDecl CompilationUnit.lookupTSType(String packageName, String typeName) {
