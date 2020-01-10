@@ -1,0 +1,144 @@
+import java.util.ArrayList;
+
+aspect Errors {
+
+	protected void ASTNode.typestateCheck() {}
+	protected void ASTNode.semanticCheck() {}
+
+	protected void ASTNode.collectSemantic() {
+		semanticCheck();
+		for(int i = 0; i < getNumChild(); i++)
+			getChild(i).collectSemantic();
+	}
+
+	protected void ASTNode.collectTypestate() {
+		typestateCheck();
+		for(int i = 0; i < getNumChild(); i++)
+			getChild(i).collectTypestate();
+	}
+
+
+	public abstract class TypestateError {
+		private final String msg;
+		private String file;
+		private final int start;
+		private final int end;
+		private final String errorType;
+
+		protected TypestateError(String msg, String file, int start, int end, String errorType) {
+			this.msg = msg;
+			this.file = file;
+			this.start = start;
+			this.end = end;
+			this.errorType = errorType;
+		}
+
+
+		public void setFileName(String file) {
+			if(file != null)
+				this.file = file;
+		}
+
+
+		public String toString() {
+			return	file + ": " + ASTNode.getLine(start) + "-" + ASTNode.getColumn(start) + ": " + errorType +
+				"\n\t\t" + msg;
+		}
+
+
+		protected void print() {
+			print(System.err);
+		}
+
+		protected void print(PrintStream err) {
+			err.println();
+			err.print(toString());
+			err.println();
+		}
+	}
+
+	//TODO so far we handle TypestateInfo as TypestateWarning --> It should be warningAndInfo together
+	public class TypestateInfo extends TypestateError {
+		public TypestateInfo(String msg, String file, int start, int end) {
+			super(msg, file, start, end, "Info");
+		}
+	}
+
+	public class TypestateWarning extends TypestateError {
+		public TypestateWarning(String msg, String file, int start, int end) {
+			super(msg, file, start, end, "Warning");
+		}
+	}
+
+	public class TypestateSemanticError extends TypestateError {
+		public TypestateSemanticError(String msg, String file, int start, int end) {
+			super(msg, file, start, end, "Semantic Error");
+		}
+	}
+
+	public class TypestateSyntaxError extends TypestateError {
+		public TypestateSyntaxError(String msg, String file, int start, int end) {
+			super(msg, file, start, end, "Syntax Error");
+		}
+	}
+
+	public class TypestateLexicalError extends TypestateError {
+		public TypestateLexicalError(String msg, String file, int start, int end) {
+			super(msg, file, start, end, "Lexical Error");
+		}
+	}
+
+	public class TypestateSymbolError extends TypestateError {
+		public TypestateSymbolError(String msg, String file, int start, int end) {
+			super(msg, file, start, end, "Symbol Error");
+		}
+	}
+
+	protected Collection<TypestateError> CompilationUnit.errors = new ArrayList<TypestateError>();
+	protected int CompilationUnit.numWarnings = 0;
+	private Collection<TypestateError> Program.errors = new ArrayList<TypestateError>();
+	private int Program.numWarnings = 0;
+
+	public boolean Program.hasErrors() {
+		return (errors.size() - numWarnings) > 0;
+	}
+
+	public boolean Program.hasWarnings() {
+		return numWarnings != 0;
+	}
+
+	public void Program.printErrors() {
+		for(TypestateError te: errors)
+			te.print(errorStream());
+	}
+
+	protected void ASTNode.addInfo(String infoMsg) {
+		addError(new TypestateInfo(infoMsg, null, start, end));
+	}
+
+	protected void ASTNode.addWarning(String warningMsg) {
+		addError(new TypestateWarning(warningMsg, null, start, end));
+	}
+
+	protected void ASTNode.addSemanticError(String errorMsg) {
+		addError(new TypestateSemanticError(errorMsg, null, start, end));
+	}
+
+	public void ASTNode.addError(TypestateError e) {
+		CompilationUnit u = (CompilationUnit) getCompilationUnitAncestor();
+		e.setFileName(u.pathName());
+		u.errors.add(e);
+		if(e instanceof TypestateWarning || e instanceof TypestateInfo)
+			u.numWarnings++;
+	}
+
+	public class ParserFailException extends Exception {
+		private Collection<TypestateError> errors;
+		public ParserFailException(Collection<TypestateError> errors) {
+			this.errors = errors;
+		}
+		public Collection<TypestateError> getErrors() {
+			return errors;
+		}
+	}
+}

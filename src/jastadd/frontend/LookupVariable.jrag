@@ -1,0 +1,124 @@
+aspect LookupTSVariable {
+	//NameDecl
+
+	eq Program.getChild().lookupTSVariable(String var) = null;
+	inh NameDecl Access.lookupTSVariable(String var);
+	syn lazy NameDecl Access.lookupTSVariable() = lookupTSVariable(this.toString());
+	eq CompilationUnit.getImportDecl(int i).lookupTSVariable(String var) = null;
+	eq Program.getCompilationUnit().lookupTSVariable(String var) = null;
+
+	syn lazy NameDecl Access.lookupTSVariable(TypeDecl t) =
+		t != null ? t.lookupTSVariable(this.toString()) : null;
+
+
+	//Block
+	coll Set<Declarator> Block.getVariableDecls() [new HashSet<Declarator>()] with add root Block;
+	Declarator contributes this to Block.getVariableDecls() for getBlockAncestor();
+
+	inh ClassDecl Declarator.getClassDeclAncestor();
+
+
+	eq Program.getChild().getBlockAncestor() = null;
+	inh Block Declarator.getBlockAncestor();
+	eq Block.getStmt(int i).getBlockAncestor() = this;
+	eq TypeDecl.getBodyDecl().getBlockAncestor() = null;
+
+	inh NameDecl Block.lookupTSVariable(String var);
+
+	eq Block.getStmt(int j).lookupTSVariable(String var) {
+		for(Declarator vd : getVariableDecls())
+			if(vd.getID().equals(var))
+				return vd.toNameDecl();
+
+		return lookupTSVariable(var);
+	}
+
+	//MethodDecl
+
+	inh NameDecl MethodDecl.lookupTSVariable(String var);
+	eq MethodDecl.getBlock().lookupTSVariable(String var) {
+		for(int i = 0; i < getNumParameter(); i++)
+			if(getParameter(i).getID().equals(var))
+				return getParameter(i).toNameDecl();
+
+		return lookupTSVariable(var);
+	}
+
+	//ConstructorDecl
+	inh NameDecl ConstructorDecl.lookupTSVariable(String var);
+
+	eq ConstructorDecl.getBlock().lookupTSVariable(String var) {
+		for(int i = 0; i < getNumParameter(); i++)
+			if(getParameter(i).getID().equals(var))
+				return getParameter(i).toNameDecl();
+		return lookupTSVariable(var);
+	}
+
+	//ClassDecl
+	eq TypeDecl.getBodyDecl(int i).lookupTSVariable(String var) = null;
+	eq ClassDecl.getBodyDecl(int i).lookupTSVariable(String var) = lookupTSVariable(var);
+
+	coll Set<Declarator> ClassDecl.getFieldDecls() [new HashSet<Declarator>()] with add root ClassDecl;
+	FieldDeclarator contributes (Declarator)this when isField() to ClassDecl.getFieldDecls() for getClassDeclAncestor();
+
+	syn NameDecl TypeDecl.lookupTSVariable(String var) = null;
+	syn NameDecl ClassDecl.lookupTSVariable(String var) {
+		for(Declarator vd : getFieldDecls()){
+			if(vd.getID().equals(var))
+				return vd.toNameDecl();
+			}
+		//for possible future work
+		if(hasSuperClass()){
+			return getSuperClass().lookupTSType().lookupTSVariable(var);
+		}
+		return null;
+	}
+
+
+	//class NameDecl
+	abstract class NameDecl {
+		abstract public Declarator getVariableDecl();
+		abstract public Modifiers getModifiers();
+		abstract public Access getTypeAccess();
+		abstract public List<Dims> getDimss();
+		abstract public String getID();
+		abstract public TypestateVar getTypestateVar();
+	}
+
+	//class VarDecl
+	class VarDecl extends NameDecl {
+		private Declarator vd;
+		public VarDecl(Declarator vd) {
+			this.vd = vd;
+		}
+		public Declarator getVariableDecl() { return vd; }
+		public Modifiers getModifiers() { return vd.getModifiers(); }
+		public Access getTypeAccess() { return vd.getTypeAccess(); }
+		public List<Dims> getDimss() {return vd.getDimss();}
+		public String getID() { return vd.getID(); }
+		public TypestateVar getTypestateVar() {return vd.typestate;}
+
+	}
+
+	class ParDecl extends NameDecl {
+		private ParameterDeclaration pd;
+		public ParDecl(ParameterDeclaration pd) {
+			this.pd = pd;
+		}
+		public Declarator getVariableDecl() { return null; }
+		public Modifiers getModifiers() { return pd.getModifiers(); }
+		public Access getTypeAccess() { return pd.getTypeAccess(); }
+		public List<Dims> getDimss() {return null;}
+		public String getID() { return pd.getID(); }
+		public TypestateVar getTypestateVar() {return pd.typestate;}
+
+	}
+
+	syn lazy NameDecl ParameterDeclaration.toNameDecl(){
+		return new ParDecl(this);
+	}
+	syn lazy NameDecl Declarator.toNameDecl() {
+		return new VarDecl(this);
+	}
+
+}

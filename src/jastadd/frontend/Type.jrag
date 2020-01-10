@@ -1,0 +1,46 @@
+// /*Algorithm for getting the type of an Expression/Access
+//  * Each non-qualified exrpession has a type
+//  * - ParseName: looks up the code hierarchy for block variables,
+//  *   method/constructor parameters, fields (and super classes).
+//  * - Method Access looks up in the hierarcy for matching class
+//  *   method signatures and (super classes).
+//  *
+//  * Qualified types are evaluated access by access on the AbstractDot
+//  * class. Method getQualifiedType gets recursively the parent type
+//  * of each access of the abstract dot so it can pass it as an argument
+//  * to method getType(TypeDecl t) to evaluate its own type.
+//  * - ParseName searches the class of its qualified type.
+//  *   Note that in the case a ParseName does not have a qualified
+//  *   type it searches the hierarchy as the unqualified parse name.
+//  * - MethodAccess searches the qualifiedType for matching method
+//  *   signatures.
+// */
+//
+aspect Type {
+
+	/****************Qualified Type**************************/
+
+	syn lazy TypeDecl Access.getQualifiedType() =
+		getQualifiedAccess() != null ?
+		getQualifiedAccess().__getQualifiedType():
+		getTypeNoQualified();
+
+	syn lazy TypeDecl Dot.__getQualifiedType() {
+		if(hasParentDot()){
+			if(getLeft().lookupType(parentDot().__getQualifiedType().name()).isEmpty())
+				return unknownType();
+			return getLeft().lookupType(parentDot().__getQualifiedType().name()).iterator().next();
+		}
+		return getLeft().type();
+	}
+
+	syn lazy TypeDecl Expr.getTypeNoQualified() = getCompilationUnitAncestor().getTypeDecl(0);
+
+	eq VarAccess.getTypeNoQualified() =
+		lookupTSVariable() != null ?
+			lookupTSVariable(name()).getTypeAccess().lookupTSType() :
+			unknownType();
+
+	eq PackageParseName.getTypeNoQualified() = lookupType(getPackage(), getID());
+
+}

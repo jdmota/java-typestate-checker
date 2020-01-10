@@ -1,0 +1,24 @@
+TypestateClassDecl	:	ClassDecl;
+
+TypestateDecl		:	TypeDecl	::=	InitState State*;
+
+State								::=	<ID: String> Typestate;
+InitState			:	State;
+
+abstract Typestate;
+
+TypestateMethodList	: 	Typestate	::=	TypestateMethod*;
+EndTypestate		:	Typestate;
+
+TypestateMethod		:	Typestate	::=	TType <ID:String> TTypeList Typestate;
+TypestateSwitch		:	Typestate	::=	TypestateSwitchCase*;
+TypestateLabel		:	Typestate	::=	<Label: String>;
+
+TypestateSwitchCase					::=	<Label: String> Typestate;
+
+TType								::=	Access;
+TTypestate			:	TType		::=	Typestate;
+
+TTypeList;
+TTypeArgs			:	TTypeList	::=	TType*;
+//EmptyTTypeArgs	:	TTypeList;

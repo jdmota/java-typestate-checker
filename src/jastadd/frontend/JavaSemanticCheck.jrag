@@ -1,0 +1,124 @@
+aspect JavaSemanticCheck {
+
+	protected void EnumDecl.semanticCheck() {}
+
+	//TODO check for no linear expressions in the throw and try stmts??
+
+	protected void TypestateClassDecl.semanticCheck() {
+		if(!existsTypestateDecl()){
+			Annotation a = getModifiers().getTypestateAnnotation(packageName());
+			ElementConstantValue ts_v = (ElementConstantValue) a.getElementValuePair(0).getElementValue();
+			addSemanticError("Cannot find typestate " + ts_v.getExpr().toString() + " defined for class " + getID() + ".");
+		}
+		//TODO maybe put the next check as a warning
+		//TODO The next is a problem. Parameters and return types expect methods to
+		//TODO be in a different file.
+		else
+			for(TypestateMethod m : getTypestateDecl().getMethods()) {
+				if(m.lookupTSMethod(this) == null){
+					addSemanticError("Method with signature " + m.signature() + " defined in typestate " + getTypestateDecl().getID() + " is not implemented in class " + getID() + ".");
+				}
+			}
+	}
+
+	protected void Declarator.semanticCheck() {
+		if(getTypeAccess().type().isTypestateClassDeclType()) {
+			if(isField() && !getClassDeclAncestor().isTypestateClassDeclType())
+				addSemanticError("Field " + getID() + " with typestate type " + getTypeAccess().toString() + " is declared in non-typestate class " + getClassDeclAncestor().getID() + "." );
+			if(isField() &&!getModifiers().isPrivate() && !getModifiers().isProtected())
+				addSemanticError("Field " + getID() + " with typestate type " + getTypeAccess().toString() + " should be private or protected ");
+			if(isField() && getModifiers().isStatic())
+				addSemanticError("Field " + getID() + " with typestate type " + getTypeAccess().toString() + " should not be static.");
+			if(getNumDims() > 0 || getTypeAccess().hasDims())
+				addSemanticError((isField() ? "Field ": "Variable ") + getID() + " with typestate type " + getTypeAccess().toString() + " should not be an array.");
+		
+			// System.out.println("------>" + getID() + " " + getTypeAccess());
+
+		}
+	}
+
+	// protected void AssignExpr.semanticCheck() {
+	//     // System.out.println("------>" + getDest() + " " + getSource() + 
+	//     // 	" " + getDest().type().isTypestateClassDeclType() + " " + getSource().type().isNull());
+	// 	if(getDest().type().isTypestateClassDeclType() && getSource().type().isNull() )
+	// 		addSemanticError("Object " + getDest() + " with typestate type " + getDest().type() + " should not be null.");
+	// }
+
+	protected void MethodDecl.semanticCheck() {
+		//TODO What if Method is a typestate method and static
+		if(getTypeAccess().hasDims() && getTypeAccess().type().isTypestateClassDeclType())
+			addSemanticError(
+				"Return object with a typestate " +
+				getTypeAccess().toString() +
+				" should not be an array."
+			);
+		//check - if the return type has a typestate then the method should be declared the typestate definition
+//		if(getTypeAccess().type().isTypestateClassDeclType()) {
+//			if(!isTypestateMethod())
+//				addSemanticError(
+//					signature() + ": Only methods declared in a typestate can return objects with a typestate."
+//				);
+//		}
+
+		if(!isTypestateMethod() && !getUsedTypestateFields().isEmpty()) {
+			if(!getModifiers().isPrivate())
+				addSemanticError(
+					signature() + ": Methods that are not defined in the typestate and use typestate fields should be private."
+				);
+		}
+	}
+
+	protected void ParameterDeclaration.semanticCheck() {
+		if(getTypeAccess().hasDims() && getTypeAccess().type().isTypestateClassDeclType())
+			addSemanticError(
+				"Parameter " +
+				getID() +
+				" with typestate type " +
+				getTypeAccess().toString() +
+				" should not be an array."
+			);
+	}
+
+	protected void MethodAccess.semanticCheck() {
+		if(getQualifiedType().isTypestateClassDeclType()) {
+			ArrayList<MethodDecl> a = lookupTSMethodTargets(getQualifiedType());
+			if(a.size() == 0)
+				addSemanticError("Method call " + signature() + " has no target.");
+			else if(a.size() > 1) {
+				String s = "";
+				for(int i = 0; i < a.size(); i++) {
+					if(i != 0)
+						s += ", ";
+					s += ((MethodDecl) a.get(i)).signature();
+				}
+				addSemanticError("Method call " + signature() + " has conflicting targets: " + s + ".");
+			}
+		}
+
+		if(isThisAccess()) {
+			MethodDecl md = lookupTSMethod(getQualifiedType());
+			if(md != null && !md.getUsedTypestateFields().isEmpty() && getMethodDeclAncestor() != null && !getMethodDeclAncestor().isTypestateMethod())
+				addSemanticError(
+					"Cannot call a method that uses a typestate field inside a method that is not defined in the typestate."
+				);
+		}
+	}
+
+	protected void ClassInstanceExpr.semanticCheck() {
+		if(getAccessNoTransform() != null)
+			getAccessNoTransform().type();		//Check all new objects created
+	}
+
+	protected void SwitchStmt.semanticCheck() {
+		//TODO check directly for MethodAccess
+		if(getExpr().isAccess()) {
+			Access a = ((Access)getExpr()).getLastAccess();
+			if (a.getQualifiedType().isEnumDeclType()) {
+				EnumDecl e = a.getQualifiedType().getEnumDecl();
+				for(String s : e.getEnumLabels())
+					if(!getCaseLabels().contains(s))
+					addSemanticError("Enumeration type " + s + " should be a switch case.");
+			}
+		}
+	}
+}
