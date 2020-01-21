@@ -19,24 +19,17 @@ jastadd {
       imports "java8 frontend" // ExtendJ dependency for template module.
 
       jastadd {
-        include "src/frontend/*.jrag"
-        include "src/frontend/*.jadd"
-        include "src/grammar/*.ast"
+        include "src/jastadd/frontend/*.jrag"
+        include "src/jastadd/frontend/*.jadd"
+        include "src/jastadd/grammar/*.ast"
       }
 
       scanner {
-        // basedir "src/scanner/"
-        // include "**/*.flex"
-        include "src/scanner/Keywords.flex"
+        include "src/jastadd/scanner/Keywords.flex"
       }
 
       parser {
-        // basedir "src/parser/"
-        // include "**/*.parser"
-        // include "src/parser/Java14.parser"
-        include "src/parser/Typestate.parser"
-        // include "src/parser/Annotations.parser"
-
+        include "src/jastadd/parser/Typestate.parser"
       }
     }
   }
@@ -63,8 +56,6 @@ sourceSets.main {
 
 // Use JavaCompiler if you need bytecode generation.
 jar.manifest.attributes 'Main-Class': 'org.extendj.TypestateChecker'
-// jar.manifest.attributes 'Main-Class': 'org.extendj.JavaChecker'
-//jar.manifest.attributes 'Main-Class': 'org.extendj.JavaCompiler'
 jar.destinationDir = projectDir
 
 // Java -source and -target version.
@@ -81,6 +72,7 @@ task sourceZip(type: Zip) {
     exclude '**/.gitattributes'
     exclude '**/.gitmodules'
     exclude 'demos'
+    exclude 'examples'
     exclude 'build'
     exclude 'bin'
     exclude '.gradle'

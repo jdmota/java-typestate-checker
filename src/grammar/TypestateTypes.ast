@@ -1,7 +1,0 @@
-UnknownTypeDecl	: TypeDecl;
-NoNameType		: TypeDecl;
-ClassType		: TypeDecl;
-ObjectType		: TypeDecl;
-PackageType		: TypeDecl			::=	/Modifiers/ <ID:String> /BodyDecl*/;
-
-PackageParseName : ParseName		::=	<Package: String> <ID:String>;

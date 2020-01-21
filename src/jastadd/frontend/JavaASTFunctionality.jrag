@@ -81,11 +81,6 @@ aspect javaASTFunctionality {
 		if(a != null){
 			ElementConstantValue ts_v = (ElementConstantValue) a.getElementValuePair(0).getElementValue();
 			CompilationUnit cu = this.getCompilationUnitAncestor();
-			// System.out.println("----> " + ts_v.getExpr().toString() + " " +
-			// lookupType(this.packageName(), ts_v.getExpr().toString()) + " " +
-			// cu.lookupTSType(ts_v.getExpr().toString())
-			// + " " + cu.lookupTSType(ts_v.getExpr().toString()).isTypestateDeclType()
-			// + " " + cu.lookupTSType(ts_v.getExpr().toString()).getTypestateDecl());
 			return cu.lookupTSType(ts_v.getExpr().toString()).isTypestateDeclType() ?
 			cu.lookupTSType(ts_v.getExpr().toString()).getTypestateDecl() : null;
 		}

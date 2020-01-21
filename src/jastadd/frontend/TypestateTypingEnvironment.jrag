@@ -104,10 +104,10 @@ aspect TypestateTypingEnvironment {
 			for(int i = startGraph.size() - 1; i >= 0; i--) {
 				GraphNode n = startGraph.get(i);
 				n.normalise();
-				System.out.println("-----------------------");
-				System.out.println(classInstanceExprtoString((ClassInstanceExpr) startExpr.get(i)));
-				n.printPaths();
-				System.out.println("------------------------");
+				// System.out.println("-----------------------");
+				// System.out.println(classInstanceExprtoString((ClassInstanceExpr) startExpr.get(i)));
+				// n.printPaths();
+				// System.out.println("------------------------");
 				if(!t.includes(n)) {
 					CompilationUnit u  = (CompilationUnit) startExpr.get(i).getCompilationUnitAncestor();
 					String filePath = (u).pathName();

@@ -31,18 +31,8 @@ aspect JavaSemanticCheck {
 				addSemanticError("Field " + getID() + " with typestate type " + getTypeAccess().toString() + " should not be static.");
 			if(getNumDims() > 0 || getTypeAccess().hasDims())
 				addSemanticError((isField() ? "Field ": "Variable ") + getID() + " with typestate type " + getTypeAccess().toString() + " should not be an array.");
-		
-			// System.out.println("------>" + getID() + " " + getTypeAccess());
-
 		}
 	}
-
-	// protected void AssignExpr.semanticCheck() {
-	//     // System.out.println("------>" + getDest() + " " + getSource() + 
-	//     // 	" " + getDest().type().isTypestateClassDeclType() + " " + getSource().type().isNull());
-	// 	if(getDest().type().isTypestateClassDeclType() && getSource().type().isNull() )
-	// 		addSemanticError("Object " + getDest() + " with typestate type " + getDest().type() + " should not be null.");
-	// }
 
 	protected void MethodDecl.semanticCheck() {
 		//TODO What if Method is a typestate method and static

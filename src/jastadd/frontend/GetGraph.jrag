@@ -20,6 +20,8 @@ aspect GetGraph{
   eq DoStmt.getStmt().getTargetStmt() = this;
   eq SwitchStmt.getBlock().getTargetStmt() = this;
 
+
+  eq TryStmt.getBlock().getTargetStmt() = this;
   eq EnhancedForStmt.getStmt().getTargetStmt() = this;
 
 
@@ -40,10 +42,10 @@ aspect GetGraph{
   eq ArrayInit.getTypestateVar() = null;                            //Typestate types are not arrays
   eq ArrayCreationExpr.getTypestateVar() = null;                    //Typestate types are not arrays
   eq ParExpr.getTypestateVar() = getExpr().getTypestateVar();
-  eq AssignExpr.getTypestateVar() = getDest().getTypestateVar();    //TODO is this ok?
+  eq AssignExpr.getTypestateVar() = getDest().getTypestateVar();    
 
-  eq ConditionalExpr.getTypestateVar() = null;                    //TODO This is actually a problem... Maybe need to be dealt
-  //TODO as a case when assignment takes place.
+  eq ConditionalExpr.getTypestateVar() = getCondition().isTrue() ? getTrueExpr().getTypestateVar() 
+                                          : getFalseExpr().getTypestateVar();              
 
   eq ConstructorAccess.getTypestateVar() = null;
   eq TypeAccess.getTypestateVar() = null;                //Expected to be null
@@ -105,11 +107,7 @@ aspect GetGraph{
       if(getQualifiedAccess() == null)
           return true;
 
-  //TODO find a way for no instanceof
-      if(getQualifiedAccess().getLeft() instanceof ThisAccess)
-          return true;
-
-      return false;
+      return getQualifiedAccess().getLeft().isThisAccess();
   }
 
 /*****************************************************************************************************/
@@ -139,7 +137,7 @@ aspect GetGraph{
               getFieldGraph(r);
 
           for(ConstructorDecl c : getConstructorDecls()){
-                c.getGraph();
+              c.getGraph();
             }
 
           if(getConstructorDecls().isEmpty()){
@@ -196,11 +194,11 @@ aspect GetGraph{
           s.put(vd, new LoopNode());
         }
 
-      GraphNode[]tmp = new GraphNode[getTypestateFields().size()];
+      GraphNode[] tmp = new GraphNode[getTypestateFields().size()];
 
       int i = 0;
       for(Declarator vd : getTypestateFields()){
-          tmp[i++] = vd.typestate.current;
+            tmp[i++] = vd.typestate.current;
         }
 
       for(GraphNode n : r.next){
@@ -412,7 +410,12 @@ aspect GetGraph{
   eq EmptyStmt.getGraph(Set<TypestateVar> env) = true;
 
   eq TryStmt.getGraph(Set<TypestateVar> env){
-  	if(hasFinally())
+    //TODO: catch clause: at least shouldn't be able to call a wrong method
+  	for(int i = 0; i < getNumCatchClause(); i++){
+      System.out.println("---------> " + getCatchClause(i).getBlock().getGraph(env));
+      getCatchClause(i).getBlock().getGraph(env);
+    }
+    if(hasFinally())
   		getFinally().getGraph(env);
 
   	getBlock().getGraph(env);
@@ -471,9 +474,9 @@ aspect GetGraph{
     if(hasElse())
     	getElse().getGraph(env);
 
-    for(TypestateVar v:env){
-  	  GraphNode s=v.start.remove(this);
-  	  v.current=s.addNext(v.current);
+    for(TypestateVar v : env){
+  	  GraphNode s = v.start.remove(this);
+  	  v.current = s.addNext(v.current);
     }
 
     getCondition().getGraph(env);
@@ -501,8 +504,8 @@ aspect GetGraph{
     getCondition().getGraph(env);
 
     for(TypestateVar v : env){
-  	  GraphNode s=v.start.remove(this);
-  	  v.current=s.addNext(v.current);
+  	  GraphNode s = v.start.remove(this);
+  	  v.current = s.addNext(v.current);
     }
     return true;
     }
@@ -552,10 +555,37 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
 
 
   	for(TypestateVar v : env)
-  		v.current=v.start.remove(this).addNext(v.current);
+  		v.current = v.start.remove(this).addNext(v.current);
 
   	return true;
   }
+
+  //TODO: implement me
+  eq EnhancedForStmt.getGraph(Set<TypestateVar> env) {
+    for(TypestateVar v : env){
+      GraphNode n = new LoopNode();
+      v.start.put(this,n);
+      v.current = new LoopNode().addNext(v.current).addNext(n);
+      v.end.put(this, v.current);
+    }
+
+    getStmt().getGraph(env);
+
+    for(TypestateVar v : env){
+      GraphNode n = new LoopNode();
+      n.addNext(v.current);
+      n.addNext(v.end.get(this));
+      v.current = n;
+    }
+
+
+    for(TypestateVar v : env){
+      GraphNode s = v.start.remove(this);
+      v.current = s.addNext(v.current);
+    }
+    return true;  
+  }
+
 
   eq SwitchStmt.getGraph(Set<TypestateVar> env){
   	Block b = getBlock();
@@ -594,7 +624,7 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
   		  count.add("default");
   		  caseList.add(b.getStmt(i));
     	}else{
-  	    if(c == true)
+  	    if(c)
   	    	for(TypestateVar v : env){
   	    		if(t == null || !t.equals(v))
   	    			v.start.get(this).addNext(v.current);
@@ -614,13 +644,13 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
       }
     }
 
-  	if(c == true)
+  	if(c)
   		for(TypestateVar v : env){
   			if(t == null || !t.equals(v))
   				v.start.get(this).addNext(v.current);
   			else{
   				for(int j = 0; j < count.size(); j++){
-  					SwitchCase sc=new SwitchCase(count.get(j),caseList.get(j));
+  					SwitchCase sc = new SwitchCase(count.get(j), caseList.get(j));
   					sc.addNext(v.current);
   					v.start.get(this).addNext(sc);
   				}
@@ -663,7 +693,7 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
   }
 
   eq VarDeclStmt.getGraph(Set<TypestateVar> env){
-  	for(int i = getNumDeclarator()-1; i >= 0; i--)
+  	for(int i = getNumDeclarator() - 1; i >= 0; i--)
   		getDeclarator(i).getGraph(env);
   	return true;
   }
@@ -721,19 +751,29 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
     getDest().getGraph(env);
     TypestateVar d = getDest().getTypestateVar();
     TypestateVar s;
+    Expr source;
+
     if(d != null){
-      if(getSource() instanceof ClassInstanceExpr){
-        d.current = new InitNode(getSource()).addNext(d.current);
-        d.addTypestate(getSource());
+      if(getSource() instanceof ConditionalExpr)
+        if(((ConditionalExpr)getSource()).getCondition().isTrue())
+          source = ((ConditionalExpr)getSource()).getTrueExpr();
+        else
+          source = ((ConditionalExpr)getSource()).getFalseExpr();
+      else
+        source = getSource();
+      
+      if(source instanceof ClassInstanceExpr){
+        d.current = new InitNode(source).addNext(d.current);
+        d.addTypestate(source);
       }
-      else if((s = getSource().getTypestateVar()) != null){
-  	    s.checkError(getSource());
+      else if((s = source.getTypestateVar()) != null){
+  	    s.checkError(source);
   	    s.current = d.current;
   	    d.resetCurrent();
       }
       //Assign a typestate variable with a null
-      if(getSource().type().isNull() && !(d.current instanceof EndNode)){
-        d.checkError(getSource());
+      if(source.type().isNull() && !(d.current instanceof EndNode)){
+        d.checkError(source);
         d.resetCurrent();
       }
     }
@@ -905,8 +945,6 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
   	}else if(getQualifiedType().isTypestateClassDeclType()){
   		TypestateVar t = getQualifiedTypestateVar();
 
-  		//TODO better implementation here
-  		//only call c.getFieldGraph when return type or parameter type is a session typestate.
   		Boolean sessionParameter = false;
   		for(int i = md.getNumParameter()-1; i >= 0; i--){
   			if(md.getParameter(i).getTypeAccess().lookupTSType().isTypestateClassDeclType()){
@@ -937,7 +975,8 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
   			}
 
   			if(t != null){
-  				t.current = new MethodNode(lookupTSMethod(getQualifiedType()).getTypeAccess(), getID(), getParameterTypes(), this).addNext(t.current);
+  				t.current = new MethodNode(lookupTSMethod(getQualifiedType()).getTypeAccess(), 
+            getID(), getParameterTypes(), this).addNext(t.current);
   			}
   		}
 
@@ -982,6 +1021,7 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
   eq Wildcard.getGraph(Set<TypestateVar> env) = true;
   eq WildcardExtends.getGraph(Set<TypestateVar> env) = true;
   eq WildcardSuper.getGraph(Set<TypestateVar> env) = true;
+
   eq DiamondAccess.getGraph(Set<TypestateVar> env) = true;
   eq SyntheticTypeAccess.getGraph(Set<TypestateVar> env) = true;
   eq ClassReference.getGraph(Set<TypestateVar> env) = true;
@@ -991,7 +1031,5 @@ eq DoStmt.getGraph(Set<TypestateVar> env){
   eq TypeMethodReference.getGraph(Set<TypestateVar> env) = true;
   eq AmbiguousMethodReference.getGraph(Set<TypestateVar> env) = true;
   eq LambdaExpr.getGraph(Set<TypestateVar> env) = true;
-  eq EnhancedForStmt.getGraph(Set<TypestateVar> env) = true;
-
 
 }
