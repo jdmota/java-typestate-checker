@@ -412,7 +412,6 @@ aspect GetGraph{
   eq TryStmt.getGraph(Set<TypestateVar> env){
     //TODO: catch clause: at least shouldn't be able to call a wrong method
   	for(int i = 0; i < getNumCatchClause(); i++){
-      System.out.println("---------> " + getCatchClause(i).getBlock().getGraph(env));
       getCatchClause(i).getBlock().getGraph(env);
     }
     if(hasFinally())

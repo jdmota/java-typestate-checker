@@ -6,7 +6,7 @@ aspect JavaSemanticCheck {
 
 	protected void TypestateClassDecl.semanticCheck() {
 		if(!existsTypestateDecl()){
-			Annotation a = getModifiers().getTypestateAnnotation(packageName());
+			Annotation a = getModifiers().getTypestateAnnotation();
 			ElementConstantValue ts_v = (ElementConstantValue) a.getElementValuePair(0).getElementValue();
 			addSemanticError("Cannot find typestate " + ts_v.getExpr().toString() + " defined for class " + getID() + ".");
 		}
