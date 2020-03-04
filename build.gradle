@@ -1,88 +1,71 @@
 plugins {
-  id 'java'
-  id 'org.jastadd' version '1.13.3'
+    id 'java'
+    id 'maven-publish'
 }
 
-defaultTasks 'jar'
-
-if (!file('extendj/jastadd_modules').exists()) {
-  throw new GradleException('ExtendJ seems to be missing. Please run "git submodule init", then "git submodule update".')
+repositories {
+    // Use jcenter for resolving your dependencies.
+    // You can declare any Maven/Ivy/file repository here.
+    jcenter()
 }
 
-jastadd {
-  configureModuleBuild()
+configurations {
+    // for putting Error Prone javac in bootclasspath for running tests
+    errorproneJavac
+}
 
-  modules {
-    include("extendj/jastadd_modules") // Include core ExtendJ modules.
+ext.versions = [
+        checkerFramework: "3.2.0",
+]
 
-    module "mungo", {
-      imports "java8 frontend" // ExtendJ dependency for template module.
+sourceCompatibility = 1.8
+def checkerframework_local = false  // Set this variable to [true] while using local version of checker framework.
 
-      jastadd {
-        include "src/jastadd/frontend/*.jrag"
-        include "src/jastadd/frontend/*.jadd"
-        include "src/jastadd/grammar/*.ast"
-      }
-
-      scanner {
-        include "src/jastadd/scanner/Keywords.flex"
-      }
-
-      parser {
-        include "src/jastadd/parser/Typestate.parser"
-      }
+dependencies {
+    // This dependency is found on compile classpath of this component and consumers.
+    if (checkerframework_local) {
+        implementation files('${CHECKERFRAMEWORK}/checker/dist/checker-qual.jar')
+        implementation files('${CHECKERFRAMEWORK}/checker/dist/checker.jar')
+        implementation files('${CHECKERFRAMEWORK}/checker/dist/jdk8.jar')
     }
-  }
+    else {
+        implementation "org.checkerframework:checker:${versions.checkerFramework}"
+    }
 
-  // Target module to build:
-  module = 'mungo'
+    compileOnly "com.google.errorprone:javac:9+181-r4173-1"
 
-  astPackage = 'org.extendj.ast'
-  parser.name = 'JavaParser'
-  scanner.name = 'OriginalScanner'
+    // Testing
+    testImplementation 'junit:junit:4.13'
+    testImplementation "org.checkerframework:framework-test:${versions.checkerFramework}"
 
+    errorproneJavac "com.google.errorprone:javac:9+181-r4173-1"
 }
 
-sourceSets.main {
-  java {
-      srcDir 'extendj/src/frontend-main'
-      srcDir 'src/java'
-  }
-  resources {
-    srcDir 'extendj/src/res'
-    srcDir jastadd.buildInfoDir
-  }
+tasks.withType(JavaCompile).all {
+    options.compilerArgs.add("-Xlint:all")
 }
 
-// Use JavaCompiler if you need bytecode generation.
-jar.manifest.attributes 'Main-Class': 'org.extendj.TypestateChecker'
-jar.destinationDir = projectDir
+// Add `mavenLocal()` in `repositories`, then run `./gradlew publishToMavenLocal`
+// to publish your checker to your local Maven repository.
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'org.checkerframework'
+            artifactId = 'mungo-checker'
+            version = '0.1-SNAPSHOT'
 
-// Java -source and -target version.
-sourceCompatibility = targetCompatibility = '1.8'
+            from components.java
+        }
+    }
+}
 
-task sourceZip(type: Zip) {
-  description 'Builds a Zip file with the entire repisotory (including the ExtendJ submodule).'
-  destinationDir = projectDir
-  archiveName = "mungo-src.zip"
+test {
+    inputs.files("tests/mungo")
+    if (!JavaVersion.current().java9Compatible) {
+        jvmArgs "-Xbootclasspath/p:${configurations.errorproneJavac.asPath}"
+    }
+}
 
-  from (projectDir) {
-    exclude '**/.git'
-    exclude '**/.gitignore'
-    exclude '**/.gitattributes'
-    exclude '**/.gitmodules'
-    exclude 'demos'
-    exclude 'examples'
-    exclude 'build'
-    exclude 'bin'
-    exclude '.gradle'
-    exclude '.classpath'
-    exclude '.settings'
-    exclude '.project'
-    exclude '*.jar'
-    exclude '*.zip'
-    exclude '**/*.swp'
-  }
-
-  into 'mungo'
+clean.doFirst {
+    delete "${rootDir}/tests/build/"
 }

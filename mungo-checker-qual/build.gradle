@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    implementation 'org.checkerframework:checker:3.2.0'
+}
+
+task copySources(type: Copy) {
+    includeEmptyDirs = false
+    doFirst {
+        // Delete the directory in case a previously copied file should no longer be in checker-qual
+        delete file('src/main/java')
+    }
+
+    from files('../src/main/java')
+    // Replace the path below with your actual path.
+    include '**/org/checkerframework/checker/mungo/qual/**'
+
+    // Make files read only.
+    fileMode(0444)
+
+    into file('src/main/java')
+}
+
+jar {
+    dependsOn copySources
+    manifest {
+        attributes('Export-Package': '*')
+    }
+}
+
+compileJava {
+    dependsOn copySources
+}
+
+clean {
+    delete file('src/')
+}

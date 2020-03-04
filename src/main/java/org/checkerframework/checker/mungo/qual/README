@@ -1,0 +1,2 @@
+The "qual" directory contains a typechecker's type qualifiers, which are
+represented by Java annotations.

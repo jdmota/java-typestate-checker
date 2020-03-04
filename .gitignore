@@ -1,22 +1,13 @@
-# Gradle files.
-/.gradle/
-/build/
-
-# Eclipse files.
-/bin/
-/.classpath
-/.project
-/.settings/
-
-/demos/
-
 # Generated files
-/src/gen/
-/src/gen-res/
+.gradle
+build
 
-/.idea/
-test.sh
-// /*.jar
-/*.zip
-# Vim swap files.
-*.swp
+# IntelliJ
+.idea
+*.iml
+
+# Emacs backups
+*~
+
+# checker-qual
+mungo-checker-qual/src
