@@ -1,13 +1,11 @@
 package org.checkerframework.checker.mungo;
 
 import com.sun.source.tree.*;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.checkerframework.checker.mungo.typestate.TypestateBaseListener;
 import org.checkerframework.checker.mungo.typestate.TypestateParser;
-import org.checkerframework.checker.mungo.typestate.TypestateLexer;
+import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
 import org.checkerframework.framework.source.Result;
@@ -26,31 +24,31 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
     super(checker);
   }
 
+  private void error(String message, Tree where) {
+    checker.report(Result.failure(message), where);
+  }
+
   private void parseTypestate(Path file, Tree annotation) {
-    TypestateLexer lexer;
+    String filename = file.getFileName().toString();
+    TypestateParser.Typestate_declarationContext tree;
+
     try {
-      lexer = new TypestateLexer(CharStreams.fromPath(file));
+      tree = TypestateProcessor.fromPath(file);
     } catch (IOException e) {
-      checker.report(Result.failure("Could not read file " + file.getFileName()), annotation);
+      error("Could not read file " + filename, annotation);
+      return;
+    } catch (ParseCancellationException exp) {
+      error(TypestateProcessor.errorToString(filename, exp), annotation);
       return;
     }
 
-    CommonTokenStream tokens = new CommonTokenStream(lexer);
-    TypestateParser parser = new TypestateParser(tokens);
-    TypestateParser.RContext tree = parser.r();
-
-    if (tree instanceof ErrorNode) {
-      ErrorNode error = (ErrorNode) tree;
-      checker.report(Result.failure("Error in " + file + ": " + error), annotation);
-      return;
-    }
-
-    // FIXME syntax errors are going to std.err
+    System.out.println(file);
+    System.out.println(tree.getClass());
 
     TypestateBaseListener visitor = new TypestateBaseListener();
     ParseTreeWalker.DEFAULT.walk(visitor, tree);
 
-    System.out.println(file);
+    // TODO
   }
 
   private void processMungoTypestateAnnotation(List<? extends ExpressionTree> args, Tree tree) {
@@ -61,11 +59,11 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
       Object value = ((LiteralTree) expr).getValue();
       file = (String) value;
     } catch (ClassCastException | IndexOutOfBoundsException exp) {
-      checker.report(Result.failure("Expected 1 string argument in @MungoTypestate"), tree);
+      error("Expected 1 string argument in @MungoTypestate", tree);
       return;
     }
     if (file.isEmpty()) {
-      checker.report(Result.failure("String in @MungoTypestate is empty"), tree);
+      error("String in @MungoTypestate is empty", tree);
       return;
     }
     // Get the path of the file where the annotation is used
