@@ -14,31 +14,33 @@ configurations {
     errorproneJavac
 }
 
-ext.versions = [
-        checkerFramework: "3.2.0",
-]
+ext {
+    versions = [
+        checkerFramework: "3.1.1",
+        errorproneJavacVersion: "9+181-r4173-1",
+    ]
+}
 
 sourceCompatibility = 1.8
-def checkerframework_local = false  // Set this variable to [true] while using local version of checker framework.
+def checkerframework_local = false
 
 dependencies {
-    // This dependency is found on compile classpath of this component and consumers.
     if (checkerframework_local) {
-        implementation files('${CHECKERFRAMEWORK}/checker/dist/checker-qual.jar')
-        implementation files('${CHECKERFRAMEWORK}/checker/dist/checker.jar')
-        implementation files('${CHECKERFRAMEWORK}/checker/dist/jdk8.jar')
+        implementation files("checker-framework-${versions.checkerFramework}/checker/dist/checker-qual.jar")
+        implementation files("checker-framework-${versions.checkerFramework}/checker/dist/checker.jar")
+        implementation files("checker-framework-${versions.checkerFramework}/checker/dist/jdk8.jar")
     }
     else {
         implementation "org.checkerframework:checker:${versions.checkerFramework}"
     }
 
-    compileOnly "com.google.errorprone:javac:9+181-r4173-1"
+    compileOnly "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
 
     // Testing
-    testImplementation 'junit:junit:4.13'
+    testImplementation "junit:junit:4.13"
     testImplementation "org.checkerframework:framework-test:${versions.checkerFramework}"
 
-    errorproneJavac "com.google.errorprone:javac:9+181-r4173-1"
+    errorproneJavac "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
 }
 
 tasks.withType(JavaCompile).all {
@@ -60,6 +62,8 @@ publishing {
 }
 
 test {
+    testLogging.showStandardStreams = true
+
     inputs.files("tests/mungo")
     if (!JavaVersion.current().java9Compatible) {
         jvmArgs "-Xbootclasspath/p:${configurations.errorproneJavac.asPath}"

@@ -1,5 +1,6 @@
 import java.io.File;
 import java.util.List;
+
 import org.checkerframework.checker.mungo.MungoChecker;
 import org.checkerframework.framework.test.CheckerFrameworkPerDirectoryTest;
 import org.junit.runners.Parameterized.Parameters;
@@ -13,18 +14,16 @@ import org.junit.runners.Parameterized.Parameters;
  * https://github.com/typetools/checker-framework/blob/master/checker/tests/README .
  */
 public class MungoTest extends CheckerFrameworkPerDirectoryTest {
-    public MungoTest(List<File> testFiles) {
-        super(
-                testFiles,
-                MungoChecker.class,
-                "mungo",
-                "-Anomsgtext",
-                "-Astubs=stubs/",
-                "-nowarn");
-    }
+  public MungoTest(List<File> testFiles) {
+    super(
+      testFiles,
+      MungoChecker.class,
+      "mungo",
+      "-Anomsgtext");
+  }
 
-    @Parameters
-    public static String[] getTestDirs() {
-        return new String[] {"mungo"};
-    }
+  @Parameters
+  public static String[] getTestDirs() {
+    return new String[]{"mungo"};
+  }
 }
