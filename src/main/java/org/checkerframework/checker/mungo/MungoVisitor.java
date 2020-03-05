@@ -1,6 +1,13 @@
 package org.checkerframework.checker.mungo;
 
 import com.sun.source.tree.*;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import org.checkerframework.checker.mungo.typestate.TypestateBaseListener;
+import org.checkerframework.checker.mungo.typestate.TypestateParser;
+import org.checkerframework.checker.mungo.typestate.TypestateLexer;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
 import org.checkerframework.framework.source.Result;
@@ -9,6 +16,7 @@ import org.checkerframework.javacutil.TreeUtils;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -16,6 +24,33 @@ import java.util.List;
 public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
   public MungoVisitor(BaseTypeChecker checker) {
     super(checker);
+  }
+
+  private void parseTypestate(Path file, Tree annotation) {
+    TypestateLexer lexer;
+    try {
+      lexer = new TypestateLexer(CharStreams.fromPath(file));
+    } catch (IOException e) {
+      checker.report(Result.failure("Could not read file " + file.getFileName()), annotation);
+      return;
+    }
+
+    CommonTokenStream tokens = new CommonTokenStream(lexer);
+    TypestateParser parser = new TypestateParser(tokens);
+    TypestateParser.RContext tree = parser.r();
+
+    if (tree instanceof ErrorNode) {
+      ErrorNode error = (ErrorNode) tree;
+      checker.report(Result.failure("Error in " + file + ": " + error), annotation);
+      return;
+    }
+
+    // FIXME syntax errors are going to std.err
+
+    TypestateBaseListener visitor = new TypestateBaseListener();
+    ParseTreeWalker.DEFAULT.walk(visitor, tree);
+
+    System.out.println(file);
   }
 
   private void processMungoTypestateAnnotation(List<? extends ExpressionTree> args, Tree tree) {
@@ -37,8 +72,8 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
     Path sourceFilePath = Paths.get(getCurrentPath().getCompilationUnit().getSourceFile().toUri());
     // Get the path of the protocol file relative to the source file
     Path protocolFilePath = sourceFilePath.resolveSibling(file).normalize();
-    // TODO
-    System.out.println(protocolFilePath);
+    // Parse and process typestate
+    parseTypestate(protocolFilePath, tree);
   }
 
   public void processClassTree(ClassTree classTree) {

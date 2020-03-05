@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'maven-publish'
+    id 'antlr'
 }
 
 repositories {
@@ -16,6 +17,7 @@ configurations {
 
 ext {
     versions = [
+        antlr4: "4.8",
         checkerFramework: "3.1.1",
         errorproneJavacVersion: "9+181-r4173-1",
     ]
@@ -25,6 +27,9 @@ sourceCompatibility = 1.8
 def checkerframework_local = false
 
 dependencies {
+    antlr "org.antlr:antlr4:${versions.antlr4}"
+    // ?? implementation "org.antlr:antlr4-runtime:${versions.antlr4}"
+
     if (checkerframework_local) {
         implementation files("checker-framework-${versions.checkerFramework}/checker/dist/checker-qual.jar")
         implementation files("checker-framework-${versions.checkerFramework}/checker/dist/checker.jar")
