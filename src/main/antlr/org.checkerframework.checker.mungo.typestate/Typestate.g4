@@ -3,10 +3,7 @@ grammar Typestate;
 @header {
 package org.checkerframework.checker.mungo.typestate;
 import org.checkerframework.checker.mungo.typestate.ast.*;
-import static org.checkerframework.checker.mungo.typestate.ast.Utils.map;
-import static org.checkerframework.checker.mungo.typestate.ast.Utils.listToMap;
-import java.util.Map;
-import static java.util.AbstractMap.SimpleEntry;
+import static org.checkerframework.checker.mungo.typestate.Utils.map;
 }
 
 // Info: https://github.com/antlr/antlr4/blob/master/doc/parser-rules.md
@@ -42,13 +39,13 @@ method returns [TMethodNode node] locals [Object destination] :
 
 decision_state returns [TDecisionStateNode node] :
   '<' decisions+=decision ( ',' decisions+=decision )* '>'
-  {$node=new TDecisionStateNode(listToMap(map($decisions, d -> d.entry)));}
+  {$node=new TDecisionStateNode(map($decisions, d -> d.node));}
 ;
 
-decision returns [Map.Entry<String, Object> entry] :
+decision returns [TDecisionNode node] :
   label=ID ':' (
-    dest=ID {$entry=new SimpleEntry<>($label.getText(), $dest.getText());} |
-    state {$entry=new SimpleEntry<>($label.getText(), new TStateNode(null, $state.methods));}
+    dest=ID {$node=new TDecisionNode($label.getText(), $dest.getText());} |
+    state {$node=new TDecisionNode($label.getText(), new TStateNode(null, $state.methods));}
   )
 ;
 

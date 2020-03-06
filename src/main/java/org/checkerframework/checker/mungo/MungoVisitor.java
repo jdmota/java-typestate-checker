@@ -2,10 +2,10 @@ package org.checkerframework.checker.mungo;
 
 import com.sun.source.tree.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
-import org.checkerframework.checker.mungo.typestate.TypestateParser;
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
 import org.checkerframework.checker.mungo.typestate.TypestateSyntaxError;
-import org.checkerframework.checker.mungo.typestate.ast.TDeclarationNode;
+import org.checkerframework.checker.mungo.typestate.graph.Graph;
+import org.checkerframework.checker.mungo.typestate.graph.exceptions.TypestateError;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
 import org.checkerframework.framework.source.Result;
@@ -30,20 +30,25 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
 
   private void processTypestate(Path file, Tree annotation) {
     String filename = file.getFileName().toString();
-    TDeclarationNode tree;
+    Graph graph;
 
     try {
-      tree = TypestateProcessor.fromPath(file);
+      graph = TypestateProcessor.fromPath(file);
     } catch (IOException e) {
       error("Could not read file " + filename, annotation);
       return;
     } catch (ParseCancellationException exp) {
       error(TypestateSyntaxError.errorToString(filename, exp), annotation);
       return;
+    } catch (TypestateError exp) {
+      error(exp.getClass().toString(), annotation); // TODO
+      return;
     }
 
     System.out.println(file);
-    System.out.println(tree.getClass());
+    System.out.println(graph.getClass());
+    System.out.println(graph.initialState.getClass());
+    System.out.println(graph.endState.getClass());
     // TODO
   }
 

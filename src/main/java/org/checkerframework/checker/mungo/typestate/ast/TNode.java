@@ -1,4 +1,5 @@
 package org.checkerframework.checker.mungo.typestate.ast;
 
-public class TNode {
+public abstract class TNode {
+
 }

@@ -1,12 +1,12 @@
 package org.checkerframework.checker.mungo.typestate.ast;
 
-import java.util.Map;
+import java.util.List;
 
 public class TDecisionStateNode extends TNode {
 
-  public final Map<String, Object /*String | TStateNode*/> decisions;
+  public final List<TDecisionNode> decisions;
 
-  public TDecisionStateNode(Map<String, Object> decisions) {
+  public TDecisionStateNode(List<TDecisionNode> decisions) {
     this.decisions = decisions;
   }
 
