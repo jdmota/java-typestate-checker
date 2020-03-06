@@ -4,6 +4,7 @@ import com.sun.source.tree.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
 import org.checkerframework.checker.mungo.typestate.TypestateSyntaxError;
+import org.checkerframework.checker.mungo.typestate.graph.Dot;
 import org.checkerframework.checker.mungo.typestate.graph.Graph;
 import org.checkerframework.checker.mungo.typestate.graph.exceptions.TypestateError;
 import org.checkerframework.common.basetype.BaseTypeChecker;
@@ -49,6 +50,7 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
     System.out.println(graph.getClass());
     System.out.println(graph.initialState);
     System.out.println(graph.endState);
+    System.out.println(Dot.fromGraph(graph));
     // TODO
   }
 
