@@ -8,7 +8,6 @@ import org.checkerframework.checker.mungo.typestate.graph.exceptions.StateNotDef
 import org.checkerframework.checker.mungo.typestate.graph.exceptions.UnusedStates;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class Graph {
 
@@ -24,9 +23,7 @@ public class Graph {
     initialState = null;
     endState = new EndState(null);
     namedStates = new HashMap<>();
-    namedStates.put(END_STATE_NAME, endState);
     referencedStates = new HashSet<>();
-    referencedStates.add("end");
   }
 
   private TStateNode getStateNodeByName(String name) {
@@ -53,42 +50,29 @@ public class Graph {
     return new DecisionState(node);
   }
 
-  private AbstractState<?, ?> getState(Object o) {
-    if (o instanceof String) {
-      return getStateByName((String) o);
-    }
-    if (o instanceof TStateNode) {
-      return getStateByNode((TStateNode) o);
-    }
-    if (o instanceof TDecisionStateNode) {
-      return getStateByNode((TDecisionStateNode) o);
-    }
-    throw new AssertionError("getState");
-  }
-
   private void addNamedState(TStateNode node) {
     if (RESERVED_STATE_NAMES.contains(node.name)) {
       throw new ReservedStateName(node);
     }
-    State state = namedStates.compute(node.name, (name, old) -> {
+    namedStates.compute(node.name, (name, old) -> {
       if (old == null) {
         return new State(node);
       }
       throw new DuplicateState(old.node, node);
     });
-    if (initialState == null) {
-      initialState = state;
-    }
   }
 
   private State traverseState(TStateNode node) {
+    // Run this first so that even if the state has no methods, it can be considered as referenced
+    boolean traverse = node.name == null || referencedStates.add(node.name);
+
     if (node.methods.size() == 0) {
       return endState;
     }
 
     State state = getStateByNode(node);
 
-    if (node.name == null || referencedStates.add(node.name)) {
+    if (traverse) {
       for (TMethodNode method : node.methods) {
         state.addTransition(method, traverseDestination(method.destination));
       }
@@ -108,8 +92,13 @@ public class Graph {
   }
 
   private AbstractState<?, ?> traverseDestination(Object o) {
-    if (o instanceof String)
-      return traverseState(getStateNodeByName((String) o));
+    if (o instanceof String) {
+      String name = (String) o;
+      if (name.equals(END_STATE_NAME)) {
+        return endState;
+      }
+      return traverseState(getStateNodeByName(name));
+    }
     if (o instanceof TStateNode)
       return traverseState((TStateNode) o);
     if (o instanceof TDecisionStateNode)
@@ -117,16 +106,17 @@ public class Graph {
     throw new AssertionError("wrong destination " + o);
   }
 
-  private void traverseTypestate(TDeclarationNode node) {
-    for (TStateNode state : node.states) {
-      addNamedState(state);
-    }
+  // TODO use queue instead of recursion? just in case there are like a ton of inner states inside each other
 
-    // If we had no named states, then the first state is also the first one
-    if (initialState == null) {
+  private void traverseTypestate(TDeclarationNode node) {
+    // If we have no named states, then the end state is also the first one
+    if (node.states.size() == 0) {
       initialState = endState;
     } else {
-      traverseState(node.states.get(0));
+      for (TStateNode state : node.states) {
+        addNamedState(state);
+      }
+      initialState = traverseState(node.states.get(0));
     }
 
     // Calculate if there are any unused states

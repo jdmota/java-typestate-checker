@@ -14,7 +14,7 @@ typestate_declaration returns [TDeclarationNode ast] :
 ;
 
 typestate_body returns [List<TStateNode> states] :
-  ( s+=state_declaration ( ',' s+=state_declaration )* )?
+  ( s+=state_declaration )*
   {$states=map($s, s -> s.node);}
 ;
 

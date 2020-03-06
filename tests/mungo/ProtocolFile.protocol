@@ -1,3 +1,8 @@
 typestate ProtocolExample {
-
+    HasNext = {
+        boolean hasNext(): <true: Next, false: end>
+    }
+    Next = {
+        Object next(): HasNext
+    }
 }

@@ -13,4 +13,9 @@ public class EndState extends State {
   public void addTransition(TMethodNode transition, AbstractState<?, ?> destination) {
     throw new AssertionError("end state should have no transitions");
   }
+
+  @Override
+  public String toString() {
+    return "State{name=end}";
+  }
 }

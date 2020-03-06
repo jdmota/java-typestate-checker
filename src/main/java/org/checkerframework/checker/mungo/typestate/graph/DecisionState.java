@@ -8,4 +8,9 @@ public class DecisionState extends AbstractState<TDecisionStateNode, TDecisionNo
   public DecisionState(TDecisionStateNode node) {
     super(node);
   }
+
+  @Override
+  public String toString() {
+    return "DecisionState{node=" + node + "}";
+  }
 }

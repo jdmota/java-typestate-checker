@@ -47,8 +47,8 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
 
     System.out.println(file);
     System.out.println(graph.getClass());
-    System.out.println(graph.initialState.getClass());
-    System.out.println(graph.endState.getClass());
+    System.out.println(graph.initialState);
+    System.out.println(graph.endState);
     // TODO
   }
 
@@ -93,4 +93,5 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
   }
 
   // TODO visit all annotations to make sure @MungoTypestate only appears in class/interfaces??
+  // TODO what if another class points to the same protocol file?? error? or fine? avoid duplicate processing
 }
