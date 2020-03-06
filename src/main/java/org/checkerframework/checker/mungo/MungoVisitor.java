@@ -2,10 +2,9 @@ package org.checkerframework.checker.mungo;
 
 import com.sun.source.tree.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
-import org.checkerframework.checker.mungo.typestate.TypestateBaseListener;
 import org.checkerframework.checker.mungo.typestate.TypestateParser;
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
+import org.checkerframework.checker.mungo.typestate.TypestateSyntaxError;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
 import org.checkerframework.framework.source.Result;
@@ -28,7 +27,7 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
     checker.report(Result.failure(message), where);
   }
 
-  private void parseTypestate(Path file, Tree annotation) {
+  private void processTypestate(Path file, Tree annotation) {
     String filename = file.getFileName().toString();
     TypestateParser.Typestate_declarationContext tree;
 
@@ -38,16 +37,12 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
       error("Could not read file " + filename, annotation);
       return;
     } catch (ParseCancellationException exp) {
-      error(TypestateProcessor.errorToString(filename, exp), annotation);
+      error(TypestateSyntaxError.errorToString(filename, exp), annotation);
       return;
     }
 
     System.out.println(file);
     System.out.println(tree.getClass());
-
-    TypestateBaseListener visitor = new TypestateBaseListener();
-    ParseTreeWalker.DEFAULT.walk(visitor, tree);
-
     // TODO
   }
 
@@ -71,7 +66,7 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
     // Get the path of the protocol file relative to the source file
     Path protocolFilePath = sourceFilePath.resolveSibling(file).normalize();
     // Parse and process typestate
-    parseTypestate(protocolFilePath, tree);
+    processTypestate(protocolFilePath, tree);
   }
 
   public void processClassTree(ClassTree classTree) {
