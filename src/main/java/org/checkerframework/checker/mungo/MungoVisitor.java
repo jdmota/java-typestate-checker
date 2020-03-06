@@ -5,6 +5,7 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.checkerframework.checker.mungo.typestate.TypestateParser;
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
 import org.checkerframework.checker.mungo.typestate.TypestateSyntaxError;
+import org.checkerframework.checker.mungo.typestate.ast.TDeclarationNode;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
 import org.checkerframework.framework.source.Result;
@@ -29,7 +30,7 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
 
   private void processTypestate(Path file, Tree annotation) {
     String filename = file.getFileName().toString();
-    TypestateParser.Typestate_declarationContext tree;
+    TDeclarationNode tree;
 
     try {
       tree = TypestateProcessor.fromPath(file);
