@@ -6,7 +6,8 @@ public class TDecisionStateNode extends TNode {
 
   public final List<TDecisionNode> decisions;
 
-  public TDecisionStateNode(List<TDecisionNode> decisions) {
+  public TDecisionStateNode(Position pos, List<TDecisionNode> decisions) {
+    super(pos);
     this.decisions = decisions;
   }
 

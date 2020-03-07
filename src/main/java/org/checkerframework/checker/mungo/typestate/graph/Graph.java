@@ -26,15 +26,14 @@ public class Graph {
     referencedStates = new HashSet<>();
   }
 
-  private TStateNode getStateNodeByName(String name) {
-    return getStateByName(name).node;
+  private TStateNode getStateNodeByName(TIdNode id) {
+    return getStateByName(id).node;
   }
 
-  private State getStateByName(String name) {
-    State state = namedStates.get(name);
+  private State getStateByName(TIdNode id) {
+    State state = namedStates.get(id.name);
     if (state == null) {
-      // TODO location
-      throw new StateNotDefined(name);
+      throw new StateNotDefined(id);
     }
     return state;
   }
@@ -43,7 +42,8 @@ public class Graph {
     if (node.name == null) {
       return new State(node);
     }
-    return getStateByName(node.name);
+    // namedStates is initialized by the time this is called
+    return namedStates.get(node.name);
   }
 
   private DecisionState getStateByNode(TDecisionStateNode node) {
@@ -91,13 +91,13 @@ public class Graph {
     return state;
   }
 
-  private AbstractState<?, ?> traverseDestination(Object o) {
-    if (o instanceof String) {
-      String name = (String) o;
-      if (name.equals(END_STATE_NAME)) {
+  private AbstractState<?, ?> traverseDestination(TNode o) {
+    if (o instanceof TIdNode) {
+      TIdNode node = ((TIdNode) o);
+      if (node.name.equals(END_STATE_NAME)) {
         return endState;
       }
-      return traverseState(getStateNodeByName(name));
+      return traverseState(getStateNodeByName(node));
     }
     if (o instanceof TStateNode)
       return traverseState((TStateNode) o);
@@ -107,6 +107,7 @@ public class Graph {
   }
 
   // TODO use queue instead of recursion? just in case there are like a ton of inner states inside each other
+  // TODO minimize?
 
   private void traverseTypestate(TDeclarationNode node) {
     // If we have no named states, then the end state is also the first one

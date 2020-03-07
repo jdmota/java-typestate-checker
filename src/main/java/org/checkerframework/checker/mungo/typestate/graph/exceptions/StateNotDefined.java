@@ -1,14 +1,15 @@
 package org.checkerframework.checker.mungo.typestate.graph.exceptions;
 
+import org.checkerframework.checker.mungo.typestate.ast.TIdNode;
+
 public class StateNotDefined extends TypestateError {
 
   public static final long serialVersionUID = 0L;
 
-  public final String stateName;
-  // TODO location
+  public final TIdNode id;
 
-  public StateNotDefined(String stateName) {
-    this.stateName = stateName;
+  public StateNotDefined(TIdNode id) {
+    this.id = id;
   }
 
 }

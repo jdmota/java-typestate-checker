@@ -3,9 +3,10 @@ package org.checkerframework.checker.mungo.typestate.ast;
 public class TDecisionNode extends TNode {
 
   public final String label;
-  public final Object /*String | TStateNode*/ destination;
+  public final TNode /*TIdNode | TStateNode*/ destination;
 
-  public TDecisionNode(String label, Object destination) {
+  public TDecisionNode(Position pos, String label, TNode destination) {
+    super(pos);
     this.label = label;
     this.destination = destination;
   }

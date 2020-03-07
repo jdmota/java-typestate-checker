@@ -46,10 +46,6 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
       return;
     }
 
-    System.out.println(file);
-    System.out.println(graph.getClass());
-    System.out.println(graph.initialState);
-    System.out.println(graph.endState);
     System.out.println(Dot.fromGraph(graph));
     // TODO
   }
@@ -76,6 +72,21 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
     // Parse and process typestate
     processTypestate(protocolFilePath, tree);
   }
+
+  /*
+  private boolean checkForNullability(ExpressionTree tree, @CompilerMessageKey String errMsg) {
+    AnnotatedTypeMirror type = atypeFactory.getAnnotatedType(tree);
+    return checkForNullability(type, tree, errMsg);
+  }
+  private boolean checkForNullability(
+    AnnotatedTypeMirror type, Tree tree, @CompilerMessageKey String errMsg) {
+    if (!type.hasEffectiveAnnotation(NONNULL)) {
+      checker.report(Result.failure(errMsg, tree), tree);
+      return false;
+    }
+    return true;
+  }
+  */
 
   public void processClassTree(ClassTree classTree) {
     ModifiersTree modifiers = classTree.getModifiers();

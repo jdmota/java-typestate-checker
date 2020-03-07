@@ -7,9 +7,10 @@ public class TMethodNode extends TNode {
   public final String returnType;
   public final String name;
   public final List<String> args;
-  public final Object /*String | TStateNode | TDecisionStateNode*/ destination;
+  public final TNode /*TIdNode | TStateNode | TDecisionStateNode*/ destination;
 
-  public TMethodNode(String returnType, String name, List<String> args, Object destination) {
+  public TMethodNode(Position pos, String returnType, String name, List<String> args, TNode destination) {
+    super(pos);
     this.returnType = returnType;
     this.name = name;
     this.args = args;

@@ -3,14 +3,15 @@ grammar Typestate;
 @header {
 package org.checkerframework.checker.mungo.typestate;
 import org.checkerframework.checker.mungo.typestate.ast.*;
+import static org.checkerframework.checker.mungo.typestate.ast.Position.tokenToPos;
 import static org.checkerframework.checker.mungo.typestate.Utils.map;
 }
 
 // Info: https://github.com/antlr/antlr4/blob/master/doc/parser-rules.md
 
 typestate_declaration returns [TDeclarationNode ast] :
-  'typestate' ID '{' typestate_body '}' EOF
-  {$ast=new TDeclarationNode($ID.getText(), $typestate_body.states);}
+  t='typestate' ID '{' typestate_body '}' EOF
+  {$ast=new TDeclarationNode(tokenToPos($t), $ID.getText(), $typestate_body.states);}
 ;
 
 typestate_body returns [List<TStateNode> states] :
@@ -19,34 +20,39 @@ typestate_body returns [List<TStateNode> states] :
 ;
 
 state_declaration returns [TStateNode node] :
-  ID '=' state
-  {$node=new TStateNode($ID.getText(), $state.methods);}
+  name=ID '=' state
+  {$node=new TStateNode(tokenToPos($name), $name.getText(), $state.node.methods);}
 ;
 
-state returns [List<TMethodNode> methods] :
-  '{' ( m+=method ( ',' m+=method )* )? '}'
-  {$methods=map($m, it -> it.node);}
+state returns [TStateNode node] :
+  t='{' ( m+=method ( ',' m+=method )* )? '}'
+  {$node=new TStateNode(tokenToPos($t), null, map($m, it -> it.node));}
 ;
 
-method returns [TMethodNode node] locals [Object destination] :
+method returns [TMethodNode node] locals [TNode destination] :
   return_type=ID name=ID '(' ( args+=ID ( ',' args+=ID )* )? ')' ':' (
-    dest=ID {$destination=$dest.getText();} |
-    state {$destination=new TStateNode(null, $state.methods);} |
+    id {$destination=$id.node;} |
+    state {$destination=$state.node;} |
     decision_state {$destination=$decision_state.node;}
   )
-  {$node=new TMethodNode($return_type.getText(), $name.getText(), map($args, a -> a.getText()), $destination);}
+  {$node=new TMethodNode(tokenToPos($return_type), $return_type.getText(), $name.getText(), map($args, a -> a.getText()), $destination);}
 ;
 
 decision_state returns [TDecisionStateNode node] :
-  '<' decisions+=decision ( ',' decisions+=decision )* '>'
-  {$node=new TDecisionStateNode(map($decisions, d -> d.node));}
+  t='<' decisions+=decision ( ',' decisions+=decision )* '>'
+  {$node=new TDecisionStateNode(tokenToPos($t), map($decisions, d -> d.node));}
 ;
 
 decision returns [TDecisionNode node] :
   label=ID ':' (
-    dest=ID {$node=new TDecisionNode($label.getText(), $dest.getText());} |
-    state {$node=new TDecisionNode($label.getText(), new TStateNode(null, $state.methods));}
+    id {$node=new TDecisionNode(tokenToPos($label), $label.getText(), $id.node);} |
+    state {$node=new TDecisionNode(tokenToPos($label), $label.getText(), $state.node);}
   )
+;
+
+id returns [TIdNode node] :
+  ID
+  {$node=new TIdNode(tokenToPos($ID), $ID.getText());}
 ;
 
 // match identifiers
