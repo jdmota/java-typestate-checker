@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.typestate.graph;
+package org.checkerframework.checker.mungo.typestate.graph.states;
 
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode;
 import org.checkerframework.checker.mungo.typestate.ast.TStateNode;

@@ -2,6 +2,10 @@ package org.checkerframework.checker.mungo.typestate.graph;
 
 import org.checkerframework.checker.mungo.typestate.ast.TDecisionNode;
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode;
+import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState;
+import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState;
+import org.checkerframework.checker.mungo.typestate.graph.states.EndState;
+import org.checkerframework.checker.mungo.typestate.graph.states.State;
 
 import java.util.Map;
 import java.util.HashMap;
