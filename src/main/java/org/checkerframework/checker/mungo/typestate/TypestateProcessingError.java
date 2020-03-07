@@ -4,7 +4,28 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.checkerframework.checker.mungo.typestate.ast.Position;
 
-public class TypestateSyntaxError {
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Paths;
+
+public class TypestateProcessingError extends Exception {
+
+  public static final long serialVersionUID = 0L;
+
+  public TypestateProcessingError(Exception exp) {
+    super(exp);
+  }
+
+  public String format() {
+    Throwable cause = getCause();
+    if (cause instanceof NoSuchFileException) {
+      NoSuchFileException exp = (NoSuchFileException) cause;
+      return "Could not find file " + Paths.get(exp.getFile()).getFileName();
+    }
+    if (cause instanceof ParseCancellationException) {
+      return errorToString((ParseCancellationException) cause);
+    }
+    return cause.getMessage();
+  }
 
   // Adapted from https://github.com/antlr/antlr4/blob/master/runtime/Java/src/org/antlr/v4/runtime/DefaultErrorStrategy.java
 
@@ -53,7 +74,7 @@ public class TypestateSyntaxError {
     return "rule " + ruleName + " " + e.getMessage();
   }
 
-  public static String errorToString(ParseCancellationException exception) {
+  private static String errorToString(ParseCancellationException exception) {
     String msg;
     RecognitionException e = (RecognitionException) exception.getCause();
     Parser parser = (Parser) e.getRecognizer();

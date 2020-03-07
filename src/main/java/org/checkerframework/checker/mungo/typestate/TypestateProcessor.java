@@ -1,17 +1,51 @@
 package org.checkerframework.checker.mungo.typestate;
 
 import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.checkerframework.checker.mungo.typestate.ast.TDeclarationNode;
 import org.checkerframework.checker.mungo.typestate.graph.Graph;
-import org.checkerframework.checker.mungo.typestate.graph.exceptions.TypestateError;
 
-import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TypestateProcessor {
 
-  public static Graph fromPath(Path file) throws IOException, ParseCancellationException, TypestateError {
+  public static class GraphOrError {
+
+    public final Graph graph;
+    public final TypestateProcessingError error;
+
+    public GraphOrError(Graph graph) {
+      this.graph = graph;
+      this.error = null;
+    }
+
+    public GraphOrError(TypestateProcessingError error) {
+      this.graph = null;
+      this.error = error;
+    }
+
+  }
+
+  private Map<Path, GraphOrError> graphs;
+
+  public TypestateProcessor() {
+    this.graphs = new HashMap<>();
+  }
+
+  public GraphOrError getGraph(Path file) {
+    return graphs.computeIfAbsent(file.normalize(), TypestateProcessor::process);
+  }
+
+  private static GraphOrError process(Path file) {
+    try {
+      return new GraphOrError(TypestateProcessor.fromPath(file));
+    } catch (Exception exp) {
+      return new GraphOrError(new TypestateProcessingError(exp));
+    }
+  }
+
+  private static Graph fromPath(Path file) throws Exception {
 
     TypestateLexer lexer = new TypestateLexer(CharStreams.fromPath(file));
 
