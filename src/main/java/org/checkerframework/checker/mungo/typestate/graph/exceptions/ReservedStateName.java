@@ -12,4 +12,9 @@ public class ReservedStateName extends TypestateError {
     this.state = state;
   }
 
+  @Override
+  public String getMessage() {
+    return String.format("%s is a reserved state name (%s)", state.name, state.pos.toString());
+  }
+
 }

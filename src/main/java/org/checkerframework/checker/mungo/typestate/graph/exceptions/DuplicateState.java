@@ -13,4 +13,8 @@ public class DuplicateState extends TypestateError {
     this.second = second;
   }
 
+  @Override
+  public String getMessage() {
+    return String.format("Duplicate state %s in %s at %s and %s", first.name, first.pos.getBasename(), first.pos.getLineCol(), second.pos.getLineCol());
+  }
 }

@@ -39,10 +39,10 @@ public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
       error("Could not read file " + filename, annotation);
       return;
     } catch (ParseCancellationException exp) {
-      error(TypestateSyntaxError.errorToString(filename, exp), annotation);
+      error(TypestateSyntaxError.errorToString(exp), annotation);
       return;
     } catch (TypestateError exp) {
-      error(exp.getClass().toString(), annotation); // TODO
+      error(exp.getMessage(), annotation);
       return;
     }
 

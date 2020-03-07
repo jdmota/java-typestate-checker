@@ -2,6 +2,7 @@ package org.checkerframework.checker.mungo.typestate;
 
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+import org.checkerframework.checker.mungo.typestate.ast.Position;
 
 public class TypestateSyntaxError {
 
@@ -52,8 +53,7 @@ public class TypestateSyntaxError {
     return "rule " + ruleName + " " + e.getMessage();
   }
 
-  public static String errorToString(String filename,
-                                     ParseCancellationException exception) {
+  public static String errorToString(ParseCancellationException exception) {
     String msg;
     RecognitionException e = (RecognitionException) exception.getCause();
     Parser parser = (Parser) e.getRecognizer();
@@ -66,8 +66,7 @@ public class TypestateSyntaxError {
     } else {
       msg = "unknown recognition error";
     }
-    Token token = e.getOffendingToken();
-    return filename + " line " + token.getLine() + ":" + token.getCharPositionInLine() + " " + msg;
+    return msg + " at " + Position.tokenToPos(e.getOffendingToken());
   }
 
 }

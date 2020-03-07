@@ -12,4 +12,9 @@ public class StateNotDefined extends TypestateError {
     this.id = id;
   }
 
+  @Override
+  public String getMessage() {
+    return String.format("State %s was not defined (%s)", id.name, id.pos.toString());
+  }
+
 }
