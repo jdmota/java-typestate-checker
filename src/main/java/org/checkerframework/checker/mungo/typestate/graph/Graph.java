@@ -10,6 +10,7 @@ import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState;
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState;
 import org.checkerframework.checker.mungo.typestate.graph.states.EndState;
 import org.checkerframework.checker.mungo.typestate.graph.states.State;
+import org.checkerframework.com.google.common.collect.ImmutableSet;
 
 import java.util.*;
 
@@ -22,12 +23,19 @@ public class Graph {
   public State endState;
   private Map<String, State> namedStates;
   private Set<String> referencedStates;
+  private Set<String> states;
 
   private Graph() {
     initialState = null;
     endState = new EndState(null);
     namedStates = new HashMap<>();
     referencedStates = new HashSet<>();
+    // Initialized in the end
+    states = null;
+  }
+
+  public Set<String> getStates() {
+    return states;
   }
 
   private TStateNode getStateNodeByName(TIdNode id) {
@@ -136,6 +144,7 @@ public class Graph {
   public static Graph fromTypestate(TDeclarationNode node) {
     Graph g = new Graph();
     g.traverseTypestate(node);
+    g.states = new HashSet<>(g.namedStates.keySet());
     return g;
   }
 

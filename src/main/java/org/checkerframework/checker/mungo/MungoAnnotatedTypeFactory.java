@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo;
 
 import org.checkerframework.checker.mungo.internal.MungoTreeAnnotator;
+import org.checkerframework.checker.mungo.internal.MungoUtils;
 import org.checkerframework.checker.mungo.qual.MungoBottom;
 import org.checkerframework.checker.mungo.qual.MungoState;
 import org.checkerframework.checker.mungo.qual.MungoUnknown;
@@ -34,10 +35,6 @@ public class MungoAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
     this.postInit();
   }
 
-  private static Set<String> getStateArg(AnnotationMirror anno) {
-    return new HashSet<>(AnnotationUtils.getElementValueArray(anno, "value", String.class, false));
-  }
-
   @Override
   protected Set<Class<? extends Annotation>> createSupportedTypeQualifiers() {
     Set<Class<? extends Annotation>> set = new HashSet<>();
@@ -65,8 +62,8 @@ public class MungoAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
       }
       if (AnnotationUtils.areSameByName(subAnno, STATE)) {
         if (AnnotationUtils.areSameByName(superAnno, STATE)) {
-          Set<String> subStates = getStateArg(subAnno);
-          Set<String> superStates = getStateArg(subAnno);
+          Set<String> subStates = MungoUtils.getStatesFromAnno(subAnno);
+          Set<String> superStates = MungoUtils.getStatesFromAnno(subAnno);
           return superStates.containsAll(subStates);
         }
         return AnnotationUtils.areSameByName(superAnno, UNKNOWN);
