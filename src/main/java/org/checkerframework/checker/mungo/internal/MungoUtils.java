@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo;
+package org.checkerframework.checker.mungo.internal;
 
 import org.checkerframework.checker.mungo.qual.MungoUnknown;
 import org.checkerframework.javacutil.AnnotationBuilder;
