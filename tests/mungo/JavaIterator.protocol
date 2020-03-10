@@ -1,4 +1,4 @@
-typestate ProtocolExample {
+typestate JavaIterator {
     HasNext = {
         boolean hasNext(): <true: Next, false: end>
     }
