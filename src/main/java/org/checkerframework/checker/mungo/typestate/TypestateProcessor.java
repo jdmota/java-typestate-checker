@@ -2,6 +2,7 @@ package org.checkerframework.checker.mungo.typestate;
 
 import org.antlr.v4.runtime.*;
 import org.checkerframework.checker.mungo.typestate.ast.TDeclarationNode;
+import org.checkerframework.checker.mungo.typestate.graph.Dot;
 import org.checkerframework.checker.mungo.typestate.graph.Graph;
 
 import java.nio.file.Path;
@@ -56,7 +57,9 @@ public class TypestateProcessor {
 
     TDeclarationNode ast = parser.typestate_declaration().ast;
 
-    return Graph.fromTypestate(ast);
+    Graph graph = Graph.fromTypestate(ast);
+    System.out.println(Dot.fromGraph(graph));
+    return graph;
   }
 
 }

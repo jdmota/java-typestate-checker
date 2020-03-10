@@ -6,7 +6,6 @@ import com.sun.tools.javac.code.Symbol;
 import org.checkerframework.checker.mungo.MungoAnnotatedTypeFactory;
 import org.checkerframework.checker.mungo.qual.MungoState;
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
-import org.checkerframework.checker.mungo.typestate.graph.Dot;
 import org.checkerframework.checker.mungo.typestate.graph.Graph;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.source.Result;
@@ -86,7 +85,6 @@ public class MungoUtils {
       return null;
     }
 
-    System.out.println(Dot.fromGraph(result.graph));
     return result.graph;
   }
 
