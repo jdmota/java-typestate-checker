@@ -2,9 +2,8 @@ package org.checkerframework.checker.mungo;
 
 import org.checkerframework.checker.mungo.internal.*;
 import org.checkerframework.checker.mungo.qual.MungoBottom;
-import org.checkerframework.checker.mungo.qual.MungoState;
+import org.checkerframework.checker.mungo.qual.MungoInfo;
 import org.checkerframework.checker.mungo.qual.MungoUnknown;
-import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.flow.CFAbstractAnalysis;
 import org.checkerframework.framework.type.GenericAnnotatedTypeFactory;
@@ -26,16 +25,15 @@ import java.util.*;
 
 public class MungoAnnotatedTypeFactory extends GenericAnnotatedTypeFactory<MungoValue, MungoStore, MungoTransfer, MungoAnalysis> {
 
-  protected final AnnotationMirror BOTTOM = AnnotationBuilder.fromClass(elements, MungoBottom.class);
-  protected final AnnotationMirror STATE = AnnotationBuilder.fromClass(elements, MungoState.class);
-  protected final AnnotationMirror UNKNOWN = AnnotationBuilder.fromClass(elements, MungoUnknown.class);
+  protected final AnnotationMirror BOTTOM_ANNO = AnnotationBuilder.fromClass(elements, MungoBottom.class);
+  protected final AnnotationMirror INFO_ANNO = AnnotationBuilder.fromClass(elements, MungoInfo.class);
+  protected final AnnotationMirror UNKNOWN_ANNO = AnnotationBuilder.fromClass(elements, MungoUnknown.class);
 
   public final MungoUtils utils;
 
   public MungoAnnotatedTypeFactory(BaseTypeChecker checker) {
     super(checker);
-    TypestateProcessor processor = new TypestateProcessor();
-    this.utils = new MungoUtils(checker, this, processor);
+    this.utils = new MungoUtils(checker, this);
     this.postInit();
   }
 
@@ -55,12 +53,6 @@ public class MungoAnnotatedTypeFactory extends GenericAnnotatedTypeFactory<Mungo
     return new ListTreeAnnotator(new MungoTreeAnnotator(this), super.createTreeAnnotator());
   }
 
-  /*@Override
-  protected TypeAnnotator createTypeAnnotator() {
-    // TypeAnnotator that adds annotations to a type based on the content of the type itself
-    return new ListTypeAnnotator(new MungoTypeAnnotator(this), super.createTypeAnnotator());
-  }*/
-
   @Override
   protected DefaultQualifierForUseTypeAnnotator createDefaultForUseTypeAnnotator() {
     return new MungoDefaultQualifierForUseTypeAnnotator(this);
@@ -70,13 +62,13 @@ public class MungoAnnotatedTypeFactory extends GenericAnnotatedTypeFactory<Mungo
   protected Set<Class<? extends Annotation>> createSupportedTypeQualifiers() {
     Set<Class<? extends Annotation>> set = new HashSet<>();
     // Do NOT include @MungoTypestate here
-    Collections.addAll(set, MungoBottom.class, MungoState.class, MungoUnknown.class);
+    Collections.addAll(set, MungoBottom.class, MungoInfo.class, MungoUnknown.class);
     return set;
   }
 
   @Override
   public QualifierHierarchy createQualifierHierarchy(MultiGraphFactory factory) {
-    return new MungoQualifierHierarchy(factory, BOTTOM);
+    return new MungoQualifierHierarchy(factory, BOTTOM_ANNO);
   }
 
   private final class MungoQualifierHierarchy extends GraphQualifierHierarchy {
@@ -88,19 +80,17 @@ public class MungoAnnotatedTypeFactory extends GenericAnnotatedTypeFactory<Mungo
 
     @Override
     public boolean isSubtype(AnnotationMirror subAnno, AnnotationMirror superAnno) {
-      if (AnnotationUtils.areSameByName(subAnno, BOTTOM)) {
+      if (AnnotationUtils.areSameByName(subAnno, BOTTOM_ANNO)) {
         return true;
       }
-      if (AnnotationUtils.areSameByName(subAnno, STATE)) {
-        if (AnnotationUtils.areSameByName(superAnno, STATE)) {
-          Set<String> subStates = MungoUtils.getStatesFromAnno(subAnno);
-          Set<String> superStates = MungoUtils.getStatesFromAnno(subAnno);
-          return superStates.containsAll(subStates);
+      if (AnnotationUtils.areSameByName(subAnno, INFO_ANNO)) {
+        if (AnnotationUtils.areSameByName(superAnno, INFO_ANNO)) {
+          return MungoTypecheck.isSubType(subAnno, superAnno);
         }
-        return AnnotationUtils.areSameByName(superAnno, UNKNOWN);
+        return AnnotationUtils.areSameByName(superAnno, UNKNOWN_ANNO);
       }
-      if (AnnotationUtils.areSameByName(subAnno, UNKNOWN)) {
-        return AnnotationUtils.areSameByName(superAnno, UNKNOWN);
+      if (AnnotationUtils.areSameByName(subAnno, UNKNOWN_ANNO)) {
+        return AnnotationUtils.areSameByName(superAnno, UNKNOWN_ANNO);
       }
       return false;
     }

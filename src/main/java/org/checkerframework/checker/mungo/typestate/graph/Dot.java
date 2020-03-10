@@ -64,7 +64,7 @@ public class Dot {
 
   private String gen() {
     builder.append("digraph {\n");
-    String name = handleState(graph.initialState);
+    String name = handleState(graph.getInitialState());
     builder.append("start").append("[shape=\"rectangle\"]\n");
     builder.append("start").append(" -> ").append(name).append("\n");
     builder.append("}\n");

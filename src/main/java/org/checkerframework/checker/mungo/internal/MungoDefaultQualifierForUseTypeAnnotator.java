@@ -19,7 +19,7 @@ public class MungoDefaultQualifierForUseTypeAnnotator extends DefaultQualifierFo
   @Override
   protected Set<AnnotationMirror> getExplicitAnnos(Element element) {
     // Extract information from class declaration so that the correct annotations can be applied to instances
-    AnnotationMirror annotation = utils.visitClassSymbol(element);
+    MungoTypeInfo annotation = utils.visitClassSymbol(element);
     Set<AnnotationMirror> set = super.getExplicitAnnos(element);
     if (annotation != null) {
       Set<AnnotationMirror> newSet = Sets.newHashSet(annotation);

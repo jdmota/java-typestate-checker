@@ -58,7 +58,7 @@ public class TypestateProcessor {
 
     TDeclarationNode ast = parser.typestate_declaration().ast;
 
-    Graph graph = Graph.fromTypestate(ast);
+    Graph graph = Graph.fromTypestate(file, ast);
     System.out.println(Dot.fromGraph(graph));
     return graph;
   }

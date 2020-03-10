@@ -10,6 +10,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE_USE, ElementType.TYPE_PARAMETER})
 @SubtypeOf(MungoUnknown.class)
-public @interface MungoState {
-  String[] value();
+public @interface MungoInfo {
+
 }

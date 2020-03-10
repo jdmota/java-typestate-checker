@@ -4,76 +4,51 @@ import com.sun.source.tree.*;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.code.Symbol;
 import org.checkerframework.checker.mungo.MungoAnnotatedTypeFactory;
-import org.checkerframework.checker.mungo.qual.MungoState;
+import org.checkerframework.checker.mungo.qual.MungoInfo;
+import org.checkerframework.checker.mungo.qual.MungoTypestate;
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
 import org.checkerframework.checker.mungo.typestate.graph.Graph;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.com.google.common.collect.Sets;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.source.Result;
-import org.checkerframework.javacutil.AnnotationBuilder;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.TreeUtils;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class MungoUtils {
 
-  private static final String mungoStateName = MungoState.class.getCanonicalName(); // Cache name
+  private static final String mungoInfoName = MungoInfo.class.getCanonicalName(); // Cache name
+  private static final String mungoTypestateName = MungoTypestate.class.getCanonicalName(); // Cache name
 
   private final MungoAnnotatedTypeFactory factory;
   private final BaseTypeChecker checker;
   private final TypestateProcessor processor;
 
-  public MungoUtils(BaseTypeChecker checker, MungoAnnotatedTypeFactory factory, TypestateProcessor processor) {
+  public MungoUtils(BaseTypeChecker checker, MungoAnnotatedTypeFactory factory) {
     this.checker = checker;
     this.factory = factory;
-    this.processor = processor;
+    this.processor = new TypestateProcessor();
   }
 
-  public static @Nullable AnnotationMirror getStateAnnotation(Collection<AnnotationMirror> annotations) {
+  public static @Nullable MungoTypeInfo getInfoFromAnnotations(Collection<AnnotationMirror> annotations) {
     for (AnnotationMirror annoMirror : annotations) {
-      if (AnnotationUtils.areSameByName(annoMirror, mungoStateName)) {
-        return annoMirror;
+      if (AnnotationUtils.areSameByName(annoMirror, mungoInfoName)) {
+        return (MungoTypeInfo) annoMirror;
       }
     }
     return null;
   }
 
-  public static @Nullable Set<String> getStatesFromAnnotations(Collection<AnnotationMirror> annotations) {
-    AnnotationMirror anno = getStateAnnotation(annotations);
-    if (anno == null) {
-      return null;
-    }
-    return getStatesFromAnno(anno);
-  }
-
-  // "anno" is @MungoState
-  public static Set<String> getStatesFromAnno(AnnotationMirror anno) {
-    return new HashSet<>(AnnotationUtils.getElementValueArray(anno, "value", String.class, false));
-  }
-
-  public static AnnotationMirror createStateAnnotation(ProcessingEnvironment env, Set<String> states) {
-    return createStateAnnotation(env, states.toArray(new String[]{}));
-  }
-
-  public static AnnotationMirror createStateAnnotation(ProcessingEnvironment env, String state) {
-    return createStateAnnotation(env, new String[]{state});
-  }
-
-  public static AnnotationMirror createStateAnnotation(ProcessingEnvironment env, String[] states) {
-    AnnotationBuilder builder = new AnnotationBuilder(env, MungoState.class);
-    builder.setValue("value", states);
-    return builder.build();
+  public static MungoTypeInfo castAnnotation(AnnotationMirror annoMirror) {
+    return (MungoTypeInfo) annoMirror;
   }
 
   private void err(String message, Tree where) {
@@ -109,7 +84,7 @@ public class MungoUtils {
     return result.graph;
   }
 
-  public @Nullable AnnotationMirror visitClassTree(Path sourceFilePath, ClassTree tree) {
+  public @Nullable MungoTypeInfo visitClassTree(Path sourceFilePath, ClassTree tree) {
     ModifiersTree modifiers = tree.getModifiers();
     List<? extends AnnotationTree> annotations = modifiers.getAnnotations();
 
@@ -117,11 +92,11 @@ public class MungoUtils {
       Element elem = TreeUtils.elementFromTree(anno.getAnnotationType());
       if (elem instanceof TypeElement) {
         Name name = ((TypeElement) elem).getQualifiedName();
-        if (name.contentEquals("org.checkerframework.checker.mungo.qual.MungoTypestate")) {
+        if (name.contentEquals(mungoTypestateName)) {
           // Process typestate
           Graph graph = processMungoTypestateAnnotation(sourceFilePath, anno);
           if (graph != null) {
-            return MungoUtils.createStateAnnotation(checker.getProcessingEnvironment(), graph.getFirstStateName());
+            return MungoTypeInfo.build(factory.getElementUtils(), graph, Sets.newHashSet(graph.getInitialState()));
           }
         }
       }
@@ -130,7 +105,7 @@ public class MungoUtils {
     return null;
   }
 
-  public @Nullable AnnotationMirror visitClassPath(TreePath path) {
+  public @Nullable MungoTypeInfo visitClassPath(TreePath path) {
     if (path == null) {
       // "path" may be null for java.lang.Object for example
       return null;
@@ -141,7 +116,7 @@ public class MungoUtils {
     return visitClassTree(sourceFilePath, (ClassTree) path.getLeaf());
   }
 
-  public @Nullable AnnotationMirror visitClassSymbol(Element element) {
+  public @Nullable MungoTypeInfo visitClassSymbol(Element element) {
     if (!(element instanceof Symbol.ClassSymbol)) {
       return null;
     }

@@ -8,8 +8,6 @@ import org.checkerframework.dataflow.cfg.node.Node;
 import org.checkerframework.dataflow.cfg.node.ObjectCreationNode;
 import org.checkerframework.framework.flow.*;
 
-import java.util.Set;
-
 public class MungoTransfer extends CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer> {
   public MungoTransfer(MungoAnalysis analysis) {
     super(analysis);
@@ -25,8 +23,8 @@ public class MungoTransfer extends CFAbstractTransfer<MungoValue, MungoStore, Mu
     MungoStore thenStore = result.getThenStore();
     MungoValue value = thenStore.getValue(receiver);
     if (value != null) {
-      Set<String> states = MungoUtils.getStatesFromAnnotations(value.getAnnotations());
-      System.out.println(value + " " + states);
+      MungoTypeInfo info = MungoUtils.getInfoFromAnnotations(value.getAnnotations());
+      System.out.println(value + " " + info);
       thenStore.replaceValue(receiver, analysis.createAbstractValue(value.getAnnotations(), value.getUnderlyingType()));
     }
     // TODO

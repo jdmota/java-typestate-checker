@@ -10,7 +10,9 @@ import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState;
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState;
 import org.checkerframework.checker.mungo.typestate.graph.states.EndState;
 import org.checkerframework.checker.mungo.typestate.graph.states.State;
+import org.checkerframework.com.google.common.collect.Sets;
 
+import java.nio.file.Path;
 import java.util.*;
 
 public class Graph {
@@ -18,27 +20,39 @@ public class Graph {
   public static final String END_STATE_NAME = "end";
   public static final List<String> RESERVED_STATE_NAMES = Arrays.asList(END_STATE_NAME);
 
-  public State initialState;
-  public State endState;
-  private Map<String, State> namedStates;
-  private Set<String> referencedStates;
+  private final Path file;
+  private State initialState;
+  private final EndState endState;
+  private final Set<State> finalStates;
+  private final Map<String, State> namedStates;
+  private final Set<String> referencedStates;
   private Set<String> states;
 
-  private Graph() {
+  private Graph(Path file) {
+    this.file = file;
     initialState = null;
-    endState = new EndState(null);
+    endState = new EndState();
+    finalStates = Sets.newHashSet(endState);
     namedStates = new HashMap<>();
     referencedStates = new HashSet<>();
     // Initialized in the end
     states = null;
   }
 
+  public Path getFile() {
+    return file;
+  }
+
+  public State getInitialState() {
+    return initialState;
+  }
+
   public Set<String> getStates() {
     return states;
   }
 
-  public String getFirstStateName() {
-    return initialState == endState ? "end" : initialState.node.name;
+  public Set<State> getFinalStates() {
+    return finalStates;
   }
 
   private TStateNode getStateNodeByName(TIdNode id) {
@@ -78,16 +92,14 @@ public class Graph {
   }
 
   private State traverseState(TStateNode node) {
-    // Run this first so that even if the state has no methods, it can be considered as referenced
-    boolean traverse = node.name == null || referencedStates.add(node.name);
-
-    if (node.methods.size() == 0) {
-      return endState;
-    }
 
     State state = getStateByNode(node);
 
-    if (traverse) {
+    if (node.name == null || referencedStates.add(node.name)) {
+      if (node.methods.size() == 0) {
+        finalStates.add(state);
+      }
+
       for (TMethodNode method : node.methods) {
         state.addTransition(method, traverseDestination(method.destination));
       }
@@ -144,8 +156,8 @@ public class Graph {
     }
   }
 
-  public static Graph fromTypestate(TDeclarationNode node) {
-    Graph g = new Graph();
+  public static Graph fromTypestate(Path file, TDeclarationNode node) {
+    Graph g = new Graph(file);
     g.traverseTypestate(node);
     g.states = new HashSet<>(g.namedStates.keySet());
     return g;
