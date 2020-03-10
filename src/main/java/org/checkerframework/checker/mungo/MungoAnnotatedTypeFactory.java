@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo;
 
 import org.checkerframework.checker.mungo.internal.MungoDefaultQualifierForUseTypeAnnotator;
+import org.checkerframework.checker.mungo.internal.MungoTreeAnnotator;
 import org.checkerframework.checker.mungo.internal.MungoUtils;
 import org.checkerframework.checker.mungo.qual.MungoBottom;
 import org.checkerframework.checker.mungo.qual.MungoState;
@@ -9,6 +10,8 @@ import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
 import org.checkerframework.common.basetype.BaseAnnotatedTypeFactory;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.QualifierHierarchy;
+import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator;
+import org.checkerframework.framework.type.treeannotator.TreeAnnotator;
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator;
 import org.checkerframework.framework.util.GraphQualifierHierarchy;
 import org.checkerframework.javacutil.AnnotationBuilder;
@@ -26,12 +29,11 @@ public class MungoAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
   protected final AnnotationMirror STATE = AnnotationBuilder.fromClass(elements, MungoState.class);
   protected final AnnotationMirror UNKNOWN = AnnotationBuilder.fromClass(elements, MungoUnknown.class);
 
-  private final TypestateProcessor processor;
   public final MungoUtils utils;
 
   public MungoAnnotatedTypeFactory(BaseTypeChecker checker) {
     super(checker);
-    this.processor = new TypestateProcessor();
+    TypestateProcessor processor = new TypestateProcessor();
     this.utils = new MungoUtils(checker, this, processor);
     this.postInit();
   }
@@ -76,13 +78,13 @@ public class MungoAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
     }
   }
 
-  /*@Override
+  @Override
   protected TreeAnnotator createTreeAnnotator() {
     // TreeAnnotator that adds annotations to a type based on the contents of a tree
     return new ListTreeAnnotator(new MungoTreeAnnotator(this), super.createTreeAnnotator());
   }
 
-  @Override
+  /*@Override
   protected TypeAnnotator createTypeAnnotator() {
     // TypeAnnotator that adds annotations to a type based on the content of the type itself
     return new ListTypeAnnotator(new MungoTypeAnnotator(this), super.createTypeAnnotator());

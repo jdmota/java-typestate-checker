@@ -10,7 +10,6 @@ import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState;
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState;
 import org.checkerframework.checker.mungo.typestate.graph.states.EndState;
 import org.checkerframework.checker.mungo.typestate.graph.states.State;
-import org.checkerframework.com.google.common.collect.ImmutableSet;
 
 import java.util.*;
 

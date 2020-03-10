@@ -90,7 +90,7 @@ public class MungoUtils {
     return result.graph;
   }
 
-  public AnnotationMirror visitClass(Path sourceFilePath, ClassTree tree) {
+  public AnnotationMirror visitClassTree(Path sourceFilePath, ClassTree tree) {
     ModifiersTree modifiers = tree.getModifiers();
     List<? extends AnnotationTree> annotations = modifiers.getAnnotations();
 
@@ -111,11 +111,7 @@ public class MungoUtils {
     return null;
   }
 
-  public AnnotationMirror visitClassSymbol(Element element) {
-    if (!(element instanceof Symbol.ClassSymbol)) {
-      return null;
-    }
-    TreePath path = factory.getTreeUtils().getPath(element);
+  public AnnotationMirror visitClassPath(TreePath path) {
     if (path == null) {
       // "path" may be null for java.lang.Object for example
       return null;
@@ -123,7 +119,15 @@ public class MungoUtils {
     // Get the path of the file where the class is
     Path sourceFilePath = Paths.get(path.getCompilationUnit().getSourceFile().toUri());
     // Process class tree
-    return visitClass(sourceFilePath, (ClassTree) path.getLeaf());
+    return visitClassTree(sourceFilePath, (ClassTree) path.getLeaf());
+  }
+
+  public AnnotationMirror visitClassSymbol(Element element) {
+    if (!(element instanceof Symbol.ClassSymbol)) {
+      return null;
+    }
+    TreePath path = factory.getTreeUtils().getPath(element);
+    return visitClassPath(path);
   }
 
 }
