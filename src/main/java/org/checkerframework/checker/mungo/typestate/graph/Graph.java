@@ -38,6 +38,10 @@ public class Graph {
     return states;
   }
 
+  public String getFirstStateName() {
+    return initialState == endState ? "end" : initialState.node.name;
+  }
+
   private TStateNode getStateNodeByName(TIdNode id) {
     return getStateByName(id).node;
   }

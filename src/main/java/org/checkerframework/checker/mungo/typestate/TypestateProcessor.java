@@ -10,6 +10,8 @@ import java.util.Map;
 
 public class TypestateProcessor {
 
+  private final Map<Path, GraphOrError> graphs;
+
   public static class GraphOrError {
 
     public final Graph graph;
@@ -26,8 +28,6 @@ public class TypestateProcessor {
     }
 
   }
-
-  private Map<Path, GraphOrError> graphs;
 
   public TypestateProcessor() {
     this.graphs = new HashMap<>();
