@@ -1,8 +1,5 @@
-package org.checkerframework.checker.mungo;
+package org.checkerframework.checker.mungo.internal;
 
-import org.checkerframework.checker.mungo.internal.MungoStore;
-import org.checkerframework.checker.mungo.internal.MungoUtils;
-import org.checkerframework.checker.mungo.internal.MungoValue;
 import org.checkerframework.dataflow.analysis.FlowExpressions;
 import org.checkerframework.dataflow.analysis.TransferInput;
 import org.checkerframework.dataflow.analysis.TransferResult;

@@ -1,7 +1,6 @@
-package org.checkerframework.checker.mungo;
+package org.checkerframework.checker.mungo.internal;
 
-import org.checkerframework.checker.mungo.internal.MungoStore;
-import org.checkerframework.checker.mungo.internal.MungoValue;
+import org.checkerframework.checker.mungo.MungoAnnotatedTypeFactory;
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.flow.CFAbstractAnalysis;
 import org.checkerframework.framework.flow.CFAbstractValue;
