@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.*;
 import org.checkerframework.checker.mungo.typestate.ast.TDeclarationNode;
 import org.checkerframework.checker.mungo.typestate.graph.Dot;
 import org.checkerframework.checker.mungo.typestate.graph.Graph;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -15,8 +16,8 @@ public class TypestateProcessor {
 
   public static class GraphOrError {
 
-    public final Graph graph;
-    public final TypestateProcessingError error;
+    public final @Nullable Graph graph;
+    public final @Nullable TypestateProcessingError error;
 
     public GraphOrError(Graph graph) {
       this.graph = graph;

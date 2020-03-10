@@ -1,6 +1,8 @@
 package org.checkerframework.checker.mungo;
 
+import org.checkerframework.checker.mungo.internal.MungoStore;
 import org.checkerframework.checker.mungo.internal.MungoUtils;
+import org.checkerframework.checker.mungo.internal.MungoValue;
 import org.checkerframework.dataflow.analysis.FlowExpressions;
 import org.checkerframework.dataflow.analysis.TransferInput;
 import org.checkerframework.dataflow.analysis.TransferResult;
@@ -11,24 +13,24 @@ import org.checkerframework.framework.flow.*;
 
 import java.util.Set;
 
-public class MungoTransfer extends CFTransfer {
-  public MungoTransfer(CFAnalysis analysis) {
+public class MungoTransfer extends CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer> {
+  public MungoTransfer(MungoAnalysis analysis) {
     super(analysis);
   }
 
   @Override
-  public TransferResult<CFValue, CFStore> visitMethodInvocation(MethodInvocationNode n, TransferInput<CFValue, CFStore> in) {
-    TransferResult<CFValue, CFStore> result = super.visitMethodInvocation(n, in);
+  public TransferResult<MungoValue, MungoStore> visitMethodInvocation(MethodInvocationNode n, TransferInput<MungoValue, MungoStore> in) {
+    TransferResult<MungoValue, MungoStore> result = super.visitMethodInvocation(n, in);
     Node methodReceiver = n.getTarget().getReceiver();
 
     FlowExpressions.Receiver receiver = FlowExpressions.internalReprOf(analysis.getTypeFactory(), methodReceiver);
 
-    CFStore thenStore = result.getThenStore();
-    CFValue value = thenStore.getValue(receiver);
+    MungoStore thenStore = result.getThenStore();
+    MungoValue value = thenStore.getValue(receiver);
     if (value != null) {
       Set<String> states = MungoUtils.getStatesFromAnnotations(value.getAnnotations());
       System.out.println(value + " " + states);
-      thenStore.replaceValue(receiver, new CFValue(analysis, value.getAnnotations(), value.getUnderlyingType()));
+      thenStore.replaceValue(receiver, analysis.createAbstractValue(value.getAnnotations(), value.getUnderlyingType()));
     }
     // TODO
 
@@ -37,8 +39,8 @@ public class MungoTransfer extends CFTransfer {
   }
 
   @Override
-  public TransferResult<CFValue, CFStore> visitObjectCreation(ObjectCreationNode n, TransferInput<CFValue, CFStore> in) {
-    TransferResult<CFValue, CFStore> result = super.visitObjectCreation(n, in);
+  public TransferResult<MungoValue, MungoStore> visitObjectCreation(ObjectCreationNode n, TransferInput<MungoValue, MungoStore> in) {
+    TransferResult<MungoValue, MungoStore> result = super.visitObjectCreation(n, in);
     // System.out.println("new " + n + " " + result);
     return result;
   }
