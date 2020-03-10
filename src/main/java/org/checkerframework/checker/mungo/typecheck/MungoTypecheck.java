@@ -1,4 +1,6 @@
-package org.checkerframework.checker.mungo.internal;
+package org.checkerframework.checker.mungo.typecheck;
+
+import org.checkerframework.checker.mungo.utils.MungoUtils;
 
 import javax.lang.model.element.AnnotationMirror;
 

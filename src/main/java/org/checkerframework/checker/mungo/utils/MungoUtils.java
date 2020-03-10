@@ -1,16 +1,17 @@
-package org.checkerframework.checker.mungo.internal;
+package org.checkerframework.checker.mungo.utils;
 
 import com.sun.source.tree.*;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.code.Symbol;
-import org.checkerframework.checker.mungo.MungoAnnotatedTypeFactory;
+import org.checkerframework.checker.mungo.MungoChecker;
 import org.checkerframework.checker.mungo.qual.MungoInfo;
 import org.checkerframework.checker.mungo.qual.MungoTypestate;
+import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory;
+import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo;
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor;
 import org.checkerframework.checker.mungo.typestate.graph.Graph;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.com.google.common.collect.Sets;
-import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.source.Result;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.TreeUtils;
@@ -28,13 +29,13 @@ public class MungoUtils {
   private static final String mungoInfoName = MungoInfo.class.getCanonicalName(); // Cache name
   private static final String mungoTypestateName = MungoTypestate.class.getCanonicalName(); // Cache name
 
+  private final MungoChecker checker;
   private final MungoAnnotatedTypeFactory factory;
-  private final BaseTypeChecker checker;
   private final TypestateProcessor processor;
 
-  public MungoUtils(BaseTypeChecker checker, MungoAnnotatedTypeFactory factory) {
+  public MungoUtils(MungoChecker checker) {
     this.checker = checker;
-    this.factory = factory;
+    this.factory = (MungoAnnotatedTypeFactory) checker.getTypeFactory();
     this.processor = new TypestateProcessor();
   }
 
@@ -51,7 +52,7 @@ public class MungoUtils {
     return (MungoTypeInfo) annoMirror;
   }
 
-  private void err(String message, Tree where) {
+  public void err(String message, Tree where) {
     checker.report(Result.failure(message), where);
   }
 

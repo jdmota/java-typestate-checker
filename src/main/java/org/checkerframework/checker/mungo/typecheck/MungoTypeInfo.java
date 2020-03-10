@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.internal;
+package org.checkerframework.checker.mungo.typecheck;
 
 import org.checkerframework.checker.mungo.typestate.graph.Graph;
 import org.checkerframework.checker.mungo.typestate.graph.states.State;

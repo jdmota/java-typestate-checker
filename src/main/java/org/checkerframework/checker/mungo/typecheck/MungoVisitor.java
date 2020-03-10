@@ -1,17 +1,18 @@
-package org.checkerframework.checker.mungo;
+package org.checkerframework.checker.mungo.typecheck;
 
 import com.sun.source.tree.*;
-import org.checkerframework.common.basetype.BaseTypeChecker;
+import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory;
+import org.checkerframework.checker.mungo.MungoChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
-import org.checkerframework.framework.source.Result;
 
 public class MungoVisitor extends BaseTypeVisitor<MungoAnnotatedTypeFactory> {
-  public MungoVisitor(BaseTypeChecker checker) {
+  public MungoVisitor(MungoChecker checker) {
     super(checker);
   }
 
-  private void error(String message, Tree where) {
-    checker.report(Result.failure(message), where);
+  @Override
+  protected MungoAnnotatedTypeFactory createTypeFactory() {
+    return new MungoAnnotatedTypeFactory((MungoChecker) checker);
   }
 
   // TODO visit all annotations to make sure @MungoTypestate only appears in class/interfaces??

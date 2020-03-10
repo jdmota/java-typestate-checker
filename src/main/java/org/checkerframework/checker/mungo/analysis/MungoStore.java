@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.internal;
+package org.checkerframework.checker.mungo.analysis;
 
 import org.checkerframework.framework.flow.CFAbstractStore;
 

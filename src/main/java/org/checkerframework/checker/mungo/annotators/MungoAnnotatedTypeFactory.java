@@ -1,10 +1,14 @@
-package org.checkerframework.checker.mungo;
+package org.checkerframework.checker.mungo.annotators;
 
-import org.checkerframework.checker.mungo.internal.*;
+import org.checkerframework.checker.mungo.MungoChecker;
+import org.checkerframework.checker.mungo.analysis.MungoAnalysis;
+import org.checkerframework.checker.mungo.analysis.MungoStore;
+import org.checkerframework.checker.mungo.analysis.MungoTransfer;
+import org.checkerframework.checker.mungo.analysis.MungoValue;
 import org.checkerframework.checker.mungo.qual.MungoBottom;
 import org.checkerframework.checker.mungo.qual.MungoInfo;
 import org.checkerframework.checker.mungo.qual.MungoUnknown;
-import org.checkerframework.common.basetype.BaseTypeChecker;
+import org.checkerframework.checker.mungo.typecheck.MungoTypecheck;
 import org.checkerframework.framework.flow.CFAbstractAnalysis;
 import org.checkerframework.framework.type.GenericAnnotatedTypeFactory;
 import org.checkerframework.framework.type.QualifierHierarchy;
@@ -29,11 +33,8 @@ public class MungoAnnotatedTypeFactory extends GenericAnnotatedTypeFactory<Mungo
   protected final AnnotationMirror INFO_ANNO = AnnotationBuilder.fromClass(elements, MungoInfo.class);
   protected final AnnotationMirror UNKNOWN_ANNO = AnnotationBuilder.fromClass(elements, MungoUnknown.class);
 
-  public final MungoUtils utils;
-
-  public MungoAnnotatedTypeFactory(BaseTypeChecker checker) {
+  public MungoAnnotatedTypeFactory(MungoChecker checker) {
     super(checker);
-    this.utils = new MungoUtils(checker, this);
     this.postInit();
   }
 
@@ -50,12 +51,12 @@ public class MungoAnnotatedTypeFactory extends GenericAnnotatedTypeFactory<Mungo
   @Override
   protected TreeAnnotator createTreeAnnotator() {
     // TreeAnnotator that adds annotations to a type based on the contents of a tree
-    return new ListTreeAnnotator(new MungoTreeAnnotator(this), super.createTreeAnnotator());
+    return new ListTreeAnnotator(new MungoTreeAnnotator((MungoChecker) checker, this), super.createTreeAnnotator());
   }
 
   @Override
   protected DefaultQualifierForUseTypeAnnotator createDefaultForUseTypeAnnotator() {
-    return new MungoDefaultQualifierForUseTypeAnnotator(this);
+    return new MungoDefaultQualifierForUseTypeAnnotator((MungoChecker) checker, this);
   }
 
   @Override
