@@ -101,10 +101,10 @@ class MungoUtils(private val checker: MungoChecker) {
     private val mungoInfoName = MungoInfo::class.java.canonicalName // Cache name
     private val mungoTypestateName = MungoTypestate::class.java.canonicalName // Cache name
 
-    fun getInfoFromAnnotations(annotations: Collection<AnnotationMirror?>): MungoTypeInfo? {
+    fun getInfoFromAnnotations(annotations: Collection<AnnotationMirror>): MungoTypeInfo? {
       for (annoMirror in annotations) {
         if (AnnotationUtils.areSameByName(annoMirror, mungoInfoName)) {
-          return annoMirror as MungoTypeInfo?
+          return annoMirror as MungoTypeInfo
         }
       }
       return null

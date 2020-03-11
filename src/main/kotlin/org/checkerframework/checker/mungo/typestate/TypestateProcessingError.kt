@@ -19,7 +19,8 @@ class TypestateProcessingError(exp: Exception) : Exception(exp) {
     if (cause is ParseCancellationException) {
       return errorToString(cause)
     }
-    return cause.message + "\n" + Arrays.toString(cause.stackTrace)
+    cause.printStackTrace()
+    return cause.message ?: "error with no message"
   }
 
   companion object {
