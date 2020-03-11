@@ -1,4 +1,4 @@
-import org.checkerframework.checker.mungo.qual.MungoTypestate;
+import org.checkerframework.checker.mungo.lib.MungoTypestate;
 
 import java.util.Iterator;
 

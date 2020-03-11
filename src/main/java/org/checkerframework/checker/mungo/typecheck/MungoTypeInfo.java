@@ -32,11 +32,11 @@ public class MungoTypeInfo implements AnnotationMirror {
     return elementValues;
   }
 
-  private static final String mungoStateName = org.checkerframework.checker.mungo.qual.MungoInfo.class.getCanonicalName(); // Cache name
+  private static final String mungoInfoName = org.checkerframework.checker.mungo.qualifiers.MungoInfo.class.getCanonicalName(); // Cache name
 
   // Adapted from AnnotationBuilder.fromName
   public static MungoTypeInfo build(Elements elements, Graph graph, Set<State> states) {
-    final TypeElement annoElt = elements.getTypeElement(mungoStateName);
+    final TypeElement annoElt = elements.getTypeElement(mungoInfoName);
     if (annoElt == null || annoElt.getKind() != ElementKind.ANNOTATION_TYPE) {
       throw new AssertionError("MungoInfo.build");
     }

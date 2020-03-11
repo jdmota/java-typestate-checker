@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.qual;
+package org.checkerframework.checker.mungo.qualifiers;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

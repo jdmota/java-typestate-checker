@@ -6,8 +6,14 @@ repositories {
     jcenter()
 }
 
+ext {
+    versions = [
+        checkerFramework: "3.1.1",
+    ]
+}
+
 dependencies {
-    implementation 'org.checkerframework:checker:3.2.0'
+    implementation "org.checkerframework:checker:${versions.checkerFramework}"
 }
 
 task copySources(type: Copy) {
@@ -18,8 +24,7 @@ task copySources(type: Copy) {
     }
 
     from files('../src/main/java')
-    // Replace the path below with your actual path.
-    include '**/org/checkerframework/checker/mungo/qual/**'
+    include '**/org/checkerframework/checker/mungo/lib/**'
 
     // Make files read only.
     fileMode(0444)

@@ -1,14 +1,18 @@
-package org.checkerframework.checker.mungo.qual;
+package org.checkerframework.checker.mungo.qualifiers;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-// Use: @MungoTypestate("FileProtocol.protocol")
+import org.checkerframework.framework.qual.*;
 
+/**
+ * Represents the top of the qualifier hierarchy.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE_USE, ElementType.TYPE_PARAMETER})
-public @interface MungoTypestate {
-  String value();
+@DefaultQualifierInHierarchy
+@SubtypeOf({})
+public @interface MungoUnknown {
 }

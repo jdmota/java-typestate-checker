@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.qual;
+package org.checkerframework.checker.mungo.qualifiers;
 
 import org.checkerframework.framework.qual.SubtypeOf;
 

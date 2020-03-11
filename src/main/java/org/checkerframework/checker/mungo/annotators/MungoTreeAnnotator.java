@@ -3,7 +3,7 @@ package org.checkerframework.checker.mungo.annotators;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.NewClassTree;
 import org.checkerframework.checker.mungo.MungoChecker;
-import org.checkerframework.checker.mungo.qual.MungoInfo;
+import org.checkerframework.checker.mungo.qualifiers.MungoInfo;
 import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator;
