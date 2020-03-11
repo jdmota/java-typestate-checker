@@ -3,11 +3,13 @@
 build
 
 # IntelliJ
+out
 .idea
-# *.iml - Keep these
+*.iml
+*.ipr
+*.iws
 
 # Emacs backups
 *~
 
-# checker-qual
-mungo-checker-qual/src
+mungo-checker-lib/src

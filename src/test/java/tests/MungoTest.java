@@ -1,3 +1,5 @@
+package tests;
+
 import java.io.File;
 import java.util.List;
 
