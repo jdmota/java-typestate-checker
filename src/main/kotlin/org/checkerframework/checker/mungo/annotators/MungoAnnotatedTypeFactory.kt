@@ -31,11 +31,11 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   private val annoUNKNOWN = AnnotationBuilder.fromClass(elements, MungoUnknown::class.java)
 
   override fun createFlowAnalysis(fieldValues: List<Pair<VariableElement, MungoValue>>): MungoAnalysis {
-    return MungoAnalysis(checker, this, fieldValues)
+    return MungoAnalysis(checker as MungoChecker, this, fieldValues)
   }
 
   override fun createFlowTransferFunction(analysis: CFAbstractAnalysis<MungoValue, MungoStore, MungoTransfer>): MungoTransfer {
-    return MungoTransfer((analysis as MungoAnalysis))
+    return MungoTransfer(checker as MungoChecker, analysis as MungoAnalysis)
   }
 
   override fun createTreeAnnotator(): TreeAnnotator {

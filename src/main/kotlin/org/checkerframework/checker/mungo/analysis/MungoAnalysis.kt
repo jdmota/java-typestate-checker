@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.analysis
 
+import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.common.basetype.BaseTypeChecker
 import org.checkerframework.framework.flow.CFAbstractAnalysis
@@ -9,7 +10,8 @@ import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.VariableElement
 import javax.lang.model.type.TypeMirror
 
-class MungoAnalysis(checker: BaseTypeChecker, factory: MungoAnnotatedTypeFactory, fieldValues: List<Pair<VariableElement, MungoValue>>) : CFAbstractAnalysis<MungoValue, MungoStore, MungoTransfer>(checker, factory, fieldValues) {
+class MungoAnalysis(checker: MungoChecker, factory: MungoAnnotatedTypeFactory, fieldValues: List<Pair<VariableElement, MungoValue>>) : CFAbstractAnalysis<MungoValue, MungoStore, MungoTransfer>(checker, factory, fieldValues) {
+
   override fun createEmptyStore(sequentialSemantics: Boolean): MungoStore {
     return MungoStore(this, sequentialSemantics)
   }

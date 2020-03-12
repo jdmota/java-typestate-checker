@@ -78,23 +78,16 @@ class MungoUtils(private val checker: MungoChecker) {
     return null
   }
 
-  fun visitClassPath(path: TreePath?): MungoTypeInfo? {
-    if (path == null) {
-      // "path" may be null for java.lang.Object for example
-      return null
-    }
-    // Get the path of the file where the class is
-    val sourceFilePath = Paths.get(path.compilationUnit.sourceFile.toUri())
-    // Process class tree
-    return visitClassTree(sourceFilePath, path.leaf as ClassTree)
-  }
-
   fun visitClassSymbol(element: Element?): MungoTypeInfo? {
     if (element !is ClassSymbol) {
       return null
     }
-    val path = factory.treeUtils.getPath(element)
-    return visitClassPath(path)
+    // "getPath" may return null for java.lang.Object for example
+    val path = factory.treeUtils.getPath(element) ?: return null
+    // Get the path of the file where the class is
+    val sourceFilePath = Paths.get(path.compilationUnit.sourceFile.toUri())
+    // Process class tree
+    return visitClassTree(sourceFilePath, path.leaf as ClassTree)
   }
 
   companion object {

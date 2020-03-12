@@ -21,7 +21,15 @@ class Graph private constructor(val file: Path) {
   private val finalStates: MutableSet<State>
   private val namedStates: MutableMap<String, State>
   private val referencedStates: MutableSet<String?>
-  var states: Set<String?>? = null
+  var states: Set<String>? = null
+
+  init {
+    finalStates = Sets.newHashSet(endState)
+    namedStates = HashMap()
+    referencedStates = HashSet()
+    // Initialized in the end
+    states = null
+  }
 
   fun getInitialState(): State {
     return initialState!!
@@ -115,19 +123,12 @@ class Graph private constructor(val file: Path) {
   companion object {
     const val END_STATE_NAME = "end"
     val RESERVED_STATE_NAMES: List<String> = Arrays.asList(END_STATE_NAME)
+
     fun fromTypestate(file: Path, node: TDeclarationNode): Graph {
       val g = Graph(file)
       g.traverseTypestate(node)
       g.states = HashSet(g.namedStates.keys)
       return g
     }
-  }
-
-  init {
-    finalStates = Sets.newHashSet(endState)
-    namedStates = HashMap()
-    referencedStates = HashSet()
-    // Initialized in the end
-    states = null
   }
 }

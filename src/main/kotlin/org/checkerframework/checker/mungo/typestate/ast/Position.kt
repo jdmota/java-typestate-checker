@@ -19,6 +19,8 @@ class Position(val filename: String, val line: Int, val column: Int) {
     fun tokenToPos(token: Token): Position {
       return Position(token.tokenSource.sourceName, token.line, token.charPositionInLine)
     }
+
+    val nil = Position("", 1, 0)
   }
 
 }
