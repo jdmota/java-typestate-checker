@@ -1,9 +1,6 @@
 package org.checkerframework.checker.mungo.typestate
 
-import com.sun.tools.javac.code.Flags
-import com.sun.tools.javac.code.Symbol
-import com.sun.tools.javac.code.Symtab
-import com.sun.tools.javac.code.Type
+import com.sun.tools.javac.code.*
 import com.sun.tools.javac.tree.JCTree
 import com.sun.tools.javac.tree.TreeMaker
 import com.sun.tools.javac.util.List
@@ -16,7 +13,6 @@ import org.checkerframework.checker.mungo.typestate.graph.Dot
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.parser.TypestateLexer
 import org.checkerframework.checker.mungo.typestate.parser.TypestateParser
-import java.lang.AssertionError
 import java.nio.file.Path
 import java.util.*
 

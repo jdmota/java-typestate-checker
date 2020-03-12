@@ -2,7 +2,10 @@ package org.checkerframework.checker.mungo.utils
 
 import com.sun.source.tree.*
 import com.sun.source.util.TreePath
+import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Symbol.ClassSymbol
+import com.sun.tools.javac.processing.JavacProcessingEnvironment
+import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.lib.MungoTypestate
@@ -22,11 +25,16 @@ import javax.lang.model.element.TypeElement
 
 class MungoUtils(private val checker: MungoChecker) {
 
-  private val factory: MungoAnnotatedTypeFactory = checker.typeFactory as MungoAnnotatedTypeFactory
-  private val processor: TypestateProcessor = TypestateProcessor()
+  private val factory = checker.typeFactory as MungoAnnotatedTypeFactory
+  private val processor = TypestateProcessor()
+  private val resolver = Resolver(checker.processingEnvironment as JavacProcessingEnvironment)
 
-  fun err(message: String, where: Tree?) {
+  fun err(message: String, where: Tree) {
     checker.report(Result.failure(message), where)
+  }
+
+  fun resolve(toplevel: JCTree.JCCompilationUnit, string: String): Symbol {
+    return resolver.resolve(toplevel, string)
   }
 
   private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationTree): Graph? {
