@@ -3,7 +3,12 @@ package org.checkerframework.checker.mungo.analysis
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
+import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
+import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState
+import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
+import org.checkerframework.checker.mungo.typestate.graph.states.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
+import org.checkerframework.dataflow.analysis.ConditionalTransferResult
 import org.checkerframework.dataflow.analysis.FlowExpressions
 import org.checkerframework.dataflow.analysis.TransferInput
 import org.checkerframework.dataflow.analysis.TransferResult
@@ -15,57 +20,62 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   private val c = checker
 
-  override fun visitMethodInvocation(n: MethodInvocationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
-    val result = super.visitMethodInvocation(n, input)
-    val methodTarget = n.target
-    val method = methodTarget.method as Symbol.MethodSymbol
-    val methodReceiver = methodTarget.receiver
-    val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, methodReceiver)
+  private fun refine(unit: JCTree.JCCompilationUnit, info: MungoTypeInfo, method: Symbol.MethodSymbol, ifOrElse: Boolean): MungoTypeInfo {
+    val utils = c.getUtils()
+    println("$method if/else: $ifOrElse")
+    println("Current possible states: " + info.states)
 
-    /*val methodName = method.name
-    val methodParams = method.parameters
-    val methodReturnType = method.returnType
-    val methodThrownTypes = method.thrownTypes
-    val methodTypeParameters = method.typeParameters
-    val methodType = method.type as Type.MethodType
-    val methodOwner = method.owner
-    val methodTypeMethodClass = methodType.tsym*/
-
-    val unit = n.treePath.compilationUnit as JCTree.JCCompilationUnit
-    val sym = c.getUtils().resolve(n.treePath, "java.lang.Object")
-    println(sym)
-    println(sym::class.java)
-
-    val sym2 = c.getUtils().resolve(n.treePath, "Object")
-    println(sym2)
-    println(sym2::class.java) // Expected to be ClassSymbol
-
-    /*
-    val newMethod = TypestateProcessor.methodNodeToMethodSymbol(
-      symtab,
-      names,
-      TMethodNode(Position.nil, "boolean", "hasNext", LinkedList(), TIdNode(Position.nil, "dest")),
-      method.owner
-    )*/
-
-    val thenStore = result.thenStore
-    val value = thenStore.getValue(receiver)
-    if (value != null) {
-      val info = MungoUtils.getInfoFromAnnotations(value.annotations)
-      println(value)
-      if (info != null) {
-        println(info.states)
+    // Given the possible current states, produce a set of possible destination states
+    // If this list includes "null", then there is a state that does not allow this method call and the call is not safe
+    val newStates = info.states.flatMap {
+      val dest = it.transitions.entries.find { it2 -> utils.sameMethod(unit, method, it2.key) }?.value
+      when (dest) {
+        is State -> listOf(dest)
+        is DecisionState -> {
+          val label = if (ifOrElse) "true" else "false"
+          val ifTrue = dest.transitions.entries.find { it2 -> it2.key.label == label }
+          if (ifTrue == null) dest.transitions.values else listOf(ifTrue.value)
+        }
+        else -> listOf(null)
       }
-      thenStore.replaceValue(receiver, analysis.createAbstractValue(value.annotations, value.underlyingType))
-    }
-    // TODO
+    }.toSet()
 
-    // return new ConditionalTransferResult<>(result.getResultValue(), thenStore, elseStore);
-    return result
+    println("New possible states: $newStates")
+    println()
+
+    return if (newStates.contains(null)) {
+      // Not safe, give an empty hash set
+      // TODO or give it MungoUnknown annotation?
+      MungoTypeInfo.build(c.elementUtils, info.graph, setOf())
+    } else {
+      MungoTypeInfo.build(c.elementUtils, info.graph, newStates.filterNotNull().toSet())
+    }
   }
 
-  override fun visitObjectCreation(n: ObjectCreationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
-    // System.out.println("new " + n + " " + result);
-    return super.visitObjectCreation(n, input)
+  private fun refineStore(unit: JCTree.JCCompilationUnit, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, ifOrElse: Boolean) {
+    val value = store.getValue(receiver)
+    if (value != null) {
+      val info = MungoUtils.getInfoFromAnnotations(value.annotations)
+      if (info != null) {
+        val newInfo = refine(unit, info, method, ifOrElse)
+        // Update thenStore
+        store.replaceValue(receiver, analysis.createAbstractValue(setOf(newInfo), value.underlyingType))
+      }
+    }
+  }
+
+  override fun visitMethodInvocation(n: MethodInvocationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val result = super.visitMethodInvocation(n, input)
+    val method = n.target.method as Symbol.MethodSymbol
+    val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, n.target.receiver)
+    val unit = n.treePath.compilationUnit as JCTree.JCCompilationUnit
+
+    val thenStore = result.thenStore
+    val elseStore = result.elseStore
+
+    refineStore(unit, method, receiver, thenStore, true)
+    refineStore(unit, method, receiver, elseStore, false)
+
+    return ConditionalTransferResult(result.resultValue, thenStore, elseStore);
   }
 }

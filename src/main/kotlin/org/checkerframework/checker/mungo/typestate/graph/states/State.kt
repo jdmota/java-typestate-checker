@@ -2,8 +2,9 @@ package org.checkerframework.checker.mungo.typestate.graph.states
 
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
 import org.checkerframework.checker.mungo.typestate.ast.TStateNode
+import java.util.HashMap
 
-open class State : AbstractState<TStateNode, TMethodNode> {
+open class State : AbstractState<TStateNode> {
   var name: String
 
   protected constructor(name: String) : super(null) {
@@ -12,6 +13,12 @@ open class State : AbstractState<TStateNode, TMethodNode> {
 
   constructor(node: TStateNode?) : super(node) {
     name = (if (node == null) "unknown" else node.name)!!
+  }
+
+  val transitions: MutableMap<TMethodNode, AbstractState<*>> = HashMap()
+
+  open fun addTransition(transition: TMethodNode, destination: AbstractState<*>) {
+    transitions[transition] = destination
   }
 
   override fun toString(): String {

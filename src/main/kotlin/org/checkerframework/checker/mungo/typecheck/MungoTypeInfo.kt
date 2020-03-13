@@ -11,6 +11,8 @@ import javax.lang.model.element.ExecutableElement
 import javax.lang.model.type.DeclaredType
 import javax.lang.model.util.Elements
 
+// Type information contains a set of possible states
+// And the graph where those states belong
 class MungoTypeInfo private constructor(val graph: Graph, val states: Set<State>, private val annotationType: DeclaredType) : AnnotationMirror {
   private val elementValues: Map<ExecutableElement, AnnotationValue> = Collections.unmodifiableMap(emptyMap())
 

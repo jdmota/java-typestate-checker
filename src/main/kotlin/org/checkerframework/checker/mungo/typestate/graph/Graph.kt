@@ -82,12 +82,12 @@ class Graph private constructor(val file: Path) {
   private fun traverseDecision(node: TDecisionStateNode): DecisionState {
     val state = getStateByNode(node)
     for (decision in node.decisions) {
-      state.addTransition(decision, traverseDestination(decision.destination))
+      state.addTransition(decision, traverseDestination(decision.destination) as State)
     }
     return state
   }
 
-  private fun traverseDestination(node: TNode): AbstractState<*, *> {
+  private fun traverseDestination(node: TNode): AbstractState<*> {
     if (node is TIdNode) {
       return if (node.name == END_STATE_NAME) {
         endState

@@ -9,11 +9,11 @@ import java.util.*
 class Dot private constructor(private val graph: Graph) {
   private var decisionUuid = 1
   private var stateUuid = 1
-  private val names: MutableMap<AbstractState<*, *>, String?>
+  private val names: MutableMap<AbstractState<*>, String?>
   private val builder: StringBuilder
 
   // TODO prefer queue instead of recursion?
-  private fun handleState(s: AbstractState<*, *>): String? {
+  private fun handleState(s: AbstractState<*>): String? {
     if (s is EndState) {
       return "end"
     }
