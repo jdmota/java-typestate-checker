@@ -27,14 +27,14 @@ class MungoUtils(private val checker: MungoChecker) {
 
   private val factory = checker.typeFactory as MungoAnnotatedTypeFactory
   private val processor = TypestateProcessor()
-  private val resolver = Resolver(checker.processingEnvironment as JavacProcessingEnvironment)
+  private val resolver = Resolver(checker.processingEnvironment)
 
   fun err(message: String, where: Tree) {
     checker.report(Result.failure(message), where)
   }
 
-  fun resolve(toplevel: JCTree.JCCompilationUnit, string: String): Symbol {
-    return resolver.resolve(toplevel, string)
+  fun resolve(path: TreePath, name: String): Element {
+    return resolver.resolve(path, name)
   }
 
   private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationTree): Graph? {
