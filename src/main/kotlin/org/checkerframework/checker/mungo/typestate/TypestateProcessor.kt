@@ -3,7 +3,6 @@ package org.checkerframework.checker.mungo.typestate
 import org.antlr.v4.runtime.BailErrorStrategy
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import org.checkerframework.checker.mungo.typestate.graph.Dot
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.parser.TypestateLexer
 import org.checkerframework.checker.mungo.typestate.parser.TypestateParser
@@ -47,9 +46,8 @@ class TypestateProcessor {
       val parser = TypestateParser(tokens)
       parser.errorHandler = BailErrorStrategy()
       val ast = parser.typestate_declaration().ast
-      val graph = Graph.fromTypestate(file, ast)
-      println(Dot.fromGraph(graph))
-      return graph
+      // println(Dot.fromGraph(graph))
+      return Graph.fromTypestate(file, ast)
     }
   }
 }

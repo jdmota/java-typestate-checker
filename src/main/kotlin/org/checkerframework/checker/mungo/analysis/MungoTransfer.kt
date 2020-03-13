@@ -11,17 +11,15 @@ import org.checkerframework.dataflow.analysis.*
 import org.checkerframework.dataflow.cfg.node.MethodInvocationNode
 import org.checkerframework.dataflow.cfg.node.ObjectCreationNode
 import org.checkerframework.framework.flow.CFAbstractTransfer
+import javax.lang.model.element.ElementKind
 
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
 
   private val c = checker
 
-  private fun refine(unit: JCTree.JCCompilationUnit, info: MungoTypeInfo, method: Symbol.MethodSymbol, label: String?): MungoTypeInfo {
-    println("$method label: $label")
-    println("Current possible states: " + info.states)
-
+  private fun refine(unit: JCTree.JCCompilationUnit, info: MungoTypeInfo, method: Symbol.MethodSymbol, label: String?): Set<State> {
     // Given the possible current states, produce a set of possible destination states
-    val newStates = info.states.flatMap {
+    return info.states.flatMap {
       val dest = it.transitions.entries.find { it2 -> c.utils.sameMethod(unit, method, it2.key) }?.value
       when (dest) {
         is State -> listOf(dest)
@@ -39,21 +37,16 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
         else -> listOf()
       }
     }.toSet()
-
-    println("New possible states: $newStates")
-    println()
-
-    return MungoTypeInfo.build(c.utils, info.graph, newStates)
   }
 
+  // Returns true if store changed
   private fun refineStore(unit: JCTree.JCCompilationUnit, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, label: String?): Boolean {
     val value = store.getValue(receiver)
     if (value != null) {
       val info = MungoUtils.getInfoFromAnnotations(value.annotations)
       if (info != null) {
-        val newInfo = refine(unit, info, method, label)
+        val newInfo = MungoTypeInfo.build(c.utils, info.graph, refine(unit, info, method, label))
         if (info != newInfo) {
-          // Update thenStore
           store.replaceValue(receiver, analysis.createAbstractValue(setOf(newInfo), value.underlyingType))
           return true
         }
@@ -67,7 +60,12 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   override fun visitMethodInvocation(n: MethodInvocationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitMethodInvocation(n, input)
-    val method = n.target.method as Symbol.MethodSymbol
+    val method = n.target.method
+
+    if (method !is Symbol.MethodSymbol || method.getKind() != ElementKind.METHOD) {
+      return result
+    }
+
     val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, n.target.receiver)
     val unit = n.treePath.compilationUnit as JCTree.JCCompilationUnit
 
@@ -76,14 +74,11 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(unit, method, receiver, thenStore, "true")
       val didChangeElse = refineStore(unit, method, receiver, elseStore, "false")
-      //println("thenStore $thenStore")
-      //println("elseStore $elseStore")
       return if (didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     }
 
     val store = result.regularStore
     val didChange = refineStore(unit, method, receiver, store, null)
-    //println("store $store")
     return if (didChange) RegularTransferResult(result.resultValue, store, true) else result
   }
 

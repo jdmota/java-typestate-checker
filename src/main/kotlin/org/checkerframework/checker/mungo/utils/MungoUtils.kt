@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.utils
 import com.sun.source.tree.*
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
@@ -57,6 +58,10 @@ class MungoUtils(val checker: MungoChecker) {
     return classProcessor.visitClassTree(sourceFilePath, tree)
   }
 
+  fun sameMethod(unit: JCTree.JCCompilationUnit, name: String, type: Type, node: TMethodNode): Boolean {
+    return methodUtils.sameMethod(unit, name, type, node)
+  }
+
   fun sameMethod(unit: JCTree.JCCompilationUnit, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
     return methodUtils.sameMethod(unit, sym, node)
   }
@@ -74,8 +79,8 @@ class MungoUtils(val checker: MungoChecker) {
       return null
     }
 
-    fun castAnnotation(annoMirror: AnnotationMirror): MungoTypeInfo {
-      return annoMirror as MungoTypeInfo
+    fun castAnnotation(annotation: AnnotationMirror): MungoTypeInfo {
+      return annotation as MungoTypeInfo
     }
   }
 

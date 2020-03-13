@@ -104,13 +104,17 @@ class MethodUtils(private val checker: MungoChecker) {
   }
 
   // We could use "typeUtils.isSameType" with the MethodType, but it does not compare thrown types
-  fun sameMethod(unit: JCTree.JCCompilationUnit, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
+  fun sameMethod(unit: JCTree.JCCompilationUnit, name: String, type: Type, node: TMethodNode): Boolean {
     // TODO test more and deal with thrownTypes and typeArguments
-    return sym.name.toString() == node.name &&
-      isSameType(sym.type.returnType, getType(node.returnType)) &&
-      isSameTypes(sym.type.parameterTypes, node.args.map { getType(it) }) &&
-      isSameTypes(sym.type.thrownTypes, listOf()) &&
-      isSameTypes(sym.type.typeArguments, listOf())
+    return name == node.name &&
+      isSameType(type.returnType, getType(node.returnType)) &&
+      isSameTypes(type.parameterTypes, node.args.map { getType(it) }) &&
+      isSameTypes(type.thrownTypes, listOf()) &&
+      isSameTypes(type.typeArguments, listOf())
+  }
+
+  fun sameMethod(unit: JCTree.JCCompilationUnit, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
+    return sameMethod(unit, sym.name.toString(), sym.type, node)
   }
 
 }

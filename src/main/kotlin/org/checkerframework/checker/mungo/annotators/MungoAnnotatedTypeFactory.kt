@@ -25,7 +25,7 @@ import javax.lang.model.element.VariableElement
 
 class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFactory<MungoValue, MungoStore, MungoTransfer, MungoAnalysis>(checker) {
 
-  private val c = checker;
+  private val c = checker
 
   override fun createFlowAnalysis(fieldValues: List<Pair<VariableElement, MungoValue>>): MungoAnalysis {
     return MungoAnalysis(c, this, fieldValues)
