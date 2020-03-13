@@ -8,7 +8,6 @@ import com.sun.tools.javac.util.List as JavacList
 import com.sun.tools.javac.util.Names
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
-import java.util.*
 
 class MethodUtils(private val checker: MungoChecker) {
 
@@ -110,8 +109,8 @@ class MethodUtils(private val checker: MungoChecker) {
     return sym.name.toString() == node.name &&
       isSameType(sym.type.returnType, getType(node.returnType)) &&
       isSameTypes(sym.type.parameterTypes, node.args.map { getType(it) }) &&
-      isSameTypes(sym.type.thrownTypes, LinkedList()) &&
-      isSameTypes(sym.type.typeArguments, LinkedList())
+      isSameTypes(sym.type.thrownTypes, listOf()) &&
+      isSameTypes(sym.type.typeArguments, listOf())
   }
 
 }

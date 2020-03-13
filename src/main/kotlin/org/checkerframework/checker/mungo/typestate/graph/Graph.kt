@@ -1,6 +1,5 @@
 package org.checkerframework.checker.mungo.typestate.graph
 
-import org.checkerframework.checker.mungo.typestate.Utils.map
 import org.checkerframework.checker.mungo.typestate.ast.*
 import org.checkerframework.checker.mungo.typestate.graph.exceptions.DuplicateState
 import org.checkerframework.checker.mungo.typestate.graph.exceptions.ReservedStateName
@@ -10,25 +9,19 @@ import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.EndState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
-import org.checkerframework.com.google.common.collect.Sets
 import java.nio.file.Path
-import java.util.*
-import java.util.function.Function
 
 class Graph private constructor(val file: Path) {
   private var initialState: State? = null
   private val endState: EndState = EndState()
   private val finalStates: MutableSet<State>
-  private val namedStates: MutableMap<String, State>
-  private val referencedStates: MutableSet<String?>
-  var states: Set<String>? = null
+  private val namedStates: MutableMap<String, State> = HashMap()
+  private val referencedStates: MutableSet<String> = HashSet()
+  private var concreteStates: MutableSet<State>
 
   init {
-    finalStates = Sets.newHashSet(endState)
-    namedStates = HashMap()
-    referencedStates = HashSet()
-    // Initialized in the end
-    states = null
+    finalStates = mutableSetOf(endState)
+    concreteStates = mutableSetOf(endState)
   }
 
   fun getInitialState(): State {
@@ -37,6 +30,10 @@ class Graph private constructor(val file: Path) {
 
   fun getFinalStates(): Set<State> {
     return finalStates
+  }
+
+  fun getAllConcreteStates(): Set<State> {
+    return concreteStates
   }
 
   private fun getStateByName(id: TIdNode): State {
@@ -69,6 +66,8 @@ class Graph private constructor(val file: Path) {
   private fun traverseState(node: TStateNode): State {
     val state = getStateByNode(node)
     if (node.name == null || referencedStates.add(node.name)) {
+      concreteStates.add(state)
+
       if (node.methods.isEmpty()) {
         finalStates.add(state)
       }
@@ -116,18 +115,17 @@ class Graph private constructor(val file: Path) {
     val unusedStates: MutableSet<String> = HashSet(namedStates.keys)
     unusedStates.removeAll(referencedStates)
     if (unusedStates.size > 0) {
-      throw UnusedStates(map(unusedStates, Function { namedStates[it]!!.node!! }))
+      throw UnusedStates(unusedStates.map { namedStates[it]!!.node!! })
     }
   }
 
   companion object {
     const val END_STATE_NAME = "end"
-    val RESERVED_STATE_NAMES: List<String> = Arrays.asList(END_STATE_NAME)
+    val RESERVED_STATE_NAMES: List<String> = listOf(END_STATE_NAME)
 
     fun fromTypestate(file: Path, node: TDeclarationNode): Graph {
       val g = Graph(file)
       g.traverseTypestate(node)
-      g.states = HashSet(g.namedStates.keys)
       return g
     }
   }

@@ -2,7 +2,6 @@ package org.checkerframework.checker.mungo.typestate.graph.states
 
 import org.checkerframework.checker.mungo.typestate.ast.TDecisionNode
 import org.checkerframework.checker.mungo.typestate.ast.TDecisionStateNode
-import java.util.HashMap
 
 class DecisionState(node: TDecisionStateNode?) : AbstractState<TDecisionStateNode>(node) {
 

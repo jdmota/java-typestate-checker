@@ -4,7 +4,6 @@ import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
-import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -13,7 +12,6 @@ import org.checkerframework.dataflow.analysis.FlowExpressions
 import org.checkerframework.dataflow.analysis.TransferInput
 import org.checkerframework.dataflow.analysis.TransferResult
 import org.checkerframework.dataflow.cfg.node.MethodInvocationNode
-import org.checkerframework.dataflow.cfg.node.ObjectCreationNode
 import org.checkerframework.framework.flow.CFAbstractTransfer
 
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
@@ -21,35 +19,30 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   private val c = checker
 
   private fun refine(unit: JCTree.JCCompilationUnit, info: MungoTypeInfo, method: Symbol.MethodSymbol, ifOrElse: Boolean): MungoTypeInfo {
-    val utils = c.getUtils()
     println("$method if/else: $ifOrElse")
     println("Current possible states: " + info.states)
 
     // Given the possible current states, produce a set of possible destination states
-    // If this list includes "null", then there is a state that does not allow this method call and the call is not safe
     val newStates = info.states.flatMap {
-      val dest = it.transitions.entries.find { it2 -> utils.sameMethod(unit, method, it2.key) }?.value
+      val dest = it.transitions.entries.find { it2 -> c.utils.sameMethod(unit, method, it2.key) }?.value
       when (dest) {
         is State -> listOf(dest)
         is DecisionState -> {
           val label = if (ifOrElse) "true" else "false"
-          val ifTrue = dest.transitions.entries.find { it2 -> it2.key.label == label }
-          if (ifTrue == null) dest.transitions.values else listOf(ifTrue.value)
+          val dest2 = dest.transitions.entries.find { it2 -> it2.key.label == label }?.value
+          if (dest2 == null) dest.transitions.values else listOf(dest2)
         }
-        else -> listOf(null)
+        // The method call is not allowed in this state
+        // Object might be in any state
+        // FIXME hum...??
+        else -> info.graph.getAllConcreteStates()
       }
     }.toSet()
 
     println("New possible states: $newStates")
     println()
 
-    return if (newStates.contains(null)) {
-      // Not safe, give an empty hash set
-      // TODO or give it MungoUnknown annotation?
-      MungoTypeInfo.build(c.elementUtils, info.graph, setOf())
-    } else {
-      MungoTypeInfo.build(c.elementUtils, info.graph, newStates.filterNotNull().toSet())
-    }
+    return MungoTypeInfo.build(c.elementUtils, info.graph, newStates)
   }
 
   private fun refineStore(unit: JCTree.JCCompilationUnit, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, ifOrElse: Boolean) {
@@ -63,6 +56,9 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       }
     }
   }
+
+  // TODO deal with switch statements
+  // TODO force object to reach final state
 
   override fun visitMethodInvocation(n: MethodInvocationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitMethodInvocation(n, input)

@@ -4,13 +4,12 @@ import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.EndState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
-import java.util.*
 
 class Dot private constructor(private val graph: Graph) {
   private var decisionUuid = 1
   private var stateUuid = 1
-  private val names: MutableMap<AbstractState<*>, String?>
-  private val builder: StringBuilder
+  private val names: MutableMap<AbstractState<*>, String?> = HashMap()
+  private val builder = StringBuilder()
 
   // TODO prefer queue instead of recursion?
   private fun handleState(s: AbstractState<*>): String? {
@@ -58,10 +57,5 @@ class Dot private constructor(private val graph: Graph) {
     fun fromGraph(g: Graph): String {
       return Dot(g).gen()
     }
-  }
-
-  init {
-    names = HashMap()
-    builder = StringBuilder()
   }
 }

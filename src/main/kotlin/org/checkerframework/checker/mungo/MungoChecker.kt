@@ -11,23 +11,14 @@ import org.checkerframework.javacutil.trees.TreeBuilder
  */
 class MungoChecker : BaseTypeChecker() {
 
-  private lateinit var utils: MungoUtils;
-
-  fun getUtils(): MungoUtils {
-    if (!this::utils.isInitialized) {
-      utils = MungoUtils(this)
+  private lateinit var _utils: MungoUtils
+  val utils: MungoUtils
+    get() {
+      if (!this::_utils.isInitialized) {
+        _utils = MungoUtils(this)
+      }
+      return _utils
     }
-    return utils
-  }
-
-  private lateinit var builder: TreeBuilder;
-
-  fun getBuilder(): TreeBuilder {
-    if (!this::builder.isInitialized) {
-      builder = TreeBuilder(processingEnv)
-    }
-    return builder
-  }
 
   override fun createSourceVisitor(): BaseTypeVisitor<*> {
     return MungoVisitor(this)

@@ -13,7 +13,7 @@ class MungoTreeAnnotator(private val checker: MungoChecker, atypeFactory: MungoA
     if (tree != null && !annotatedTypeMirror.hasAnnotation(MungoInfo::class.java)) {
       // Here we handle anonymous classes because doing this in MungoDefaultQualifierForUseTypeAnnotator is not enough
       // Extract information from class declaration so that the correct annotations can be applied to this instance
-      val anno = checker.getUtils().visitClassTree(Paths.get(atypeFactory.visitorState.path.compilationUnit.sourceFile.toUri()), tree)
+      val anno = checker.utils.visitClassTree(Paths.get(atypeFactory.visitorState.path.compilationUnit.sourceFile.toUri()), tree)
       if (anno != null) {
         annotatedTypeMirror.replaceAnnotation(anno)
       }

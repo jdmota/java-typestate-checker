@@ -8,7 +8,6 @@ import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.lib.MungoTypestate
 import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
 import org.checkerframework.checker.mungo.typestate.graph.Graph
-import org.checkerframework.com.google.common.collect.Sets
 import org.checkerframework.javacutil.TreeUtils
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -16,10 +15,6 @@ import javax.lang.model.element.Element
 import javax.lang.model.element.TypeElement
 
 class ClassUtils(private val utils: MungoUtils) {
-
-  companion object {
-    private val mungoTypestateName = MungoTypestate::class.java.canonicalName // Cache name
-  }
 
   private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationTree): Graph? {
     val args = annotation.arguments
@@ -58,11 +53,11 @@ class ClassUtils(private val utils: MungoUtils) {
       val elem = TreeUtils.elementFromTree(anno.annotationType)
       if (elem is TypeElement) {
         val name = elem.qualifiedName
-        if (name.contentEquals(mungoTypestateName)) {
+        if (name.contentEquals(MungoUtils.mungoTypestateName)) {
           // Process typestate
           val graph = processMungoTypestateAnnotation(sourceFilePath, anno)
           if (graph != null) {
-            return MungoTypeInfo.build(utils.factory.elementUtils, graph, Sets.newHashSet(graph.getInitialState()))
+            return MungoTypeInfo.build(utils.factory.elementUtils, graph, setOf(graph.getInitialState()))
           }
         }
       }

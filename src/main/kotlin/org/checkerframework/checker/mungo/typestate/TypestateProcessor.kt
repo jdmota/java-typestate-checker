@@ -8,7 +8,6 @@ import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.parser.TypestateLexer
 import org.checkerframework.checker.mungo.typestate.parser.TypestateParser
 import java.nio.file.Path
-import java.util.*
 
 class TypestateProcessor {
   private val graphs: MutableMap<Path, GraphOrError> = HashMap()

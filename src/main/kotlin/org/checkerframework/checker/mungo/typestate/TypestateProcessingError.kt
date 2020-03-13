@@ -6,7 +6,6 @@ import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.checkerframework.checker.mungo.typestate.ast.Position
 import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
-import java.util.*
 
 class TypestateProcessingError(exp: Exception) : Exception(exp) {
   fun format(): String {

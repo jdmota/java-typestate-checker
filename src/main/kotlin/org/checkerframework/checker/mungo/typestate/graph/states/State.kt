@@ -2,7 +2,6 @@ package org.checkerframework.checker.mungo.typestate.graph.states
 
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
 import org.checkerframework.checker.mungo.typestate.ast.TStateNode
-import java.util.HashMap
 
 open class State : AbstractState<TStateNode> {
   var name: String
