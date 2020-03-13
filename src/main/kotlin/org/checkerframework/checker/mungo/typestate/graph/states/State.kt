@@ -21,6 +21,6 @@ open class State : AbstractState<TStateNode> {
   }
 
   override fun toString(): String {
-    return "State{name=$name,node=$node}"
+    return "State{name=$name}"
   }
 }

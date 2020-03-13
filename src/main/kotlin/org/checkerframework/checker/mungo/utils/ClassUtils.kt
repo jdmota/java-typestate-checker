@@ -46,7 +46,7 @@ class ClassUtils(private val utils: MungoUtils) {
     return result.graph
   }
 
-  fun visitClassTree(sourceFilePath: Path, tree: ClassTree): MungoTypeInfo? {
+  fun visitClassTree(sourceFilePath: Path, tree: ClassTree): Graph? {
     val modifiers = tree.modifiers
     val annotations = modifiers.annotations
     for (anno in annotations) {
@@ -55,17 +55,14 @@ class ClassUtils(private val utils: MungoUtils) {
         val name = elem.qualifiedName
         if (name.contentEquals(MungoUtils.mungoTypestateName)) {
           // Process typestate
-          val graph = processMungoTypestateAnnotation(sourceFilePath, anno)
-          if (graph != null) {
-            return MungoTypeInfo.build(utils.factory.elementUtils, graph, setOf(graph.getInitialState()))
-          }
+          return processMungoTypestateAnnotation(sourceFilePath, anno)
         }
       }
     }
     return null
   }
 
-  fun visitClassSymbol(element: Element?): MungoTypeInfo? {
+  fun visitClassSymbol(element: Element?): Graph? {
     if (element !is Symbol.ClassSymbol) {
       return null
     }

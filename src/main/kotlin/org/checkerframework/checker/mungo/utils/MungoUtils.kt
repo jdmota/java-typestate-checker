@@ -13,6 +13,7 @@ import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
 import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
+import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.source.Result
 import org.checkerframework.javacutil.AnnotationBuilder
 import org.checkerframework.javacutil.AnnotationUtils
@@ -48,11 +49,11 @@ class MungoUtils(val checker: MungoChecker) {
     return resolver.resolve(path, name)
   }
 
-  fun visitClassSymbol(element: Element?): MungoTypeInfo? {
+  fun visitClassSymbol(element: Element?): Graph? {
     return classProcessor.visitClassSymbol(element)
   }
 
-  fun visitClassTree(sourceFilePath: Path, tree: ClassTree): MungoTypeInfo? {
+  fun visitClassTree(sourceFilePath: Path, tree: ClassTree): Graph? {
     return classProcessor.visitClassTree(sourceFilePath, tree)
   }
 

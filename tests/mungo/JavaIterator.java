@@ -23,4 +23,10 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
+  public static void use(JavaIterator it2) {
+    while (it2.hasNext()) {
+      it2.next();
+    }
+  }
+
 }

@@ -2,7 +2,6 @@ package org.checkerframework.checker.mungo.analysis
 
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
-import org.checkerframework.common.basetype.BaseTypeChecker
 import org.checkerframework.framework.flow.CFAbstractAnalysis
 import org.checkerframework.framework.flow.CFAbstractValue
 import org.checkerframework.javacutil.Pair

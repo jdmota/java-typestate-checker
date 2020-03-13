@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.typecheck
 import org.checkerframework.checker.mungo.qualifiers.MungoInfo
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.states.State
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.AnnotationValue
 import javax.lang.model.element.ElementKind
@@ -23,11 +24,29 @@ class MungoTypeInfo private constructor(val graph: Graph, val states: Set<State>
     return elementValues
   }
 
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is MungoTypeInfo) return false
+    return graph == other.graph && states == other.states
+  }
+
+  // Probably won't need this... Just in case.
+  override fun hashCode(): Int {
+    var result = graph.hashCode()
+    result = 31 * result + states.size // Faster than states.hashCode()
+    return result
+  }
+
+  override fun toString(): String {
+    return "MungoTypeInfo$states";
+  }
+
   companion object {
     private val mungoInfoName = MungoInfo::class.java.canonicalName // Cache name
 
     // Adapted from AnnotationBuilder.fromName
-    fun build(elements: Elements, graph: Graph, states: Set<State>): MungoTypeInfo {
+    fun build(utils: MungoUtils, graph: Graph, states: Set<State>): MungoTypeInfo {
+      val elements = utils.factory.elementUtils;
       val annoElt = elements.getTypeElement(mungoInfoName)
       if (annoElt == null || annoElt.kind != ElementKind.ANNOTATION_TYPE) {
         throw AssertionError("MungoInfo.build")
