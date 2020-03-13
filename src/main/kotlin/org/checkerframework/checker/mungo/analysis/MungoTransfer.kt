@@ -40,9 +40,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     println(sym2)
     println(sym2::class.java) // Expected to be ClassSymbol
 
-    /*val names = Names.instance((c.processingEnvironment as JavacProcessingEnvironment).context)
-    val symtab = Symtab.instance((c.processingEnvironment as JavacProcessingEnvironment).context)
-
+    /*
     val newMethod = TypestateProcessor.methodNodeToMethodSymbol(
       symtab,
       names,
