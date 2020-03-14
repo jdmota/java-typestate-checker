@@ -4,6 +4,7 @@ import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
+import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -17,35 +18,13 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   private val c = checker
 
-  private fun refine(unit: JCTree.JCCompilationUnit, info: MungoTypeInfo, method: Symbol.MethodSymbol, label: String?): Set<State> {
-    // Given the possible current states, produce a set of possible destination states
-    return info.states.flatMap {
-      val dest = it.transitions.entries.find { it2 -> c.utils.sameMethod(unit, method, it2.key) }?.value
-      when (dest) {
-        is State -> listOf(dest)
-        is DecisionState -> {
-          if (label == null) dest.transitions.values else {
-            val dest2 = dest.transitions.entries.find { it2 -> it2.key.label == label }?.value
-            if (dest2 == null) listOf() else listOf(dest2)
-          }
-        }
-        // The method call is not allowed in this state,
-        // so return an empty list (imagine this as the bottom type).
-        // The union of some type T with the bottom type, is T,
-        // which is fine. The MungoVisitor will later ensure a call is safe
-        // by checking that the method is available in all states.
-        else -> listOf()
-      }
-    }.toSet()
-  }
-
   // Returns true if store changed
   private fun refineStore(unit: JCTree.JCCompilationUnit, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, label: String?): Boolean {
     val value = store.getValue(receiver)
     if (value != null) {
       val info = MungoUtils.getInfoFromAnnotations(value.annotations)
       if (info != null) {
-        val newInfo = MungoTypeInfo.build(c.utils, info.graph, refine(unit, info, method, label))
+        val newInfo = MungoTypeInfo.build(c.utils, info.graph, MungoTypecheck.refine(c.utils, unit, info, method, label))
         if (info != newInfo) {
           store.replaceValue(receiver, analysis.createAbstractValue(setOf(newInfo), value.underlyingType))
           return true

@@ -5,7 +5,6 @@ import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
-import org.checkerframework.checker.mungo.typestate.graph.states.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.javacutil.TreeUtils
@@ -35,17 +34,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
         val info = MungoUtils.getInfoFromAnnotations(receiverType.annotations)
         if (info != null) {
           val unit = visitorState.path.compilationUnit as JCTree.JCCompilationUnit
-          val unexpectedStates = mutableListOf<State>()
-          for (state in info.states) {
-            if (!state.transitions.entries.any { c.utils.sameMethod(unit, element, it.key) }) {
-              unexpectedStates.add(state)
-            }
-          }
-          if (unexpectedStates.size > 0) {
-            val currentStates = info.states.joinToString(", ") { it.name }
-            val wrongStates = unexpectedStates.joinToString(", ") { it.name }
-            c.utils.err("$node curr: $currentStates; wrong: $wrongStates", node)
-          }
+          MungoTypecheck.check(c.utils, unit, info, node, element)
         }
       }
     }

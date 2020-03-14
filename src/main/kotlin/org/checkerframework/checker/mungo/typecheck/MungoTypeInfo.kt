@@ -9,7 +9,6 @@ import javax.lang.model.element.AnnotationValue
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
 import javax.lang.model.type.DeclaredType
-import javax.lang.model.util.Elements
 
 // Type information contains a set of possible states
 // And the graph where those states belong
@@ -21,7 +20,7 @@ class MungoTypeInfo private constructor(val graph: Graph, val states: Set<State>
   }
 
   override fun getElementValues(): Map<out ExecutableElement, AnnotationValue> {
-    return elementValues
+    return elementValues // TODO fill this so that AnnotationUtils can work properly?
   }
 
   override fun equals(other: Any?): Boolean {

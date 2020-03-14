@@ -27,6 +27,10 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
   private val c = checker
 
+  init {
+    postInit()
+  }
+
   override fun createFlowAnalysis(fieldValues: List<Pair<VariableElement, MungoValue>>): MungoAnalysis {
     return MungoAnalysis(c, this, fieldValues)
   }
@@ -62,15 +66,23 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       if (AnnotationUtils.areSameByName(subAnno, c.utils.infoAnnotation)) {
         return if (AnnotationUtils.areSameByName(superAnno, c.utils.infoAnnotation)) {
           MungoTypecheck.isSubType(subAnno, superAnno)
-        } else AnnotationUtils.areSameByName(superAnno, c.utils.unknownAnnotation)
+        } else {
+          AnnotationUtils.areSameByName(superAnno, c.utils.unknownAnnotation)
+        }
       }
       return if (AnnotationUtils.areSameByName(subAnno, c.utils.unknownAnnotation)) {
         AnnotationUtils.areSameByName(superAnno, c.utils.unknownAnnotation)
       } else false
     }
-  }
 
-  init {
-    postInit()
+    override fun leastUpperBound(a1: AnnotationMirror, a2: AnnotationMirror): AnnotationMirror {
+      // TODO
+      return super.leastUpperBound(a1, a2)
+    }
+
+    override fun greatestLowerBound(a1: AnnotationMirror, a2: AnnotationMirror): AnnotationMirror {
+      // TODO
+      return super.greatestLowerBound(a1, a2)
+    }
   }
 }
