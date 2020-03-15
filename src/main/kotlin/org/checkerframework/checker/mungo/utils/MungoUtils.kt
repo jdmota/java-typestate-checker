@@ -67,8 +67,9 @@ class MungoUtils(val checker: MungoChecker) {
   }
 
   companion object {
-    val mungoInfoName = MungoInfo::class.java.canonicalName // Cache name
-    val mungoTypestateName = MungoTypestate::class.java.canonicalName // Cache name
+    val mungoInfoName = MungoInfo::class.java.canonicalName
+    val mungoTypestateName = MungoTypestate::class.java.canonicalName
+    val mungoBottomName = MungoBottom::class.java.canonicalName
 
     fun getInfoFromAnnotations(annotations: Collection<AnnotationMirror>): MungoTypeInfo? {
       for (annoMirror in annotations) {
@@ -81,6 +82,15 @@ class MungoUtils(val checker: MungoChecker) {
 
     fun castAnnotation(annotation: AnnotationMirror): MungoTypeInfo {
       return annotation as MungoTypeInfo
+    }
+
+    fun hasBottom(annotations: Collection<AnnotationMirror>): Boolean {
+      for (annoMirror in annotations) {
+        if (AnnotationUtils.areSameByName(annoMirror, mungoBottomName)) {
+          return true
+        }
+      }
+      return false
     }
   }
 

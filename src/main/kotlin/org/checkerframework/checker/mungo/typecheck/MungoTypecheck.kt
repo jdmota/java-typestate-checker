@@ -7,6 +7,7 @@ import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils.Companion.castAnnotation
+import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.AnnotationMirror
 
 object MungoTypecheck {
@@ -19,7 +20,18 @@ object MungoTypecheck {
     return sub.graph === sup.graph && sup.states.containsAll(sub.states)
   }
 
-  fun check(utils: MungoUtils, unit: JCTree.JCCompilationUnit, info: MungoTypeInfo, node: MethodInvocationTree, method: Symbol.MethodSymbol) {
+  fun check(utils: MungoUtils, unit: JCTree.JCCompilationUnit, annotations: Set<AnnotationMirror>, node: MethodInvocationTree, method: Symbol.MethodSymbol) {
+    if (MungoUtils.hasBottom(annotations)) {
+      utils.err("Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} has the bottom type", node)
+      return
+    }
+    val info = MungoUtils.getInfoFromAnnotations(annotations) ?: return
+
+    if (info.states.isEmpty()) {
+      utils.err("Cannot call ${TreeUtils.methodName(node)}. (Inferred no states)", node)
+      return
+    }
+
     val unexpectedStates = mutableListOf<State>()
     for (state in info.states) {
       if (!state.transitions.entries.any { utils.sameMethod(unit, method, it.key) }) {
@@ -29,8 +41,7 @@ object MungoTypecheck {
     if (unexpectedStates.size > 0) {
       val currentStates = info.states.joinToString(", ") { it.name }
       val wrongStates = unexpectedStates.joinToString(", ") { it.name }
-      // TODO better message
-      utils.err("$node curr: $currentStates; wrong: $wrongStates", node)
+      utils.err("Cannot call ${TreeUtils.methodName(node)} on states $wrongStates. (Inferred: $currentStates)", node)
     }
   }
 

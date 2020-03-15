@@ -31,11 +31,8 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     if (element is Symbol.MethodSymbol && element.getKind() == ElementKind.METHOD) {
       val receiverType = typeFactory.getReceiverType(node)
       if (receiverType != null) {
-        val info = MungoUtils.getInfoFromAnnotations(receiverType.annotations)
-        if (info != null) {
-          val unit = visitorState.path.compilationUnit as JCTree.JCCompilationUnit
-          MungoTypecheck.check(c.utils, unit, info, node, element)
-        }
+        val unit = visitorState.path.compilationUnit as JCTree.JCCompilationUnit
+        MungoTypecheck.check(c.utils, unit, receiverType.annotations, node, element)
       }
     }
     return super.visitMethodInvocation(node, p)
