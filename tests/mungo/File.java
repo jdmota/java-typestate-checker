@@ -22,7 +22,7 @@ class File {
   public void close() {
   }
 
-  public static void main(String[] args) {
+  public static void main1(String[] args) {
 
     File f = new File();
 
@@ -34,6 +34,22 @@ class File {
         f.close();
         break;
       case ERROR:
+        break;
+    }
+
+  }
+
+  public static void main2(String[] args) {
+
+    File f = new File();
+
+    switch (f.open()) {
+      case OK:
+      case ERROR:
+        while (f.hasNext()) {
+          f.read();
+        }
+        f.close();
         break;
     }
 

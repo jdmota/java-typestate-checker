@@ -45,19 +45,13 @@ object MungoTypecheck {
     }
   }
 
-  fun refine(utils: MungoUtils, tree: TreePath, info: MungoTypeInfo, method: Symbol.MethodSymbol, label: String?): Set<State> {
+  fun refine(utils: MungoUtils, tree: TreePath, info: MungoTypeInfo, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): Set<State> {
     // Given the possible current states, produce a set of possible destination states
     return info.states.flatMap { state ->
       val dest = state.transitions.entries.find { utils.methodUtils.sameMethod(tree, method, it.key) }?.value
       when (dest) {
         is State -> listOf(dest)
-        is DecisionState ->
-          if (label == null) {
-            dest.transitions.values
-          } else {
-            val dest2 = dest.transitions.entries.find { it.key.label == label }?.value
-            if (dest2 == null) listOf() else listOf(dest2)
-          }
+        is DecisionState -> dest.transitions.entries.filter { predicate(it.key.label) }.map { it.value }
         // The method call is not allowed in this state,
         // so return an empty list (imagine this as the bottom type).
         // The union of some type T with the bottom type, is T,

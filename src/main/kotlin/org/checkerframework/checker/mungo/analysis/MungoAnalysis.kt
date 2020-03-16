@@ -16,7 +16,7 @@ class MungoAnalysis(checker: MungoChecker, factory: MungoAnnotatedTypeFactory, f
   }
 
   override fun createCopiedStore(s: MungoStore): MungoStore {
-    return if (s is MungoStoreWithCases) MungoStoreWithCases(s) else MungoStore(s)
+    return MungoStore(s)
   }
 
   override fun createAbstractValue(annotations: Set<AnnotationMirror>, underlyingType: TypeMirror): MungoValue? {
