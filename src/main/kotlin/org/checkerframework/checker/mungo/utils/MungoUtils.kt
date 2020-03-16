@@ -28,10 +28,11 @@ class MungoUtils(val checker: MungoChecker) {
   val infoAnnotation: AnnotationMirror = AnnotationBuilder.fromClass(checker.elementUtils, MungoInfo::class.java)
   val unknownAnnotation: AnnotationMirror = AnnotationBuilder.fromClass(checker.elementUtils, MungoUnknown::class.java)
 
-  val processor = TypestateProcessor()
   private val resolver = Resolver(checker.processingEnvironment)
   private val classProcessor = ClassUtils(this)
-  private val methodUtils = MethodUtils(this)
+
+  val processor = TypestateProcessor()
+  val methodUtils = MethodUtils(this)
 
   private lateinit var _factory: MungoAnnotatedTypeFactory
   val factory: MungoAnnotatedTypeFactory
@@ -56,14 +57,6 @@ class MungoUtils(val checker: MungoChecker) {
 
   fun visitClassTree(sourceFilePath: Path, tree: ClassTree): Graph? {
     return classProcessor.visitClassTree(sourceFilePath, tree)
-  }
-
-  fun sameMethod(tree: TreePath, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
-    return methodUtils.sameMethod(tree, sym, node)
-  }
-
-  fun methodReturnsBoolean(tree: TreePath, sym: Symbol.MethodSymbol): Boolean {
-    return methodUtils.methodReturnsBoolean(tree, sym)
   }
 
   companion object {

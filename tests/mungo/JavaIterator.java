@@ -18,8 +18,6 @@ class JavaIterator implements Iterator<Object> {
   public static void main(String[] args) {
     JavaIterator it = new JavaIterator();
 
-    it = null;
-
     while (it.hasNext()) {
       it.next();
     }

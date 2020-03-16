@@ -7,8 +7,8 @@ import com.sun.tools.javac.tree.JCTree
 import com.sun.tools.javac.tree.TreeMaker
 import com.sun.tools.javac.util.List as JavacList
 import com.sun.tools.javac.util.Names
-import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
+import org.checkerframework.javacutil.TypesUtils
 
 class MethodUtils(private val utils: MungoUtils) {
 
@@ -102,8 +102,15 @@ class MethodUtils(private val utils: MungoUtils) {
     return sameMethod(tree, sym.name.toString(), sym.type, node)
   }
 
-  fun methodReturnsBoolean(tree: TreePath, sym: Symbol.MethodSymbol): Boolean {
-    return isSameType(sym.type.returnType, utils.resolve(tree, "boolean"))
+  fun returnsBoolean(method: Symbol.MethodSymbol): Boolean {
+    return TypesUtils.isBooleanType(method.returnType)
+  }
+
+  // private val enumType = typeUtils.erasure(symtab.enumSym.type)
+
+  fun returnsEnum(method: Symbol.MethodSymbol): Boolean {
+    return method.returnType.tsym.isEnum;
+    // return typeUtils.isSubtype(method.returnType, enumType)
   }
 
 }
