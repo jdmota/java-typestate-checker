@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.typecheck
 
 import com.sun.source.tree.MethodInvocationTree
+import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
@@ -20,7 +21,7 @@ object MungoTypecheck {
     return sub.graph === sup.graph && sup.states.containsAll(sub.states)
   }
 
-  fun check(utils: MungoUtils, unit: JCTree.JCCompilationUnit, annotations: Set<AnnotationMirror>, node: MethodInvocationTree, method: Symbol.MethodSymbol) {
+  fun check(utils: MungoUtils, tree: TreePath, annotations: Set<AnnotationMirror>, node: MethodInvocationTree, method: Symbol.MethodSymbol) {
     if (MungoUtils.hasBottom(annotations)) {
       utils.err("Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} has the bottom type", node)
       return
@@ -34,7 +35,7 @@ object MungoTypecheck {
 
     val unexpectedStates = mutableListOf<State>()
     for (state in info.states) {
-      if (!state.transitions.entries.any { utils.sameMethod(unit, method, it.key) }) {
+      if (!state.transitions.entries.any { utils.sameMethod(tree, method, it.key) }) {
         unexpectedStates.add(state)
       }
     }
@@ -45,10 +46,10 @@ object MungoTypecheck {
     }
   }
 
-  fun refine(utils: MungoUtils, unit: JCTree.JCCompilationUnit, info: MungoTypeInfo, method: Symbol.MethodSymbol, label: String?): Set<State> {
+  fun refine(utils: MungoUtils, tree: TreePath, info: MungoTypeInfo, method: Symbol.MethodSymbol, label: String?): Set<State> {
     // Given the possible current states, produce a set of possible destination states
     return info.states.flatMap { state ->
-      val dest = state.transitions.entries.find { utils.sameMethod(unit, method, it.key) }?.value
+      val dest = state.transitions.entries.find { utils.sameMethod(tree, method, it.key) }?.value
       when (dest) {
         is State -> listOf(dest)
         is DecisionState ->

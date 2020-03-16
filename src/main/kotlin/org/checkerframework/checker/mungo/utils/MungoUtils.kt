@@ -31,7 +31,7 @@ class MungoUtils(val checker: MungoChecker) {
   val processor = TypestateProcessor()
   private val resolver = Resolver(checker.processingEnvironment)
   private val classProcessor = ClassUtils(this)
-  private val methodUtils = MethodUtils(checker)
+  private val methodUtils = MethodUtils(this)
 
   private lateinit var _factory: MungoAnnotatedTypeFactory
   val factory: MungoAnnotatedTypeFactory
@@ -46,7 +46,7 @@ class MungoUtils(val checker: MungoChecker) {
     checker.report(Result.failure(message), where)
   }
 
-  fun resolve(path: TreePath, name: String): Element {
+  fun resolve(path: TreePath, name: String): Type? {
     return resolver.resolve(path, name)
   }
 
@@ -58,12 +58,12 @@ class MungoUtils(val checker: MungoChecker) {
     return classProcessor.visitClassTree(sourceFilePath, tree)
   }
 
-  fun sameMethod(unit: JCTree.JCCompilationUnit, name: String, type: Type, node: TMethodNode): Boolean {
-    return methodUtils.sameMethod(unit, name, type, node)
+  fun sameMethod(tree: TreePath, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
+    return methodUtils.sameMethod(tree, sym, node)
   }
 
-  fun sameMethod(unit: JCTree.JCCompilationUnit, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
-    return methodUtils.sameMethod(unit, sym, node)
+  fun methodReturnsBoolean(tree: TreePath, sym: Symbol.MethodSymbol): Boolean {
+    return methodUtils.methodReturnsBoolean(tree, sym)
   }
 
   companion object {

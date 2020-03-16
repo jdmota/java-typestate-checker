@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.utils
 
+import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.*
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.tree.JCTree
@@ -9,11 +10,11 @@ import com.sun.tools.javac.util.Names
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
 
-class MethodUtils(private val checker: MungoChecker) {
+class MethodUtils(private val utils: MungoUtils) {
 
-  private val names = Names.instance((checker.processingEnvironment as JavacProcessingEnvironment).context)
-  private val symtab = Symtab.instance((checker.processingEnvironment as JavacProcessingEnvironment).context)
-  private val typeUtils = checker.typeUtils
+  private val names = Names.instance((utils.checker.processingEnvironment as JavacProcessingEnvironment).context)
+  private val symtab = Symtab.instance((utils.checker.processingEnvironment as JavacProcessingEnvironment).context)
+  private val typeUtils = utils.checker.typeUtils
 
   // TODO missing stuff
   fun methodNodeToMethodTree(maker: TreeMaker, node: TMethodNode): JCTree.JCMethodDecl {
@@ -67,22 +68,6 @@ class MethodUtils(private val checker: MungoChecker) {
     )
   }
 
-  private fun getType(type: String): Type? {
-    return when (type) {
-      "byte" -> symtab.byteType
-      "char" -> symtab.charType
-      "short" -> symtab.shortType
-      "int" -> symtab.intType
-      "long" -> symtab.longType
-      "float" -> symtab.floatType
-      "double" -> symtab.doubleType
-      "boolean" -> symtab.booleanType
-      "void" -> symtab.voidType
-      "Object" -> symtab.objectType // TODO hack to make iterator example work for now
-      else -> null // TODO resolve
-    }
-  }
-
   private fun isSameType(a: Type?, b: Type?): Boolean {
     if (a == null) return b == null
     if (b == null) return false
@@ -104,17 +89,21 @@ class MethodUtils(private val checker: MungoChecker) {
   }
 
   // We could use "typeUtils.isSameType" with the MethodType, but it does not compare thrown types
-  fun sameMethod(unit: JCTree.JCCompilationUnit, name: String, type: Type, node: TMethodNode): Boolean {
-    // TODO test more and deal with thrownTypes and typeArguments
+  private fun sameMethod(tree: TreePath, name: String, type: Type, node: TMethodNode): Boolean {
+    // TODO deal with thrownTypes and typeArguments
     return name == node.name &&
-      isSameType(type.returnType, getType(node.returnType)) &&
-      isSameTypes(type.parameterTypes, node.args.map { getType(it) }) &&
+      isSameType(type.returnType, utils.resolve(tree, node.returnType)) &&
+      isSameTypes(type.parameterTypes, node.args.map { utils.resolve(tree, it) }) &&
       isSameTypes(type.thrownTypes, listOf()) &&
       isSameTypes(type.typeArguments, listOf())
   }
 
-  fun sameMethod(unit: JCTree.JCCompilationUnit, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
-    return sameMethod(unit, sym.name.toString(), sym.type, node)
+  fun sameMethod(tree: TreePath, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
+    return sameMethod(tree, sym.name.toString(), sym.type, node)
+  }
+
+  fun methodReturnsBoolean(tree: TreePath, sym: Symbol.MethodSymbol): Boolean {
+    return isSameType(sym.type.returnType, utils.resolve(tree, "boolean"))
   }
 
 }
