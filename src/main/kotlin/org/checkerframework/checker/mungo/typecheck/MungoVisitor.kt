@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.typecheck
 
+import com.sun.source.tree.AssignmentTree
 import com.sun.source.tree.MethodInvocationTree
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
@@ -29,10 +30,12 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   override fun visitMethodInvocation(node: MethodInvocationTree, p: Void?): Void? {
     val element = TreeUtils.elementFromUse(node)
     if (element is Symbol.MethodSymbol && element.getKind() == ElementKind.METHOD) {
-      val receiverType = typeFactory.getReceiverType(node)
-      if (receiverType != null) {
-        MungoTypecheck.check(c.utils, visitorState.path, receiverType.annotations, node, element)
+      val receiver = TreeUtils.getReceiverTree(node)
+      if (receiver != null) {
+        val receiverValue = typeFactory.getInferredValueFor(receiver)
+        MungoTypecheck.check(c.utils, visitorState.path, receiverValue, node, element)
       }
+      // TODO deal with self receiver
     }
     return super.visitMethodInvocation(node, p)
   }

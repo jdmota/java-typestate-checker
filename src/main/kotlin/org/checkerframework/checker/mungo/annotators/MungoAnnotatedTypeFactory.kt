@@ -8,7 +8,7 @@ import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
-import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
+import org.checkerframework.dataflow.analysis.AnalysisResult
 import org.checkerframework.framework.flow.CFAbstractAnalysis
 import org.checkerframework.framework.type.GenericAnnotatedTypeFactory
 import org.checkerframework.framework.type.QualifierHierarchy
@@ -17,7 +17,6 @@ import org.checkerframework.framework.type.treeannotator.TreeAnnotator
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
 import org.checkerframework.framework.util.GraphQualifierHierarchy
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
-import org.checkerframework.javacutil.AnnotationBuilder
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.Pair
 import javax.lang.model.element.AnnotationMirror
@@ -57,6 +56,10 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     return MungoQualifierHierarchy(factory, c.utils.bottomAnnotation)
   }
 
+  fun getFlowResult(): AnalysisResult<MungoValue, MungoStore> {
+    return flowResult
+  }
+
   private inner class MungoQualifierHierarchy(f: MultiGraphFactory, bottom: AnnotationMirror) : GraphQualifierHierarchy(f, bottom) {
     // BOTTOM <: INFO <: UNKNOWN
     override fun isSubtype(subAnno: AnnotationMirror, superAnno: AnnotationMirror): Boolean {
@@ -65,7 +68,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       }
       if (AnnotationUtils.areSameByName(subAnno, c.utils.infoAnnotation)) {
         return if (AnnotationUtils.areSameByName(superAnno, c.utils.infoAnnotation)) {
-          MungoTypecheck.isSubType(subAnno, superAnno)
+          AnnotationUtils.sameElementValues(superAnno, subAnno)
         } else {
           AnnotationUtils.areSameByName(superAnno, c.utils.unknownAnnotation)
         }
@@ -73,16 +76,6 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       return if (AnnotationUtils.areSameByName(subAnno, c.utils.unknownAnnotation)) {
         AnnotationUtils.areSameByName(superAnno, c.utils.unknownAnnotation)
       } else false
-    }
-
-    override fun leastUpperBound(a1: AnnotationMirror, a2: AnnotationMirror): AnnotationMirror {
-      // TODO
-      return super.leastUpperBound(a1, a2)
-    }
-
-    override fun greatestLowerBound(a1: AnnotationMirror, a2: AnnotationMirror): AnnotationMirror {
-      // TODO
-      return super.greatestLowerBound(a1, a2)
     }
   }
 }

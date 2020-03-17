@@ -1,7 +1,7 @@
 package org.checkerframework.checker.mungo.annotators
 
 import org.checkerframework.checker.mungo.MungoChecker
-import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
@@ -14,8 +14,7 @@ class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker
     val graph = checker.utils.visitClassSymbol(element)
     val set = super.getExplicitAnnos(element)
     if (graph != null) {
-      // Object may be in any state. Refinement happens later
-      val annotation = MungoTypeInfo.build(checker.utils, graph, graph.getAllConcreteStates())
+      val annotation = MungoUtils.buildAnnotation(checker.processingEnvironment, graph.file)
       val newSet: MutableSet<AnnotationMirror> = mutableSetOf(annotation)
       newSet.addAll(set)
       return newSet

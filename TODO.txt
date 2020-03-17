@@ -1,0 +1,9 @@
+- Fix switch
+- Fix: @MungoInfo can be created without being instance of MungoTypeInfo???
+- @MungoState({})
+- Create more tests
+- Document tests (latex)
+  - Code and output
+
+
+- More features? Read thesis plan.

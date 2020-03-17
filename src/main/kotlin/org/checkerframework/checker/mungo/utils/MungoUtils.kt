@@ -2,23 +2,21 @@ package org.checkerframework.checker.mungo.utils
 
 import com.sun.source.tree.*
 import com.sun.source.util.TreePath
-import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Type
-import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.lib.MungoTypestate
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
-import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
-import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.source.Result
 import org.checkerframework.javacutil.AnnotationBuilder
 import org.checkerframework.javacutil.AnnotationUtils
 import java.nio.file.Path
+import java.nio.file.Paths
+import javax.annotation.processing.ProcessingEnvironment
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 
@@ -59,22 +57,50 @@ class MungoUtils(val checker: MungoChecker) {
     return classProcessor.visitClassTree(sourceFilePath, tree)
   }
 
+  fun lookupGraph(file: String): Graph {
+    return processor.lookupGraph(Paths.get(file))
+  }
+
+  fun getGraphFromAnnotation(annoMirror: AnnotationMirror): Graph? {
+    if (AnnotationUtils.areSameByName(annoMirror, mungoInfoName)) {
+      for ((_, value) in annoMirror.elementValues) {
+        val file = value.value as String
+        return lookupGraph(file)
+      }
+    }
+    return null
+  }
+
+  fun getGraphFromAnnotations(annotations: Collection<AnnotationMirror>): Graph? {
+    for (annoMirror in annotations) {
+      val graph = getGraphFromAnnotation(annoMirror)
+      if (graph != null) return graph
+    }
+    return null
+  }
+
+  fun printStack() {
+    try {
+      throw RuntimeException("debug")
+    } catch (exp: RuntimeException) {
+      exp.printStackTrace()
+    }
+  }
+
+  fun <T> printResult(prefix: String, ret: T): T {
+    println("$prefix $ret")
+    return ret
+  }
+
   companion object {
     val mungoInfoName = MungoInfo::class.java.canonicalName
     val mungoTypestateName = MungoTypestate::class.java.canonicalName
     val mungoBottomName = MungoBottom::class.java.canonicalName
 
-    fun getInfoFromAnnotations(annotations: Collection<AnnotationMirror>): MungoTypeInfo? {
-      for (annoMirror in annotations) {
-        if (AnnotationUtils.areSameByName(annoMirror, mungoInfoName)) {
-          return annoMirror as MungoTypeInfo
-        }
-      }
-      return null
-    }
-
-    fun castAnnotation(annotation: AnnotationMirror): MungoTypeInfo {
-      return annotation as MungoTypeInfo
+    fun buildAnnotation(env: ProcessingEnvironment, file: Path): AnnotationMirror {
+      val builder = AnnotationBuilder(env, MungoInfo::class.java)
+      builder.setValue("file", file.toString())
+      return builder.build()
     }
 
     fun hasBottom(annotations: Collection<AnnotationMirror>): Boolean {

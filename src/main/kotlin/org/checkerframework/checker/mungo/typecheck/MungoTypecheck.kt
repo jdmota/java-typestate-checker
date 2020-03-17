@@ -3,29 +3,57 @@ package org.checkerframework.checker.mungo.typecheck
 import com.sun.source.tree.MethodInvocationTree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
+import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
-import org.checkerframework.checker.mungo.utils.MungoUtils.Companion.castAnnotation
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
-import javax.lang.model.element.AnnotationMirror
 
 object MungoTypecheck {
-  // pre: "sub" and "sup" are @MungoInfo annotations
-  fun isSubType(sub: AnnotationMirror, sup: AnnotationMirror): Boolean {
-    return isSubType(castAnnotation(sub), castAnnotation(sup))
-  }
-
-  fun isSubType(sub: MungoTypeInfo, sup: MungoTypeInfo): Boolean {
+  // True iff: sub contained in sup
+  fun isSubtype(sub: MungoTypeInfo, sup: MungoTypeInfo): Boolean {
     return sub.graph === sup.graph && sup.states.containsAll(sub.states)
   }
 
-  fun check(utils: MungoUtils, tree: TreePath, annotations: Set<AnnotationMirror>, node: MethodInvocationTree, method: Symbol.MethodSymbol) {
-    if (MungoUtils.hasBottom(annotations)) {
+  fun leastUpperBound(a1: MungoTypeInfo, a2: MungoTypeInfo): MungoTypeInfo? {
+    return when {
+      isSubtype(a1, a2) -> a2
+      isSubtype(a2, a1) -> a1
+      else -> return if (a1.graph == a2.graph) {
+        val set = mutableSetOf<State>()
+        set.addAll(a1.states)
+        set.addAll(a2.states)
+        MungoTypeInfo(a1.graph, set)
+      } else {
+        null
+      }
+    }
+  }
+
+  fun mostSpecific(a1: MungoTypeInfo, a2: MungoTypeInfo): MungoTypeInfo? {
+    return when {
+      isSubtype(a1, a2) -> a1
+      isSubtype(a2, a1) -> a2
+      else -> null
+    }
+  }
+
+  fun check(
+    utils: MungoUtils,
+    tree: TreePath,
+    receiverValue: MungoValue?,
+    node: MethodInvocationTree,
+    method: Symbol.MethodSymbol
+  ) {
+    if (receiverValue == null) {
+      return
+    }
+    if (MungoUtils.hasBottom(receiverValue.annotations)) {
       utils.err("Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} has the bottom type", node)
       return
     }
-    val info = MungoUtils.getInfoFromAnnotations(annotations) ?: return
+    val info = receiverValue.getInfo() ?: return
 
     if (info.states.isEmpty()) {
       utils.err("Cannot call ${TreeUtils.methodName(node)}. (Inferred no states)", node)

@@ -26,6 +26,11 @@ class TypestateProcessor {
     }
   }
 
+  fun lookupGraph(file: Path): Graph {
+    val graph = graphs[file]?.graph
+    return graph ?: throw AssertionError("no graph for $file")
+  }
+
   fun getGraph(file: Path): GraphOrError {
     return graphs.computeIfAbsent(file.normalize()) { process(it) }
   }

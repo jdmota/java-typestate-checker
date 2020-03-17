@@ -5,7 +5,6 @@ import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
 import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
-import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.analysis.*
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractTransfer
@@ -15,8 +14,8 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   private val c = checker
 
-  private val getInfo: (MungoValue) -> MungoTypeInfo? = { MungoUtils.getInfoFromAnnotations(it.annotations) }
-  private val getPrevInfo: (MungoValue) -> MungoTypeInfo? = { it.previousTypeInfo }
+  private val getInfo: (MungoValue) -> MungoTypeInfo? = MungoValue::getInfo
+  private val getPrevInfo: (MungoValue) -> MungoTypeInfo? = MungoValue::getPrevInfo
 
   private val allLabels: (String) -> Boolean = { true }
 
@@ -27,14 +26,14 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   // Returns true if store changed
   private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean, getInfo: (MungoValue) -> MungoTypeInfo?): Boolean {
-    val value = store.getValue(receiver)
-    if (value != null) {
-      val info = getInfo(value)
-      if (info != null) {
-        val newInfo = MungoTypeInfo.build(c.utils, info.graph, MungoTypecheck.refine(c.utils, tree, info, method, predicate))
-        if (info != newInfo) {
-          val newValue = analysis.createAbstractValue(setOf(newInfo), value.underlyingType)
-          newValue?.previousTypeInfo = info
+    val prevValue = store.getValue(receiver)
+    if (prevValue != null) {
+      val prevInfo = getInfo(prevValue)
+      if (prevInfo != null) {
+        val newStates = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
+        if (prevInfo.states != newStates) {
+          val newInfo = MungoTypeInfo(prevInfo.graph, newStates)
+          val newValue = MungoValue(prevValue, newInfo, prevInfo)
           store.replaceValue(receiver, newValue)
           return true
         }
@@ -104,17 +103,14 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val value = result.resultValue
     if (value != null) {
       // Refine resultValue to the initial state
-      val info = MungoUtils.getInfoFromAnnotations(value.annotations)
-      if (info != null) {
-        val newInfo = MungoTypeInfo.build(c.utils, info.graph, setOf(info.graph.getInitialState()))
-        // Check it changed
-        if (info != newInfo) {
-          val newValue = analysis.createAbstractValue(setOf(newInfo), value.underlyingType)
-          return if (result.containsTwoStores()) {
-            ConditionalTransferResult(newValue, result.thenStore, result.elseStore, false)
-          } else {
-            RegularTransferResult(newValue, result.regularStore, false)
-          }
+      val graph = c.utils.getGraphFromAnnotations(value.annotations)
+      if (graph != null) {
+        val newInfo = MungoTypeInfo(graph, setOf(graph.getInitialState()))
+        val newValue = MungoValue(value, newInfo)
+        return if (result.containsTwoStores()) {
+          ConditionalTransferResult(newValue, result.thenStore, result.elseStore, false)
+        } else {
+          RegularTransferResult(newValue, result.regularStore, false)
         }
       }
     }
