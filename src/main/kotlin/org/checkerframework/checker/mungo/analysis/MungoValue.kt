@@ -1,6 +1,6 @@
 package org.checkerframework.checker.mungo.analysis
 
-import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
+import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
 import org.checkerframework.framework.flow.CFAbstractValue
 import javax.lang.model.element.AnnotationMirror
@@ -10,35 +10,29 @@ import javax.lang.model.type.TypeMirror
 class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, underlyingType: TypeMirror) : CFAbstractValue<MungoValue>(analysis, annotations, underlyingType) {
 
   private val a = analysis
-  private var computed = false
 
-  private var previousInfo: MungoTypeInfo? = null
-  private var info: MungoTypeInfo? = null
+  private var previousInfo: MungoType? = null
+  private var info: MungoType? = null
 
-  constructor(oldVal: MungoValue, info: MungoTypeInfo, prev: MungoTypeInfo?) : this(oldVal.analysis as MungoAnalysis, oldVal.annotations, oldVal.underlyingType) {
+  constructor(oldVal: MungoValue, info: MungoType, prev: MungoType?) : this(oldVal.analysis as MungoAnalysis, oldVal.annotations, oldVal.underlyingType) {
     this.previousInfo = prev
     this.info = info
-    this.computed = true
   }
 
-  constructor(oldVal: MungoValue, info: MungoTypeInfo) : this(oldVal, info, null)
+  constructor(oldVal: MungoValue, info: MungoType) : this(oldVal, info, null)
 
   // If we have no info stored, compute one MungoTypeInfo object with all states
-  fun getInfo(): MungoTypeInfo? {
-    if (!computed) {
-      val graph = a.getUtils().getGraphFromAnnotations(annotations)
-      setInfo(if (graph == null) null else MungoTypeInfo(graph, graph.getAllConcreteStates()))
+  fun getInfo(): MungoType {
+    val currInfo = info
+    if (currInfo == null) {
+      val newInfo = a.getUtils().mungoTypeFromAnnotations(annotations)
+      info = newInfo
+      return newInfo
     }
-    return info
+    return currInfo
   }
 
-  private fun setInfo(newInfo: MungoTypeInfo?): MungoValue {
-    info = newInfo
-    computed = true
-    return this
-  }
-
-  fun getPrevInfo(): MungoTypeInfo? {
+  fun getPrevInfo(): MungoType? {
     return previousInfo
   }
 
@@ -48,39 +42,28 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
     }}, type=$underlyingType}"
   }
 
-  /*
-  FIXME
-  leastUB args:
-  MungoValue{info=null, prev=null, annos=MungoBottom, type=<nulltype>}
-  MungoValue{info=MungoTypeInfo[State{name=HasNext}], prev=null, annos=MungoInfo, type=JavaIterator}
-  leastUB res: MungoValue{info=MungoTypeInfo[State{name=end}, State{name=HasNext}, State{name=Next}], prev=null, annos=MungoInfo, type=JavaIterator}
-   */
-
   override fun leastUpperBound(other: MungoValue?): MungoValue {
-    println("leastUB args: \n$this\n$other")
-    val thisInfo = getInfo()
-    val otherInfo = other?.getInfo()
-    val r = super.leastUpperBound(other)
-    if (thisInfo == null || otherInfo == null) {
-      println("leastUB res: $r\n")
-      return r
+    if (other == null) {
+      return this
     }
-    r.setInfo(MungoTypecheck.leastUpperBound(thisInfo, otherInfo))
-    println("leastUB res: $r\n")
+    val thisInfo = getInfo()
+    val otherInfo = other.getInfo()
+    val r = super.leastUpperBound(other)
+    r.info = MungoTypecheck.leastUpperBound(thisInfo, otherInfo)
     return r
   }
 
-  override fun mostSpecific(other: MungoValue?, backup: MungoValue?): MungoValue {
-    println("mostSpecific args: \n$this\n$other")
-    val thisInfo = getInfo()
-    val otherInfo = other?.getInfo()
-    val r = super.mostSpecific(other, backup)
-    when {
-      thisInfo == null -> r.setInfo(otherInfo)
-      otherInfo == null -> r.setInfo(thisInfo)
-      else -> r.setInfo(MungoTypecheck.mostSpecific(thisInfo, otherInfo))
+  override fun mostSpecific(other: MungoValue?, backup: MungoValue?): MungoValue? {
+    if (other == null) {
+      return this
     }
-    println("mostSpecific res: $r\n")
+    val thisInfo = getInfo()
+    val otherInfo = other.getInfo()
+    val r = super.mostSpecific(other, backup)
+    r.info = MungoTypecheck.mostSpecific(thisInfo, otherInfo)
+    if (r.info == null) {
+      return null
+    }
     return r
   }
 

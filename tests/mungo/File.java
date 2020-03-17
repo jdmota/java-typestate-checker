@@ -1,6 +1,6 @@
 import org.checkerframework.checker.mungo.lib.MungoTypestate;
 
-// @MungoTypestate("File.protocol")
+@MungoTypestate("File.protocol")
 class File {
 
   public enum Status {
@@ -30,7 +30,6 @@ class File {
       case OK:
         while (f.hasNext()) {
           f.read();
-          f = null;
         }
         f.close();
         break;

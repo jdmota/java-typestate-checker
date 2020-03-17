@@ -9,6 +9,10 @@ import org.checkerframework.checker.mungo.lib.MungoTypestate
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
+import org.checkerframework.checker.mungo.typecheck.MungoBottomType
+import org.checkerframework.checker.mungo.typecheck.MungoConcreteType
+import org.checkerframework.checker.mungo.typecheck.MungoType
+import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.source.Result
@@ -57,45 +61,43 @@ class MungoUtils(val checker: MungoChecker) {
     return classProcessor.visitClassTree(sourceFilePath, tree)
   }
 
-  fun lookupGraph(file: String): Graph {
-    return processor.lookupGraph(Paths.get(file))
+  private fun getGraphFromAnnotation(annoMirror: AnnotationMirror): Graph? {
+    for ((_, value) in annoMirror.elementValues) {
+      val file = value.value as String
+      return processor.lookupGraph(Paths.get(file))
+    }
+    return null
   }
 
-  fun getGraphFromAnnotation(annoMirror: AnnotationMirror): Graph? {
-    if (AnnotationUtils.areSameByName(annoMirror, mungoInfoName)) {
-      for ((_, value) in annoMirror.elementValues) {
-        val file = value.value as String
-        return lookupGraph(file)
+  fun mungoTypeFromAnnotations(annotations: Collection<AnnotationMirror>): MungoType {
+    for (annoMirror in annotations) {
+      if (AnnotationUtils.areSameByName(annoMirror, mungoInfoName)) {
+        val graph = getGraphFromAnnotation(annoMirror)
+        return if (graph == null) MungoUnknownType() else MungoConcreteType(graph, graph.getAllConcreteStates())
+      }
+      if (AnnotationUtils.areSameByName(annoMirror, mungoUnknownName)) {
+        return MungoUnknownType()
+      }
+      if (AnnotationUtils.areSameByName(annoMirror, mungoBottomName)) {
+        return MungoBottomType()
       }
     }
-    return null
+    return MungoUnknownType()
   }
 
-  fun getGraphFromAnnotations(annotations: Collection<AnnotationMirror>): Graph? {
-    for (annoMirror in annotations) {
-      val graph = getGraphFromAnnotation(annoMirror)
-      if (graph != null) return graph
-    }
-    return null
-  }
-
-  fun printStack() {
-    try {
-      throw RuntimeException("debug")
-    } catch (exp: RuntimeException) {
-      exp.printStackTrace()
-    }
-  }
-
-  fun <T> printResult(prefix: String, ret: T): T {
-    println("$prefix $ret")
-    return ret
+  fun breakpoint() {
+    // For debugging purposes
+    // Add class pattern "org.checkerframework.checker.mungo.utils.MungoUtils"
+    // and method name "breakpoint"
+    // to IntelliJ's breakpoints settings
+    println("--------")
   }
 
   companion object {
-    val mungoInfoName = MungoInfo::class.java.canonicalName
-    val mungoTypestateName = MungoTypestate::class.java.canonicalName
-    val mungoBottomName = MungoBottom::class.java.canonicalName
+    val mungoTypestateName: String = MungoTypestate::class.java.canonicalName
+    val mungoInfoName: String = MungoInfo::class.java.canonicalName
+    val mungoBottomName: String = MungoBottom::class.java.canonicalName
+    val mungoUnknownName: String = MungoUnknown::class.java.canonicalName
 
     fun buildAnnotation(env: ProcessingEnvironment, file: Path): AnnotationMirror {
       val builder = AnnotationBuilder(env, MungoInfo::class.java)
@@ -103,13 +105,17 @@ class MungoUtils(val checker: MungoChecker) {
       return builder.build()
     }
 
-    fun hasBottom(annotations: Collection<AnnotationMirror>): Boolean {
-      for (annoMirror in annotations) {
-        if (AnnotationUtils.areSameByName(annoMirror, mungoBottomName)) {
-          return true
-        }
+    fun printStack() {
+      try {
+        throw RuntimeException("debug")
+      } catch (exp: RuntimeException) {
+        exp.printStackTrace()
       }
-      return false
+    }
+
+    fun <T> printResult(prefix: String, ret: T): T {
+      println("$prefix $ret")
+      return ret
     }
   }
 

@@ -56,10 +56,6 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     return MungoQualifierHierarchy(factory, c.utils.bottomAnnotation)
   }
 
-  fun getFlowResult(): AnalysisResult<MungoValue, MungoStore> {
-    return flowResult
-  }
-
   private inner class MungoQualifierHierarchy(f: MultiGraphFactory, bottom: AnnotationMirror) : GraphQualifierHierarchy(f, bottom) {
     // BOTTOM <: INFO <: UNKNOWN
     override fun isSubtype(subAnno: AnnotationMirror, superAnno: AnnotationMirror): Boolean {

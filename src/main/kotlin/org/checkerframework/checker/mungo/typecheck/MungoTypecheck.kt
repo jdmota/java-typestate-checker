@@ -7,35 +7,65 @@ import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
-import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
 
 object MungoTypecheck {
-  // True iff: sub contained in sup
-  fun isSubtype(sub: MungoTypeInfo, sup: MungoTypeInfo): Boolean {
-    return sub.graph === sup.graph && sup.states.containsAll(sub.states)
+  fun isSubtype(sub: MungoType, sup: MungoType): Boolean {
+    if (sub is MungoBottomType) {
+      return true
+    }
+    if (sub is MungoConcreteType) {
+      if (sup is MungoConcreteType) {
+        return sub.graph === sup.graph && sup.states.containsAll(sub.states)
+      }
+      return sup is MungoUnknownType
+    }
+    if (sub is MungoUnknownType) {
+      return sup is MungoUnknownType
+    }
+    return false
   }
 
-  fun leastUpperBound(a1: MungoTypeInfo, a2: MungoTypeInfo): MungoTypeInfo? {
-    return when {
-      isSubtype(a1, a2) -> a2
-      isSubtype(a2, a1) -> a1
-      else -> return if (a1.graph == a2.graph) {
-        val set = mutableSetOf<State>()
-        set.addAll(a1.states)
-        set.addAll(a2.states)
-        MungoTypeInfo(a1.graph, set)
-      } else {
-        null
+  fun leastUpperBound(a1: MungoType, a2: MungoType): MungoType {
+    return when (a1) {
+      is MungoBottomType -> a2
+      is MungoConcreteType -> when (a2) {
+        is MungoBottomType -> a1
+        is MungoConcreteType -> if (a1.graph == a2.graph) {
+          when {
+            a1.states.containsAll(a2.states) -> a1
+            a2.states.containsAll(a1.states) -> a2
+            else -> {
+              val set = mutableSetOf<State>()
+              set.addAll(a1.states)
+              set.addAll(a2.states)
+              MungoConcreteType(a1.graph, set)
+            }
+          }
+        } else {
+          MungoUnknownType()
+        }
+        is MungoUnknownType -> a2
       }
+      is MungoUnknownType -> a1
     }
   }
 
-  fun mostSpecific(a1: MungoTypeInfo, a2: MungoTypeInfo): MungoTypeInfo? {
-    return when {
-      isSubtype(a1, a2) -> a1
-      isSubtype(a2, a1) -> a2
-      else -> null
+  fun mostSpecific(a1: MungoType, a2: MungoType): MungoType? {
+    return when (a1) {
+      is MungoBottomType -> a1
+      is MungoConcreteType -> when (a2) {
+        is MungoBottomType -> a2
+        is MungoConcreteType -> if (a1.graph == a2.graph) {
+          when {
+            a1.states.containsAll(a2.states) -> a2
+            a2.states.containsAll(a1.states) -> a1
+            else -> null
+          }
+        } else null
+        is MungoUnknownType -> a1
+      }
+      is MungoUnknownType -> a2
     }
   }
 
@@ -49,11 +79,19 @@ object MungoTypecheck {
     if (receiverValue == null) {
       return
     }
-    if (MungoUtils.hasBottom(receiverValue.annotations)) {
+    val info = receiverValue.getInfo()
+
+    if (info is MungoBottomType) {
       utils.err("Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} has the bottom type", node)
       return
     }
-    val info = receiverValue.getInfo() ?: return
+
+    if (info is MungoUnknownType) {
+      utils.err("Cannot call ${TreeUtils.methodName(node)}. (Unknown states)", node)
+      return
+    }
+
+    if (info !is MungoConcreteType) throw AssertionError("never")
 
     if (info.states.isEmpty()) {
       utils.err("Cannot call ${TreeUtils.methodName(node)}. (Inferred no states)", node)
@@ -73,7 +111,7 @@ object MungoTypecheck {
     }
   }
 
-  fun refine(utils: MungoUtils, tree: TreePath, info: MungoTypeInfo, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): Set<State> {
+  fun refine(utils: MungoUtils, tree: TreePath, info: MungoConcreteType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): Set<State> {
     // Given the possible current states, produce a set of possible destination states
     return info.states.flatMap { state ->
       val dest = state.transitions.entries.find { utils.methodUtils.sameMethod(tree, method, it.key) }?.value

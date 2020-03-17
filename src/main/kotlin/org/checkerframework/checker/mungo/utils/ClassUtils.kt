@@ -5,8 +5,6 @@ import com.sun.source.tree.AssignmentTree
 import com.sun.source.tree.ClassTree
 import com.sun.source.tree.LiteralTree
 import com.sun.tools.javac.code.Symbol
-import org.checkerframework.checker.mungo.lib.MungoTypestate
-import org.checkerframework.checker.mungo.typecheck.MungoTypeInfo
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.javacutil.TreeUtils
 import java.nio.file.Path

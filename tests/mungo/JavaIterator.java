@@ -20,7 +20,7 @@ class JavaIterator implements Iterator<Object> {
 
     while (it.hasNext()) {
       it.next();
-      // it = null;
+      it = null;
     }
   }
 
