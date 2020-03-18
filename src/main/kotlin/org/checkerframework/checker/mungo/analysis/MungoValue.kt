@@ -11,15 +11,11 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
 
   private val a = analysis
 
-  private var previousInfo: MungoType? = null
   private var info: MungoType? = null
 
-  constructor(oldVal: MungoValue, info: MungoType, prev: MungoType?) : this(oldVal.analysis as MungoAnalysis, oldVal.annotations, oldVal.underlyingType) {
-    this.previousInfo = prev
+  constructor(oldVal: MungoValue, info: MungoType) : this(oldVal.analysis as MungoAnalysis, oldVal.annotations, oldVal.underlyingType) {
     this.info = info
   }
-
-  constructor(oldVal: MungoValue, info: MungoType) : this(oldVal, info, null)
 
   // If we have no info stored, compute one MungoTypeInfo object with all states
   fun getInfo(): MungoType {
@@ -32,12 +28,8 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
     return currInfo
   }
 
-  fun getPrevInfo(): MungoType? {
-    return previousInfo
-  }
-
   override fun toString(): String {
-    return "MungoValue{info=${getInfo()}, prev=$previousInfo, annos=${annotations.joinToString {
+    return "MungoValue{info=${getInfo()}, annos=${annotations.joinToString {
       (it.annotationType.asElement() as TypeElement).simpleName
     }}, type=$underlyingType}"
   }

@@ -3,7 +3,7 @@ import org.checkerframework.checker.mungo.lib.MungoTypestate;
 import java.util.List;
 import java.util.LinkedList;
 
-// @MungoTypestate("File.protocol")
+@MungoTypestate("FileInCollection.protocol")
 class FileInCollection {
 
   public enum State {

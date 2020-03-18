@@ -5,9 +5,7 @@ import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.MungoConcreteType
 import org.checkerframework.checker.mungo.typecheck.MungoNullType
-import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
-import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.analysis.*
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractTransfer
@@ -16,9 +14,7 @@ import javax.lang.model.element.ElementKind
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
 
   private val c = checker
-
-  private val getInfo = MungoValue::getInfo
-  private val getPrevInfo = MungoValue::getPrevInfo
+  private val a = analysis
 
   private val allLabels: (String) -> Boolean = { true }
 
@@ -28,20 +24,23 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   private val ifFalse: (String) -> Boolean = { it != "true" }
 
   // Returns true if store changed
-  private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean, getInfo: (MungoValue) -> MungoType?): Boolean {
-    val prevValue = store.getValue(receiver)
+  private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean, maybePrevValue: MungoValue?): Boolean {
+    val prevValue = maybePrevValue ?: store.getValue(receiver)
     if (prevValue != null) {
-      val prevInfo = getInfo(prevValue)
-      if (prevInfo != null) {
-        val newInfo = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
-        if (prevInfo != newInfo) {
-          val newValue = MungoValue(prevValue, newInfo, prevInfo)
-          store.replaceValue(receiver, newValue)
-          return true
-        }
+      val prevInfo = prevValue.getInfo()
+      val newInfo = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
+      if (prevInfo != newInfo) {
+        val newValue = MungoValue(prevValue, newInfo)
+        store.replaceValue(receiver, newValue)
+        return true
       }
     }
     return false
+  }
+
+  // Returns true if store changed
+  private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean): Boolean {
+    return refineStore(tree, method, receiver, store, predicate, null)
   }
 
   // TODO force object to reach final state
@@ -59,20 +58,20 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     if (c.utils.methodUtils.returnsBoolean(method)) {
       val thenStore = result.thenStore
       val elseStore = result.elseStore
-      val didChangeThen = refineStore(n.treePath, method, receiver, thenStore, ifTrue, getInfo)
-      val didChangeElse = refineStore(n.treePath, method, receiver, elseStore, ifFalse, getInfo)
+      val didChangeThen = refineStore(n.treePath, method, receiver, thenStore, ifTrue)
+      val didChangeElse = refineStore(n.treePath, method, receiver, elseStore, ifFalse)
       return if (didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     }
 
     return if (result.containsTwoStores()) {
       val thenStore = result.thenStore
       val elseStore = result.elseStore
-      val didChangeThen = refineStore(n.treePath, method, receiver, thenStore, allLabels, getInfo)
-      val didChangeElse = refineStore(n.treePath, method, receiver, elseStore, allLabels, getInfo)
+      val didChangeThen = refineStore(n.treePath, method, receiver, thenStore, allLabels)
+      val didChangeElse = refineStore(n.treePath, method, receiver, elseStore, allLabels)
       if (didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     } else {
       val store = result.regularStore
-      val didChange = refineStore(n.treePath, method, receiver, store, allLabels, getInfo)
+      val didChange = refineStore(n.treePath, method, receiver, store, allLabels)
       if (didChange) RegularTransferResult(result.resultValue, store, true) else result
     }
   }
@@ -89,12 +88,13 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
         return result
       }
 
+      val prevValue = a.getValue(expression.target.receiver)
       val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, expression.target.receiver)
       val label = caseOperand.fieldName
       val thenStore = result.thenStore
       val elseStore = result.elseStore
-      val didChangeThen = refineStore(expression.treePath, method, receiver, thenStore, { it == label }, getPrevInfo)
-      val didChangeElse = refineStore(expression.treePath, method, receiver, elseStore, { it != label }, getPrevInfo)
+      val didChangeThen = refineStore(expression.treePath, method, receiver, thenStore, { it == label }, prevValue)
+      val didChangeElse = refineStore(expression.treePath, method, receiver, elseStore, { it != label }, prevValue)
       return if (didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     }
     return result

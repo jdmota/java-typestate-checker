@@ -39,22 +39,20 @@ class File {
 
   }
 
-  /*public static void main2(String[] args) {
+  public static void main2(String[] args) {
 
     File f = new File();
-
-    f.read();
 
     switch (f.open()) {
       case OK:
       case ERROR:
+        // :: error: (Cannot call hasNext on states end. (Inferred: end, Open))
         while (f.hasNext()) {
           f.read();
         }
         f.close();
-        break;
     }
 
-  }*/
+  }
 
 }
