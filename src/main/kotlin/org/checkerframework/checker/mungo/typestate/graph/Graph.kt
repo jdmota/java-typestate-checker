@@ -98,7 +98,7 @@ class Graph private constructor(val file: Path) {
   }
 
   // TODO use queue instead of recursion? just in case there are like a ton of inner states inside each other
-  // TODO minimize?
+  // TODO minimize? while minimizing, we don't want to lose information about states names...
 
   private fun traverseTypestate(node: TDeclarationNode) {
     // If we have no named states, then the end state is also the first one

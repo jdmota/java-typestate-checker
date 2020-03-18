@@ -36,6 +36,7 @@ class FileInCollection {
   public static void main1(String[] args) {
 
     List<FileInCollection> list = new LinkedList<>();
+    list.add(new FileInCollection()); // TODO this should not error, List has no protocol
 
     for (FileInCollection f : list) {
       // TODO what if "f" is in the end state?
