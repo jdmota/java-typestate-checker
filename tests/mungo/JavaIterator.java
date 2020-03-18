@@ -45,6 +45,31 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
+  public static void main4(String[] args) {
+    JavaIterator it = new JavaIterator();
+
+    while (true) {
+      if (it.hasNext()) {
+        it.next();
+      } else {
+        break;
+      }
+    }
+  }
+
+  public static void main5(String[] args) {
+    JavaIterator it = new JavaIterator();
+
+    while (true) {
+      if (!it.hasNext()) {
+        // :: error: (Cannot call next on states end. (Inferred: end))
+        it.next();
+      } else {
+        break;
+      }
+    }
+  }
+
   public static void use(JavaIterator it2) {
     // :: error: (Cannot call hasNext on states end, Next. (Inferred: end, HasNext, Next))
     while (it2.hasNext()) {
