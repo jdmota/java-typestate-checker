@@ -15,6 +15,8 @@ import org.checkerframework.framework.type.QualifierHierarchy
 import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
+import org.checkerframework.framework.type.typeannotator.ListTypeAnnotator
+import org.checkerframework.framework.type.typeannotator.TypeAnnotator
 import org.checkerframework.framework.util.GraphQualifierHierarchy
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
 import org.checkerframework.javacutil.AnnotationUtils

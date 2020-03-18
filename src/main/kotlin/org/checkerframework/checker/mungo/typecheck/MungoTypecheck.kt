@@ -10,27 +10,25 @@ import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.javacutil.TreeUtils
 
 object MungoTypecheck {
-  fun isSubtype(sub: MungoType, sup: MungoType): Boolean {
-    if (sub is MungoBottomType) {
-      return true
-    }
-    if (sub is MungoConcreteType) {
-      if (sup is MungoConcreteType) {
-        return sub.graph === sup.graph && sup.states.containsAll(sub.states)
-      }
-      return sup is MungoUnknownType
-    }
-    if (sub is MungoUnknownType) {
-      return sup is MungoUnknownType
-    }
-    return false
-  }
+  private val unknown = MungoUnknownType()
+
+  // bottom <: concreteType <: unknown
+  // bottom <: nullType <: unknown
+  // concreteType and nullType are not comparable, the leastUpperBound of them is unknown
+  // Maybe in the future we can create a unionType, to give more concrete error information
 
   fun leastUpperBound(a1: MungoType, a2: MungoType): MungoType {
     return when (a1) {
       is MungoBottomType -> a2
+      is MungoNullType -> when (a2) {
+        is MungoBottomType -> a1
+        is MungoNullType -> a1
+        is MungoConcreteType -> unknown
+        is MungoUnknownType -> a2
+      }
       is MungoConcreteType -> when (a2) {
         is MungoBottomType -> a1
+        is MungoNullType -> unknown
         is MungoConcreteType -> if (a1.graph == a2.graph) {
           when {
             a1.states.containsAll(a2.states) -> a1
@@ -42,9 +40,7 @@ object MungoTypecheck {
               MungoConcreteType(a1.graph, set)
             }
           }
-        } else {
-          MungoUnknownType()
-        }
+        } else unknown
         is MungoUnknownType -> a2
       }
       is MungoUnknownType -> a1
@@ -54,8 +50,15 @@ object MungoTypecheck {
   fun mostSpecific(a1: MungoType, a2: MungoType): MungoType? {
     return when (a1) {
       is MungoBottomType -> a1
+      is MungoNullType -> when (a2) {
+        is MungoBottomType -> a2
+        is MungoNullType -> a2
+        is MungoConcreteType -> null
+        is MungoUnknownType -> a1
+      }
       is MungoConcreteType -> when (a2) {
         is MungoBottomType -> a2
+        is MungoNullType -> null
         is MungoConcreteType -> if (a1.graph == a2.graph) {
           when {
             a1.states.containsAll(a2.states) -> a2
@@ -79,39 +82,46 @@ object MungoTypecheck {
     if (receiverValue == null) {
       return
     }
-    val info = receiverValue.getInfo()
-
-    if (info is MungoBottomType) {
-      utils.err("Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} has the bottom type", node)
-      return
-    }
-
-    if (info is MungoUnknownType) {
-      utils.err("Cannot call ${TreeUtils.methodName(node)}. (Unknown states)", node)
-      return
-    }
-
-    if (info !is MungoConcreteType) throw AssertionError("never")
-
-    if (info.states.isEmpty()) {
-      utils.err("Cannot call ${TreeUtils.methodName(node)}. (Inferred no states)", node)
-      return
-    }
-
-    val unexpectedStates = mutableListOf<State>()
-    for (state in info.states) {
-      if (!state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
-        unexpectedStates.add(state)
+    val error = when (val info = receiverValue.getInfo()) {
+      is MungoBottomType -> "Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} has the bottom type"
+      is MungoNullType -> "Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} is null"
+      is MungoUnknownType -> "Cannot call ${TreeUtils.methodName(node)}. (Unknown states)"
+      is MungoConcreteType -> {
+        if (info.states.isEmpty()) {
+          "Cannot call ${TreeUtils.methodName(node)}. (Inferred no states)"
+        } else {
+          val unexpectedStates = mutableListOf<State>()
+          for (state in info.states) {
+            if (!state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
+              unexpectedStates.add(state)
+            }
+          }
+          if (unexpectedStates.size > 0) {
+            val currentStates = info.states.joinToString(", ") { it.name }
+            val wrongStates = unexpectedStates.joinToString(", ") { it.name }
+            "Cannot call ${TreeUtils.methodName(node)} on states $wrongStates. (Inferred: $currentStates)"
+          } else {
+            null
+          }
+        }
       }
     }
-    if (unexpectedStates.size > 0) {
-      val currentStates = info.states.joinToString(", ") { it.name }
-      val wrongStates = unexpectedStates.joinToString(", ") { it.name }
-      utils.err("Cannot call ${TreeUtils.methodName(node)} on states $wrongStates. (Inferred: $currentStates)", node)
+    if (error != null) {
+      utils.err(error, node)
     }
   }
 
-  fun refine(utils: MungoUtils, tree: TreePath, info: MungoConcreteType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): Set<State> {
+  fun refine(utils: MungoUtils, tree: TreePath, info: MungoType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): MungoType {
+    return when (info) {
+      is MungoBottomType -> info
+      // Call a method on null would produce an exception, so the method call has bottom type
+      is MungoNullType -> MungoBottomType()
+      is MungoUnknownType -> info
+      is MungoConcreteType -> MungoConcreteType(info.graph, refine(utils, tree, info, method, predicate))
+    }
+  }
+
+  private fun refine(utils: MungoUtils, tree: TreePath, info: MungoConcreteType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): Set<State> {
     // Given the possible current states, produce a set of possible destination states
     return info.states.flatMap { state ->
       val dest = state.transitions.entries.find { utils.methodUtils.sameMethod(tree, method, it.key) }?.value

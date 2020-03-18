@@ -4,8 +4,10 @@ import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.MungoConcreteType
+import org.checkerframework.checker.mungo.typecheck.MungoNullType
 import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.analysis.*
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractTransfer
@@ -30,10 +32,9 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val prevValue = store.getValue(receiver)
     if (prevValue != null) {
       val prevInfo = getInfo(prevValue)
-      if (prevInfo is MungoConcreteType) {
-        val newStates = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
-        if (prevInfo.states != newStates) {
-          val newInfo = MungoConcreteType(prevInfo.graph, newStates)
+      if (prevInfo != null) {
+        val newInfo = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
+        if (prevInfo != newInfo) {
           val newValue = MungoValue(prevValue, newInfo, prevInfo)
           store.replaceValue(receiver, newValue)
           return true
@@ -113,6 +114,22 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
         } else {
           RegularTransferResult(newValue, result.regularStore, false)
         }
+      }
+    }
+    return result
+  }
+
+  override fun visitNullLiteral(n: NullLiteralNode, p: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val result = super.visitNullLiteral(n, p)
+    val value = result.resultValue
+    if (value != null) {
+      // Replace the resultValue to be the MungoNullType instead of MungoBottomType
+      val newInfo = MungoNullType()
+      val newValue = MungoValue(value, newInfo)
+      return if (result.containsTwoStores()) {
+        ConditionalTransferResult(newValue, result.thenStore, result.elseStore, false)
+      } else {
+        RegularTransferResult(newValue, result.regularStore, false)
       }
     }
     return result

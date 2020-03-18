@@ -27,6 +27,23 @@ class MungoConcreteType(val graph: Graph, val states: Set<State>) : MungoType() 
 
 }
 
+class MungoNullType : MungoType() {
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    return other is MungoNullType
+  }
+
+  override fun hashCode(): Int {
+    return 2
+  }
+
+  override fun toString(): String {
+    return "MungoNullType"
+  }
+
+}
+
 class MungoUnknownType : MungoType() {
 
   override fun equals(other: Any?): Boolean {
