@@ -1,5 +1,6 @@
 ## TODO's
 
+- Systematic presentation for Tuesday
 - Create more tests
 - Document tests (latex)
   - Code and output
@@ -14,6 +15,7 @@
 
 ### Important things to test/fix
 
+- Only allow null assignments if object is in the end state or is already null
 - Objects with no protocol are getting the unknown type, disallowing any use of them
 - Should "end" be in the list of concrete states? If not, depends on:
   - Control that if an object reaches the "end" state, it is dropped
