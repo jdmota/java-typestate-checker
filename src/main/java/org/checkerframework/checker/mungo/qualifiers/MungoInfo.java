@@ -13,4 +13,8 @@ import java.util.List;
 @SubtypeOf(MungoUnknown.class)
 public @interface MungoInfo {
   String file();
+
+  boolean allStates() default true;
+
+  String[] states() default {};
 }

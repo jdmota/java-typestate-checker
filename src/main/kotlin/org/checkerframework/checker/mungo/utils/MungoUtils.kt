@@ -49,6 +49,10 @@ class MungoUtils(val checker: MungoChecker) {
     checker.report(Result.failure(message), where)
   }
 
+  fun err(message: String, where: Element) {
+    checker.report(Result.failure(message), where)
+  }
+
   fun resolve(path: TreePath, name: String): Type? {
     return resolver.resolve(path, name)
   }
@@ -61,19 +65,32 @@ class MungoUtils(val checker: MungoChecker) {
     return classProcessor.visitClassTree(sourceFilePath, tree)
   }
 
-  private fun getGraphFromAnnotation(annoMirror: AnnotationMirror): Graph? {
-    for ((_, value) in annoMirror.elementValues) {
-      val file = value.value as String
-      return processor.lookupGraph(Paths.get(file))
+  fun checkStates(file: Path, states: List<String>, src: Any) {
+    val graph = processor.lookupGraph(file)
+    val basename = file.fileName
+    for (state in states) {
+      if (!graph.hasStateByName(state)) {
+        checker.report(Result.warning("$basename has no $state state"), src)
+      }
     }
-    return null
+  }
+
+  private fun getTypeFromAnnotation(anno: AnnotationMirror): MungoType {
+    val file = AnnotationUtils.getElementValue(anno, "file", String::class.java, false)
+    val graph = processor.lookupGraph(Paths.get(file))
+    val allStates = AnnotationUtils.getElementValue(anno, "allStates", java.lang.Boolean::class.java, false)
+    return if (allStates.booleanValue()) {
+      MungoConcreteType(graph, graph.getAllConcreteStates())
+    } else {
+      val states = AnnotationUtils.getElementValueArray(anno, "states", String::class.java, false)
+      MungoConcreteType(graph, graph.getAllConcreteStates().filter { states.contains(it.name) }.toSet())
+    }
   }
 
   fun mungoTypeFromAnnotations(annotations: Collection<AnnotationMirror>): MungoType {
     for (annoMirror in annotations) {
       if (AnnotationUtils.areSameByName(annoMirror, mungoInfoName)) {
-        val graph = getGraphFromAnnotation(annoMirror)
-        return if (graph == null) MungoUnknownType() else MungoConcreteType(graph, graph.getAllConcreteStates())
+        return getTypeFromAnnotation(annoMirror)
       }
       if (AnnotationUtils.areSameByName(annoMirror, mungoUnknownName)) {
         return MungoUnknownType()
@@ -102,6 +119,16 @@ class MungoUtils(val checker: MungoChecker) {
     fun buildAnnotation(env: ProcessingEnvironment, file: Path): AnnotationMirror {
       val builder = AnnotationBuilder(env, MungoInfo::class.java)
       builder.setValue("file", file.toString())
+      builder.setValue("allStates", true)
+      builder.setValue("states", listOf())
+      return builder.build()
+    }
+
+    fun buildAnnotation(env: ProcessingEnvironment, file: Path, states: List<String>): AnnotationMirror {
+      val builder = AnnotationBuilder(env, MungoInfo::class.java)
+      builder.setValue("file", file.toString())
+      builder.setValue("allStates", false)
+      builder.setValue("states", states)
       return builder.build()
     }
 

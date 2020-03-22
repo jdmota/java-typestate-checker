@@ -66,6 +66,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       }
       if (AnnotationUtils.areSameByName(subAnno, c.utils.infoAnnotation)) {
         return if (AnnotationUtils.areSameByName(superAnno, c.utils.infoAnnotation)) {
+          // FIXME
           AnnotationUtils.sameElementValues(superAnno, subAnno)
         } else {
           AnnotationUtils.areSameByName(superAnno, c.utils.unknownAnnotation)

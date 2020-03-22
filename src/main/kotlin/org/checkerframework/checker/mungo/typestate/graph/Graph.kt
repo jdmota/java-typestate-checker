@@ -36,6 +36,10 @@ class Graph private constructor(val file: Path) {
     return concreteStates
   }
 
+  fun hasStateByName(name: String): Boolean {
+    return namedStates[name] != null
+  }
+
   private fun getStateByName(id: TIdNode): State {
     return namedStates[id.name] ?: throw StateNotDefined(id)
   }

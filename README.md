@@ -5,14 +5,6 @@
 - Document tests (latex)
   - Code and output
 
-### Features
-
-- @MungoState({})
-- Support state change depending on exceptions
-- Inheritance? Protocols in interfaces?
-  - What if a class has a protocol, and implements an interface with a protocol as well?
-  - Test if a protocol is a subtype of other protocol? How so?
-
 ### Important things to test/fix
 
 - Only allow null assignments if object is in the end state or is already null
@@ -39,3 +31,11 @@
   - Done in part: if a method is available in all states, its call is allowed.
   - This allows one to check the current state of an object.
 - [ ] Adding support for state transitions depending on method arguments
+
+### Other features
+
+- [x] @MungoState({"HasNext"})
+- [ ] Support state change depending on exceptions
+- [ ] Inheritance? Protocols in interfaces?
+  - What if a class has a protocol, and implements an interface with a protocol as well?
+  - Test if a protocol is a subtype of other protocol? How so?

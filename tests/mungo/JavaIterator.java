@@ -1,4 +1,5 @@
 import org.checkerframework.checker.mungo.lib.MungoTypestate;
+import org.checkerframework.checker.mungo.lib.MungoState;
 
 import java.util.Iterator;
 
@@ -70,10 +71,37 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  public static void use(JavaIterator it2) {
+  public static void main6(String[] args) {
+    @MungoState({"STUFFFF"}) JavaIterator it3 = new JavaIterator(); // FIXME @MungoState getting ignored
+
+    while (it3.hasNext()) {
+      it3.next();
+    }
+  }
+
+  public static void main7(String[] args) {
+    JavaIterator it4 = new JavaIterator();
+    use2(it4); // FIXME check assignment
+  }
+
+  public static void use1(JavaIterator it) {
     // :: error: (Cannot call hasNext on states end, Next. (Inferred: end, HasNext, Next))
-    while (it2.hasNext()) {
-      it2.next();
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void use2(@MungoState({"Next"}) JavaIterator it) {
+    it.next();
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void use3(@MungoState({"Next", "WrongName"}) JavaIterator it) {
+    it.next();
+    while (it.hasNext()) {
+      it.next();
     }
   }
 

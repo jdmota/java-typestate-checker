@@ -1,12 +1,9 @@
 package org.checkerframework.checker.mungo.typecheck
 
-import com.sun.source.tree.AssignmentTree
 import com.sun.source.tree.MethodInvocationTree
 import com.sun.tools.javac.code.Symbol
-import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
-import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.ElementKind
