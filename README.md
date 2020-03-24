@@ -89,7 +89,8 @@ Type information in the Checker Framework is stored in annotations. In the curre
     - Solution: Create a type for objects with no protocols instead of attributing to them the `Unknown` type.
 - Should "end" be in the list of concrete states? If not, depends on:
   - Control that if an object reaches the "end" state, it is dropped
-- Force an object to reach the "end" state if dropped
+  - Solution: create "UnusableType" concept
+- Force object protocol to complete
 - Deal with the values of fields inside objects
   - Combating against defensive programming
 - Validate protocols
