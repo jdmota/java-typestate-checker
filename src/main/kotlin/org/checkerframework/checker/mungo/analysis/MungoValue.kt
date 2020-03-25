@@ -56,8 +56,8 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
     if (other !is MungoValue) return false
     if (info != other.info) return false
     // Adapted from CFAbstractValue
-    return getUnderlyingType() === other.underlyingType ||
-      a.c.typeUtils.isSameType(underlyingType, other.underlyingType) ||
+    return (getUnderlyingType() === other.underlyingType ||
+      a.c.typeUtils.isSameType(underlyingType, other.underlyingType)) &&
       AnnotationUtils.areSame(filter(this), filter(other))
   }
 

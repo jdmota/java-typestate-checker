@@ -44,25 +44,6 @@ class MungoConcreteType(val graph: Graph, val states: Set<State>) : MungoType() 
 
   init {
     map[id] = this
-    // TODO remove this
-    when {
-      id in 2000..2005 -> {
-        println("\n-----$id------")
-        println(graph.file)
-        println(states)
-      }
-      id in 3500..3505 -> {
-        println("\n-----$id------")
-        println(graph.file)
-        println(states)
-      }
-      id > 5000 -> {
-        println("\n-----$id------")
-        println(graph.file)
-        println(states)
-        throw RuntimeException("NOOOOO")
-      }
-    }
   }
 
   override fun buildAnnotation(env: ProcessingEnvironment): AnnotationMirror {
