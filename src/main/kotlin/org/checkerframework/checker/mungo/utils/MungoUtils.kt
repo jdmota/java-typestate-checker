@@ -6,29 +6,20 @@ import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.lib.MungoTypestate
+import org.checkerframework.checker.mungo.lib.MungoState
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
-import org.checkerframework.checker.mungo.qualifiers.MungoInfo
+import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
-import org.checkerframework.checker.mungo.typecheck.MungoBottomType
-import org.checkerframework.checker.mungo.typecheck.MungoConcreteType
-import org.checkerframework.checker.mungo.typecheck.MungoType
-import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
+import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.source.Result
-import org.checkerframework.javacutil.AnnotationBuilder
 import org.checkerframework.javacutil.AnnotationUtils
 import java.nio.file.Path
-import java.nio.file.Paths
-import javax.annotation.processing.ProcessingEnvironment
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 
 class MungoUtils(val checker: MungoChecker) {
-
-  val bottomAnnotation: AnnotationMirror = AnnotationBuilder.fromClass(checker.elementUtils, MungoBottom::class.java)
-  val infoAnnotation: AnnotationMirror = AnnotationBuilder.fromClass(checker.elementUtils, MungoInfo::class.java)
-  val unknownAnnotation: AnnotationMirror = AnnotationBuilder.fromClass(checker.elementUtils, MungoUnknown::class.java)
 
   private val resolver = Resolver(checker.processingEnvironment)
   private val classProcessor = ClassUtils(this)
@@ -75,33 +66,6 @@ class MungoUtils(val checker: MungoChecker) {
     }
   }
 
-  private fun getTypeFromAnnotation(anno: AnnotationMirror): MungoType {
-    val file = AnnotationUtils.getElementValue(anno, "file", String::class.java, false)
-    val graph = processor.lookupGraph(Paths.get(file))
-    val allStates = AnnotationUtils.getElementValue(anno, "allStates", java.lang.Boolean::class.java, false)
-    return if (allStates.booleanValue()) {
-      MungoConcreteType(graph, graph.getAllConcreteStates())
-    } else {
-      val states = AnnotationUtils.getElementValueArray(anno, "states", String::class.java, false)
-      MungoConcreteType(graph, graph.getAllConcreteStates().filter { states.contains(it.name) }.toSet())
-    }
-  }
-
-  fun mungoTypeFromAnnotations(annotations: Collection<AnnotationMirror>): MungoType {
-    for (annoMirror in annotations) {
-      if (AnnotationUtils.areSameByName(annoMirror, mungoInfoName)) {
-        return getTypeFromAnnotation(annoMirror)
-      }
-      if (AnnotationUtils.areSameByName(annoMirror, mungoUnknownName)) {
-        return MungoUnknownType()
-      }
-      if (AnnotationUtils.areSameByName(annoMirror, mungoBottomName)) {
-        return MungoBottomType()
-      }
-    }
-    return MungoUnknownType()
-  }
-
   fun breakpoint() {
     // For debugging purposes
     // Add class pattern "org.checkerframework.checker.mungo.utils.MungoUtils"
@@ -112,24 +76,43 @@ class MungoUtils(val checker: MungoChecker) {
 
   companion object {
     val mungoTypestateName: String = MungoTypestate::class.java.canonicalName
-    val mungoInfoName: String = MungoInfo::class.java.canonicalName
-    val mungoBottomName: String = MungoBottom::class.java.canonicalName
+    val mungoStateName: String = MungoState::class.java.canonicalName
     val mungoUnknownName: String = MungoUnknown::class.java.canonicalName
+    val mungoInternalInfoName: String = MungoInternalInfo::class.java.canonicalName
+    val mungoBottomName: String = MungoBottom::class.java.canonicalName
 
-    fun buildAnnotation(env: ProcessingEnvironment, file: Path): AnnotationMirror {
-      val builder = AnnotationBuilder(env, MungoInfo::class.java)
-      builder.setValue("file", file.toString())
-      builder.setValue("allStates", true)
-      builder.setValue("states", listOf())
-      return builder.build()
+    fun isMungoAnnotation(annotation: AnnotationMirror): Boolean {
+      return AnnotationUtils.areSameByName(annotation, mungoUnknownName) ||
+        AnnotationUtils.areSameByName(annotation, mungoInternalInfoName) ||
+        AnnotationUtils.areSameByName(annotation, mungoBottomName)
     }
 
-    fun buildAnnotation(env: ProcessingEnvironment, file: Path, states: List<String>): AnnotationMirror {
-      val builder = AnnotationBuilder(env, MungoInfo::class.java)
-      builder.setValue("file", file.toString())
-      builder.setValue("allStates", false)
-      builder.setValue("states", states)
-      return builder.build()
+    fun mungoTypeFromAnnotation(annotation: AnnotationMirror): MungoType {
+      if (AnnotationUtils.areSameByName(annotation, mungoUnknownName)) {
+        return MungoUnknownType.SINGLETON
+      }
+      if (AnnotationUtils.areSameByName(annotation, mungoInternalInfoName)) {
+        return getTypeFromAnnotation(annotation)
+      }
+      if (AnnotationUtils.areSameByName(annotation, mungoBottomName)) {
+        return MungoBottomType.SINGLETON
+      }
+      throw AssertionError("mungoTypeFromAnnotation")
+    }
+
+    fun mungoTypeFromAnnotations(annotations: Collection<AnnotationMirror>): MungoType {
+      for (annotation in annotations) {
+        if (AnnotationUtils.areSameByName(annotation, mungoUnknownName)) {
+          return MungoUnknownType.SINGLETON
+        }
+        if (AnnotationUtils.areSameByName(annotation, mungoInternalInfoName)) {
+          return getTypeFromAnnotation(annotation)
+        }
+        if (AnnotationUtils.areSameByName(annotation, mungoBottomName)) {
+          return MungoBottomType.SINGLETON
+        }
+      }
+      return MungoUnknownType.SINGLETON
     }
 
     fun printStack() {

@@ -27,7 +27,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean, maybePrevValue: MungoValue?): Boolean {
     val prevValue = maybePrevValue ?: store.getValue(receiver)
     if (prevValue != null) {
-      val prevInfo = prevValue.getInfo()
+      val prevInfo = prevValue.info
       val newInfo = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
       if (prevInfo != newInfo) {
         val newValue = MungoValue(prevValue, newInfo)
@@ -105,7 +105,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val value = result.resultValue
     if (value != null) {
       // Refine resultValue to the initial state
-      val currInfo = value.getInfo()
+      val currInfo = value.info
       if (currInfo is MungoConcreteType) {
         val newInfo = MungoConcreteType(currInfo.graph, setOf(currInfo.graph.getInitialState()))
         val newValue = MungoValue(value, newInfo)
@@ -123,8 +123,8 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val result = super.visitNullLiteral(n, p)
     val value = result.resultValue
     if (value != null) {
-      // Replace the resultValue to be the MungoNullType instead of MungoBottomType
-      val newInfo = MungoNullType()
+      // Replace the resultValue to have the MungoNullType instead of MungoBottomType
+      val newInfo = MungoNullType.SINGLETON
       val newValue = MungoValue(value, newInfo)
       return if (result.containsTwoStores()) {
         ConditionalTransferResult(newValue, result.thenStore, result.elseStore, false)

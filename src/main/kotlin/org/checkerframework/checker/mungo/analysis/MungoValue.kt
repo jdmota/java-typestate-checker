@@ -1,35 +1,28 @@
 package org.checkerframework.checker.mungo.analysis
 
 import org.checkerframework.checker.mungo.typecheck.MungoType
-import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.flow.CFAbstractValue
+import org.checkerframework.javacutil.AnnotationUtils
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.TypeElement
 import javax.lang.model.type.TypeMirror
+
+// Filter Mungo annotations out
+private fun filter(value: MungoValue): List<AnnotationMirror> {
+  return value.annotations.filterNot { MungoUtils.isMungoAnnotation(it) }
+}
 
 class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, underlyingType: TypeMirror) : CFAbstractValue<MungoValue>(analysis, annotations, underlyingType) {
 
   private val a = analysis
 
-  private var info: MungoType? = null
+  val info: MungoType = MungoUtils.mungoTypeFromAnnotations(annotations)
 
-  constructor(oldVal: MungoValue, info: MungoType) : this(oldVal.analysis as MungoAnalysis, oldVal.annotations, oldVal.underlyingType) {
-    this.info = info
-  }
-
-  // If we have no info stored, compute one MungoTypeInfo object with all states
-  fun getInfo(): MungoType {
-    val currInfo = info
-    if (currInfo == null) {
-      val newInfo = a.getUtils().mungoTypeFromAnnotations(annotations)
-      info = newInfo
-      return newInfo
-    }
-    return currInfo
-  }
+  constructor(prevValue: MungoValue, newInfo: MungoType) : this(prevValue.a, filter(prevValue).plus(newInfo.buildAnnotation(prevValue.a.typeFactory.processingEnv)).toSet(), prevValue.underlyingType)
 
   override fun toString(): String {
-    return "MungoValue{info=${getInfo()}, annos=${annotations.joinToString {
+    return "MungoValue{info=$info, annos=${annotations.joinToString {
       (it.annotationType.asElement() as TypeElement).simpleName
     }}, type=$underlyingType}"
   }
@@ -38,25 +31,18 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
     if (other == null) {
       return this
     }
-    val thisInfo = getInfo()
-    val otherInfo = other.getInfo()
-    val r = super.leastUpperBound(other)
-    r.info = MungoTypecheck.leastUpperBound(thisInfo, otherInfo)
-    return r
+    val result = super.leastUpperBound(other)
+    val newInfo = info.leastUpperBound(other.info)
+    return MungoValue(result, newInfo)
   }
 
   override fun mostSpecific(other: MungoValue?, backup: MungoValue?): MungoValue? {
     if (other == null) {
       return this
     }
-    val thisInfo = getInfo()
-    val otherInfo = other.getInfo()
-    val r = super.mostSpecific(other, backup)
-    r.info = MungoTypecheck.mostSpecific(thisInfo, otherInfo)
-    if (r.info == null) {
-      return null
-    }
-    return r
+    val result = super.mostSpecific(other, backup)
+    val newInfo = info.mostSpecific(other.info) ?: return null
+    return MungoValue(result, newInfo)
   }
 
   override fun hashCode(): Int {
@@ -68,7 +54,11 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is MungoValue) return false
-    return super.equals(other) && info == other.info
+    if (info != other.info) return false
+    // Adapted from CFAbstractValue
+    return getUnderlyingType() === other.underlyingType ||
+      a.c.typeUtils.isSameType(underlyingType, other.underlyingType) ||
+      AnnotationUtils.areSame(filter(this), filter(other))
   }
 
 }

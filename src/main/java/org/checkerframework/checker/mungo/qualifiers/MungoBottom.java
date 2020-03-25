@@ -13,6 +13,6 @@ import org.checkerframework.framework.qual.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE_USE, ElementType.TYPE_PARAMETER})
 @TargetLocations({TypeUseLocation.EXPLICIT_LOWER_BOUND, TypeUseLocation.EXPLICIT_UPPER_BOUND})
-@SubtypeOf({MungoInfo.class})
+@SubtypeOf({MungoInternalInfo.class})
 public @interface MungoBottom {
 }

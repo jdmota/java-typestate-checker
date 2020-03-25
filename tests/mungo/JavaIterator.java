@@ -72,16 +72,34 @@ class JavaIterator implements Iterator<Object> {
   }
 
   public static void main6(String[] args) {
-    @MungoState({"STUFFFF"}) JavaIterator it3 = new JavaIterator(); // FIXME @MungoState getting ignored
+    JavaIterator it = new JavaIterator();
+    @MungoState({"Next"}) JavaIterator it2 = it; // FIXME @MungoState getting ignored
+
+    while (it2.hasNext()) {
+      it2.next();
+    }
+  }
+
+  public static void main7(String[] args) {
+    @MungoState({"Next"}) JavaIterator it3 = new JavaIterator(); // FIXME @MungoState getting ignored
 
     while (it3.hasNext()) {
       it3.next();
     }
   }
 
-  public static void main7(String[] args) {
+  public static void main8(String[] args) {
     JavaIterator it4 = new JavaIterator();
-    use2(it4); // FIXME check assignment
+    // FIXME better error message
+    // :: error: (argument.type.incompatible)
+    use2(it4);
+  }
+
+  public static void main9(String[] args) {
+    JavaIterator it5 = new JavaIterator();
+    if (it5.hasNext()) {
+      use2(it5);
+    }
   }
 
   public static void use1(JavaIterator it) {

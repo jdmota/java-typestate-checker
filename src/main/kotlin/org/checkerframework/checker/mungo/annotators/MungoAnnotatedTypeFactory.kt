@@ -6,20 +6,18 @@ import org.checkerframework.checker.mungo.analysis.MungoStore
 import org.checkerframework.checker.mungo.analysis.MungoTransfer
 import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
-import org.checkerframework.checker.mungo.qualifiers.MungoInfo
+import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
-import org.checkerframework.dataflow.analysis.AnalysisResult
+import org.checkerframework.checker.mungo.typecheck.MungoBottomType
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.flow.CFAbstractAnalysis
 import org.checkerframework.framework.type.GenericAnnotatedTypeFactory
 import org.checkerframework.framework.type.QualifierHierarchy
 import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
-import org.checkerframework.framework.type.typeannotator.ListTypeAnnotator
-import org.checkerframework.framework.type.typeannotator.TypeAnnotator
 import org.checkerframework.framework.util.GraphQualifierHierarchy
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
-import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.Pair
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.VariableElement
@@ -50,31 +48,19 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   }
 
   override fun createSupportedTypeQualifiers(): Set<Class<out Annotation>> {
-    // Do NOT include @MungoTypestate here
-    return setOf(MungoBottom::class.java, MungoInfo::class.java, MungoUnknown::class.java)
+    // Do NOT include @MungoTypestate or @MungoState here
+    return setOf(MungoBottom::class.java, MungoInternalInfo::class.java, MungoUnknown::class.java)
   }
 
   override fun createQualifierHierarchy(factory: MultiGraphQualifierHierarchy.MultiGraphFactory): QualifierHierarchy {
-    return MungoQualifierHierarchy(factory, c.utils.bottomAnnotation)
+    return MungoQualifierHierarchy(factory, MungoBottomType.SINGLETON.buildAnnotation(checker.processingEnvironment))
   }
 
   private inner class MungoQualifierHierarchy(f: MultiGraphFactory, bottom: AnnotationMirror) : GraphQualifierHierarchy(f, bottom) {
-    // BOTTOM <: INFO <: UNKNOWN
     override fun isSubtype(subAnno: AnnotationMirror, superAnno: AnnotationMirror): Boolean {
-      if (AnnotationUtils.areSameByName(subAnno, c.utils.bottomAnnotation)) {
-        return true
-      }
-      if (AnnotationUtils.areSameByName(subAnno, c.utils.infoAnnotation)) {
-        return if (AnnotationUtils.areSameByName(superAnno, c.utils.infoAnnotation)) {
-          // FIXME
-          AnnotationUtils.sameElementValues(superAnno, subAnno)
-        } else {
-          AnnotationUtils.areSameByName(superAnno, c.utils.unknownAnnotation)
-        }
-      }
-      return if (AnnotationUtils.areSameByName(subAnno, c.utils.unknownAnnotation)) {
-        AnnotationUtils.areSameByName(superAnno, c.utils.unknownAnnotation)
-      } else false
+      val sub = MungoUtils.mungoTypeFromAnnotation(subAnno)
+      val sup = MungoUtils.mungoTypeFromAnnotation(superAnno)
+      return sub.isSubtype(sup)
     }
   }
 }

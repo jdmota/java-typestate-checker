@@ -51,20 +51,6 @@ The type of files that are in the `Open` state and the type of files that are in
                 - `MungoTransfer`
                     - Propagates type information
 
-#### To consider and fix
-
-Type information in the Checker Framework is stored in annotations. In the current implementation, specific type information is stored in `MungoValue`'s used in `MungoAnalysis`. That is probably not correct because Checker uses annotated types to checks assignments, not `MungoValue`'s. Unfortunately, working with annotations is not natural, since they are only able to store some types of values, not arbitrary objects, so extracting the necessary type information from annotations adds unnecessary burden. To consider:
-
-- Store everything in annotated types
-    - Pros: More in line with Checker's "spirit". Checker does assignment checks for us.
-    - Cons: Burden in extracting type information.
-- Keep information in `MungoValue`'s and implement our assignment checks
-    - Pros: More natural?
-    - Cons: How to get the inferred `MungoValue`'s for method arguments when encountering a method invocation in `MungoVisitor`?
-- Do not use the whole Checker Framework. Just reuse the flow analysis part.
-    - Pros: Ignores completely the whole idea of annotated types and reduces unnecessary work. Removing the "magic" that happens behind and implementing it ourselves might also help in the task of formalizing what is actually happening.
-    - Cons: More work? Maybe not. Needs investigation.
-
 ## Building
 
 - Unix: `./gradlew build`
@@ -83,7 +69,9 @@ Type information in the Checker Framework is stored in annotations. In the curre
 
 ### Important things to test/fix
 
-- Check assignments (variable declarations and method arguments - e.g. `@MungoState({}) Iterator it = etc;`)
+- Check assignments
+    - [x] Method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)`
+    - [ ] Variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
 - Only allow null assignments if object is in the end state or is already null
 - Objects with no protocol are getting the unknown type, disallowing any use of them
     - Solution: Create a type for objects with no protocols instead of attributing to them the `Unknown` type.

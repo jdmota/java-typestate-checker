@@ -10,68 +10,6 @@ import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.javacutil.TreeUtils
 
 object MungoTypecheck {
-  private val unknown = MungoUnknownType()
-
-  // bottom <: concreteType <: unknown
-  // bottom <: nullType <: unknown
-  // concreteType and nullType are not comparable, the leastUpperBound of them is unknown
-  // Maybe in the future we can create a unionType, to give more concrete error information
-
-  fun leastUpperBound(a1: MungoType, a2: MungoType): MungoType {
-    return when (a1) {
-      is MungoBottomType -> a2
-      is MungoNullType -> when (a2) {
-        is MungoBottomType -> a1
-        is MungoNullType -> a1
-        is MungoConcreteType -> unknown
-        is MungoUnknownType -> a2
-      }
-      is MungoConcreteType -> when (a2) {
-        is MungoBottomType -> a1
-        is MungoNullType -> unknown
-        is MungoConcreteType -> if (a1.graph == a2.graph) {
-          when {
-            a1.states.containsAll(a2.states) -> a1
-            a2.states.containsAll(a1.states) -> a2
-            else -> {
-              val set = mutableSetOf<State>()
-              set.addAll(a1.states)
-              set.addAll(a2.states)
-              MungoConcreteType(a1.graph, set)
-            }
-          }
-        } else unknown
-        is MungoUnknownType -> a2
-      }
-      is MungoUnknownType -> a1
-    }
-  }
-
-  fun mostSpecific(a1: MungoType, a2: MungoType): MungoType? {
-    return when (a1) {
-      is MungoBottomType -> a1
-      is MungoNullType -> when (a2) {
-        is MungoBottomType -> a2
-        is MungoNullType -> a2
-        is MungoConcreteType -> null
-        is MungoUnknownType -> a1
-      }
-      is MungoConcreteType -> when (a2) {
-        is MungoBottomType -> a2
-        is MungoNullType -> null
-        is MungoConcreteType -> if (a1.graph == a2.graph) {
-          when {
-            a1.states.containsAll(a2.states) -> a2
-            a2.states.containsAll(a1.states) -> a1
-            else -> null
-          }
-        } else null
-        is MungoUnknownType -> a1
-      }
-      is MungoUnknownType -> a2
-    }
-  }
-
   fun check(
     utils: MungoUtils,
     tree: TreePath,
@@ -82,7 +20,7 @@ object MungoTypecheck {
     if (receiverValue == null) {
       return
     }
-    val error = when (val info = receiverValue.getInfo()) {
+    val error = when (val info = receiverValue.info) {
       is MungoBottomType -> "Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} has the bottom type"
       is MungoNullType -> "Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} is null"
       is MungoUnknownType -> "Cannot call ${TreeUtils.methodName(node)}. (Unknown states)"
@@ -114,8 +52,8 @@ object MungoTypecheck {
   fun refine(utils: MungoUtils, tree: TreePath, info: MungoType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): MungoType {
     return when (info) {
       is MungoBottomType -> info
-      // Call a method on null would produce an exception, so the method call has bottom type
-      is MungoNullType -> MungoBottomType()
+      // Calling a method on null would produce an exception, so the method call has bottom type
+      is MungoNullType -> MungoBottomType.SINGLETON
       is MungoUnknownType -> info
       is MungoConcreteType -> MungoConcreteType(info.graph, refine(utils, tree, info, method, predicate))
     }
