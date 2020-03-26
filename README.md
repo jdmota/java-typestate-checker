@@ -4,27 +4,33 @@
 
 ### Type system
 
+<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmooznpKj9JV5FoaALW8cYAmyeoY_9JyxFmPGgpSdXGZ8E8kgKNrAIdyk5LH1X6BeCo2mK0OVKl1IWsm40 -->
+
 ![Type system](./type_system.svg)
 
-- `Unknown`: top type. Includes all possible values. `{...any}`
-- `NullType`: set with only the null type. `{null}`
-- `ObjectsWithStates`: all objects with protocols. Does NOT include null. `{...objects}`
-- `Bottom`: bottom type. Used for computations that do not finish or error. Empty set. `{}`
-    - Like `Nothing` in many languages or like `never` in TypeScript.
+- `Unknown` is the top type. It includes all possible values.
+- `NotEndedObj` is the set of all objects with protocols that have not completed.
+- `EndedObj` is the set of all objects with completed protocols.
+- `NoProtocolObj` is the set of all objects without protocol.
+- `Null` is the set with only the `null` value.
+- `Bottom` is the bottom type. Used for computations that do not finish or error. Empty set. Like `Nothing` in many languages or like `never` in TypeScript.
 
-Note: `null` should NOT have the bottom type, otherwise its type would be the subtype of all types, allowing `null` assignments going unchecked. Which is what Java already (wrongly) does.
+Subtypes of `NotEndedObj` are for example, the type of files that are in the `Open` or `Read` states, or the type of files that are only in the `Open` state.
 
-Subtypes of `ObjectsWithStates` are for example, the type of files that are in the `Open` or `Close` states, or the type of files that are only in the `Open` state.
+The type of files that are only in the `Open` state is also a subtype of the type of files that are in the `Open` or `Read` states, since the set `{Open}` is contained in `{Open, Read}`.
 
-The type of files that are only in the `Open` state is also a subtype of the type of files that are in the `Open` or `Close` states, since the set `{Open}` is contained in `{Open, Close}`.
+The type of files that are in the `Open` state and the type of files that are in the `Read` state are not subtypes of each other, since one is not contained in the other and vice-versa.
 
-The type of files that are in the `Open` state and the type of files that are in the `Close` state are not subtypes of each other, since one is not contained in the other and vice-versa.
-
-<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyt92QaiI4KLzK_AIaqkAGxFBCa8BaaiIItcmX21A5Hooyn9hVOlICtJKN3EoIzEhLNYmYA6hfYmAfXXCFT1v9poIqhoSxcG3KALGEX5at58pKi1UXu0 -->
+<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyr15yalSSrBIKtnJyhYGcA3vPJSCdDIg_qBKlDq589I4rDgbRWmXHJGb19K13K9v1I8i5D-IKb-BXUo4IWI26re4WwfUIb0Bm80 -->
 
 ![Type system example](./type_system_example.svg)
 
-#### Checking
+#### Notes
+
+1. `null` should NOT have the bottom type, otherwise its type would be the subtype of all types, allowing `null` assignments going unchecked. Which is what Java already (wrongly) does.
+1. `EndedObj` and `Null` could be joined in an `Unusable` type. The reason to split both is to provide more information to error messages as to why an operation is not allowed.
+
+### Checking
 
 - The type checker tracks all the possible states that an object might be in.
 - When initializing, an object is only in its initial state.
@@ -33,23 +39,26 @@ The type of files that are in the `Open` state and the type of files that are in
 
 ### Architecture
 
-- `MungoChecker`
-    - The plugin's entry point
-    - `MungoVisitor`
-        - Performs assignment checking and method invocation checking.
-        - `MungoAnnotatedTypeFactory`
-            - Applies annotated types to AST nodes via `MungoDefaultQualifierForUseTypeAnnotator` and `MungoTreeAnnotator`
-            - Also uses flow-sensitive information via `MungoAnalysis` and `MungoTransfer`
-            - `MungoDefaultQualifierForUseTypeAnnotator`
-                - Applies a set of annotations that should be applied to elements
-            - `MungoTreeAnnotator`
-                - Applies a set of annotations that should be applied to AST nodes
-            - `MungoQualifierHierarchy`
-                - Defines the subtyping relationship between annotations
-            - `MungoAnalysis`
-                - Tracks annotations using flow-sensitive analysis
-                - `MungoTransfer`
-                    - Propagates type information
+Plugins for the Checker Framework usually extend the `BaseTypeChecker` and then override some aspects of it if necessary. To understand how plugins work it is important to understand how information is stored:
+
+- [AnnotatedTypeMirror](https://checkerframework.org/api/org/checkerframework/framework/type/AnnotatedTypeMirror.html)'s represent types and store type annotations associated with the type. Those annotations constitute the type information specific to the type system implemented by a plugin.
+- [Tree](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.compiler/com/sun/source/tree/Tree.html?is-external=true)'s are nodes in an abstract syntax tree.
+- [Element](https://docs.oracle.com/en/java/javase/11/docs/api/java.compiler/javax/lang/model/element/Element.html?is-external=true)'s represent a potentially-public declaration that can be accessed from elsewhere: classes, interfaces, methods, constructors, and fields.
+
+Our plugin is composed by:
+
+- `MungoChecker`: The plugin's entry point.
+- `MungoVisitor`: Performs assignment checking, method invocation checking and other checks.
+- `MungoAnnotatedTypeFactory`: Applies annotations via `MungoDefaultQualifierForUseTypeAnnotator` and `MungoTreeAnnotator`, which are refined by the flow-sensitive analysis provided by `MungoAnalysis` and `MungoTransfer`
+- `MungoQualifierHierarchy`: Defines the subtyping relationship between annotations
+- `MungoDefaultQualifierForUseTypeAnnotator`: Applies a set of annotations to [Elements](https://docs.oracle.com/en/java/javase/11/docs/api/java.compiler/javax/lang/model/element/Element.html?is-external=true)
+- `MungoTreeAnnotator`: Applies a set of annotations to [Trees](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.compiler/com/sun/source/tree/Tree.html?is-external=true)
+- `MungoAnalysis`: Tracks annotations using flow-sensitive analysis
+- `MungoTransfer`: Applies type information refinement
+
+Since annotations are only able to store some types of values, not arbitrary objects, we store a `long` id value in each annotation that is then mapped to an object which stores the concrete type information.
+
+More details: [Manual - How to create a Checker plugin](https://checkerframework.org/manual/#creating-a-checker)
 
 ## Building
 
@@ -63,6 +72,7 @@ The type of files that are in the `Open` state and the type of files that are in
 
 ## TODO's
 
+- Update this README with further information
 - Create more tests
 - Document tests (latex)
   - Code and output
