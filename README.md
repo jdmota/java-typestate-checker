@@ -81,18 +81,22 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 - Check assignments
     - [x] Method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)`
+        - Commit [f3502a](https://github.com/jdmota/abcd-mungo/commit/f3502ae38da23cf3507557e67fac94d03d309175)
     - [ ] Variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
 - Only allow null assignments if object is in the end state or is already null
-- Objects with no protocol are getting the unknown type, disallowing any use of them
-    - Solution: Create a type for objects with no protocols instead of attributing to them the `Unknown` type.
-- Should "end" be in the list of concrete states? If not, depends on:
-  - Control that if an object reaches the "end" state, it is dropped
-  - Solution: create "UnusableType" concept
+- [x] Objects with no protocol are getting the unknown type, disallowing any use of them
+    - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
+    - Commit [ec02a8](https://github.com/jdmota/abcd-mungo/commit/ec02a8069c073246e51df449a0a4592788af0cf1)
+- [x] When the states are unknown, all possible ones are being attributed, including final ones
+  - Solution: Create "EndedType" distinguishing from normal states
+  - Commit [ec02a8](https://github.com/jdmota/abcd-mungo/commit/ec02a8069c073246e51df449a0a4592788af0cf1)
 - Force object protocol to complete
+- Force linear use of objects with protocol
 - Deal with the values of fields inside objects
   - Combating against defensive programming
 - Validate protocols
   - Check if there are duplicate transitions, if types exist, etc...
+- Understand why Checker is reporting more errors than necessary...
 - Review other todo's in the code...
 
 ## Proposals from thesis plan

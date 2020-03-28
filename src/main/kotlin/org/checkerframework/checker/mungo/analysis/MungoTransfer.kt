@@ -3,9 +3,10 @@ package org.checkerframework.checker.mungo.analysis
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
-import org.checkerframework.checker.mungo.typecheck.MungoConcreteType
 import org.checkerframework.checker.mungo.typecheck.MungoNullType
+import org.checkerframework.checker.mungo.typecheck.MungoStateType
 import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
+import org.checkerframework.checker.mungo.typecheck.MungoUnionType
 import org.checkerframework.dataflow.analysis.*
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractTransfer
@@ -105,14 +106,17 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val value = result.resultValue
     if (value != null) {
       // Refine resultValue to the initial state
-      val currInfo = value.info
-      if (currInfo is MungoConcreteType) {
-        val newInfo = MungoConcreteType(currInfo.graph, setOf(currInfo.graph.getInitialState()))
-        val newValue = MungoValue(value, newInfo)
-        return if (result.containsTwoStores()) {
-          ConditionalTransferResult(newValue, result.thenStore, result.elseStore, false)
-        } else {
-          RegularTransferResult(newValue, result.regularStore, false)
+      val currType = value.info
+      if (currType is MungoUnionType) {
+        val stateType = currType.types.find { it is MungoStateType } as? MungoStateType
+        if (stateType != null) {
+          val newType = MungoStateType.create(stateType.graph, stateType.graph.getInitialState())
+          val newValue = MungoValue(value, newType)
+          return if (result.containsTwoStores()) {
+            ConditionalTransferResult(newValue, result.thenStore, result.elseStore, false)
+          } else {
+            RegularTransferResult(newValue, result.regularStore, false)
+          }
         }
       }
     }

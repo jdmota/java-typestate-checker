@@ -15,13 +15,13 @@ class Graph private constructor(val file: Path) {
   private var initialState: State? = null
   private val endState: EndState = EndState()
   private val finalStates: MutableSet<State>
-  private val namedStates: MutableMap<String, State> = HashMap()
+  private val namedStates: MutableMap<String, State> = HashMap() // Does not include "end"
   private val referencedStates: MutableSet<String> = HashSet()
   private var concreteStates: MutableSet<State>
 
   init {
     finalStates = mutableSetOf(endState)
-    concreteStates = mutableSetOf(endState)
+    concreteStates = mutableSetOf()
   }
 
   fun getInitialState(): State {
@@ -32,12 +32,17 @@ class Graph private constructor(val file: Path) {
     return finalStates
   }
 
+  // All non final states
   fun getAllConcreteStates(): Set<State> {
     return concreteStates
   }
 
   fun hasStateByName(name: String): Boolean {
     return namedStates[name] != null
+  }
+
+  fun isFinalState(name: String): Boolean {
+    return name == "end" || namedStates[name]?.transitions?.isEmpty() ?: false
   }
 
   private fun getStateByName(id: TIdNode): State {
@@ -70,10 +75,10 @@ class Graph private constructor(val file: Path) {
   private fun traverseState(node: TStateNode): State {
     val state = getStateByNode(node)
     if (node.name == null || referencedStates.add(node.name)) {
-      concreteStates.add(state)
-
       if (node.methods.isEmpty()) {
         finalStates.add(state)
+      } else {
+        concreteStates.add(state)
       }
       for (method in node.methods) {
         state.addTransition(method, traverseDestination(method.destination))

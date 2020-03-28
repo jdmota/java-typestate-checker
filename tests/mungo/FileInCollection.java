@@ -36,13 +36,9 @@ class FileInCollection {
   public static void main1(String[] args) {
 
     List<FileInCollection> list = new LinkedList<>();
-    list.add(new FileInCollection()); // TODO this should not error, List has no protocol
+    list.add(new FileInCollection());
 
     for (FileInCollection f : list) {
-      // TODO what if "f" is in the end state?
-      // Or assume that the only possible states are those that have transitions?
-      // And error when "end" is a possible state? Saying that the object might be dropped or not?
-
       switch (f.state()) {
         case INIT:
           switch (f.open()) {

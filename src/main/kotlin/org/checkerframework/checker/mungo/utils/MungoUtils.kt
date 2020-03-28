@@ -60,7 +60,9 @@ class MungoUtils(val checker: MungoChecker) {
     val graph = processor.lookupGraph(file)
     val basename = file.fileName
     for (state in states) {
-      if (!graph.hasStateByName(state)) {
+      if (graph.isFinalState(state)) {
+        checker.report(Result.warning("State $state is final. Will have no effect in @MungoState"), src)
+      } else if (!graph.hasStateByName(state)) {
         checker.report(Result.warning("$basename has no $state state"), src)
       }
     }

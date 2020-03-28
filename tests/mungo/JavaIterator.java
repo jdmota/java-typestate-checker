@@ -3,7 +3,11 @@ import org.checkerframework.checker.mungo.lib.MungoState;
 
 import java.util.Iterator;
 
+// FIXME fix error location
+
 @MungoTypestate("JavaIterator.protocol")
+// :: warning: (JavaIterator.protocol has no WrongName state)
+// :: warning: (State end is final. Will have no effect in @MungoState)
 class JavaIterator implements Iterator<Object> {
 
   @Override
@@ -30,7 +34,6 @@ class JavaIterator implements Iterator<Object> {
 
     // :: error: (Cannot call hasNext because it is null)
     while (it.hasNext()) {
-      // :: error: (Cannot call next because it has the bottom type)
       it.next();
     }
   }
@@ -38,9 +41,8 @@ class JavaIterator implements Iterator<Object> {
   public static void main3(String[] args) {
     JavaIterator it = new JavaIterator();
 
-    // :: error: (Cannot call hasNext. (Unknown states))
+    // :: error: (Cannot call hasNext on states #null. (Inferred: #null, HasNext))
     while (it.hasNext()) {
-      // :: error: (Cannot call next. (Unknown states))
       it.next();
       it = null;
     }
@@ -63,7 +65,7 @@ class JavaIterator implements Iterator<Object> {
 
     while (true) {
       if (!it.hasNext()) {
-        // :: error: (Cannot call next on states end. (Inferred: end))
+        // :: error: (Cannot call next because it has ended its protocol)
         it.next();
       } else {
         break;
@@ -103,7 +105,7 @@ class JavaIterator implements Iterator<Object> {
   }
 
   public static void use1(JavaIterator it) {
-    // :: error: (Cannot call hasNext on states end, Next. (Inferred: end, HasNext, Next))
+    // :: error: (Cannot call hasNext on states Next. (Inferred: HasNext, Next))
     while (it.hasNext()) {
       it.next();
     }
@@ -116,7 +118,7 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  public static void use3(@MungoState({"Next", "WrongName"}) JavaIterator it) {
+  public static void use3(@MungoState({"Next", "WrongName", "end"}) JavaIterator it) {
     it.next();
     while (it.hasNext()) {
       it.next();
