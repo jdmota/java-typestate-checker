@@ -86,10 +86,10 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - Only allow null assignments if object is in the end state or is already null
 - [x] Objects with no protocol are getting the unknown type, disallowing any use of them
     - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
-    - Commit [ec02a8](https://github.com/jdmota/abcd-mungo/commit/ec02a8069c073246e51df449a0a4592788af0cf1)
+    - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148)
 - [x] When the states are unknown, all possible ones are being attributed, including final ones
   - Solution: Create "EndedType" distinguishing from normal states
-  - Commit [ec02a8](https://github.com/jdmota/abcd-mungo/commit/ec02a8069c073246e51df449a0a4592788af0cf1)
+  - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148)
 - Force object protocol to complete
 - Force linear use of objects with protocol
 - Deal with the values of fields inside objects
