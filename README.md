@@ -4,31 +4,31 @@
 
 ### Type system
 
-<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmooznpKj9JV5FoaALW8cYAmyeoY_9JyxFmPGgpSdXGZ8E8kgKNrAIdyk5LH1X6BeCo2mK0OVKl1IWsm40 -->
+<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmooznpKj9JK4L1GkXAmmeoY_9Jyv7Dw0q9uSBPWf4o2c_f2G_bmjJ1646gd1f3gg0GsfU2j2b0000 -->
 
 ![Type system](./type_system.svg)
 
 - `Unknown` is the top type. It includes all possible values.
-- `NotEndedObj` is the set of all objects with protocols that have not completed.
-- `EndedObj` is the set of all objects with completed protocols.
-- `NoProtocolObj` is the set of all objects without protocol.
+- `NotEnded` is the set of all objects with protocols that have not completed.
+- `Ended` is the set of all objects with completed protocols.
+- `NoProtocol` is the set of all objects without protocol.
 - `Null` is the set with only the `null` value.
 - `Bottom` is the bottom type. Used for computations that do not finish or error. Empty set. Like `Nothing` in many languages or like `never` in TypeScript.
 
-Subtypes of `NotEndedObj` are for example, the type of files that are in the `Open` or `Read` states, or the type of files that are only in the `Open` state.
+Subtypes of `NotEnded` are for example, the type of files that are in the `Open` or `Read` states, or the type of files that are only in the `Open` state.
 
 The type of files that are only in the `Open` state is also a subtype of the type of files that are in the `Open` or `Read` states, since the set `{Open}` is contained in `{Open, Read}`.
 
 The type of files that are in the `Open` state and the type of files that are in the `Read` state are not subtypes of each other, since one is not contained in the other and vice-versa.
 
-<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyr15yalSSrBIKtnJyhYGcA3vPJSCdDIg_qBKlDq589I4rDgbRWmXHJGb19K13K9v1I8i5D-IKb-BXUo4IWI26re4WwfUIb0Bm80 -->
+<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyr15yalSSrBIKtXWZ4WmafkcJcfrVu5gNaw2a6fYIcrIboOGkXA2Ig2cWHo1KJOAR-a93-N2za850c4DZG9XzIy5A3l0000 -->
 
 ![Type system example](./type_system_example.svg)
 
 #### Notes
 
 1. `null` should NOT have the bottom type, otherwise its type would be the subtype of all types, allowing `null` assignments going unchecked. Which is what Java already (wrongly) does.
-1. `EndedObj` and `Null` could be joined in an `Unusable` type. The reason to split both is to provide more information to error messages as to why an operation is not allowed.
+1. `Ended` and `Null` could be joined in an `Unusable` type. The reason to split both is to provide more information to error messages as to why an operation is not allowed.
 
 ### Checking
 
@@ -79,25 +79,28 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 ### Important things to test/fix
 
-- Check assignments
+- [ ] Check assignments
     - [x] Method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)`
         - Commit [f3502a](https://github.com/jdmota/abcd-mungo/commit/f3502ae38da23cf3507557e67fac94d03d309175)
     - [ ] Variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
-- Only allow null assignments if object is in the end state or is already null
 - [x] Objects with no protocol are getting the unknown type, disallowing any use of them
     - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
-    - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148)
+    - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-73b7b3bab8528295364734fe900cbd6f).
 - [x] When the states are unknown, all possible ones are being attributed, including final ones
   - Solution: Create "EndedType" distinguishing from normal states
-  - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148)
-- Force object protocol to complete
-- Force linear use of objects with protocol
-- Deal with the values of fields inside objects
+  - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
+- [ ] Force linear use of objects with protocol
+    - Implement some type of ownership/borrowing system like Rust?
+    - Or just use Checker's Linear plugin?
+- [ ] Force object protocol to complete
+    - Only allow null assignments if object is in the end state or is already null
+    - Check the end of a function block to see if the object was moved, is null, or reached the end state
+- [ ] Deal with the values of fields inside objects
   - Combating against defensive programming
-- Validate protocols
+- [ ] Validate protocols
   - Check if there are duplicate transitions, if types exist, etc...
-- Understand why Checker is reporting more errors than necessary...
-- Review other todo's in the code...
+- [ ] Understand why Checker is reporting more errors than necessary
+- [ ] Review other todo's in the code
 
 ## Proposals from thesis plan
 
