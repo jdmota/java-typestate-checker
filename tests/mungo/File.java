@@ -46,7 +46,7 @@ class File {
     switch (f.open()) {
       case OK:
       case ERROR:
-        // :: error: (Cannot call hasNext on states end. (Inferred: end, Open))
+        // :: error: (Cannot call hasNext on ended protocol)
         while (f.hasNext()) {
           f.read();
         }

@@ -4,7 +4,6 @@ import com.sun.source.tree.MethodInvocationTree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.analysis.MungoValue
-import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -22,31 +21,27 @@ object MungoTypecheck {
       return
     }
     val error = when (val info = receiverValue.info) {
-      is MungoUnknownType -> "Cannot call ${TreeUtils.methodName(node)} on unknown"
+      is MungoUnknownType -> createErrorMsg(node, isUnknown = true)
       is MungoBottomType -> null // Allow operations on the BottomType to avoid propagating errors
       is MungoNoProtocolType -> null
-      is MungoNullType -> "Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} is null"
-      is MungoEndedType -> "Cannot call ${TreeUtils.methodName(node)} because ${TreeUtils.getReceiverTree(node)} has ended its protocol"
+      is MungoNullType -> createErrorMsg(node, isNull = true)
+      is MungoEndedType -> createErrorMsg(node, isEnded = true)
       is MungoStateType -> {
-        if (!info.state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
-          "Cannot call ${TreeUtils.methodName(node)} on state ${info.state.name}"
-        } else {
+        if (info.state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
           null
+        } else {
+          createErrorMsg(node, unexpectedStates = listOf(info.state.name), currentStates = listOf(info.state.name))
         }
       }
       is MungoUnionType -> {
         val currentStates = mutableListOf<String>()
         val unexpectedStates = mutableListOf<String>()
+        var isNull = false
+        var isEnded = false
         for (type in info.types) {
           when (type) {
-            is MungoNullType -> {
-              currentStates.add("#null")
-              unexpectedStates.add("#null")
-            }
-            is MungoEndedType -> {
-              currentStates.add("end")
-              unexpectedStates.add("end")
-            }
+            is MungoNullType -> isNull = true
+            is MungoEndedType -> isEnded = true
             is MungoStateType -> {
               currentStates.add(type.state.name)
               if (!type.state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
@@ -55,8 +50,8 @@ object MungoTypecheck {
             }
           }
         }
-        if (unexpectedStates.size > 0) {
-          "Cannot call ${TreeUtils.methodName(node)} on states ${unexpectedStates.joinToString(", ")}. (Inferred: ${currentStates.joinToString(", ")})"
+        if (isNull || isEnded || unexpectedStates.size > 0) {
+          createErrorMsg(node, isNull = isNull, isEnded = isEnded, unexpectedStates = unexpectedStates, currentStates = currentStates)
         } else {
           null
         }
@@ -65,6 +60,23 @@ object MungoTypecheck {
     if (error != null) {
       utils.err(error, node)
     }
+  }
+
+  private fun createErrorMsg(
+    node: MethodInvocationTree,
+    isUnknown: Boolean = false,
+    isNull: Boolean = false,
+    isEnded: Boolean = false,
+    unexpectedStates: List<String> = listOf(),
+    currentStates: List<String> = listOf()
+  ): String {
+    val m = TreeUtils.methodName(node)
+    val items = mutableListOf<String>()
+    if (isUnknown) items.add("on unknown")
+    if (isNull) items.add("on null")
+    if (isEnded) items.add("on ended protocol")
+    if (unexpectedStates.isNotEmpty()) items.add("on state${if (unexpectedStates.size > 1) "s" else ""} ${unexpectedStates.joinToString(", ")} (got: ${currentStates.joinToString(", ")})")
+    return "Cannot call $m ${items.joinToString(", ")}"
   }
 
   fun refine(utils: MungoUtils, tree: TreePath, type: MungoType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): MungoType {

@@ -32,7 +32,7 @@ class JavaIterator implements Iterator<Object> {
     JavaIterator it = new JavaIterator();
     it = null;
 
-    // :: error: (Cannot call hasNext because it is null)
+    // :: error: (Cannot call hasNext on null)
     while (it.hasNext()) {
       it.next();
     }
@@ -41,7 +41,7 @@ class JavaIterator implements Iterator<Object> {
   public static void main3(String[] args) {
     JavaIterator it = new JavaIterator();
 
-    // :: error: (Cannot call hasNext on states #null. (Inferred: #null, HasNext))
+    // :: error: (Cannot call hasNext on null)
     while (it.hasNext()) {
       it.next();
       it = null;
@@ -65,7 +65,7 @@ class JavaIterator implements Iterator<Object> {
 
     while (true) {
       if (!it.hasNext()) {
-        // :: error: (Cannot call next because it has ended its protocol)
+        // :: error: (Cannot call next on ended protocol)
         it.next();
       } else {
         break;
@@ -105,7 +105,7 @@ class JavaIterator implements Iterator<Object> {
   }
 
   public static void use1(JavaIterator it) {
-    // :: error: (Cannot call hasNext on states Next. (Inferred: HasNext, Next))
+    // :: error: (Cannot call hasNext on state Next (got: HasNext, Next))
     while (it.hasNext()) {
       it.next();
     }
