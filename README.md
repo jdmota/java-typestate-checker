@@ -4,7 +4,7 @@
 
 ### Type system
 
-<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmooznpKj9JK4L1GkXAmmeoY_9Jyv7Dw0q9uSBPWf4o2c_f2G_bmjJ1646gd1f3gg0GsfU2j2b0000 -->
+<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmooznpKj9JK4L1GkXAmmeoY_9Jyv7Dw0q1qt4DxyCg1bcC4JCAR-a93-N2rC4OIogS6aEgW3OK1GHXzIy5A1t0000 -->
 
 ![Type system](./type_system.svg)
 
@@ -13,6 +13,7 @@
 - `Ended` is the set of all objects with completed protocols.
 - `NoProtocol` is the set of all objects without protocol.
 - `Null` is the set with only the `null` value.
+- `Moved` is a type applied to variables that point to an object that was moved.
 - `Bottom` is the bottom type. Used for computations that do not finish or error. Empty set. Like `Nothing` in many languages or like `never` in TypeScript.
 
 Subtypes of `NotEnded` are for example, the type of files that are in the `Open` or `Read` states, or the type of files that are only in the `Open` state.
@@ -91,6 +92,9 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
   - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
 - [ ] Force linear use of objects with protocol
     - [ ] Start with a stricter version
+        - [x] Basic implementation
+            - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
+        - [ ] Fix corner cases (leaked `this`, objects in collections)
     - [ ] Implement some type of ownership/borrowing system like Rust?
 - [ ] Force object protocol to complete
     - Only allow null assignments if object is in the end state or is already null
