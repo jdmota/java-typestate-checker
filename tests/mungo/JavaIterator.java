@@ -20,7 +20,7 @@ class JavaIterator implements Iterator<Object> {
     return null;
   }
 
-  public static void main(String[] args) {
+  public static void basicOk() {
     JavaIterator it = new JavaIterator();
 
     while (it.hasNext()) {
@@ -28,8 +28,9 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  public static void main2(String[] args) {
+  public static void nullUse() {
     JavaIterator it = new JavaIterator();
+    // :: error: (Cannot assign null because object has not ended its protocol)
     it = null;
 
     // :: error: (Cannot call hasNext on null)
@@ -38,17 +39,26 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  public static void main3(String[] args) {
+  public static void nullUse2() {
     JavaIterator it = new JavaIterator();
 
     // :: error: (Cannot call hasNext on null)
     while (it.hasNext()) {
       it.next();
+      // :: error: (Cannot assign null because object has not ended its protocol)
       it = null;
     }
   }
 
-  public static void main4(String[] args) {
+  public static void nullOk() {
+    JavaIterator it = new JavaIterator();
+    while (it.hasNext()) {
+      it.next();
+    }
+    it = null;
+  }
+
+  public static void whileTrueOk() {
     JavaIterator it = new JavaIterator();
 
     while (true) {
@@ -60,7 +70,7 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  public static void main5(String[] args) {
+  public static void whileTrueError() {
     JavaIterator it = new JavaIterator();
 
     while (true) {
@@ -73,7 +83,7 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  public static void main6(String[] args) {
+  public static void assigment1() {
     JavaIterator it = new JavaIterator();
     @MungoState({"Next"}) JavaIterator it2 = it; // FIXME @MungoState getting ignored
 
@@ -82,7 +92,7 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  public static void main7(String[] args) {
+  public static void assigment2() {
     @MungoState({"Next"}) JavaIterator it3 = new JavaIterator(); // FIXME @MungoState getting ignored
 
     while (it3.hasNext()) {
@@ -90,28 +100,28 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  public static void main8(String[] args) {
+  public static void incompatibleArg() {
     JavaIterator it4 = new JavaIterator();
     // FIXME better error message
     // :: error: (argument.type.incompatible)
     use2(it4);
   }
 
-  public static void main9(String[] args) {
+  public static void validMove() {
     JavaIterator it5 = new JavaIterator();
     if (it5.hasNext()) {
       use2(it5);
     }
   }
 
-  public static void main10(String[] args) {
+  public static void wrongMove1() {
     JavaIterator it6 = new JavaIterator();
     JavaIterator moved = it6;
     // :: error: (Cannot call hasNext on moved value)
     it6.hasNext();
   }
 
-  public static void main11(String[] args) {
+  public static void wrongMove2() {
     JavaIterator it6 = new JavaIterator();
     use1(it6);
     // :: error: (Cannot call hasNext on moved value)
