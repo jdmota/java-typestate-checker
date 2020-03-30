@@ -90,8 +90,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
   - Solution: Create "EndedType" distinguishing from normal states
   - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
 - [ ] Force linear use of objects with protocol
-    - Implement some type of ownership/borrowing system like Rust?
-    - Or just use Checker's Linear plugin?
+    - [ ] Start with a stricter version
+    - [ ] Implement some type of ownership/borrowing system like Rust?
 - [ ] Force object protocol to complete
     - Only allow null assignments if object is in the end state or is already null
     - Check the end of a function block to see if the object was moved, is null, or reached the end state
