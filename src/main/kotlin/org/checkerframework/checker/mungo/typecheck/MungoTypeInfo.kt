@@ -163,6 +163,19 @@ sealed class MungoTypeSingletons(private val hashCode: Int) : MungoTypeWithId() 
   override fun hashCode() = hashCode
 }
 
+class MungoMovedType private constructor() : MungoTypeSingletons(5) {
+
+  companion object {
+    val SINGLETON = MungoMovedType()
+  }
+
+  init {
+    map[id] = this
+  }
+
+  override fun toString() = "MungoMovedType"
+}
+
 class MungoEndedType private constructor() : MungoTypeSingletons(4) {
 
   companion object {

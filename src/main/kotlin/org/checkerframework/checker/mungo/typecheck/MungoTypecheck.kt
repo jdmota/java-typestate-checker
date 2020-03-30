@@ -26,6 +26,7 @@ object MungoTypecheck {
       is MungoNoProtocolType -> null
       is MungoNullType -> createErrorMsg(node, isNull = true)
       is MungoEndedType -> createErrorMsg(node, isEnded = true)
+      is MungoMovedType -> createErrorMsg(node, isMoved = true)
       is MungoStateType -> {
         if (info.state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
           null
@@ -38,10 +39,12 @@ object MungoTypecheck {
         val unexpectedStates = mutableListOf<String>()
         var isNull = false
         var isEnded = false
+        var isMoved = false
         for (type in info.types) {
           when (type) {
             is MungoNullType -> isNull = true
             is MungoEndedType -> isEnded = true
+            is MungoMovedType -> isMoved = true
             is MungoStateType -> {
               currentStates.add(type.state.name)
               if (!type.state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
@@ -50,8 +53,8 @@ object MungoTypecheck {
             }
           }
         }
-        if (isNull || isEnded || unexpectedStates.size > 0) {
-          createErrorMsg(node, isNull = isNull, isEnded = isEnded, unexpectedStates = unexpectedStates, currentStates = currentStates)
+        if (isNull || isEnded || isMoved || unexpectedStates.size > 0) {
+          createErrorMsg(node, isNull = isNull, isEnded = isEnded, isMoved = isMoved, unexpectedStates = unexpectedStates, currentStates = currentStates)
         } else {
           null
         }
@@ -67,6 +70,7 @@ object MungoTypecheck {
     isUnknown: Boolean = false,
     isNull: Boolean = false,
     isEnded: Boolean = false,
+    isMoved: Boolean = false,
     unexpectedStates: List<String> = listOf(),
     currentStates: List<String> = listOf()
   ): String {
@@ -75,6 +79,7 @@ object MungoTypecheck {
     if (isUnknown) items.add("on unknown")
     if (isNull) items.add("on null")
     if (isEnded) items.add("on ended protocol")
+    if (isMoved) items.add("on moved value")
     if (unexpectedStates.isNotEmpty()) items.add("on state${if (unexpectedStates.size > 1) "s" else ""} ${unexpectedStates.joinToString(", ")} (got: ${currentStates.joinToString(", ")})")
     return "Cannot call $m ${items.joinToString(", ")}"
   }
@@ -89,6 +94,8 @@ object MungoTypecheck {
       is MungoNullType -> MungoBottomType.SINGLETON
       // Since the "end" has no transitions, we refine to an empty set of states
       is MungoEndedType -> MungoBottomType.SINGLETON
+      // Refine to bottom to avoid propagating errors
+      is MungoMovedType -> MungoBottomType.SINGLETON
       // Objects with no protocol, stay like that
       is MungoNoProtocolType -> MungoNoProtocolType.SINGLETON
       // Refine...

@@ -3,14 +3,12 @@ package org.checkerframework.checker.mungo.analysis
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
-import org.checkerframework.checker.mungo.typecheck.MungoNullType
-import org.checkerframework.checker.mungo.typecheck.MungoStateType
-import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
-import org.checkerframework.checker.mungo.typecheck.MungoUnionType
+import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.dataflow.analysis.*
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractTransfer
 import javax.lang.model.element.ElementKind
+
 
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
 
@@ -54,6 +52,11 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       return result
     }
 
+    // Handle moves
+    val moved = n.arguments.map { handleMove(it, result) }.any { it }
+
+    // Apply state refinements
+
     val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, n.target.receiver)
 
     if (c.utils.methodUtils.returnsBoolean(method)) {
@@ -61,7 +64,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(n.treePath, method, receiver, thenStore, ifTrue)
       val didChangeElse = refineStore(n.treePath, method, receiver, elseStore, ifFalse)
-      return if (didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
+      return if (moved || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     }
 
     return if (result.containsTwoStores()) {
@@ -69,11 +72,11 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(n.treePath, method, receiver, thenStore, allLabels)
       val didChangeElse = refineStore(n.treePath, method, receiver, elseStore, allLabels)
-      if (didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
+      if (moved || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     } else {
       val store = result.regularStore
       val didChange = refineStore(n.treePath, method, receiver, store, allLabels)
-      if (didChange) RegularTransferResult(result.resultValue, store, true) else result
+      if (moved || didChange) RegularTransferResult(result.resultValue, store, true) else result
     }
   }
 
@@ -137,6 +140,46 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       }
     }
     return result
+  }
+
+  // Handle move
+  override fun visitAssignment(n: AssignmentNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val result = super.visitAssignment(n, input)
+    val rhs = n.expression
+    val moved = handleMove(rhs, result)
+
+    return if (moved) {
+      if (result.containsTwoStores()) {
+        ConditionalTransferResult(result.resultValue, result.thenStore, result.elseStore, true)
+      } else {
+        RegularTransferResult(result.resultValue, result.regularStore, true)
+      }
+    } else {
+      result
+    }
+  }
+
+  // Returns true iff store changed
+  private fun handleMove(node: Node, result: TransferResult<MungoValue, MungoStore>): Boolean {
+    if (node is LocalVariableNode) {
+      val r = FlowExpressions.internalReprOf(analysis.typeFactory, node)
+      val value = result.regularStore.getValue(r)
+
+      if (value != null) {
+        val type = value.info
+        if (type !is MungoNoProtocolType && type !is MungoMovedType) {
+          val newValue = MungoValue(value, MungoMovedType.SINGLETON)
+          if (result.containsTwoStores()) {
+            result.thenStore.replaceValue(r, newValue)
+            result.elseStore.replaceValue(r, newValue)
+          } else {
+            result.regularStore.replaceValue(r, newValue)
+          }
+          return true
+        }
+      }
+    }
+    return false
   }
 
 }

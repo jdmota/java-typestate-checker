@@ -104,6 +104,20 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
+  public static void main10(String[] args) {
+    JavaIterator it6 = new JavaIterator();
+    JavaIterator moved = it6;
+    // :: error: (Cannot call hasNext on moved value)
+    it6.hasNext();
+  }
+
+  public static void main11(String[] args) {
+    JavaIterator it6 = new JavaIterator();
+    use1(it6);
+    // :: error: (Cannot call hasNext on moved value)
+    it6.hasNext();
+  }
+
   public static void use1(JavaIterator it) {
     // :: error: (Cannot call hasNext on state Next (got: HasNext, Next))
     while (it.hasNext()) {
