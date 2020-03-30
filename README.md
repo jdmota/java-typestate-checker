@@ -96,9 +96,12 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
             - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
         - [ ] Fix corner cases (leaked `this`, objects in collections)
     - [ ] Implement some type of ownership/borrowing system like Rust?
+    - [ ] Do not allow collections to have ownership of ended objects
 - [ ] Force object protocol to complete
-    - Only allow null assignments if object is in the end state or is already null
-    - Check the end of a function block to see if the object was moved, is null, or reached the end state
+    - [x] Only allow null assignments if object is in the end state or is already null
+        - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).
+    - [ ] Only allow variable override if object is in the end state or is already null
+    - [ ] Check the end of a function block to see if the object was moved, is null, or reached the end state
 - [ ] Deal with the values of fields inside objects
   - Combating against defensive programming
 - [ ] Validate protocols
