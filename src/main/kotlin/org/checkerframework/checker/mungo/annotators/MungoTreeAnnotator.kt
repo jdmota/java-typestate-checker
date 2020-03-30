@@ -1,8 +1,11 @@
 package org.checkerframework.checker.mungo.annotators
 
+import com.sun.source.tree.LiteralTree
 import com.sun.source.tree.NewClassTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
+import org.checkerframework.checker.mungo.typecheck.MungoNoProtocolType
+import org.checkerframework.checker.mungo.typecheck.MungoNullType
 import org.checkerframework.checker.mungo.typecheck.createTypeWithAllStates
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator
@@ -20,5 +23,15 @@ class MungoTreeAnnotator(private val checker: MungoChecker, atypeFactory: MungoA
       }
     }
     return null
+  }
+
+  override fun visitLiteral(node: LiteralTree, annotatedTypeMirror: AnnotatedTypeMirror): Void? {
+    val ret = super.visitLiteral(node, annotatedTypeMirror)
+    if (node.value == null) {
+      annotatedTypeMirror.replaceAnnotation(MungoNullType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    } else {
+      annotatedTypeMirror.replaceAnnotation(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    }
+    return ret
   }
 }

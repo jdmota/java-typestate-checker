@@ -126,22 +126,6 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return result
   }
 
-  override fun visitNullLiteral(n: NullLiteralNode, p: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
-    val result = super.visitNullLiteral(n, p)
-    val value = result.resultValue
-    if (value != null) {
-      // Replace the resultValue to have the MungoNullType instead of MungoBottomType
-      val newInfo = MungoNullType.SINGLETON
-      val newValue = MungoValue(value, newInfo)
-      return if (result.containsTwoStores()) {
-        ConditionalTransferResult(newValue, result.thenStore, result.elseStore, false)
-      } else {
-        RegularTransferResult(newValue, result.regularStore, false)
-      }
-    }
-    return result
-  }
-
   // Handle move
   override fun visitAssignment(n: AssignmentNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitAssignment(n, input)
@@ -167,7 +151,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
       if (value != null) {
         val type = value.info
-        if (type !is MungoNoProtocolType && type !is MungoMovedType) {
+        if (type !is MungoNoProtocolType && type !is MungoMovedType && type !is MungoNullType) {
           val newValue = MungoValue(value, MungoMovedType.SINGLETON)
           if (result.containsTwoStores()) {
             result.thenStore.replaceValue(r, newValue)
