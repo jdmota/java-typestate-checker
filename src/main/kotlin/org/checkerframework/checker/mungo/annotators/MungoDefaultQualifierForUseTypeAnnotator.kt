@@ -48,4 +48,10 @@ class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker
     }
     return ret
   }
+
+  override fun visitArray(type: AnnotatedTypeMirror.AnnotatedArrayType, p: Void?): Void? {
+    val ret = super.visitArray(type, p)
+    type.replaceAnnotation(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    return ret
+  }
 }
