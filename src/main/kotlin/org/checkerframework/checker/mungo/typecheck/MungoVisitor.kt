@@ -1,6 +1,9 @@
 package org.checkerframework.checker.mungo.typecheck
 
-import com.sun.source.tree.*
+import com.sun.source.tree.ExpressionTree
+import com.sun.source.tree.MethodInvocationTree
+import com.sun.source.tree.MethodTree
+import com.sun.source.tree.Tree
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
@@ -8,7 +11,9 @@ import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.dataflow.cfg.node.LocalVariableNode
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import javax.lang.model.element.ElementKind
 
 class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFactory>(checker) {
@@ -29,11 +34,22 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       val receiver = TreeUtils.getReceiverTree(node)
       if (receiver != null) {
         val receiverValue = typeFactory.getInferredValueFor(receiver)
-        MungoTypecheck.check(c.utils, visitorState.path, receiverValue, node, element)
+        val checks = MungoTypecheck.check(c.utils, visitorState.path, receiverValue, node, element)
+        if (!checks) {
+          // Ignore this method invocation tree to avoid (method.invocation.invalid) errors produced by Checker
+          skipMethods[node] = true
+        }
       }
       // TODO deal with self receiver
     }
+
     return super.visitMethodInvocation(node, p)
+  }
+
+  private val skipMethods = WeakIdentityHashMap<MethodInvocationTree, Boolean>()
+
+  override fun skipReceiverSubtypeCheck(node: MethodInvocationTree, methodDefinitionReceiver: AnnotatedTypeMirror, methodCallReceiver: AnnotatedTypeMirror): Boolean {
+    return skipMethods.contains(node) || super.skipReceiverSubtypeCheck(node, methodDefinitionReceiver, methodCallReceiver)
   }
 
   private val acceptedFinalTypes = listOf(MungoNullType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON, MungoNoProtocolType.SINGLETON)

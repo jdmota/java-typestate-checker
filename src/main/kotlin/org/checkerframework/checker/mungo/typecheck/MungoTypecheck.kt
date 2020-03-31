@@ -16,9 +16,9 @@ object MungoTypecheck {
     receiverValue: MungoValue?,
     node: MethodInvocationTree,
     method: Symbol.MethodSymbol
-  ) {
+  ): Boolean {
     if (receiverValue == null) {
-      return
+      return true
     }
     val error = when (val info = receiverValue.info) {
       is MungoUnknownType -> createErrorMsg(node, isUnknown = true)
@@ -60,8 +60,11 @@ object MungoTypecheck {
         }
       }
     }
-    if (error != null) {
+    return if (error == null) {
+      true
+    } else {
       utils.err(error, node)
+      false
     }
   }
 
