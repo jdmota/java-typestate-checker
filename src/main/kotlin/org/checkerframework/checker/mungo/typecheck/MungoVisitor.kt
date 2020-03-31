@@ -46,12 +46,9 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       return
     }
 
-    // Only allow null assignments on...
-    if (MungoNullType.SINGLETON.isSubtype(rightValue.info)) {
-      // ... null, ended, moved object, or object without protocol
-      if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        c.utils.err("Cannot assign null because object has not ended its protocol", left)
-      }
+    // Only allow overrides on null, ended, moved object, or object without protocol
+    if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
+      c.utils.err("Cannot override because object has not ended its protocol", left)
     }
   }
 

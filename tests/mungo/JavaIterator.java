@@ -17,7 +17,7 @@ class JavaIterator implements Iterator<Object> {
 
   @Override
   public Object next() {
-    return null;
+    return "";
   }
 
   public static void basicOk() {
@@ -30,7 +30,7 @@ class JavaIterator implements Iterator<Object> {
 
   public static void nullUse() {
     JavaIterator it = new JavaIterator();
-    // :: error: (Cannot assign null because object has not ended its protocol)
+    // :: error: (Cannot override because object has not ended its protocol)
     it = null;
 
     // :: error: (Cannot call hasNext on null)
@@ -45,7 +45,7 @@ class JavaIterator implements Iterator<Object> {
     // :: error: (Cannot call hasNext on null)
     while (it.hasNext()) {
       it.next();
-      // :: error: (Cannot assign null because object has not ended its protocol)
+      // :: error: (Cannot override because object has not ended its protocol)
       it = null;
     }
   }
@@ -58,10 +58,35 @@ class JavaIterator implements Iterator<Object> {
     it = null;
   }
 
+  public static void override() {
+    JavaIterator it = new JavaIterator();
+    if (it.hasNext()) {
+      it.next();
+    }
+    // :: error: (Cannot override because object has not ended its protocol)
+    it = new JavaIterator();
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void overrideOk() {
+    JavaIterator it = new JavaIterator();
+    while (it.hasNext()) {
+      it.next();
+    }
+    it = new JavaIterator();
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
   public static void whileTrueOk() {
+    // FIXME this error exists because "true" is not being considered
+    // :: error: (Object did not complete its protocol)
     JavaIterator it = new JavaIterator();
 
-    while (true) { // FIXME handle this case
+    while (true) {
       if (it.hasNext()) {
         it.next();
       } else {
