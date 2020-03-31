@@ -61,7 +61,7 @@ class JavaIterator implements Iterator<Object> {
   public static void whileTrueOk() {
     JavaIterator it = new JavaIterator();
 
-    while (true) {
+    while (true) { // FIXME handle this case
       if (it.hasNext()) {
         it.next();
       } else {
@@ -71,6 +71,7 @@ class JavaIterator implements Iterator<Object> {
   }
 
   public static void whileTrueError() {
+    // :: error: (Object did not complete its protocol)
     JavaIterator it = new JavaIterator();
 
     while (true) {
@@ -116,6 +117,7 @@ class JavaIterator implements Iterator<Object> {
 
   public static void wrongMove1() {
     JavaIterator it6 = new JavaIterator();
+    // :: error: (Object did not complete its protocol)
     JavaIterator moved = it6;
     // :: error: (Cannot call hasNext on moved value)
     it6.hasNext();
@@ -126,6 +128,24 @@ class JavaIterator implements Iterator<Object> {
     use1(it6);
     // :: error: (Cannot call hasNext on moved value)
     it6.hasNext();
+  }
+
+  public static void didNotComplete() {
+    // :: error: (Object did not complete its protocol)
+    JavaIterator it = new JavaIterator();
+    if (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void didNotComplete2() {
+    if (true) {
+      // :: error: (Object did not complete its protocol)
+      JavaIterator it10 = new JavaIterator();
+      if (it10.hasNext()) {
+        it10.next();
+      }
+    }
   }
 
   public static void use1(JavaIterator it) {
