@@ -114,7 +114,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [ ] Force object protocol to complete
     - [x] Only allow null assignments if object is in the end state or is already null
         - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).
-    - [ ] Only allow variable override if object is in the end state or is already null
+    - [x] Only allow variable override if object is in the end state or is already null
+        - Commit [8e297e](https://github.com/jdmota/abcd-mungo/commit/8e297ebf6d892e46f0d5a95ff27cf861b7aa88bc).
     - [x] Check the end of a method to see if the object was moved, is null, or reached the end state
         - Commit [9a3762](https://github.com/jdmota/abcd-mungo/commit/9a3762eaedd289d3171010d3383c4e5b6ee813e1).
     - [ ] Check the end of any block to see if the object was moved, is null, or reached the end state
