@@ -2,6 +2,8 @@
 
 ## How it works
 
+This version of Mungo is implemented as a plugin for the Checker Framework. Adding a `@MungoTypestate("ProtocolFile")` annotation to the top of a class enforces that instances of that class follow the protocol defined by the protocol file. Every time a method call on a object is encountered, we make sure that object is in a state that allows that invocation. The type of the object then changes to conform to the new state reached after that method call. We also make sure protocols are completed and that objects are used in a linear way.
+
 ### Type system
 
 <!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmooznpKj9JK4L1GkXAmmeoY_9Jyv7Dw0q1qt4DxyCg1bcC4JCAR-a93-N2rC4OIogS6aEgW3OK1GHXzIy5A1t0000 -->
@@ -13,7 +15,7 @@
 - `Ended` is the set of all objects with completed protocols.
 - `NoProtocol` is the set of all objects without protocol.
 - `Null` is the set with only the `null` value.
-- `Moved` is a type applied to variables that point to an object that was moved.
+- `Moved` is a type applied to variables that point to an object that was moved. Like in Rust, where if something takes ownership of some data, that data is considered to have been moved. Variables with the `Moved` type cannot be used, because they no longer own the data.
 - `Bottom` is the bottom type. Used for computations that do not finish or error. Empty set. Like `Nothing` in many languages or like `never` in TypeScript.
 
 Subtypes of `NotEnded` are for example, the type of files that are in the `Open` or `Read` states, or the type of files that are only in the `Open` state.
@@ -71,6 +73,18 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - Unix: `./gradlew test --debug-jvm`
 - Windows: `gradlew.bat test --debug-jvm`
 
+## Roadmap
+
+- Version 1.0
+    - Equal to Mungo (Glasgow implementation + SCP paper)
+    - With protocol completeness and without null pointer exceptions
+        - References: Aalborg Haskell implementation + new tech report
+    - With examples to argue for correctness
+- Version 2.0
+    - Finer ownership control than linearity
+- Version 3.0
+    - Collections with typestate control of its values
+
 ## TODO's
 
 - Update this README with further information
@@ -101,7 +115,10 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
     - [x] Only allow null assignments if object is in the end state or is already null
         - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).
     - [ ] Only allow variable override if object is in the end state or is already null
-    - [ ] Check the end of a function block to see if the object was moved, is null, or reached the end state
+    - [x] Check the end of a method to see if the object was moved, is null, or reached the end state
+        - Commit [9a3762](https://github.com/jdmota/abcd-mungo/commit/9a3762eaedd289d3171010d3383c4e5b6ee813e1).
+    - [ ] Check the end of any block to see if the object was moved, is null, or reached the end state
+    - [ ] Check that if a method returns an object with a non-ended protocol, that object is used
 - [ ] Deal with the values of fields inside objects
   - Combating against defensive programming
 - [ ] Validate protocols
