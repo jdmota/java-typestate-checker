@@ -23,26 +23,21 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   private val ifFalse: (String) -> Boolean = { it != "true" }
 
   // Returns true if store changed
-  private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean, maybePrevValue: MungoValue?): Boolean {
+  private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean, maybePrevValue: MungoValue? = null): Boolean {
     val prevValue = maybePrevValue ?: store.getValue(receiver)
     if (prevValue != null) {
       val prevInfo = prevValue.info
       val newInfo = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
-      if (prevInfo != newInfo) {
-        val newValue = MungoValue(prevValue, newInfo)
-        store.replaceValue(receiver, newValue)
-        return true
+      return if (maybePrevValue == null) {
+        store.replaceValueIfDiff(receiver, MungoValue(prevValue, newInfo))
+      } else {
+        // We are refining a switch case, so intersect with the old information
+        // To exclude states already handled in previous cases
+        store.intersectValueIfDiff(receiver, MungoValue(prevValue, newInfo))
       }
     }
     return false
   }
-
-  // Returns true if store changed
-  private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean): Boolean {
-    return refineStore(tree, method, receiver, store, predicate, null)
-  }
-
-  // TODO force object to reach final state
 
   override fun visitMethodInvocation(n: MethodInvocationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitMethodInvocation(n, input)
@@ -55,7 +50,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     // Handle moves
     val moved = n.arguments.map { handleMove(it, result) }.any { it }
 
-    // Apply state refinements
+    // Apply type refinements
 
     val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, n.target.receiver)
 

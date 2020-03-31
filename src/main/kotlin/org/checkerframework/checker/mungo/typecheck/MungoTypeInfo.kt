@@ -31,6 +31,7 @@ sealed class MungoType {
   abstract fun isSubtype(type: MungoType): Boolean
   abstract fun leastUpperBound(type: MungoType): MungoType
   abstract fun mostSpecific(type: MungoType): MungoType?
+  abstract fun intersect(type: MungoType): MungoType
 }
 
 private var uuid = 0L
@@ -99,6 +100,16 @@ class MungoUnionType private constructor(val types: Set<MungoType>) : MungoTypeW
     }
   }
 
+  override fun intersect(type: MungoType) = when (type) {
+    is MungoUnknownType -> this
+    is MungoUnionType -> create(types.filter { type.types.contains(it) })
+    is MungoBottomType -> type
+    else -> when {
+      types.contains(type) -> type
+      else -> MungoBottomType.SINGLETON
+    }
+  }
+
   override fun equals(other: Any?) = when {
     this === other -> true
     other is MungoUnionType -> types == other.types
@@ -134,6 +145,14 @@ class MungoStateType private constructor(val graph: Graph, val state: State) : M
     else -> null
   }
 
+  override fun intersect(type: MungoType) = when (type) {
+    is MungoUnknownType -> this
+    is MungoStateType -> if (this == type) this else MungoBottomType.SINGLETON
+    is MungoUnionType -> if (type.types.contains(this)) this else MungoBottomType.SINGLETON
+    is MungoBottomType -> type
+    else -> MungoBottomType.SINGLETON
+  }
+
   override fun equals(other: Any?) = when {
     this === other -> true
     other is MungoStateType -> graph == other.graph && state == other.state
@@ -157,6 +176,13 @@ sealed class MungoTypeSingletons(private val hashCode: Int) : MungoTypeWithId() 
     is MungoUnionType -> if (type.types.contains(this)) this else null
     is MungoBottomType -> type
     else -> if (type === this) this else null
+  }
+
+  override fun intersect(type: MungoType) = when (type) {
+    is MungoUnknownType -> this
+    is MungoUnionType -> if (type.types.contains(this)) this else MungoBottomType.SINGLETON
+    is MungoBottomType -> type
+    else -> if (type === this) this else MungoBottomType.SINGLETON
   }
 
   override fun equals(other: Any?) = this === other
@@ -224,6 +250,7 @@ class MungoUnknownType private constructor() : MungoType() {
   override fun isSubtype(type: MungoType) = this === type
   override fun leastUpperBound(type: MungoType) = this
   override fun mostSpecific(type: MungoType) = type
+  override fun intersect(type: MungoType) = type
   override fun equals(other: Any?) = this === other
   override fun hashCode() = 1
   override fun toString() = "MungoUnknownType"
@@ -238,6 +265,7 @@ class MungoBottomType private constructor() : MungoType() {
   override fun isSubtype(type: MungoType) = true
   override fun leastUpperBound(type: MungoType) = type
   override fun mostSpecific(type: MungoType) = this
+  override fun intersect(type: MungoType) = this
   override fun equals(other: Any?) = this === other
   override fun hashCode() = 0
   override fun toString() = "MungoBottomType"
