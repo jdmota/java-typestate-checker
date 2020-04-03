@@ -54,6 +54,8 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   private val acceptedFinalTypes = listOf(MungoNullType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON, MungoNoProtocolType.SINGLETON)
 
   override fun commonAssignmentCheck(left: Tree, right: ExpressionTree, errorKey: String?) {
+    super.commonAssignmentCheck(left, right, errorKey)
+
     if (left is VariableTree) {
       // Since we adapted MungoStore#leastUpperBound,
       // now, while analyzing loops,
