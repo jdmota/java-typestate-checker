@@ -1,15 +1,13 @@
 package org.checkerframework.checker.mungo.annotators
 
 import org.checkerframework.checker.mungo.MungoChecker
-import org.checkerframework.checker.mungo.analysis.MungoAnalysis
-import org.checkerframework.checker.mungo.analysis.MungoStore
-import org.checkerframework.checker.mungo.analysis.MungoTransfer
-import org.checkerframework.checker.mungo.analysis.MungoValue
+import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
 import org.checkerframework.checker.mungo.typecheck.MungoBottomType
 import org.checkerframework.checker.mungo.utils.MungoUtils
+import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.framework.flow.CFAbstractAnalysis
 import org.checkerframework.framework.type.GenericAnnotatedTypeFactory
 import org.checkerframework.framework.type.QualifierHierarchy
@@ -28,6 +26,15 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
   init {
     postInit()
+  }
+
+  override fun getStoreAfter(node: Node): MungoStore? {
+    return if (!analysis.isRunning) {
+      // Fix assertion error "assert transferInput != null" on AnalysisResult#runAnalysisFor
+      flowResult.getStoreAfter(node)
+    } else {
+      super.getStoreAfter(node)
+    }
   }
 
   override fun createFlowAnalysis(fieldValues: List<Pair<VariableElement, MungoValue>>): MungoAnalysis {

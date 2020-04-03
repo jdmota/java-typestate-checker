@@ -1,16 +1,15 @@
 package org.checkerframework.checker.mungo.typecheck
 
-import com.sun.source.tree.ExpressionTree
-import com.sun.source.tree.MethodInvocationTree
-import com.sun.source.tree.MethodTree
-import com.sun.source.tree.Tree
+import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
 import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.common.basetype.BaseTypeVisitor
+import org.checkerframework.dataflow.cfg.block.*
 import org.checkerframework.dataflow.cfg.node.LocalVariableNode
+import org.checkerframework.dataflow.cfg.node.VariableDeclarationNode
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
@@ -55,6 +54,15 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   private val acceptedFinalTypes = listOf(MungoNullType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON, MungoNoProtocolType.SINGLETON)
 
   override fun commonAssignmentCheck(left: Tree, right: ExpressionTree, errorKey: String?) {
+    if (left is VariableTree) {
+      // Since we adapted MungoStore#leastUpperBound,
+      // now, while analyzing loops,
+      // the store includes information from the previous loop.
+      // Ignore variable declarations
+      // so that they are not considered as overrides.
+      return
+    }
+
     val leftValue: MungoValue? = typeFactory.getStoreBefore(left)?.getValue(LocalVariableNode(left))
     val rightValue: MungoValue? = typeFactory.getInferredValueFor(right)
 
@@ -67,6 +75,8 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       c.utils.err("Cannot override because object has not ended its protocol", left)
     }
   }
+
+  // TODO what to do in the presence of returns? how to ensure the protocol ends?
 
   private fun ensureCompleteness(exitStore: MungoStore) {
     // Make sure protocols complete
@@ -82,14 +92,4 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return super.visitMethod(node, p)
   }
 
-  // TODO what to do in the presence of returns? how to ensure the protocol ends?
-  // TODO ensure for blocks as well
-
-  /*override fun visitBlock(node: BlockTree, p: Void?): Void? {
-    println("block")
-    println(node)
-    typeFactory.getRegularExitStore(node)?.let { println(it) }
-    println()
-    return super.visitBlock(node, p)
-  }*/
 }

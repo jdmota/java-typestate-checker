@@ -173,6 +173,26 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
+  public static JavaIterator didNotComplete3() {
+    do {
+      // :: error: (Object did not complete its protocol)
+      JavaIterator it11 = new JavaIterator();
+      if (it11.hasNext()) {
+        it11.next();
+      }
+    } while (true);
+  }
+
+  public static void didNotComplete4() {
+    while (true) {
+      // :: error: (Object did not complete its protocol)
+      JavaIterator it12 = new JavaIterator();
+      if (it12.hasNext()) {
+        it12.next();
+      }
+    }
+  }
+
   public static void use1(JavaIterator it) {
     // :: error: (Cannot call hasNext on state Next (got: HasNext, Next))
     while (it.hasNext()) {
