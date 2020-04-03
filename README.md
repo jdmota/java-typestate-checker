@@ -88,19 +88,23 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 ## TODO's
 
+### General
+
 - Update this README with further information
 - Create more tests
 - Document tests (latex)
   - Code and output
+- Review other todo's in the code
 
-### Important things to test/fix
+### Version 1.0
 
-#### Version 1.0
-
-- [ ] Check assignments
-    - [x] Method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)`
+- [x] `@MungoState({"HasNext"})`
+    - [x] Basic implementation
+        - Commit [dc5393](https://github.com/jdmota/abcd-mungo/commit/dc5393e67bc1608da71e4549676970b9166a6994).
+    - [x] Check method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)`
         - Commit [f3502a](https://github.com/jdmota/abcd-mungo/commit/f3502ae38da23cf3507557e67fac94d03d309175)
-    - [ ] Variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
+    - [ ] Check variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
+- [ ] `@MungoNull`
 - [x] Objects with no protocol are getting the unknown type, disallowing any use of them
     - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-73b7b3bab8528295364734fe900cbd6f).
@@ -127,15 +131,14 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [ ] Analyze fields inside objects (combating against defensive programming)
 - [ ] Validate protocols: check if there are duplicate transitions, if types exist, etc...
 - [ ] Understand why Checker is reporting more errors than necessary
-- [ ] Review other todo's in the code
 
-#### Version 2.0
+### Version 2.0
 
 - [ ] Relax linear use of objects with protocol
     - [ ] Implement some type of ownership/borrowing system like Rust?
     - [ ] Fix corner cases (objects in collections: do not allow collections to have ownership of ended objects)
 
-#### Version 3.0
+### Version 3.0
 
 - [ ] Collections support
 - [ ] Generics support
@@ -157,7 +160,6 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 ### Other features
 
-- [x] @MungoState({"HasNext"})
 - [ ] Support state change depending on exceptions
 - [ ] Inheritance? Protocols in interfaces?
     - What if a class has a protocol, and implements an interface with a protocol as well?
