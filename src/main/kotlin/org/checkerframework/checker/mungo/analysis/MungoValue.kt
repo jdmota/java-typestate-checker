@@ -36,6 +36,15 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
     return MungoValue(result, newInfo)
   }
 
+  override fun widenUpperBound(other: MungoValue?): MungoValue {
+    if (other == null) {
+      return this
+    }
+    val result = super.widenUpperBound(other)
+    val newInfo = info.leastUpperBound(other.info)
+    return MungoValue(result, newInfo)
+  }
+
   override fun mostSpecific(other: MungoValue?, backup: MungoValue?): MungoValue? {
     if (other == null) {
       return this

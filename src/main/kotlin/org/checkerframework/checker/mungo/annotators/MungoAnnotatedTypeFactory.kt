@@ -69,5 +69,17 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       val sup = MungoUtils.mungoTypeFromAnnotation(superAnno)
       return sub.isSubtype(sup)
     }
+
+    override fun leastUpperBound(a1: AnnotationMirror, a2: AnnotationMirror): AnnotationMirror {
+      val type1 = MungoUtils.mungoTypeFromAnnotation(a1)
+      val type2 = MungoUtils.mungoTypeFromAnnotation(a2)
+      return type1.leastUpperBound(type2).buildAnnotation(checker.processingEnvironment)
+    }
+
+    override fun greatestLowerBound(a1: AnnotationMirror, a2: AnnotationMirror): AnnotationMirror {
+      val type1 = MungoUtils.mungoTypeFromAnnotation(a1)
+      val type2 = MungoUtils.mungoTypeFromAnnotation(a2)
+      return type1.intersect(type2).buildAnnotation(checker.processingEnvironment)
+    }
   }
 }
