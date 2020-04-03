@@ -84,6 +84,7 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
     - Finer ownership control than linearity
 - Version 3.0
     - Collections with typestate control of its values
+    - Generics support
 
 ## TODO's
 
@@ -94,6 +95,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 ### Important things to test/fix
 
+#### Version 1.0
+
 - [ ] Check assignments
     - [x] Method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)`
         - Commit [f3502a](https://github.com/jdmota/abcd-mungo/commit/f3502ae38da23cf3507557e67fac94d03d309175)
@@ -102,15 +105,13 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
     - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-73b7b3bab8528295364734fe900cbd6f).
 - [x] When the states are unknown, all possible ones are being attributed, including final ones
-  - Solution: Create "EndedType" distinguishing from normal states
-  - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
+    - Solution: Create "EndedType" distinguishing from normal states
+    - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
 - [ ] Force linear use of objects with protocol
-    - [ ] Start with a stricter version
-        - [x] Basic implementation
-            - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
-        - [ ] Fix corner cases (leaked `this`, objects in collections)
-    - [ ] Implement some type of ownership/borrowing system like Rust?
-    - [ ] Do not allow collections to have ownership of ended objects
+    - [x] Basic implementation
+        - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
+    - [ ] Upon return, refine the type to "moved"
+    - [ ] Fix corner cases (leaked `this`, moving to a different closure)
 - [ ] Force object protocol to complete
     - [x] Only allow null assignments if object is in the end state or is already null
         - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).
@@ -118,27 +119,38 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [8e297e](https://github.com/jdmota/abcd-mungo/commit/8e297ebf6d892e46f0d5a95ff27cf861b7aa88bc).
     - [x] Check the end of a method to see if the object was moved, is null, or reached the end state
         - Commit [9a3762](https://github.com/jdmota/abcd-mungo/commit/9a3762eaedd289d3171010d3383c4e5b6ee813e1).
-    - [ ] Check the end of any block to see if the object was moved, is null, or reached the end state
+    - [x] Check the end of any block to see if the object was moved, is null, or reached the end state
+        - Commit [1bbc77](https://github.com/jdmota/abcd-mungo/commit/1bbc778ef75c9c87acdce73398a21d33af52646e).
     - [ ] Check that if a method returns an object with a non-ended protocol, that object is used
-- [ ] Deal with the values of fields inside objects
-  - Combating against defensive programming
-- [ ] Validate protocols
-  - Check if there are duplicate transitions, if types exist, etc...
+- [ ] Analyze fields inside objects (combating against defensive programming)
+- [ ] Validate protocols: check if there are duplicate transitions, if types exist, etc...
 - [ ] Understand why Checker is reporting more errors than necessary
 - [ ] Review other todo's in the code
+
+#### Version 2.0
+
+- [ ] Relax linear use of objects with protocol
+    - [ ] Implement some type of ownership/borrowing system like Rust?
+    - [ ] Fix corner cases (objects in collections: do not allow collections to have ownership of ended objects)
+
+#### Version 3.0
+
+- [ ] Collections support
+- [ ] Generics support
 
 ## Proposals from thesis plan
 
 - [x] Replacing the mungo.lib.Boolean enumeration with the standard boolean
+    - Out of the box with Checker
 - [x] Improving of flow analysis around loops and switch statements
-  - Out of the box with Checker
+    - Out of the box with Checker
 - [ ] Recognition of decisions made with if statements
 - [ ] Ability to associate protocol definitions with already present classes or interfaces
 - [ ] Adding support for droppable objects
 - [ ] Generics
 - [ ] Collections support
-  - Done in part: if a method is available in all states, its call is allowed.
-  - This allows one to check the current state of an object.
+    - Done in part: if a method is available in all states, its call is allowed.
+    - This allows one to check the current state of an object.
 - [ ] Adding support for state transitions depending on method arguments
 
 ### Other features
@@ -146,5 +158,5 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [x] @MungoState({"HasNext"})
 - [ ] Support state change depending on exceptions
 - [ ] Inheritance? Protocols in interfaces?
-  - What if a class has a protocol, and implements an interface with a protocol as well?
-  - Test if a protocol is a subtype of other protocol? How so?
+    - What if a class has a protocol, and implements an interface with a protocol as well?
+    - Test if a protocol is a subtype of other protocol? How so?
