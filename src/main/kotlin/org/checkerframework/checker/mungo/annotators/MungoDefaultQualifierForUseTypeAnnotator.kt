@@ -54,4 +54,16 @@ class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker
     type.replaceAnnotation(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
     return ret
   }
+
+  override fun visitPrimitive(type: AnnotatedTypeMirror.AnnotatedPrimitiveType, p: Void?): Void? {
+    val ret = super.visitPrimitive(type, p)
+    type.replaceAnnotation(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    return ret
+  }
+
+  override fun visitNoType(type: AnnotatedTypeMirror.AnnotatedNoType, p: Void?): Void? {
+    val ret = super.visitNoType(type, p)
+    type.replaceAnnotation(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    return ret
+  }
 }
