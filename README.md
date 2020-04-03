@@ -110,9 +110,10 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [ ] Force linear use of objects with protocol
     - [x] Basic implementation
         - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
-    - [ ] Upon return, refine the type to "moved"
+    - [x] Upon return, refine the type to "moved"
+        - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
     - [ ] Fix corner cases (leaked `this`, moving to a different closure)
-- [ ] Force object protocol to complete
+- [x] Force object protocol to complete
     - [x] Only allow null assignments if object is in the end state or is already null
         - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).
     - [x] Only allow variable override if object is in the end state or is already null
@@ -121,7 +122,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [9a3762](https://github.com/jdmota/abcd-mungo/commit/9a3762eaedd289d3171010d3383c4e5b6ee813e1).
     - [x] Check the end of any block to see if the object was moved, is null, or reached the end state
         - Commit [1bbc77](https://github.com/jdmota/abcd-mungo/commit/1bbc778ef75c9c87acdce73398a21d33af52646e).
-    - [ ] Check that if a method returns an object with a non-ended protocol, that object is used
+    - [x] Check that if a method returns an object with a non-ended protocol, that object is used
+        - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
 - [ ] Analyze fields inside objects (combating against defensive programming)
 - [ ] Validate protocols: check if there are duplicate transitions, if types exist, etc...
 - [ ] Understand why Checker is reporting more errors than necessary
