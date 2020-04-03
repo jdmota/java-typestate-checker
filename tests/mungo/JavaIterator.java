@@ -193,8 +193,61 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
+  public static JavaIterator returnIsFine() {
+    JavaIterator it = new JavaIterator();
+    boolean bool = true;
+    if (bool) {
+      return it;
+    }
+    return it;
+  }
+
+  public static JavaIterator willBeCompleted() {
+    JavaIterator it = new JavaIterator();
+    return it;
+  }
+
+  public static void completeReturned() {
+    JavaIterator it = willBeCompleted();
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void completeReturned2() {
+    JavaIterator it = new JavaIterator();
+    while (it.hasNext()) {
+      it.next();
+    }
+    it = willBeCompleted();
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void leftIncompleteReturned() {
+    // :: error: (Returned object did not complete its protocol)
+    willBeCompleted();
+  }
+
+  public static void leftIncompleteReturned2() {
+    // :: error: (Object did not complete its protocol)
+    JavaIterator it = willBeCompleted();
+    if (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static JavaIterator cannotReturnEnded() {
+    JavaIterator it13 = new JavaIterator();
+    while (it13.hasNext()) {
+      it13.next();
+    }
+    // :: error: (return.type.incompatible)
+    return it13;
+  }
+
   public static void use1(JavaIterator it) {
-    // :: error: (Cannot call hasNext on state Next (got: HasNext, Next))
     while (it.hasNext()) {
       it.next();
     }

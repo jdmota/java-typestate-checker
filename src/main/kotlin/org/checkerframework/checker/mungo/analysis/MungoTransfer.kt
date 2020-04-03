@@ -120,21 +120,18 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return result
   }
 
-  // Handle move
+  // Handle move in assignment
   override fun visitAssignment(n: AssignmentNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitAssignment(n, input)
-    val rhs = n.expression
-    val moved = handleMove(rhs, result)
+    val moved = handleMove(n.expression, result)
+    return if (moved) newResult(result) else result
+  }
 
-    return if (moved) {
-      if (result.containsTwoStores()) {
-        ConditionalTransferResult(result.resultValue, result.thenStore, result.elseStore, true)
-      } else {
-        RegularTransferResult(result.resultValue, result.regularStore, true)
-      }
-    } else {
-      result
-    }
+  // Handle move in return
+  override fun visitReturn(n: ReturnNode, p: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val result = super.visitReturn(n, p)
+    val moved = n.result?.let { handleMove(it, result) } ?: false
+    return if (moved) newResult(result) else result
   }
 
   // Returns true iff store changed
@@ -158,6 +155,14 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       }
     }
     return false
+  }
+
+  private fun newResult(result: TransferResult<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    return if (result.containsTwoStores()) {
+      ConditionalTransferResult(result.resultValue, result.thenStore, result.elseStore, true)
+    } else {
+      RegularTransferResult(result.resultValue, result.regularStore, true)
+    }
   }
 
 }

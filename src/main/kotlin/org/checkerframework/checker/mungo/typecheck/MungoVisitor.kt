@@ -42,6 +42,15 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       // TODO deal with self receiver
     }
 
+    // Returned objects must be assigned so that they complete the protocol
+    val parent = visitorState.path.parentPath.leaf
+    if (parent !is VariableTree && parent !is AssignmentTree) {
+      val returnValue = typeFactory.getInferredValueFor(node)
+      if (!returnValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
+        c.utils.err("Returned object did not complete its protocol", node)
+      }
+    }
+
     return super.visitMethodInvocation(node, p)
   }
 
