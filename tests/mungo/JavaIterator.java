@@ -1,5 +1,6 @@
 import org.checkerframework.checker.mungo.lib.MungoTypestate;
 import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.mungo.lib.MungoNullable;
 
 import java.util.Iterator;
 
@@ -52,6 +53,49 @@ class JavaIterator implements Iterator<Object> {
       it.next();
     }
     it = null;
+  }
+
+  public static void initializedNull() {
+    // :: error: (assignment.type.incompatible)
+    JavaIterator it = null;
+    it = new JavaIterator();
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void initializedNullOk() {
+    @MungoNullable JavaIterator it = null;
+    it = new JavaIterator();
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void refineNull(@MungoNullable JavaIterator it) {
+    if (it != null) {
+      while (it.hasNext()) {
+        it.next();
+      }
+    }
+  }
+
+  public static JavaIterator refineNull2(@MungoNullable JavaIterator it) {
+    if (it instanceof JavaIterator) {
+      return it;
+    }
+    throw new RuntimeException("");
+  }
+
+  public static void refineNull3(@MungoNullable JavaIterator it) {
+    if (it == null) {
+      // :: error: (Cannot call hasNext on null)
+      it.hasNext();
+    } else {
+      while (it.hasNext()) {
+        it.next();
+      }
+    }
   }
 
   public static void override() {

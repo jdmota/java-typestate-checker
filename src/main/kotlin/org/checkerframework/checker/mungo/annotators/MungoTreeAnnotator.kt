@@ -39,7 +39,7 @@ class MungoTreeAnnotator(private val checker: MungoChecker, private val factory:
   override fun visitVariable(node: VariableTree, type: AnnotatedTypeMirror): Void? {
     val ret = super.visitVariable(node, type)
     if (type is AnnotatedTypeMirror.AnnotatedDeclaredType) {
-      factory.visitMungoState(type, node)
+      factory.visitMungoAnnotations(type, node)
     }
     return ret
   }

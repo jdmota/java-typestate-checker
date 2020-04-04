@@ -6,8 +6,10 @@ import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.dataflow.analysis.*
 import org.checkerframework.dataflow.cfg.node.*
+import org.checkerframework.framework.flow.CFAbstractStore
 import org.checkerframework.framework.flow.CFAbstractTransfer
 import javax.lang.model.element.ElementKind
+
 
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
 
@@ -163,6 +165,46 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     } else {
       RegularTransferResult(result.resultValue, result.regularStore, true)
     }
+  }
+
+  // Adapted from NullnessTransfer#strengthenAnnotationOfEqualTo
+  override fun strengthenAnnotationOfEqualTo(res: TransferResult<MungoValue, MungoStore>, firstNode: Node, secondNode: Node?, firstValue: MungoValue, secondValue: MungoValue?, notEqualTo: Boolean): TransferResult<MungoValue, MungoStore> {
+    val result = super.strengthenAnnotationOfEqualTo(res, firstNode, secondNode, firstValue, secondValue, notEqualTo)
+
+    if (firstNode is NullLiteralNode) {
+      var thenStore = result.thenStore
+      var elseStore = result.elseStore
+      val secondParts = splitAssignments(secondNode)
+      for (secondPart in secondParts) {
+        val secondInternal = FlowExpressions.internalReprOf(c.typeFactory, secondPart)
+        if (CFAbstractStore.canInsertReceiver(secondInternal)) {
+          thenStore = thenStore ?: result.thenStore
+          elseStore = elseStore ?: result.elseStore
+          val storeToUpdate = if (notEqualTo) thenStore else elseStore
+          storeToUpdate.insertValue(secondInternal, MungoValue(firstValue, MungoTypecheck.refineToNonNull(firstValue.info)))
+        }
+      }
+      if (thenStore != null) {
+        return ConditionalTransferResult(result.resultValue, thenStore, elseStore)
+      }
+    }
+
+    return result;
+  }
+
+  // Adapted from NullnessTransfer#visitInstanceOf
+  override fun visitInstanceOf(n: InstanceOfNode, p: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val result = super.visitInstanceOf(n, p)
+    val thenStore = result.thenStore
+    val elseStore = result.elseStore
+
+    val internal = FlowExpressions.internalReprOf(c.typeFactory, n.operand)
+    val prevValue = thenStore.getValue(internal)
+    if (prevValue != null) {
+      thenStore.insertValue(internal, MungoValue(prevValue, MungoTypecheck.refineToNonNull(prevValue.info)))
+    }
+
+    return ConditionalTransferResult(result.resultValue, thenStore, elseStore)
   }
 
 }

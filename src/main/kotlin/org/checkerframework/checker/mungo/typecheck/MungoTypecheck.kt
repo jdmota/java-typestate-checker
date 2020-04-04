@@ -121,4 +121,18 @@ object MungoTypecheck {
       else -> listOf()
     }
   }
+
+  fun refineToNonNull(type: MungoType): MungoType {
+    return when (type) {
+      is MungoUnknownType -> type
+      is MungoBottomType -> type
+      is MungoEndedType -> type
+      is MungoMovedType -> type
+      is MungoNoProtocolType -> type
+      is MungoStateType -> type
+      // Refine...
+      is MungoNullType -> MungoBottomType.SINGLETON
+      is MungoUnionType -> MungoUnionType.create(type.types.map { refineToNonNull(it) })
+    }
+  }
 }

@@ -24,7 +24,7 @@ class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker
 
   override fun visitDeclared(type: AnnotatedTypeMirror.AnnotatedDeclaredType, aVoid: Void?): Void? {
     val ret = super.visitDeclared(type, aVoid)
-    factory.visitMungoState(type, null)
+    factory.visitMungoAnnotations(type, null)
     return ret
   }
 

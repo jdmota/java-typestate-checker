@@ -6,9 +6,7 @@ import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
-import org.checkerframework.checker.mungo.typecheck.MungoBottomType
-import org.checkerframework.checker.mungo.typecheck.MungoStateType
-import org.checkerframework.checker.mungo.typecheck.MungoUnionType
+import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.framework.flow.CFAbstractAnalysis
@@ -60,7 +58,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   }
 
   override fun createSupportedTypeQualifiers(): Set<Class<out Annotation>> {
-    // Do NOT include @MungoTypestate or @MungoState here
+    // Do NOT include @MungoTypestate or @MungoState or @MungoNullable here
     return setOf(MungoBottom::class.java, MungoInternalInfo::class.java, MungoUnknown::class.java)
   }
 
@@ -92,25 +90,34 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   // For some reason, it must be called in "visitDeclared" as well...
   // Nonetheless, "visitVariable" is always called for both method arguments and variable declarations,
   // so we only report errors in that case, which provides "tree", for error location.
-  fun visitMungoState(type: AnnotatedTypeMirror.AnnotatedDeclaredType, tree: Tree?) {
+  fun visitMungoAnnotations(type: AnnotatedTypeMirror.AnnotatedDeclaredType, tree: Tree?) {
     val element = type.underlyingType.asElement()
     val stateAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
-    if (stateAnno != null) {
+    val nullableAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoNullableName) }
+
+    val stateTypes = run {
       val graph = c.utils.visitClassSymbol(element)
-      if (graph != null) {
-        val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
-        if (stateNames != null) {
-          val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
-          type.replaceAnnotation(MungoUnionType.create(states.map { MungoStateType.create(graph, it) }).buildAnnotation(checker.processingEnvironment))
+      if (graph == null) {
+        if (stateAnno != null && tree != null) {
+          c.utils.err("@MungoState has no meaning since this type has no protocol", tree)
+        }
+        MungoNoProtocolType.SINGLETON
+      } else {
+        val states = if (stateAnno == null) {
+          graph.getAllConcreteStates()
+        } else {
+          val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
           if (tree != null) {
             c.utils.checkStates(graph.file, stateNames, tree)
           }
+          graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
         }
-      } else {
-        if (tree != null) {
-          c.utils.err("@MungoState has no meaning since this type has no protocol", tree)
-        }
+        MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
       }
     }
+
+    val maybeNullableType = if (nullableAnno == null) MungoBottomType.SINGLETON else MungoNullType.SINGLETON
+
+    type.replaceAnnotation(MungoUnionType.create(listOf(stateTypes, maybeNullableType)).buildAnnotation(checker.processingEnvironment))
   }
 }

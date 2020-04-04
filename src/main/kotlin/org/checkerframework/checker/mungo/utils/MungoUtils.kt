@@ -5,6 +5,7 @@ import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
+import org.checkerframework.checker.mungo.lib.MungoNullable
 import org.checkerframework.checker.mungo.lib.MungoTypestate
 import org.checkerframework.checker.mungo.lib.MungoState
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
@@ -75,6 +76,9 @@ class MungoUtils(val checker: MungoChecker) {
   companion object {
     val mungoTypestateName: String = MungoTypestate::class.java.canonicalName
     val mungoStateName: String = MungoState::class.java.canonicalName
+    val mungoNullableName: String = MungoNullable::class.java.canonicalName
+
+    // Internal annotations for type information
     val mungoUnknownName: String = MungoUnknown::class.java.canonicalName
     val mungoInternalInfoName: String = MungoInternalInfo::class.java.canonicalName
     val mungoBottomName: String = MungoBottom::class.java.canonicalName
