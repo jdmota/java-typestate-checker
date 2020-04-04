@@ -87,8 +87,6 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     }
   }
 
-  // TODO what to do in the presence of returns? how to ensure the protocol ends?
-
   private fun ensureCompleteness(exitStore: MungoStore) {
     // Make sure protocols complete
     for ((key, value) in exitStore.iterateOverLocalVars()) {

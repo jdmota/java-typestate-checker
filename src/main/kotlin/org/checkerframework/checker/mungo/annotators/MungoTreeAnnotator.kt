@@ -2,6 +2,7 @@ package org.checkerframework.checker.mungo.annotators
 
 import com.sun.source.tree.LiteralTree
 import com.sun.source.tree.NewClassTree
+import com.sun.source.tree.VariableTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.typecheck.MungoNoProtocolType
@@ -11,7 +12,7 @@ import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator
 import java.nio.file.Paths
 
-class MungoTreeAnnotator(private val checker: MungoChecker, atypeFactory: MungoAnnotatedTypeFactory) : TreeAnnotator(atypeFactory) {
+class MungoTreeAnnotator(private val checker: MungoChecker, private val factory: MungoAnnotatedTypeFactory) : TreeAnnotator(factory) {
   override fun visitNewClass(node: NewClassTree, annotatedTypeMirror: AnnotatedTypeMirror): Void? {
     val tree = node.classBody
     if (tree != null && !annotatedTypeMirror.hasAnnotation(MungoInternalInfo::class.java)) {
@@ -31,6 +32,14 @@ class MungoTreeAnnotator(private val checker: MungoChecker, atypeFactory: MungoA
       annotatedTypeMirror.replaceAnnotation(MungoNullType.SINGLETON.buildAnnotation(checker.processingEnvironment))
     } else {
       annotatedTypeMirror.replaceAnnotation(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    }
+    return ret
+  }
+
+  override fun visitVariable(node: VariableTree, type: AnnotatedTypeMirror): Void? {
+    val ret = super.visitVariable(node, type)
+    if (type is AnnotatedTypeMirror.AnnotatedDeclaredType) {
+      factory.visitMungoState(type, node)
     }
     return ret
   }

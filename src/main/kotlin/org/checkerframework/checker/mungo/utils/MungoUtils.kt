@@ -36,11 +36,7 @@ class MungoUtils(val checker: MungoChecker) {
       return _factory
     }
 
-  fun err(message: String, where: Tree) {
-    checker.report(Result.failure(message), where)
-  }
-
-  fun err(message: String, where: Element) {
+  fun err(message: String, where: Any) {
     checker.report(Result.failure(message), where)
   }
 
@@ -61,9 +57,9 @@ class MungoUtils(val checker: MungoChecker) {
     val basename = file.fileName
     for (state in states) {
       if (graph.isFinalState(state)) {
-        checker.report(Result.warning("State $state is final. Will have no effect in @MungoState"), src)
+        err("State $state is final. Will have no effect in @MungoState", src)
       } else if (!graph.hasStateByName(state)) {
-        checker.report(Result.warning("$basename has no $state state"), src)
+        err("$basename has no $state state", src)
       }
     }
   }

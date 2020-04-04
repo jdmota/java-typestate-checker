@@ -1,14 +1,18 @@
 package org.checkerframework.checker.mungo.annotators
 
+import com.sun.source.tree.Tree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
 import org.checkerframework.checker.mungo.typecheck.MungoBottomType
+import org.checkerframework.checker.mungo.typecheck.MungoStateType
+import org.checkerframework.checker.mungo.typecheck.MungoUnionType
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.framework.flow.CFAbstractAnalysis
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.type.GenericAnnotatedTypeFactory
 import org.checkerframework.framework.type.QualifierHierarchy
 import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator
@@ -16,6 +20,7 @@ import org.checkerframework.framework.type.treeannotator.TreeAnnotator
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
 import org.checkerframework.framework.util.GraphQualifierHierarchy
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
+import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.Pair
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.VariableElement
@@ -80,6 +85,32 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       val type1 = MungoUtils.mungoTypeFromAnnotation(a1)
       val type2 = MungoUtils.mungoTypeFromAnnotation(a2)
       return type1.intersect(type2).buildAnnotation(checker.processingEnvironment)
+    }
+  }
+
+  // This is called in both MungoTreeAnnotator#visitVariable and MungoDefaultQualifierForUseTypeAnnotator#visitDeclared
+  // For some reason, it must be called in "visitDeclared" as well...
+  // Nonetheless, "visitVariable" is always called for both method arguments and variable declarations,
+  // so we only report errors in that case, which provides "tree", for error location.
+  fun visitMungoState(type: AnnotatedTypeMirror.AnnotatedDeclaredType, tree: Tree?) {
+    val element = type.underlyingType.asElement()
+    val stateAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
+    if (stateAnno != null) {
+      val graph = c.utils.visitClassSymbol(element)
+      if (graph != null) {
+        val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
+        if (stateNames != null) {
+          val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
+          type.replaceAnnotation(MungoUnionType.create(states.map { MungoStateType.create(graph, it) }).buildAnnotation(checker.processingEnvironment))
+          if (tree != null) {
+            c.utils.checkStates(graph.file, stateNames, tree)
+          }
+        }
+      } else {
+        if (tree != null) {
+          c.utils.err("@MungoState has no meaning since this type has no protocol", tree)
+        }
+      }
     }
   }
 }

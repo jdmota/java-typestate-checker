@@ -3,11 +3,7 @@ import org.checkerframework.checker.mungo.lib.MungoState;
 
 import java.util.Iterator;
 
-// FIXME fix error location
-
 @MungoTypestate("JavaIterator.protocol")
-// :: warning: (JavaIterator.protocol has no WrongName state)
-// :: warning: (State end is final. Will have no effect in @MungoState)
 class JavaIterator implements Iterator<Object> {
 
   @Override
@@ -111,7 +107,8 @@ class JavaIterator implements Iterator<Object> {
 
   public static void assigment1() {
     JavaIterator it = new JavaIterator();
-    @MungoState({"Next"}) JavaIterator it2 = it; // FIXME @MungoState getting ignored
+    // :: error: (assignment.type.incompatible)
+    @MungoState({"Next"}) JavaIterator it2 = it;
 
     while (it2.hasNext()) {
       it2.next();
@@ -119,16 +116,45 @@ class JavaIterator implements Iterator<Object> {
   }
 
   public static void assigment2() {
-    @MungoState({"Next"}) JavaIterator it3 = new JavaIterator(); // FIXME @MungoState getting ignored
+    // :: error: (assignment.type.incompatible)
+    @MungoState({"Next"}) JavaIterator it3 = new JavaIterator();
 
     while (it3.hasNext()) {
       it3.next();
     }
   }
 
+  public static void assigment3() {
+    @MungoState({"HasNext", "Next"}) JavaIterator it = new JavaIterator();
+
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+  public static void assigmentsAndMoves() {
+    JavaIterator it = new JavaIterator();
+
+    while (it.hasNext()) {
+      JavaIterator alias = it;
+      alias.next();
+      it = alias;
+    }
+  }
+
+  public static void assigmentsAndMoves2() {
+    JavaIterator it = new JavaIterator();
+
+    while (it.hasNext()) {
+      // FIXME The code is safe, but should we error here? Or disallow @MungoState on variable declarations?
+      @MungoState({"HasNext", "Next"}) JavaIterator alias = it;
+      alias.next();
+      it = alias;
+    }
+  }
+
   public static void incompatibleArg() {
     JavaIterator it4 = new JavaIterator();
-    // FIXME better error message
     // :: error: (argument.type.incompatible)
     use2(it4);
   }
@@ -260,11 +286,18 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
+  // :: error: (JavaIterator.protocol has no WrongName state)
+  // :: error: (State end is final. Will have no effect in @MungoState)
   public static void use3(@MungoState({"Next", "WrongName", "end"}) JavaIterator it) {
     it.next();
     while (it.hasNext()) {
       it.next();
     }
+  }
+
+  // :: error: (@MungoState has no meaning since this type has no protocol)
+  public static void use4(@MungoState({"state"}) Object it) {
+
   }
 
 }
