@@ -103,7 +103,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [dc5393](https://github.com/jdmota/abcd-mungo/commit/dc5393e67bc1608da71e4549676970b9166a6994).
     - [x] Check method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)`
         - Commit [f3502a](https://github.com/jdmota/abcd-mungo/commit/f3502ae38da23cf3507557e67fac94d03d309175)
-    - [ ] Check variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
+    - [x] Check variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
+        - Commit [4d646b](https://github.com/jdmota/abcd-mungo/commit/4d646b3b894e545a9bd3611cd5616fc29acc24cc).
 - [ ] `@MungoNull`
 - [x] Objects with no protocol are getting the unknown type, disallowing any use of them
     - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
