@@ -98,6 +98,11 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
+  public static @MungoState({"HasNext"}) JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
+    it.next();
+    return it;
+  }
+
   public static void override() {
     JavaIterator it = new JavaIterator();
     if (it.hasNext()) {

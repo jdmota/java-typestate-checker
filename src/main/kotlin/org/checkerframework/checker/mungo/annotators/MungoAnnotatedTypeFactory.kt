@@ -86,6 +86,13 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     }
   }
 
+  fun replaceWithInferredInfo(tree: Tree, type: AnnotatedTypeMirror) {
+    val value = getInferredValueFor(tree)
+    if (value != null) {
+      type.replaceAnnotation(value.info.buildAnnotation(checker.processingEnvironment))
+    }
+  }
+
   // This is called in both MungoTreeAnnotator#visitVariable and MungoDefaultQualifierForUseTypeAnnotator#visitDeclared
   // For some reason, it must be called in "visitDeclared" as well...
   // Nonetheless, "visitVariable" is always called for both method arguments and variable declarations,

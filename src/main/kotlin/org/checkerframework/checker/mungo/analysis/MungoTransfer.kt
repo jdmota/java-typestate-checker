@@ -100,6 +100,13 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return result
   }
 
+  // Prefer the inferred type information instead of using "mostSpecific" with information in factory
+  override fun visitLocalVariable(n: LocalVariableNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val store = input.regularStore
+    val value = store.getValue(n) ?: getValueFromFactory(n.tree, n)
+    return RegularTransferResult(finishValue(value, store), store)
+  }
+
   override fun visitObjectCreation(node: ObjectCreationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitObjectCreation(node, input)
     val value = result.resultValue

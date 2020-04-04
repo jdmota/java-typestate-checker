@@ -38,6 +38,7 @@ class FileInCollection {
     List<FileInCollection> list = new LinkedList<>();
     list.add(new FileInCollection());
 
+    // :: error: (enhancedfor.type.incompatible)
     for (FileInCollection f : list) {
       switch (f.state()) {
         case INIT:

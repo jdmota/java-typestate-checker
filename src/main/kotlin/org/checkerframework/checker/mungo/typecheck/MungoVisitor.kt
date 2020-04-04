@@ -6,10 +6,9 @@ import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
 import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
-import org.checkerframework.dataflow.cfg.block.*
 import org.checkerframework.dataflow.cfg.node.LocalVariableNode
-import org.checkerframework.dataflow.cfg.node.VariableDeclarationNode
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
@@ -85,6 +84,12 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
       c.utils.err("Cannot override because object has not ended its protocol", left)
     }
+  }
+
+  override fun commonAssignmentCheck(varType: AnnotatedTypeMirror, valueType: AnnotatedTypeMirror, valueTree: Tree, errorKey: String?) {
+    // Assignments checks should use the inferred type information
+    typeFactory.replaceWithInferredInfo(valueTree, valueType)
+    super.commonAssignmentCheck(varType, valueType, valueTree, errorKey)
   }
 
   private fun ensureCompleteness(exitStore: MungoStore) {
