@@ -4,6 +4,7 @@ import com.sun.source.tree.AnnotationTree
 import com.sun.source.tree.AssignmentTree
 import com.sun.source.tree.ClassTree
 import com.sun.source.tree.LiteralTree
+import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.javacutil.TreeUtils
@@ -44,20 +45,31 @@ class ClassUtils(private val utils: MungoUtils) {
     return result.graph
   }
 
-  fun visitClassTree(sourceFilePath: Path, tree: ClassTree): Graph? {
-    val modifiers = tree.modifiers
-    val annotations = modifiers.annotations
-    for (anno in annotations) {
-      val elem = TreeUtils.elementFromTree(anno.annotationType)
-      if (elem is TypeElement) {
-        val name = elem.qualifiedName
-        if (name.contentEquals(MungoUtils.mungoTypestateName)) {
-          // Process typestate
-          return processMungoTypestateAnnotation(sourceFilePath, anno)
+  companion object {
+    fun getMungoTypestateAnnotation(tree: ClassTree): AnnotationTree? {
+      val modifiers = tree.modifiers
+      val annotations = modifiers.annotations
+      for (anno in annotations) {
+        val elem = TreeUtils.elementFromTree(anno.annotationType)
+        if (elem is TypeElement) {
+          val name = elem.qualifiedName
+          if (name.contentEquals(MungoUtils.mungoTypestateName)) {
+            return anno
+          }
         }
       }
+      return null
     }
-    return null
+  }
+
+  fun visitClassTree(sourceFilePath: Path, tree: ClassTree): Graph? {
+    return getMungoTypestateAnnotation(tree)?.let { processMungoTypestateAnnotation(sourceFilePath, it) }
+  }
+
+  fun visitClassTree(treePath: TreePath, tree: ClassTree): Graph? {
+    // Get the path of the file where the class is
+    val sourceFilePath = Paths.get(treePath.compilationUnit.sourceFile.toUri())
+    return getMungoTypestateAnnotation(tree)?.let { processMungoTypestateAnnotation(sourceFilePath, it) }
   }
 
   fun visitClassSymbol(element: Element?): Graph? {
@@ -66,10 +78,8 @@ class ClassUtils(private val utils: MungoUtils) {
     }
     // "getPath" may return null for java.lang.Object for example
     val path = utils.factory.treeUtils.getPath(element) ?: return null
-    // Get the path of the file where the class is
-    val sourceFilePath = Paths.get(path.compilationUnit.sourceFile.toUri())
     // Process class tree
-    return visitClassTree(sourceFilePath, path.leaf as ClassTree)
+    return visitClassTree(path, path.leaf as ClassTree)
   }
 
 }

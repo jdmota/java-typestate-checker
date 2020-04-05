@@ -1,7 +1,14 @@
 package org.checkerframework.checker.mungo.analysis
 
+import org.checkerframework.checker.mungo.typecheck.MungoNoProtocolType
+import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.dataflow.analysis.FlowExpressions
+import org.checkerframework.dataflow.cfg.node.FieldAccessNode
+import org.checkerframework.dataflow.cfg.node.MethodInvocationNode
 import org.checkerframework.framework.flow.CFAbstractStore
+import org.checkerframework.framework.type.AnnotatedTypeFactory
+import javax.lang.model.element.ElementKind
+import javax.lang.model.element.ExecutableElement
 
 class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
   constructor(analysis: MungoAnalysis, sequentialSemantics: Boolean) : super(analysis, sequentialSemantics)
@@ -25,8 +32,6 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
 
   // Side effects: information about variables declared inside loops, is preserved for the next loop.
   // Should be fine since the declaration will override previous information.
-
-  // TODO report?
 
   override fun leastUpperBound(other: MungoStore): MungoStore {
     return upperBound(other, false)
@@ -68,6 +73,50 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     if (a == null) return b
     if (b == null) return a
     return if (shouldWiden) b.widenUpperBound(a) else b.leastUpperBound(a)
+  }
+
+  override fun isSideEffectFree(atypeFactory: AnnotatedTypeFactory, method: ExecutableElement): Boolean {
+    if (method.kind == ElementKind.CONSTRUCTOR && method.simpleName.toString() == "<init>") {
+      // java.lang.Object constructor is side effect free
+      return true
+    }
+    return super.isSideEffectFree(atypeFactory, method)
+  }
+
+  override fun updateForMethodCall(n: MethodInvocationNode, atypeFactory: AnnotatedTypeFactory, value: MungoValue?) {
+    val oldFields = fieldValues
+    val receiver = FlowExpressions.internalReprOf(atypeFactory, n.target.receiver)
+    val receiverValue = getValue(receiver)
+
+    // Call super method
+    super.updateForMethodCall(n, atypeFactory, value)
+
+    // See if the receiver is an object with protocol
+    // In that case, we are controlling it, no need to invalidate it
+    if (receiver is FlowExpressions.FieldAccess && receiverValue != null && !MungoNoProtocolType.SINGLETON.isSubtype(receiverValue.info)) {
+      fieldValues[receiver] = receiverValue
+    }
+
+    // Do not remove entries for other fields
+    // Since non-existent information is assumed to be the bottom type
+    // Which is different from what Checker normally does (see description above)
+    // See assign to unknown type
+    for ((key, prevValue) in oldFields) {
+      if (!fieldValues.containsKey(key)) {
+        fieldValues[key] = MungoValue(prevValue, MungoUnknownType.SINGLETON)
+      }
+    }
+  }
+
+  fun leastUpperBoundFields(other: MungoStore, shouldWiden: Boolean = false): MungoStore {
+    val newStore = analysis.createEmptyStore(sequentialSemantics)
+    newStore.fieldValues = HashMap<FlowExpressions.FieldAccess, MungoValue>(fieldValues)
+    newStore.thisValue = upperBoundOfValues(other.thisValue, thisValue, shouldWiden)
+    for ((el, otherVal) in other.fieldValues.entries) {
+      val merged = upperBoundOfValues(otherVal, fieldValues[el], shouldWiden)
+      if (merged == null) newStore.fieldValues.remove(el) else newStore.fieldValues[el] = merged
+    }
+    return newStore
   }
 
   fun iterateOverLocalVars(): Iterator<Map.Entry<FlowExpressions.LocalVariable, MungoValue>> {

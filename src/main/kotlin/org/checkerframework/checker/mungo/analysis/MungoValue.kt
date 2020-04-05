@@ -51,7 +51,7 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
     }
     val result = super.mostSpecific(other, backup)
     val newInfo = info.mostSpecific(other.info) ?: return null
-    return MungoValue(result, newInfo)
+    return MungoValue(result ?: this, newInfo)
   }
 
   override fun hashCode(): Int {

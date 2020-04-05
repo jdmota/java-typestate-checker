@@ -53,6 +53,10 @@ class MungoUtils(val checker: MungoChecker) {
     return classProcessor.visitClassTree(sourceFilePath, tree)
   }
 
+  fun visitClassTree(treePath: TreePath, tree: ClassTree): Graph? {
+    return classProcessor.visitClassTree(treePath, tree)
+  }
+
   fun checkStates(file: Path, states: List<String>, src: Any) {
     val graph = processor.lookupGraph(file)
     val basename = file.fileName
