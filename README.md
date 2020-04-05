@@ -77,9 +77,12 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 - Version 1.0
     - Equal to Mungo (Glasgow implementation + SCP paper)
-    - With protocol completeness and without null pointer exceptions
+    - With linear use enforcement, with protocol completeness and without null pointer exceptions
         - References: Aalborg Haskell implementation + new tech report
     - With examples to argue for correctness
+    - Issues to fix in next versions:
+      - It is possible to create an alias by getting an object from a collection and leaving it there
+      - Objects inside collections may not have their protocol completed
 - Version 2.0
     - Finer ownership control than linearity
 - Version 3.0
@@ -118,7 +121,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
     - [x] Upon return, refine the type to "moved"
         - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
-    - [ ] Fix corner cases (leaked `this`, moving to a different closure)
+    - [ ] Detect leaked `this`
+    - [ ] Forbid moving to a different closure (for now)
 - [x] Force object protocol to complete
     - [x] Only allow null assignments if object is in the end state or is already null
         - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).
@@ -138,7 +142,9 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 - [ ] Relax linear use of objects with protocol
     - [ ] Implement some type of ownership/borrowing system like Rust?
-    - [ ] Fix corner cases (objects in collections: do not allow collections to have ownership of ended objects)
+    - [ ] Check that if an object is moved to a different closure, that object is used to completion
+    - [ ] Only owned objects can have its protocol completed unless the owner is in scope
+        - For example, iterating over a collection and completing the protocol of its elements would be allowed if we could update the collection's type information indicating that it is holding to "ended" objects
 
 ### Version 3.0
 
@@ -148,9 +154,9 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 ## Proposals from thesis plan
 
 - [x] Replacing the mungo.lib.Boolean enumeration with the standard boolean
-    - Out of the box with Checker
+    - Done in v1. Out of the box with Checker
 - [x] Improving of flow analysis around loops and switch statements
-    - Out of the box with Checker
+    - Done in v1. Out of the box with Checker
 - [ ] Recognition of decisions made with if statements
 - [ ] Ability to associate protocol definitions with already present classes or interfaces
 - [ ] Adding support for droppable objects
@@ -166,3 +172,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [ ] Inheritance? Protocols in interfaces?
     - What if a class has a protocol, and implements an interface with a protocol as well?
     - Test if a protocol is a subtype of other protocol? How so?
+    - What happens if we cast an object with protocol to `Object`? And back to its original class?
+        - Disallow casting of ended, moved, null...
+- [ ] Memory leak detector
+    - Make sure collections do not hold onto "ended" objects for too long
+    - Warn if an object may be dropped (i.e. is in a state with `drop: end`) but it is being held onto
