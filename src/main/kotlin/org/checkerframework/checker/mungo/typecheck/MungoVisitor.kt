@@ -6,7 +6,6 @@ import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
 import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
-import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.dataflow.cfg.node.LocalVariableNode
 import org.checkerframework.framework.type.AnnotatedTypeMirror
@@ -93,8 +92,8 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     super.commonAssignmentCheck(varType, valueType, valueTree, errorKey)
   }
 
-  private fun ensureCompleteness(exitStore: MungoStore) {
-    // Make sure protocols complete
+  private fun ensureLocalCompleteness(exitStore: MungoStore) {
+    // Make sure protocols of local variables complete
     for ((key, value) in exitStore.iterateOverLocalVars()) {
       if (!value.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
         c.utils.err("Object did not complete its protocol", key.element)
@@ -103,8 +102,29 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   }
 
   override fun visitMethod(node: MethodTree, p: Void?): Void? {
-    typeFactory.getRegularExitStore(node)?.let { ensureCompleteness(it) }
+    typeFactory.getRegularExitStore(node)?.let { ensureLocalCompleteness(it) }
     return super.visitMethod(node, p)
+  }
+
+  private fun ensureFieldsCompleteness(exitStore: MungoStore) {
+    // Make sure protocols of fields complete
+    for ((key, value) in exitStore.iterateOverFields()) {
+      if (!value.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
+        c.utils.err("Object did not complete its protocol", key.field)
+      }
+    }
+  }
+
+  override fun processClassTree(classTree: ClassTree) {
+    super.processClassTree(classTree)
+
+    val statesToStore = typeFactory.getStatesToStore(classTree) ?: return
+
+    for ((state, store) in statesToStore) {
+      if (state.transitions.isEmpty()) {
+        ensureFieldsCompleteness(store)
+      }
+    }
   }
 
 }

@@ -123,6 +123,10 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     return localVariableValues.iterator()
   }
 
+  fun iterateOverFields(): Iterator<Map.Entry<FlowExpressions.FieldAccess, MungoValue>> {
+    return fieldValues.iterator()
+  }
+
   fun replaceValueIfDiff(r: FlowExpressions.Receiver, value: MungoValue): Boolean {
     val old = this.getValue(r)
     return if (value != old) {

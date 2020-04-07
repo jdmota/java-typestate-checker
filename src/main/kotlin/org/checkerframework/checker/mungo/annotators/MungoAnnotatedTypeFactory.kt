@@ -344,12 +344,17 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       }
     }
 
-    // TODO ensure that if protocol completes, all objects inside also have its protocol completed
-
-    // Finally, combine results into flowResult
+    // Finally, combine results into flowResult...
     for ((_, result) in results) {
       flowResult.combine(result)
     }
+
+    // And save the state -> store mapping for later checking
+    classTreeToStatesToStore[visitorState.classTree] = stateToStore
   }
+
+  private val classTreeToStatesToStore = mutableMapOf<ClassTree, Map<State, MungoStore>>()
+
+  fun getStatesToStore(tree: ClassTree) = classTreeToStatesToStore[tree]
 
 }
