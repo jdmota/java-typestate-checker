@@ -98,6 +98,7 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - Document tests (latex)
   - Code and output
 - Review other todo's in the code
+- One page explaining why I used Kotlin (features used)
 
 ### Version 1.0
 
@@ -136,7 +137,7 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
 - [ ] Analyze fields inside objects (combating against defensive programming)
     - [x] Basic implementation
-        - Commit [09deac](https://github.com/jdmota/abcd-mungo/commit/09deac29f682cdb8e66b19d28c7845ebaabf1c07)
+        - Commits [09deac](https://github.com/jdmota/abcd-mungo/commit/09deac29f682cdb8e66b19d28c7845ebaabf1c07) and [202607](https://github.com/jdmota/abcd-mungo/commit/202607ba3637624040ebeb5c2f193ce65154a310).
     - [ ] Make sure that if protocol completes, all objects inside that object also get their protocol completed
     - [ ] Forbid object with protocol from calling its own public methods
 - [ ] Validate protocols: check if there are duplicate transitions, if types exist, if decision states include all labels, etc...
