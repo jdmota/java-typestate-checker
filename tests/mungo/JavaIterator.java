@@ -314,6 +314,50 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
+  public static void completeInsideLambda() {
+    Supplier<String> fn = () -> {
+      JavaIterator it = new JavaIterator();
+      while (it.hasNext()) {
+        it.next();
+      }
+      return "";
+    };
+  }
+
+  public static void completeInsideMethod() {
+    Object obj = new Object() {
+      public void use() {
+        JavaIterator it = new JavaIterator();
+        while (it.hasNext()) {
+          it.next();
+        }
+      }
+    };
+  }
+
+  public static void incompleteInsideLambda() {
+    Supplier<String> fn = () -> {
+      // :: error: (Object did not complete its protocol)
+      JavaIterator it = new JavaIterator();
+      if (it.hasNext()) {
+        it.next();
+      }
+      return "";
+    };
+  }
+
+  public static void incompleteInsideMethod() {
+    Object obj = new Object() {
+      public void use() {
+        // :: error: (Object did not complete its protocol)
+        JavaIterator it = new JavaIterator();
+        if (it.hasNext()) {
+          it.next();
+        }
+      }
+    };
+  }
+
   public static JavaIterator cannotReturnEnded() {
     JavaIterator it13 = new JavaIterator();
     while (it13.hasNext()) {

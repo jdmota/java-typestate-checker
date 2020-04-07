@@ -189,6 +189,11 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return super.visitMethod(node, p)
   }
 
+  override fun visitLambdaExpression(node: LambdaExpressionTree, p: Void?): Void? {
+    typeFactory.getRegularExitStore(node.body)?.let { ensureLocalCompleteness(it) }
+    return super.visitLambdaExpression(node, p)
+  }
+
   private fun ensureFieldsCompleteness(exitStore: MungoStore) {
     // Make sure protocols of fields complete
     for ((key, value) in exitStore.iterateOverFields()) {
