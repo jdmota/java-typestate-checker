@@ -271,11 +271,18 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       t?.value?.let { Pair(method, it) }
     }.toMap()
 
+    // States lead us to methods that may be called. So we need information about each state.
     val stateToStore = mutableMapOf<State, MungoStore>()
+    // But since the same method may be available from different states,
+    // we also need to store the entry store for each method.
+    val methodToStore = mutableMapOf<MethodTree, MungoStore>()
+    // States that need recomputing. Use a LinkedHashSet to keep some order and avoid duplicates.
     val stateQueue = LinkedHashSet<State>()
+    // The results for each method to be merged later.
     val results = mutableMapOf<MethodTree, AnalysisResult<MungoValue, MungoStore>>()
 
-    fun maybeQueueState(state: State, store: MungoStore) {
+    // Update the state's store. Queue the state again if it changed.
+    fun mergeStateStore(state: State, store: MungoStore) {
       val currStore = stateToStore[state] ?: emptyStore
       val newStore = currStore.leastUpperBoundFields(store)
       if (currStore != newStore) {
@@ -284,7 +291,17 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       }
     }
 
-    maybeQueueState(graph.getInitialState(), initialStore)
+    // Returns the merge result if it changed. Returns null otherwise.
+    fun mergeMethodStore(method: MethodTree, store: MungoStore): MungoStore? {
+      val currStore = methodToStore[method] ?: emptyStore
+      val newStore = currStore.leastUpperBoundFields(store)
+      return if (currStore != newStore) {
+        methodToStore[method] = newStore
+        newStore
+      } else null
+    }
+
+    mergeStateStore(graph.getInitialState(), initialStore)
 
     while (stateQueue.isNotEmpty()) {
       val state = stateQueue.first()
@@ -294,9 +311,10 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       val methodToStates = methodToStatesCache.computeIfAbsent(state, ::getMethodToState)
 
       for ((method, destState) in methodToStates) {
+        val entryStore = mergeMethodStore(method, store) ?: continue
         val cfg = methodToCFG[method]!!
 
-        transfer.setFixedInitialStore(store)
+        transfer.setFixedInitialStore(entryStore)
         analysis.performAnalysis(cfg, fieldValues)
 
         val exitResult = analysis.getInput(cfg.regularExitBlock)!!
@@ -311,14 +329,14 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
         // Merge new exit store with the stores of each destination state
         when (destState) {
-          is State -> maybeQueueState(destState, regularExitStore)
+          is State -> mergeStateStore(destState, regularExitStore)
           is DecisionState -> {
             // TODO handle enumeration values as well
             for ((label, dest) in destState.transitions) {
               when (label.label) {
-                "true" -> maybeQueueState(dest, exitResult.thenStore)
-                "false" -> maybeQueueState(dest, exitResult.elseStore)
-                else -> maybeQueueState(dest, regularExitStore)
+                "true" -> mergeStateStore(dest, exitResult.thenStore)
+                "false" -> mergeStateStore(dest, exitResult.elseStore)
+                else -> mergeStateStore(dest, regularExitStore)
               }
             }
           }
