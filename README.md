@@ -138,7 +138,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [ ] Analyze fields inside objects (combating against defensive programming)
     - [x] Basic implementation
         - Commits [09deac](https://github.com/jdmota/abcd-mungo/commit/09deac29f682cdb8e66b19d28c7845ebaabf1c07) and [202607](https://github.com/jdmota/abcd-mungo/commit/202607ba3637624040ebeb5c2f193ce65154a310).
-    - [ ] Make sure that if protocol completes, all objects inside that object also get their protocol completed
+    - [x] Make sure that if protocol completes, all objects inside that object also get their protocol completed
+        - Commit [01cc8e](https://github.com/jdmota/abcd-mungo/commit/01cc8e640c4cbccbfa9472815b4043f585a8a1e0).
     - [ ] Forbid object with protocol from calling its own public methods
 - [ ] Validate protocols: check if there are duplicate transitions, if types exist, if decision states include all labels, etc...
 - [ ] Understand why Checker is reporting more errors than necessary
