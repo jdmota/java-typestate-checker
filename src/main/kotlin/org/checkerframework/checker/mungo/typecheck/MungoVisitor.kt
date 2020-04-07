@@ -1,11 +1,13 @@
 package org.checkerframework.checker.mungo.typecheck
 
 import com.sun.source.tree.*
+import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
 import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.dataflow.cfg.node.LocalVariableNode
 import org.checkerframework.framework.type.AnnotatedTypeMirror
@@ -112,6 +114,65 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     // Assignments checks should use the inferred type information
     typeFactory.replaceWithInferredInfo(valueTree, valueType)
     super.commonAssignmentCheck(varType, valueType, valueTree, errorKey)
+  }
+
+  override fun visitMemberSelect(node: MemberSelectTree, p: Void?): Void? {
+    super.visitMemberSelect(node, p)
+
+    val element = TreeUtils.elementFromTree(node) ?: return p
+
+    // See if it has protocol
+    c.utils.visitClassOfElement(element) ?: return p
+
+    // If "this"...
+    if (TreeUtils.isExplicitThisDereference(node)) {
+      val enclosingMethodOrLambda = MungoUtils.enclosingMethodOrLambda(visitorState.path) ?: return p
+      if (enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION) {
+        c.utils.err("$node was moved to a different closure", node)
+      }
+    }
+
+    return p
+  }
+
+  override fun visitIdentifier(node: IdentifierTree, p: Void?): Void? {
+    super.visitIdentifier(node, p)
+
+    val element = TreeUtils.elementFromTree(node) as? Symbol.VarSymbol ?: return p
+
+    // See if it has protocol
+    c.utils.visitClassOfElement(element) ?: return p
+
+    // If "this"...
+    if (TreeUtils.isExplicitThisDereference(node)) {
+      val enclosingMethodOrLambda = MungoUtils.enclosingMethodOrLambda(visitorState.path) ?: return p
+      if (enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION) {
+        c.utils.err("$node was moved to a different closure", node)
+      }
+      return p
+    }
+
+    // Find declaration and enclosing method/lambda
+    val declarationTree = typeFactory.declarationFromElement(element) ?: return p
+    val declaration = c.treeUtils.getPath(visitorState.path.compilationUnit, declarationTree) ?: return p
+    val enclosingMethodOrLambda = MungoUtils.enclosingMethodOrLambda(visitorState.path) ?: return p
+
+    // See if variable declaration is enclosed in the enclosing method or lambda or not
+    var path1: TreePath? = declaration
+    var path2: TreePath? = enclosingMethodOrLambda
+    while (path1 != null && path2 != null && path1 != enclosingMethodOrLambda) {
+      path1 = path1.parentPath
+      path2 = path2.parentPath
+    }
+
+    // Error if:
+    // 1. Declaration is closer to the root (path1 == null && path2 != null)
+    // 2. Both are at the same level (path1 == null && path2 == null) and identifier is enclosed in a lambda
+    if (path1 == null && (path2 != null || enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION)) {
+      c.utils.err("${node.name} was moved to a different closure", node)
+    }
+
+    return p
   }
 
   private fun ensureLocalCompleteness(exitStore: MungoStore) {

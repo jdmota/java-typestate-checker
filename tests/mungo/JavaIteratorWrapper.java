@@ -3,6 +3,7 @@ import org.checkerframework.checker.mungo.lib.MungoState;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
 
 import java.util.Iterator;
+import java.util.function.Supplier;
 
 @MungoTypestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper1 {
@@ -221,6 +222,54 @@ class JavaIteratorWrapper9 {
   // :: error: (Object did not complete its protocol)
   public static void use(JavaIteratorWrapper9 it) {
 
+  }
+
+}
+
+@MungoTypestate("JavaIteratorWrapper.protocol")
+class JavaIteratorWrapper10 {
+
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    iterator = it;
+    Supplier<Object> fn = () -> {
+      // :: error: (this was moved to a different closure)
+      // :: error: (Possible 'this' leak)
+      return this;
+    };
+  }
+
+  public boolean hasNext() {
+    return iterator.hasNext();
+  }
+
+  public Object next() {
+    return iterator.next();
+  }
+
+}
+
+@MungoTypestate("JavaIteratorWrapper.protocol")
+class JavaIteratorWrapper11 {
+
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    iterator = it;
+    Supplier<Object> fn = () -> {
+      // :: error: (JavaIteratorWrapper11.this was moved to a different closure)
+      // :: error: (Possible 'this' leak)
+      return JavaIteratorWrapper11.this;
+    };
+  }
+
+  public boolean hasNext() {
+    return iterator.hasNext();
+  }
+
+  public Object next() {
+    return iterator.next();
   }
 
 }

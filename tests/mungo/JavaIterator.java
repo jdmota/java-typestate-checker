@@ -3,6 +3,7 @@ import org.checkerframework.checker.mungo.lib.MungoState;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
 
 import java.util.Iterator;
+import java.util.function.Supplier;
 
 @MungoTypestate("JavaIterator.protocol")
 class JavaIterator implements Iterator<Object> {
@@ -347,6 +348,27 @@ class JavaIterator implements Iterator<Object> {
   // :: error: (@MungoState has no meaning since this type has no protocol)
   public static void use4(@MungoState({"state"}) Object it) {
 
+  }
+
+  public static void moveToLambda() {
+    // :: error: (Object did not complete its protocol)
+    JavaIterator it = new JavaIterator();
+    Supplier<String> fn = () -> {
+      // :: error: (it was moved to a different closure)
+      it.hasNext();
+      return "";
+    };
+  }
+
+  public static void moveToMethod() {
+    // :: error: (Object did not complete its protocol)
+    JavaIterator it = new JavaIterator();
+    Object obj = new Object() {
+      public void use() {
+        // :: error: (it was moved to a different closure)
+        it.hasNext();
+      }
+    };
   }
 
 }

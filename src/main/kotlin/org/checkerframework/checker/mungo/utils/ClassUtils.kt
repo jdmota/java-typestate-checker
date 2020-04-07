@@ -7,6 +7,7 @@ import com.sun.source.tree.LiteralTree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.typestate.graph.Graph
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -70,6 +71,15 @@ class ClassUtils(private val utils: MungoUtils) {
     // Get the path of the file where the class is
     val sourceFilePath = Paths.get(treePath.compilationUnit.sourceFile.toUri())
     return getMungoTypestateAnnotation(tree)?.let { processMungoTypestateAnnotation(sourceFilePath, it) }
+  }
+
+  fun visitClassDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType): Graph? {
+    return visitClassSymbol(type.underlyingType.asElement())
+  }
+
+  fun visitClassOfElement(element: Element): Graph? {
+    val type = utils.factory.fromElement(element) as? AnnotatedTypeMirror.AnnotatedDeclaredType ?: return null
+    return visitClassDeclaredType(type)
   }
 
   fun visitClassSymbol(element: Element?): Graph? {

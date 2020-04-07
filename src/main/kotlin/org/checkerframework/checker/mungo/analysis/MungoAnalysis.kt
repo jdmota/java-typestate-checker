@@ -17,7 +17,9 @@ class MungoAnalysis(checker: MungoChecker, factory: MungoAnnotatedTypeFactory, f
     return MungoStore(this, sequentialSemantics)
   }
 
-  override fun createCopiedStore(s: MungoStore): MungoStore {
+  override fun createCopiedStore(s: MungoStore?): MungoStore {
+    // Workaround null value in CFAbstractTransfer#initialStore in the case AST is a lambda
+    if (s == null) return createEmptyStore(transferFunction?.usesSequentialSemantics() ?: false)
     return MungoStore(s)
   }
 

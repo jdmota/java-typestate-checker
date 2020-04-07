@@ -1,22 +1,29 @@
 package org.checkerframework.checker.mungo.utils
 
-import com.sun.source.tree.*
+import com.sun.source.tree.ClassTree
+import com.sun.source.tree.Tree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.lib.MungoNullable
-import org.checkerframework.checker.mungo.lib.MungoTypestate
 import org.checkerframework.checker.mungo.lib.MungoState
+import org.checkerframework.checker.mungo.lib.MungoTypestate
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
-import org.checkerframework.checker.mungo.typecheck.*
+import org.checkerframework.checker.mungo.typecheck.MungoBottomType
+import org.checkerframework.checker.mungo.typecheck.MungoType
+import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
+import org.checkerframework.checker.mungo.typecheck.getTypeFromAnnotation
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.source.Result
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
+import org.checkerframework.javacutil.TreeUtils
 import java.nio.file.Path
+import java.util.*
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 
@@ -47,6 +54,14 @@ class MungoUtils(val checker: MungoChecker) {
 
   fun visitClassSymbol(element: Element?): Graph? {
     return classProcessor.visitClassSymbol(element)
+  }
+
+  fun visitClassDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType): Graph? {
+    return classProcessor.visitClassDeclaredType(type)
+  }
+
+  fun visitClassOfElement(element: Element): Graph? {
+    return classProcessor.visitClassOfElement(element)
   }
 
   fun visitClassTree(sourceFilePath: Path, tree: ClassTree): Graph? {
@@ -119,6 +134,24 @@ class MungoUtils(val checker: MungoChecker) {
         }
       }
       return MungoUnknownType.SINGLETON
+    }
+
+    // Adapted from TreeUtils.enclosingMethodOrLambda to return a TreePath instead of Tree
+    fun enclosingMethodOrLambda(path: TreePath): TreePath? {
+      return enclosingOfKind(path, EnumSet.of(Tree.Kind.METHOD, Tree.Kind.LAMBDA_EXPRESSION))
+    }
+
+    // Adapted from TreeUtils.enclosingOfKind to return a TreePath instead of Tree
+    private fun enclosingOfKind(path: TreePath, kinds: Set<Tree.Kind>): TreePath? {
+      var p: TreePath? = path
+      while (p != null) {
+        val leaf = p.leaf
+        if (kinds.contains(leaf.kind)) {
+          return p
+        }
+        p = p.parentPath
+      }
+      return null
     }
 
     fun printStack() {
