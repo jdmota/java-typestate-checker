@@ -138,7 +138,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   // Returns true iff store changed
   private fun handleMove(node: Node, result: TransferResult<MungoValue, MungoStore>): Boolean {
-    if (node is LocalVariableNode) {
+    if (node is LocalVariableNode || node is FieldAccessNode) {
       val r = FlowExpressions.internalReprOf(analysis.typeFactory, node)
       val value = result.regularStore.getValue(r)
 

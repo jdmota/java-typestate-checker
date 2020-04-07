@@ -88,3 +88,30 @@ class JavaIteratorWrapper4 {
   }
 
 }
+
+@MungoTypestate("JavaIteratorWrapper.protocol")
+class JavaIteratorWrapper5 {
+
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    iterator = it;
+    use(iterator);
+  }
+
+  public boolean hasNext() {
+    // :: error: (Cannot call hasNext on moved value)
+    return iterator.hasNext();
+  }
+
+  public Object next() {
+    return iterator.next();
+  }
+
+  public static void use(JavaIterator it) {
+    while (it.hasNext()) {
+      it.next();
+    }
+  }
+
+}
