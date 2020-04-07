@@ -96,6 +96,19 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   }
 
   override fun commonAssignmentCheck(varType: AnnotatedTypeMirror, valueType: AnnotatedTypeMirror, valueTree: Tree, errorKey: String?) {
+    // Detect possible leaked "this"
+    if (valueTree is IdentifierTree && valueTree.name.toString() == "this") {
+      val element = TreeUtils.elementFromTree(valueTree)
+      if (element != null) {
+        val hasProtocol = c.utils.visitClassSymbol(element.enclosingElement) != null
+        if (hasProtocol) {
+          c.utils.err("Possible 'this' leak", valueTree)
+          return
+        }
+      }
+      return
+    }
+
     // Assignments checks should use the inferred type information
     typeFactory.replaceWithInferredInfo(valueTree, valueType)
     super.commonAssignmentCheck(varType, valueType, valueTree, errorKey)

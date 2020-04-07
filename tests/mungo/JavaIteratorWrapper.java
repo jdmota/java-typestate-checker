@@ -167,3 +167,60 @@ class JavaIteratorWrapper7 {
   }
 
 }
+
+@MungoTypestate("JavaIteratorWrapper.protocol")
+class JavaIteratorWrapper8 {
+
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    iterator = it;
+    // :: error: (Possible 'this' leak)
+    use(this);
+  }
+
+  public boolean hasNext() {
+    // This error exists because the "use" call invalidates information
+    // :: error: (Cannot call hasNext on null)
+    return iterator.hasNext();
+  }
+
+  public Object next() {
+    return iterator.next();
+  }
+
+  // :: error: (Object did not complete its protocol)
+  public static void use(JavaIteratorWrapper8 it) {
+
+  }
+
+}
+
+@MungoTypestate("JavaIteratorWrapper.protocol")
+class JavaIteratorWrapper9 {
+
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    iterator = it;
+    // :: error: (Possible 'this' leak)
+    JavaIteratorWrapper9 wrapper = this;
+    use(wrapper);
+  }
+
+  public boolean hasNext() {
+    // This error exists because the "use" call invalidates information
+    // :: error: (Cannot call hasNext on null)
+    return iterator.hasNext();
+  }
+
+  public Object next() {
+    return iterator.next();
+  }
+
+  // :: error: (Object did not complete its protocol)
+  public static void use(JavaIteratorWrapper9 it) {
+
+  }
+
+}
