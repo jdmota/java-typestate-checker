@@ -95,8 +95,11 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 - Update this README with further information
 - Create more tests
-- Document tests (latex)
-  - Code and output
+    - With cases we check
+    - With cases we do not check
+- Document tests per version
+    - Latex
+    - Code and output
 - Review other todo's in the code
 - One page explaining why I used Kotlin (features used)
 
@@ -123,9 +126,12 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
     - [x] Upon return, refine the type to "moved"
         - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
     - [x] Detect possible leaked `this` value
-        - Commit [91bb67](https://github.com/jdmota/abcd-mungo/commit/91bb67be5f86f9b28a5026151200c888083e3c66).
-    - [ ] Forbid moving to a different closure (for now)
+        - Commits [91bb67](https://github.com/jdmota/abcd-mungo/commit/91bb67be5f86f9b28a5026151200c888083e3c66) and [2e4514](https://github.com/jdmota/abcd-mungo/commit/2e45142b4be4812c473584b836fbbcb7e278816d).
+    - [x] Forbid moving local variables and `this` to a different closure (for now)
+        - Commit [830adb](https://github.com/jdmota/abcd-mungo/commit/830adbe7b22e396a656fbbadf3fed6bd05d5896c).
     - [ ] Fix corner cases (this version or next?)
+        - [ ] Detect moves of `wrapper.object` (to variables or different closure)
+        - [ ] Detect moves of `Wrapper.this.object` (to variables or different closure)
         - [ ] `object.use(object)`
             - This breaks linearly and allows an object to move its own protocol
             - Conceptually the same as `use(object, object)`, where the first argument is the `this`
@@ -133,10 +139,6 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
                 - Example: with `iterator.next()` (like `next(iterator)`), we do not actually want to "move" `iterator`...
             - Wait for next version where borrowing concept is introduced?
                 - The first `object` would be borrowed. The second `object` would error because it was a second borrow.
-        - [ ] `obj1 = wrapper.object; obj2 = wrapper.object;`
-            - The object inside the wrapper was moved and we are not detecting it...
-        - [ ] `wrapper.object.use(wrapper.object)`
-            - Combination of the two previous examples
         - [x] `wrapper.getObject().use(wrapper.getObject())`
             - This problem gets detected in the current version thanks to class analysis (see `JavaIteratorWrapper7` example)
             - Whatever is in the `return` statement of `getObject` will get "moved", so calling `getObject` again is an error since `MovedType` is not compatible with the return type
@@ -153,6 +155,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [1bbc77](https://github.com/jdmota/abcd-mungo/commit/1bbc778ef75c9c87acdce73398a21d33af52646e).
     - [x] Check that if a method returns an object with a non-ended protocol, that object is used
         - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
+    - [x] Check the end of lambdas to see if the object was moved, is null, or reached the end state
+        - Commit [84b05d](https://github.com/jdmota/abcd-mungo/commit/84b05d41a8281708ba6e9a86710026dfeb43ddf8).
 - [x] Analyze fields inside objects (combating against defensive programming)
     - [x] Basic implementation
         - Commits [09deac](https://github.com/jdmota/abcd-mungo/commit/09deac29f682cdb8e66b19d28c7845ebaabf1c07) and [202607](https://github.com/jdmota/abcd-mungo/commit/202607ba3637624040ebeb5c2f193ce65154a310).
