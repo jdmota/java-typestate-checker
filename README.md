@@ -122,7 +122,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
     - [x] Upon return, refine the type to "moved"
         - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
-    - [ ] Detect leaked `this`
+    - [x] Detect possible leaked `this` value
+        - Commit [91bb67](https://github.com/jdmota/abcd-mungo/commit/91bb67be5f86f9b28a5026151200c888083e3c66).
     - [ ] Forbid moving to a different closure (for now)
     - [ ] Fix corner cases (this version or next?)
         - [ ] `object.use(object)`
@@ -198,8 +199,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [ ] Inheritance? Protocols in interfaces?
     - What if a class has a protocol, and implements an interface with a protocol as well?
     - Test if a protocol is a subtype of other protocol? How so?
-    - What happens if we cast an object with protocol to `Object`? And back to its original class?
-        - Disallow casting of ended, moved, null...
+    - What happens if we cast an object with protocol to `Object`? How to ensure its completeness? And casting back to its original class?
+    - Disallow casting of ended, moved, null...
 - [ ] Memory leak detector
     - Make sure collections do not hold onto "ended" objects for too long
     - Warn if an object may be dropped (i.e. is in a state with `drop: end`) but it is being held onto
