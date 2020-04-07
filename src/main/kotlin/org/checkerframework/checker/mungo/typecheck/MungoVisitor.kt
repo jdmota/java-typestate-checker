@@ -97,7 +97,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
   override fun commonAssignmentCheck(varType: AnnotatedTypeMirror, valueType: AnnotatedTypeMirror, valueTree: Tree, errorKey: String?) {
     // Detect possible leaked "this"
-    if (valueTree is IdentifierTree && valueTree.name.toString() == "this") {
+    if (valueTree is ExpressionTree && TreeUtils.isExplicitThisDereference(valueTree)) {
       val element = TreeUtils.elementFromTree(valueTree)
       if (element != null) {
         val hasProtocol = c.utils.visitClassSymbol(element.enclosingElement) != null
