@@ -1,0 +1,14 @@
+typestate JavaIteratorWrapperWithGetter {
+    Start = {
+        void init(JavaIterator): HasNext
+    }
+    HasNext = {
+        boolean hasNext(): <true: Next, false: end>,
+        JavaIterator getIterator(): HasNext
+    }
+    Next = {
+        boolean hasNext(): <true: Next, false: end>,
+        Object next(): HasNext,
+        JavaIterator getIterator(): Next
+    }
+}

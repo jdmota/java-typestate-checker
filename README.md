@@ -124,6 +124,23 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
     - [ ] Detect leaked `this`
     - [ ] Forbid moving to a different closure (for now)
+    - [ ] Fix corner cases (this version or next?)
+        - [ ] `object.use(object)`
+            - This breaks linearly and allows an object to move its own protocol
+            - Conceptually the same as `use(object, object)`, where the first argument is the `this`
+            - If we mark the first `object` as moved, then how can one use the protocol?
+                - Example: with `iterator.next()` (like `next(iterator)`), we do not actually want to "move" `iterator`...
+            - Wait for next version where borrowing concept is introduced?
+                - The first `object` would be borrowed. The second `object` would error because it was a second borrow.
+        - [ ] `obj1 = wrapper.object; obj2 = wrapper.object;`
+            - The object inside the wrapper was moved and we are not detecting it...
+        - [ ] `wrapper.object.use(wrapper.object)`
+            - Combination of the two previous examples
+        - [x] `wrapper.getObject().use(wrapper.getObject())`
+            - This problem gets detected in the current version thanks to class analysis (see `JavaIteratorWrapper7` example)
+            - Whatever is in the `return` statement of `getObject` will get "moved", so calling `getObject` again is an error since `MovedType` is not compatible with the return type
+            - In light of this, maybe we could think of field accesses as getter method calls?
+        - How Rust handles similar examples: [playground example](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=ec6688ff3bb3853e2af14d5afe21b28e)
 - [x] Force object protocol to complete
     - [x] Only allow null assignments if object is in the end state or is already null
         - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).

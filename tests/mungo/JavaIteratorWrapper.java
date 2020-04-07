@@ -141,3 +141,29 @@ class JavaIteratorWrapper6 {
   }
 
 }
+
+@MungoTypestate("JavaIteratorWrapperWithGetter.protocol")
+class JavaIteratorWrapper7 {
+
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    iterator = it;
+  }
+
+  public boolean hasNext() {
+    // :: error: (Cannot call hasNext on moved value)
+    return iterator.hasNext();
+  }
+
+  public Object next() {
+    return iterator.next();
+  }
+
+  public JavaIterator getIterator() {
+    // TODO better message, the problem is that calling getIterator() once moves it
+    // :: error: (return.type.incompatible)
+    return iterator;
+  }
+
+}
