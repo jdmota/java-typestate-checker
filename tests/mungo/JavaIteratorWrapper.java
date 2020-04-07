@@ -115,3 +115,29 @@ class JavaIteratorWrapper5 {
   }
 
 }
+
+@MungoTypestate("JavaIteratorWrapper.protocol")
+class JavaIteratorWrapper6 {
+
+  // :: error: (Object did not complete its protocol)
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    iterator = it;
+  }
+
+  public boolean hasNext() {
+    // :: error: (Cannot call its own public method)
+    hasNext();
+    // :: error: (Cannot call hasNext on unknown)
+    return iterator.hasNext();
+  }
+
+  public Object next() {
+    // :: error: (Cannot call its own public method)
+    this.hasNext();
+    // :: error: (Cannot call next on unknown)
+    return iterator.next();
+  }
+
+}

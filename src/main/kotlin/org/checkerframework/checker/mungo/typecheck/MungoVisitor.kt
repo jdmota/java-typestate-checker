@@ -25,12 +25,23 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   // TODO visit all annotations to make sure @MungoTypestate only appears in class/interfaces??
   // TODO what if another class points to the same protocol file?? error? or fine? avoid duplicate processing
 
+  private fun checkOwnCall(node: MethodInvocationTree, element: Symbol.MethodSymbol): Boolean {
+    if (TreeUtils.isSelfAccess(node) && !element.isStatic && !element.isStaticOrInstanceInit && !element.isPrivate) {
+      val hasProtocol = c.utils.visitClassSymbol(element.enclosingElement) != null
+      if (hasProtocol) {
+        c.utils.err("Cannot call its own public method", node)
+        return false
+      }
+    }
+    return true // It's fine. Proceed checking.
+  }
+
   override fun visitMethodInvocation(node: MethodInvocationTree, p: Void?): Void? {
     val element = TreeUtils.elementFromUse(node)
-    if (element is Symbol.MethodSymbol && element.getKind() == ElementKind.METHOD) {
-      val receiver = TreeUtils.getReceiverTree(node)
-      if (receiver != null) {
-        val receiverValue = typeFactory.getInferredValueFor(receiver)
+    if (element is Symbol.MethodSymbol && element.getKind() == ElementKind.METHOD && checkOwnCall(node, element)) {
+      val receiverTree = TreeUtils.getReceiverTree(node)
+      if (receiverTree != null) {
+        val receiverValue = typeFactory.getInferredValueFor(receiverTree)
         val checks = MungoTypecheck.check(c.utils, visitorState.path, receiverValue, node, element)
         if (!checks) {
           // Ignore this method invocation tree to avoid (method.invocation.invalid) errors produced by Checker
@@ -38,8 +49,6 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
         }
       }
     }
-
-    // TODO disallow object with protocol calling its own public methods
 
     // Returned objects must be assigned so that they complete the protocol
     val parent = visitorState.path.parentPath.leaf
