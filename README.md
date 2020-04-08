@@ -80,9 +80,6 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
     - With linear use enforcement, with protocol completeness and without null pointer exceptions
         - References: Aalborg Haskell implementation + new tech report
     - With examples to argue for correctness
-    - Issues to fix in next versions:
-      - It is possible to create an alias by getting an object from a collection and leaving it there
-      - Objects inside collections may not have their protocol completed
 - Version 2.0
     - Finer ownership control than linearity
 - Version 3.0
@@ -120,7 +117,7 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [x] When the states are unknown, all possible ones are being attributed, including final ones
     - Solution: Create "EndedType" distinguishing from normal states
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
-- [ ] Force linear use of objects with protocol
+- [x] Force linear use of objects with protocol
     - [x] Basic implementation
         - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
     - [x] Upon return, refine the type to "moved"
@@ -129,21 +126,6 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commits [91bb67](https://github.com/jdmota/abcd-mungo/commit/91bb67be5f86f9b28a5026151200c888083e3c66) and [2e4514](https://github.com/jdmota/abcd-mungo/commit/2e45142b4be4812c473584b836fbbcb7e278816d).
     - [x] Forbid moving local variables and `this` to a different closure (for now)
         - Commit [830adb](https://github.com/jdmota/abcd-mungo/commit/830adbe7b22e396a656fbbadf3fed6bd05d5896c).
-    - [ ] Fix corner cases (this version or next?)
-        - [ ] Detect moves of `wrapper.object` (to variables or different closure)
-        - [ ] Detect moves of `Wrapper.this.object` (to variables or different closure)
-        - [ ] `object.use(object)`
-            - This breaks linearly and allows an object to move its own protocol
-            - Conceptually the same as `use(object, object)`, where the first argument is the `this`
-            - If we mark the first `object` as moved, then how can one use the protocol?
-                - Example: with `iterator.next()` (like `next(iterator)`), we do not actually want to "move" `iterator`...
-            - Wait for next version where borrowing concept is introduced?
-                - The first `object` would be borrowed. The second `object` would error because it was a second borrow.
-        - [x] `wrapper.getObject().use(wrapper.getObject())`
-            - This problem gets detected in the current version thanks to class analysis (see `JavaIteratorWrapper7` example)
-            - Whatever is in the `return` statement of `getObject` will get "moved", so calling `getObject` again is an error since `MovedType` is not compatible with the return type
-            - In light of this, maybe we could think of field accesses as getter method calls?
-        - How Rust handles similar examples: [playground example](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=ec6688ff3bb3853e2af14d5afe21b28e)
 - [x] Force object protocol to complete
     - [x] Only allow null assignments if object is in the end state or is already null
         - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).
@@ -168,6 +150,40 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [ ] Understand why Checker is reporting more errors than necessary
     - Seems to be related with the fact that `Object` has the `NoProtocol` type and everything is extending it
     - Solution: `Object` should be the super type of objects with protocol and without protocol
+- [ ] Refactoring
+
+#### Corners cases to fix in later versions
+
+- We are not detecting moves of objects inside other objects (to variables or different closures)
+- We are not enforcing protocol completeness for objects inside other objects
+- We are not detecting moves to its own method
+- Examples:
+  - On collections:
+    - It is possible to create an alias by getting an object from a collection and leaving it there
+    - Objects inside collections may not have their protocol completed
+  - On objects inside other objects where the first does NOT have protocol:
+    - Moves of `wrapper.object` or `Wrapper.this.object` break linearity
+    - Uses of `wrapper.object` or `Wrapper.this.object` inside different closure break linearity
+    - Calls of `wrapper.getObject()` or `Wrapper.this.getObject()` inside different closure break linearity
+    - Overrides like `wrapper.object = foo;` where the previous value is not ensured to have its protocol completed
+  - `use(::getIterator)`
+    - There is an implicit move here
+  - `object.use(object)`
+    - This breaks linearly and allows an object to move its own protocol
+    - Conceptually the same as `use(object, object)`, where the first argument is the `this`
+    - If we mark the first `object` as moved, then how can one use the protocol?
+        - Example: with `iterator.next()` (like `next(iterator)`), we do not actually want to "move" `iterator`...
+    - Wait for next version where borrowing concept is introduced?
+        - The first `object` would be borrowed. The second `object` would error because it was a second borrow.
+  - `wrapper.getObject().use(wrapper.getObject())`
+    - This problem gets detected IFF `wrapper` has protocol, thanks to class analysis (see `JavaIteratorWrapper7` example)
+    - Whatever is in the `return` statement of `getObject` will get "moved", so calling `getObject` again is an error since `MovedType` is not compatible with the return type
+- How Rust handles similar examples: [playground example](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=ec6688ff3bb3853e2af14d5afe21b28e)
+- Possible solutions to some of these:
+  1. Only allow objects with protocol to hold other objects with protocol AND:
+      - Disallow public field access OR
+      - Consider public field access like a method call (part of the protocol)
+  2. Think of closures as objects with protocol (that forces its use) and that store references to other objects
 
 ### Version 2.0
 
