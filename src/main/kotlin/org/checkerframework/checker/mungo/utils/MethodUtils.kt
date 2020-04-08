@@ -16,45 +16,16 @@ class MethodUtils(private val utils: MungoUtils) {
   private val symtab = Symtab.instance((utils.checker.processingEnvironment as JavacProcessingEnvironment).context)
   private val typeUtils = utils.checker.typeUtils
 
-  // TODO missing stuff
-  fun methodNodeToMethodTree(maker: TreeMaker, node: TMethodNode): JCTree.JCMethodDecl {
-    val mods = maker.Modifiers(Flags.PUBLIC.toLong());
-    val name = names.fromString(node.name)
-    val restype = maker.Ident(names.fromString(node.returnType)); // maker.Reference() / maker.Ident() / maker.Literal()
-    val typarams: JavacList<JCTree.JCTypeParameter> = JavacList.nil();
-    val recvparam: JCTree.JCVariableDecl? = null;
-    val params: JavacList<JCTree.JCVariableDecl> = JavacList.nil();
-    val thrown: JavacList<JCTree.JCExpression> = JavacList.nil();
-    val body: JCTree.JCBlock? = null;
-    val defaultValue: JCTree.JCExpression? = null;
-    return maker.MethodDef(
-      mods,
-      name,
-      restype,
-      typarams,
-      recvparam,
-      params,
-      thrown,
-      body,
-      defaultValue
-    )
-  }
-
-  // TODO missing stuff
-  fun methodNodeToMethodSymbol(node: TMethodNode, owner: Symbol): Symbol.MethodSymbol {
+  fun methodNodeToMethodSymbol(treePath: TreePath, node: TMethodNode, owner: Symbol): Symbol.MethodSymbol {
     if (owner !is Symbol.ClassSymbol) {
       throw AssertionError("owner should be ClassSymbol not " + owner::class.java)
     }
     val flags = Flags.PUBLIC.toLong();
     val name = names.fromString(node.name)
-    val argtypes = JavacList.nil<Type>()
-    val restype = when (node.returnType) {
-      "void" -> symtab.voidType
-      "boolean" -> symtab.booleanType
-      else -> symtab.unknownType
-    }
-    val thrown = JavacList.nil<Type>()
-    // ClassSymbol(1L, names.fromString(""), var1, this.rootPackage)
+    val argtypes = JavacList.from(node.args.map { utils.resolve(treePath, it) ?: symtab.unknownType })
+    val restype = utils.resolve(treePath, node.returnType) ?: symtab.unknownType
+    val thrown = JavacList.nil<Type>() // TODO
+    // TODO generics?
     return Symbol.MethodSymbol(
       flags,
       name,

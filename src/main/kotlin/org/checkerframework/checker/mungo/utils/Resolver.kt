@@ -7,25 +7,11 @@ import com.sun.tools.javac.code.Symtab
 import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import javax.annotation.processing.ProcessingEnvironment
-import javax.lang.model.element.Element
 
 class Resolver(env: ProcessingEnvironment) {
 
   private val resolver = Resolver(env)
   private val symtab = Symtab.instance((env as JavacProcessingEnvironment).context)
-
-  // FIXME works with "Object" but not with "java.lang.Object" ??
-
-  /*
-  val unit = n.treePath.compilationUnit as JCTree.JCCompilationUnit
-  val sym = c.getUtils().resolve(n.treePath, "java.lang.Object")
-  println(sym)
-  println(sym::class.java)
-
-  val sym2 = c.getUtils().resolve(n.treePath, "Object")
-  println(sym2)
-  println(sym2::class.java) // Expected to be ClassSymbol
-   */
 
   fun resolve(path: TreePath, name: String): Type? {
     return when (name) {
@@ -39,9 +25,16 @@ class Resolver(env: ProcessingEnvironment) {
       "boolean" -> symtab.booleanType
       "void" -> symtab.voidType
       else -> {
-        val t = (resolver.findClass(name, path) as Symbol?)?.type
-        // println("Resolving $name to $t")
-        t
+        val parts = name.split(".")
+        if (parts.size == 1) {
+          (resolver.findClass(parts[0], path) as? Symbol)?.type
+        } else {
+          // So that things like java.lang.Object can be resolved
+          val pkgName = parts.subList(0, parts.size - 1).joinToString(".")
+          val pkg = resolver.findPackage(pkgName, path) ?: return null
+          val className = parts[parts.lastIndex]
+          resolver.findClassInPackage(className, pkg, path)?.asType()
+        }
       }
     }
   }
