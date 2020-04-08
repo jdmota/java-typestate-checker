@@ -109,8 +109,10 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [f3502a](https://github.com/jdmota/abcd-mungo/commit/f3502ae38da23cf3507557e67fac94d03d309175)
     - [x] Check variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
         - Commit [4d646b](https://github.com/jdmota/abcd-mungo/commit/4d646b3b894e545a9bd3611cd5616fc29acc24cc).
-- [x] `@MungoNullable`
-    - Commit [df26a7](https://github.com/jdmota/abcd-mungo/commit/df26a7f13171b18dd02c7ce0dc642b44e0c35008).
+- [ ] `@MungoNullable`
+    - [x] Basic implementation
+        - Commit [df26a7](https://github.com/jdmota/abcd-mungo/commit/df26a7f13171b18dd02c7ce0dc642b44e0c35008).
+    - [ ] Nullness checks must be done not only in method calls. See [NullnessVisitor](https://github.com/typetools/checker-framework/blob/master/checker/src/main/java/org/checkerframework/checker/nullness/NullnessVisitor.java).
 - [x] Objects with no protocol are getting the unknown type, disallowing any use of them
     - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-73b7b3bab8528295364734fe900cbd6f).
