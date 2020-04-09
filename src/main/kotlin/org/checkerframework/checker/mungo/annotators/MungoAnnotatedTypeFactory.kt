@@ -12,9 +12,9 @@ import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
 import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.checker.mungo.typestate.graph.Graph
-import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState
-import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
-import org.checkerframework.checker.mungo.typestate.graph.states.State
+import org.checkerframework.checker.mungo.typestate.graph.AbstractState
+import org.checkerframework.checker.mungo.typestate.graph.DecisionState
+import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.analysis.AnalysisResult

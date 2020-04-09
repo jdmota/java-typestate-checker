@@ -5,10 +5,6 @@ import org.checkerframework.checker.mungo.typestate.graph.exceptions.DuplicateSt
 import org.checkerframework.checker.mungo.typestate.graph.exceptions.ReservedStateName
 import org.checkerframework.checker.mungo.typestate.graph.exceptions.StateNotDefined
 import org.checkerframework.checker.mungo.typestate.graph.exceptions.UnusedStates
-import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState
-import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
-import org.checkerframework.checker.mungo.typestate.graph.states.EndState
-import org.checkerframework.checker.mungo.typestate.graph.states.State
 import java.nio.file.Path
 
 class Graph private constructor(val file: Path) {

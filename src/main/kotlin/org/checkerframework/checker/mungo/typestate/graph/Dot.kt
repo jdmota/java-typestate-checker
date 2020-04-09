@@ -1,10 +1,5 @@
 package org.checkerframework.checker.mungo.typestate.graph
 
-import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState
-import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
-import org.checkerframework.checker.mungo.typestate.graph.states.EndState
-import org.checkerframework.checker.mungo.typestate.graph.states.State
-
 class Dot private constructor(private val graph: Graph) {
   private var decisionUuid = 1
   private var stateUuid = 1
@@ -33,7 +28,7 @@ class Dot private constructor(private val graph: Graph) {
     }
     if (s is State) {
       val state = s
-      name = if (state.node!!.name == null) "state__" + stateUuid++ else state.node!!.name
+      name = state.name
       names[s] = name
       for ((key, value) in state.transitions) {
         val dest = handleState(value)

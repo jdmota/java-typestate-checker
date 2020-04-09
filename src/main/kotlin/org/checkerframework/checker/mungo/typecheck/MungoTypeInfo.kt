@@ -4,7 +4,7 @@ import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
 import org.checkerframework.checker.mungo.typestate.graph.Graph
-import org.checkerframework.checker.mungo.typestate.graph.states.State
+import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.javacutil.AnnotationBuilder
 import org.checkerframework.javacutil.AnnotationUtils

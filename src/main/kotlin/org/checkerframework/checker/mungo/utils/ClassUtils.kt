@@ -17,7 +17,7 @@ import javax.lang.model.element.TypeElement
 
 class ClassUtils(private val utils: MungoUtils) {
 
-  private fun processMungoTypestateAnnotation(sourceFilePath: Path, treePath: TreePath, tree: JCTree.JCClassDecl, annotation: AnnotationTree): Graph? {
+  private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationTree): Graph? {
     val args = annotation.arguments
     val file: String
     file = try {
@@ -82,7 +82,7 @@ class ClassUtils(private val utils: MungoUtils) {
       // Get the path of the file where the class is
       val sourceFilePath = Paths.get(treePath.compilationUnit.sourceFile.toUri())
       getMungoTypestateAnnotation(tree)?.let {
-        processMungoTypestateAnnotation(sourceFilePath, treePath, tree, it)
+        processMungoTypestateAnnotation(sourceFilePath, it)
       }?.let {
         TypestateProcessor.validateClassAndGraph(utils, treePath, tree, it)
       }

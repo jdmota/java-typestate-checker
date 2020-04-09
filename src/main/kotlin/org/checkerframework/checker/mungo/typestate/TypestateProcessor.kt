@@ -7,8 +7,8 @@ import org.antlr.v4.runtime.BailErrorStrategy
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.checkerframework.checker.mungo.typestate.graph.Graph
-import org.checkerframework.checker.mungo.typestate.graph.states.State
-import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
+import org.checkerframework.checker.mungo.typestate.graph.State
+import org.checkerframework.checker.mungo.typestate.graph.DecisionState
 import org.checkerframework.checker.mungo.typestate.parser.TypestateLexer
 import org.checkerframework.checker.mungo.typestate.parser.TypestateParser
 import org.checkerframework.checker.mungo.utils.ClassUtils
@@ -85,8 +85,9 @@ class TypestateProcessor {
               utils.err("Expected a decision state in transition ${transition.format()} on state ${state.name}", tree)
             }
             is DecisionState -> if (method.returnsBoolean()) {
+              val booleanLabels = listOf("true", "false")
               val labels = dest.transitions.map { it.key.label }
-              if (labels.size != 2 || !labels.contains("true") || !labels.contains("false")) {
+              if (labels.size != booleanLabels.size || !labels.containsAll(booleanLabels)) {
                 utils.err("Expected decision state with two labels (true/false) in transition ${transition.format()} on state ${state.name}", tree)
               }
             } else if (method.returnsEnum()) {
@@ -99,7 +100,6 @@ class TypestateProcessor {
             } else {
               utils.err("Unexpected decision state in transition ${transition.format()} on state ${state.name}", tree)
             }
-            else -> throw AssertionError("unexpected state $dest ${dest.javaClass}")
           }
         }
       }

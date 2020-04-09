@@ -4,8 +4,8 @@ import com.sun.source.tree.MethodInvocationTree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.analysis.MungoValue
-import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
-import org.checkerframework.checker.mungo.typestate.graph.states.State
+import org.checkerframework.checker.mungo.typestate.graph.DecisionState
+import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.javacutil.TreeUtils
 
