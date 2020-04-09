@@ -67,6 +67,30 @@ class JavaIteratorWrapper3 {
 }
 
 @MungoTypestate("JavaIteratorWrapper.protocol")
+class JavaIteratorWrapper4_2 {
+
+  // :: error: (Object did not complete its protocol)
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    iterator = it;
+  }
+
+  public boolean hasNext() {
+    return true;
+  }
+
+  public Object next() {
+    // :: error: (Cannot call hasNext on ended protocol)
+    if (iterator.hasNext()) {
+      return iterator.next();
+    }
+    return "";
+  }
+
+}
+
+@MungoTypestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper4 {
 
   private @MungoNullable JavaIterator iterator = null;

@@ -94,6 +94,7 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - Create more tests
     - With cases we check
     - With cases we do not check
+    - And compare with Haskell version and previous Mungo version
 - Document tests per version
     - Latex
     - Code and output
@@ -116,10 +117,10 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [x] Objects with no protocol are getting the unknown type, disallowing any use of them
     - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-73b7b3bab8528295364734fe900cbd6f).
-- [x] When the states are unknown, all possible ones are being attributed, including final ones
+- [x] Upon a declaration like `Iterator it`, all possible states should be considered, but the `end` state
     - Solution: Create "EndedType" distinguishing from normal states
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
-- [x] Force linear use of objects with protocol
+- [x] Force linear use of objects with protocol (preventing aliasing)
     - [x] Basic implementation
         - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
     - [x] Upon return, refine the type to "moved"
