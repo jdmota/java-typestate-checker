@@ -10,8 +10,10 @@ open class State : AbstractState<TStateNode> {
     this.name = name
   }
 
-  constructor(node: TStateNode?) : super(node) {
-    name = (if (node == null) "unknown" else node.name)!!
+  // TODO include source location in the name of unknown states
+
+  constructor(node: TStateNode) : super(node) {
+    name = node.name ?: "unknown"
   }
 
   val transitions: MutableMap<TMethodNode, AbstractState<*>> = HashMap()

@@ -1,22 +1,23 @@
 package org.checkerframework.checker.mungo.utils
 
-import com.sun.source.tree.AnnotationTree
-import com.sun.source.tree.AssignmentTree
-import com.sun.source.tree.ClassTree
-import com.sun.source.tree.LiteralTree
+import com.sun.source.tree.*
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.tree.JCTree
+import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.nio.file.Path
 import java.nio.file.Paths
 import javax.lang.model.element.Element
+import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
 
 class ClassUtils(private val utils: MungoUtils) {
 
-  private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationTree): Graph? {
+  private fun processMungoTypestateAnnotation(sourceFilePath: Path, treePath: TreePath, tree: JCTree.JCClassDecl, annotation: AnnotationTree): Graph? {
     val args = annotation.arguments
     val file: String
     file = try {
@@ -46,40 +47,24 @@ class ClassUtils(private val utils: MungoUtils) {
     return result.graph
   }
 
-  companion object {
-    fun getMungoTypestateAnnotation(tree: ClassTree): AnnotationTree? {
-      val modifiers = tree.modifiers
-      val annotations = modifiers.annotations
-      for (anno in annotations) {
-        val elem = TreeUtils.elementFromTree(anno.annotationType)
-        if (elem is TypeElement) {
-          val name = elem.qualifiedName
-          if (name.contentEquals(MungoUtils.mungoTypestateName)) {
-            return anno
-          }
-        }
-      }
-      return null
+  private fun getMungoTypestateAnnotation(tree: JCTree.JCClassDecl): AnnotationTree? {
+    val annotations = tree.modifiers.annotations.filter {
+      val elem = TreeUtils.elementFromTree(it.annotationType)
+      elem is TypeElement && elem.qualifiedName.contentEquals(MungoUtils.mungoTypestateName)
     }
-  }
-
-  fun visitClassTree(sourceFilePath: Path, tree: ClassTree): Graph? {
-    return getMungoTypestateAnnotation(tree)?.let { processMungoTypestateAnnotation(sourceFilePath, it) }
-  }
-
-  fun visitClassTree(treePath: TreePath, tree: ClassTree): Graph? {
-    // Get the path of the file where the class is
-    val sourceFilePath = Paths.get(treePath.compilationUnit.sourceFile.toUri())
-    return getMungoTypestateAnnotation(tree)?.let { processMungoTypestateAnnotation(sourceFilePath, it) }
-  }
-
-  fun visitClassDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType): Graph? {
-    return visitClassSymbol(type.underlyingType.asElement())
+    if (annotations.size > 1) {
+      utils.err("There is more than 1 @MungoTypestate annotation", tree)
+    }
+    return annotations.firstOrNull()
   }
 
   fun visitClassOfElement(element: Element): Graph? {
     val type = utils.factory.fromElement(element) as? AnnotatedTypeMirror.AnnotatedDeclaredType ?: return null
     return visitClassDeclaredType(type)
+  }
+
+  fun visitClassDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType): Graph? {
+    return visitClassSymbol(type.underlyingType.asElement())
   }
 
   fun visitClassSymbol(element: Element?): Graph? {
@@ -89,7 +74,32 @@ class ClassUtils(private val utils: MungoUtils) {
     // "getPath" may return null for java.lang.Object for example
     val path = utils.factory.treeUtils.getPath(element) ?: return null
     // Process class tree
-    return visitClassTree(path, path.leaf as ClassTree)
+    return visitClassTree(path)
+  }
+
+  fun visitClassTree(treePath: TreePath): Graph? {
+    return classTreeToGraph.computeIfAbsent(treePath.leaf as JCTree.JCClassDecl) { tree ->
+      // Get the path of the file where the class is
+      val sourceFilePath = Paths.get(treePath.compilationUnit.sourceFile.toUri())
+      getMungoTypestateAnnotation(tree)?.let {
+        processMungoTypestateAnnotation(sourceFilePath, treePath, tree, it)
+      }?.let {
+        TypestateProcessor.validateClassAndGraph(utils, treePath, tree, it)
+      }
+    }
+  }
+
+  private val classTreeToGraph = WeakIdentityHashMap<JCTree.JCClassDecl, Graph?>()
+
+  companion object {
+    fun getNonStaticMethods(classTree: ClassTree) = classTree.members.filterIsInstance(MethodTree::class.java).filter {
+      val flags = it.modifiers.flags
+      it.body != null && !flags.contains(Modifier.STATIC) && !flags.contains(Modifier.ABSTRACT) && !flags.contains(Modifier.NATIVE)
+    }
+
+    fun getNonStaticPublicMethods(classTree: ClassTree) = getNonStaticMethods(classTree).filter { it.modifiers.flags.contains(Modifier.PUBLIC) }
+
+    fun getEnumLabels(classSymbol: Symbol.ClassSymbol) = classSymbol.members().symbols.filter { it.isEnum }.map { it.name.toString() }
   }
 
 }

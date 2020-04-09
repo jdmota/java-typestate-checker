@@ -13,29 +13,25 @@ import java.nio.file.Path
 
 class Graph private constructor(val file: Path) {
   private var initialState: State? = null
-  private val endState: EndState = EndState()
-  private val finalStates: MutableSet<State>
-  private val namedStates: MutableMap<String, State> = HashMap() // Does not include "end"
-  private val referencedStates: MutableSet<String> = HashSet()
-  private var concreteStates: MutableSet<State>
+  private val endState = EndState()
+  private val finalStates = HashSet<State>()
+  private val namedStates = HashMap<String, State>() // Does not include "end"
+  private val referencedStates = HashSet<String>()
+  private val concreteStates = mutableSetOf<State>()
+  private val decisionStates = mutableSetOf<DecisionState>()
 
   init {
-    finalStates = mutableSetOf(endState)
-    concreteStates = mutableSetOf()
+    finalStates.add(endState)
   }
 
-  fun getInitialState(): State {
-    return initialState!!
-  }
+  fun getInitialState() = initialState!!
 
-  fun getFinalStates(): Set<State> {
-    return finalStates
-  }
+  fun getFinalStates(): Set<State> = finalStates
 
   // All non final states
-  fun getAllConcreteStates(): Set<State> {
-    return concreteStates
-  }
+  fun getAllConcreteStates(): Set<State> = concreteStates
+
+  fun getDecisionStates(): Set<DecisionState> = decisionStates
 
   fun hasStateByName(name: String): Boolean {
     return namedStates[name] != null

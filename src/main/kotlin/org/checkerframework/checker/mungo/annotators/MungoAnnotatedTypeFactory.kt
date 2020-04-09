@@ -15,6 +15,7 @@ import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.states.AbstractState
 import org.checkerframework.checker.mungo.typestate.graph.states.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.states.State
+import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.analysis.AnalysisResult
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -115,12 +116,11 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   // Nonetheless, "visitVariable" is always called for both method arguments and variable declarations,
   // so we only report errors in that case, which provides "tree", for error location.
   fun visitMungoAnnotations(type: AnnotatedTypeMirror.AnnotatedDeclaredType, tree: Tree?) {
-    val element = type.underlyingType.asElement()
     val stateAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
     val nullableAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoNullableName) }
 
     val stateTypes = run {
-      val graph = c.utils.visitClassSymbol(element)
+      val graph = c.utils.classUtils.visitClassDeclaredType(type)
       if (graph == null) {
         if (stateAnno != null && tree != null) {
           c.utils.err("@MungoState has no meaning since this type has no protocol", tree)
@@ -175,7 +175,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     }
 
     // ...in classes with protocol
-    val graph = c.utils.visitClassTree(visitorState.path, ast.classTree)
+    val graph = c.utils.classUtils.visitClassTree(visitorState.path)
     if (graph == null) {
       skipMethods.clear()
       super.analyze(queue, lambdaQueue, ast, fieldValues, topClass, isInitializationCode, updateInitializationStore, isStatic, capturedStore)
@@ -194,10 +194,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
     // Repeat the logic in GenericAnnotatedTypeFactory#performFlowAnalysis to get all the relevant methods
     // And ignore static methods as well
-    val methods = classTree.members.filterIsInstance(MethodTree::class.java).filter {
-      val flags = it.modifiers.flags
-      it.body != null && !flags.contains(Modifier.STATIC) && !flags.contains(Modifier.ABSTRACT) && !flags.contains(Modifier.NATIVE)
-    }.map { UnderlyingAST.CFGMethod(it, classTree) }
+    val methods = ClassUtils.getNonStaticMethods(classTree).map { UnderlyingAST.CFGMethod(it, classTree) }
 
     // Ignore all methods since we are now doing our own full analysis
     for (method in methods) {

@@ -1,9 +1,7 @@
 package org.checkerframework.checker.mungo.utils
 
-import com.sun.source.tree.ClassTree
 import com.sun.source.tree.Tree
 import com.sun.source.util.TreePath
-import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.lib.MungoNullable
@@ -17,20 +15,16 @@ import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.checker.mungo.typecheck.getTypeFromAnnotation
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
-import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.source.Result
-import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
-import org.checkerframework.javacutil.TreeUtils
 import java.nio.file.Path
 import java.util.*
 import javax.lang.model.element.AnnotationMirror
-import javax.lang.model.element.Element
 
 class MungoUtils(val checker: MungoChecker) {
 
-  private val resolver = Resolver(checker.processingEnvironment)
-  private val classProcessor = ClassUtils(this)
+  val resolver = Resolver(checker.processingEnvironment)
+  val classUtils = ClassUtils(this)
 
   val processor = TypestateProcessor()
   val methodUtils = MethodUtils(this)
@@ -46,30 +40,6 @@ class MungoUtils(val checker: MungoChecker) {
 
   fun err(message: String, where: Any) {
     checker.report(Result.failure(message), where)
-  }
-
-  fun resolve(path: TreePath, name: String): Type? {
-    return resolver.resolve(path, name)
-  }
-
-  fun visitClassSymbol(element: Element?): Graph? {
-    return classProcessor.visitClassSymbol(element)
-  }
-
-  fun visitClassDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType): Graph? {
-    return classProcessor.visitClassDeclaredType(type)
-  }
-
-  fun visitClassOfElement(element: Element): Graph? {
-    return classProcessor.visitClassOfElement(element)
-  }
-
-  fun visitClassTree(sourceFilePath: Path, tree: ClassTree): Graph? {
-    return classProcessor.visitClassTree(sourceFilePath, tree)
-  }
-
-  fun visitClassTree(treePath: TreePath, tree: ClassTree): Graph? {
-    return classProcessor.visitClassTree(treePath, tree)
   }
 
   fun checkStates(file: Path, states: List<String>, src: Any) {

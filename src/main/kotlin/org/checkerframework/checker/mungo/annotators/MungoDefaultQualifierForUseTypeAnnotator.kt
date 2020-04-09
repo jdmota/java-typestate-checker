@@ -12,7 +12,7 @@ class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker
   // to provide a variable with the default type information
   override fun getExplicitAnnos(element: Element): Set<AnnotationMirror> {
     // Extract information from class declaration
-    val graph = checker.utils.visitClassSymbol(element)
+    val graph = checker.utils.classUtils.visitClassSymbol(element)
     val set = super.getExplicitAnnos(element).toMutableSet()
     if (graph == null) {
       set.add(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))

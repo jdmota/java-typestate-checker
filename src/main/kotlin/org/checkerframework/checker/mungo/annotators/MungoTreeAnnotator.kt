@@ -10,14 +10,13 @@ import org.checkerframework.checker.mungo.typecheck.MungoNullType
 import org.checkerframework.checker.mungo.typecheck.createTypeWithAllStates
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator
-import java.nio.file.Paths
 
 class MungoTreeAnnotator(private val checker: MungoChecker, private val factory: MungoAnnotatedTypeFactory) : TreeAnnotator(factory) {
   override fun visitNewClass(node: NewClassTree, annotatedTypeMirror: AnnotatedTypeMirror): Void? {
     val tree = node.classBody
     if (tree != null && !annotatedTypeMirror.hasAnnotation(MungoInternalInfo::class.java)) {
       // Here we handle anonymous classes because doing this in MungoDefaultQualifierForUseTypeAnnotator is not enough
-      val graph = checker.utils.visitClassTree(Paths.get(atypeFactory.visitorState.path.compilationUnit.sourceFile.toUri()), tree)
+      val graph = checker.utils.classUtils.visitClassTree(factory.getPath(tree))
       if (graph != null) {
         val annotation = createTypeWithAllStates(graph).buildAnnotation(checker.processingEnvironment)
         annotatedTypeMirror.replaceAnnotation(annotation)

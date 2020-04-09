@@ -29,7 +29,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
   private fun checkOwnCall(node: MethodInvocationTree, element: Symbol.MethodSymbol): Boolean {
     if (TreeUtils.isSelfAccess(node) && !element.isStatic && !element.isStaticOrInstanceInit && !element.isPrivate) {
-      val hasProtocol = c.utils.visitClassSymbol(element.enclosingElement) != null
+      val hasProtocol = c.utils.classUtils.visitClassSymbol(element.enclosingElement) != null
       if (hasProtocol) {
         c.utils.err("Cannot call its own public method", node)
         return false
@@ -102,7 +102,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     if (valueTree is ExpressionTree && TreeUtils.isExplicitThisDereference(valueTree)) {
       val element = TreeUtils.elementFromTree(valueTree)
       if (element != null) {
-        val hasProtocol = c.utils.visitClassSymbol(element.enclosingElement) != null
+        val hasProtocol = c.utils.classUtils.visitClassSymbol(element.enclosingElement) != null
         if (hasProtocol) {
           c.utils.err("Possible 'this' leak", valueTree)
           return
@@ -122,7 +122,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     val element = TreeUtils.elementFromTree(node) ?: return p
 
     // See if it has protocol
-    c.utils.visitClassOfElement(element) ?: return p
+    c.utils.classUtils.visitClassOfElement(element) ?: return p
 
     // If "this"...
     if (TreeUtils.isExplicitThisDereference(node)) {
@@ -141,7 +141,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     val element = TreeUtils.elementFromTree(node) as? Symbol.VarSymbol ?: return p
 
     // See if it has protocol
-    c.utils.visitClassOfElement(element) ?: return p
+    c.utils.classUtils.visitClassOfElement(element) ?: return p
 
     // If "this"...
     if (TreeUtils.isExplicitThisDereference(node)) {
