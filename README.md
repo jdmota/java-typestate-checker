@@ -104,15 +104,11 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 ### Version 1.0
 
 - [x] `@MungoState({"HasNext"})`
-    - [x] Basic implementation
-        - Commit [dc5393](https://github.com/jdmota/abcd-mungo/commit/dc5393e67bc1608da71e4549676970b9166a6994).
-    - [x] Check method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)`
-        - Commit [f3502a](https://github.com/jdmota/abcd-mungo/commit/f3502ae38da23cf3507557e67fac94d03d309175)
-    - [x] Check variable declarations - e.g. `@MungoState({}) Iterator it = etc;`
-        - Commit [4d646b](https://github.com/jdmota/abcd-mungo/commit/4d646b3b894e545a9bd3611cd5616fc29acc24cc).
+    - [x] Basic implementation ([dc5393](https://github.com/jdmota/abcd-mungo/commit/dc5393e67bc1608da71e4549676970b9166a6994))
+    - [x] Check method arguments - e.g. `use(@MungoState({"Next"}) Iterator it)` ([f3502a](https://github.com/jdmota/abcd-mungo/commit/f3502ae38da23cf3507557e67fac94d03d309175))
+    - [x] Check variable declarations - e.g. `@MungoState({}) Iterator it = etc;` ([4d646b](https://github.com/jdmota/abcd-mungo/commit/4d646b3b894e545a9bd3611cd5616fc29acc24cc))
 - [ ] `@MungoNullable`
-    - [x] Basic implementation
-        - Commit [df26a7](https://github.com/jdmota/abcd-mungo/commit/df26a7f13171b18dd02c7ce0dc642b44e0c35008).
+    - [x] Basic implementation ([df26a7](https://github.com/jdmota/abcd-mungo/commit/df26a7f13171b18dd02c7ce0dc642b44e0c35008))
     - [ ] Nullness checks must be done not only in method calls. See [NullnessVisitor](https://github.com/typetools/checker-framework/blob/master/checker/src/main/java/org/checkerframework/checker/nullness/NullnessVisitor.java).
 - [x] Objects with no protocol are getting the unknown type, disallowing any use of them
     - Solution: Create a type for objects with no protocols instead of attributing them the `Unknown` type.
@@ -123,38 +119,23 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [ ] `Object` should have its special type, like `Unknown` but without `null`
     - Follow-up of [62daab](https://github.com/jdmota/abcd-mungo/commit/62daab1092be17c963dce3c57f52cc966a449125).
 - [x] Force linear use of objects with protocol (preventing aliasing)
-    - [x] Basic implementation
-        - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
-    - [x] Upon return, refine the type to "moved"
-        - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
-    - [x] Detect possible leaked `this` value
-        - Commits [91bb67](https://github.com/jdmota/abcd-mungo/commit/91bb67be5f86f9b28a5026151200c888083e3c66) and [2e4514](https://github.com/jdmota/abcd-mungo/commit/2e45142b4be4812c473584b836fbbcb7e278816d).
-    - [x] Forbid moving local variables and `this` to a different closure (for now)
-        - Commit [830adb](https://github.com/jdmota/abcd-mungo/commit/830adbe7b22e396a656fbbadf3fed6bd05d5896c).
+    - [x] Basic implementation ([8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387))
+    - [x] Upon return, refine the type to "moved" ([6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368))
+    - [x] Detect possible leaked `this` value ([91bb67](https://github.com/jdmota/abcd-mungo/commit/91bb67be5f86f9b28a5026151200c888083e3c66) and [2e4514](https://github.com/jdmota/abcd-mungo/commit/2e45142b4be4812c473584b836fbbcb7e278816d))
+    - [x] Forbid moving local variables and `this` to a different closure (for now) ([830adb](https://github.com/jdmota/abcd-mungo/commit/830adbe7b22e396a656fbbadf3fed6bd05d5896c))
 - [x] Force object protocol to complete
-    - [x] Only allow null assignments if object is in the end state or is already null
-        - Commit [67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093).
-    - [x] Only allow variable override if object is in the end state or is already null
-        - Commit [8e297e](https://github.com/jdmota/abcd-mungo/commit/8e297ebf6d892e46f0d5a95ff27cf861b7aa88bc).
-    - [x] Check the end of a method to see if the object was moved, is null, or reached the end state
-        - Commit [9a3762](https://github.com/jdmota/abcd-mungo/commit/9a3762eaedd289d3171010d3383c4e5b6ee813e1).
-    - [x] Check the end of any block to see if the object was moved, is null, or reached the end state
-        - Commit [1bbc77](https://github.com/jdmota/abcd-mungo/commit/1bbc778ef75c9c87acdce73398a21d33af52646e).
-    - [x] Check that if a method returns an object with a non-ended protocol, that object is used
-        - Commit [6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368).
-    - [x] Check the end of lambdas to see if the object was moved, is null, or reached the end state
-        - Commit [84b05d](https://github.com/jdmota/abcd-mungo/commit/84b05d41a8281708ba6e9a86710026dfeb43ddf8).
+    - [x] Only allow null assignments if object is in the end state or is already null ([67dca7](https://github.com/jdmota/abcd-mungo/commit/67dca7cce7a9e36178ce77a933139fc4a1612093))
+    - [x] Only allow variable override if object is in the end state or is already null ([8e297e](https://github.com/jdmota/abcd-mungo/commit/8e297ebf6d892e46f0d5a95ff27cf861b7aa88bc))
+    - [x] Check the end of a method to see if the object was moved, is null, or reached the end state ([9a3762](https://github.com/jdmota/abcd-mungo/commit/9a3762eaedd289d3171010d3383c4e5b6ee813e1))
+    - [x] Check the end of any block to see if the object was moved, is null, or reached the end state ([1bbc77](https://github.com/jdmota/abcd-mungo/commit/1bbc778ef75c9c87acdce73398a21d33af52646e))
+    - [x] Check that if a method returns an object with a non-ended protocol, that object is used ([6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368))
+    - [x] Check the end of lambdas to see if the object was moved, is null, or reached the end state ([84b05d](https://github.com/jdmota/abcd-mungo/commit/84b05d41a8281708ba6e9a86710026dfeb43ddf8))
 - [x] Analyze fields inside objects (combating against defensive programming)
-    - [x] Basic implementation
-        - Commits [09deac](https://github.com/jdmota/abcd-mungo/commit/09deac29f682cdb8e66b19d28c7845ebaabf1c07) and [202607](https://github.com/jdmota/abcd-mungo/commit/202607ba3637624040ebeb5c2f193ce65154a310).
-    - [x] Make sure that if protocol completes, all objects inside that object also get their protocol completed
-        - Commit [01cc8e](https://github.com/jdmota/abcd-mungo/commit/01cc8e640c4cbccbfa9472815b4043f585a8a1e0).
-    - [x] Forbid object with protocol from calling its own public methods
-        - Commit [022107](https://github.com/jdmota/abcd-mungo/commit/022107fb93a87c8d748f8c7b405f1ce9218f4ae0).
-- [x] Validate protocols: check if there are duplicate transitions, if types exist, if decision states include all labels, etc...
-    - Commits [e6a1d0](https://github.com/jdmota/abcd-mungo/commit/e6a1d06ac5f64daa82d3c78ab6218304b2a1665e) and [aba5ac](https://github.com/jdmota/abcd-mungo/commit/aba5ac19894fb5fdd9a0cc556821c687c9c20df6).
-- [x] Fix unnecessary errors reported by Checker
-    - Commit [62daab](https://github.com/jdmota/abcd-mungo/commit/62daab1092be17c963dce3c57f52cc966a449125).
+    - [x] Basic implementation ([09deac](https://github.com/jdmota/abcd-mungo/commit/09deac29f682cdb8e66b19d28c7845ebaabf1c07) and [202607](https://github.com/jdmota/abcd-mungo/commit/202607ba3637624040ebeb5c2f193ce65154a310))
+    - [x] Make sure that if protocol completes, all objects inside that object also get their protocol completed ([01cc8e](https://github.com/jdmota/abcd-mungo/commit/01cc8e640c4cbccbfa9472815b4043f585a8a1e0))
+    - [x] Forbid object with protocol from calling its own public methods ([022107](https://github.com/jdmota/abcd-mungo/commit/022107fb93a87c8d748f8c7b405f1ce9218f4ae0))
+- [x] Validate protocols: check if there are duplicate transitions, if types exist, if decision states include all labels, etc... ([e6a1d0](https://github.com/jdmota/abcd-mungo/commit/e6a1d06ac5f64daa82d3c78ab6218304b2a1665e) and [aba5ac](https://github.com/jdmota/abcd-mungo/commit/aba5ac19894fb5fdd9a0cc556821c687c9c20df6))
+- [x] Fix unnecessary errors reported by Checker ([62daab](https://github.com/jdmota/abcd-mungo/commit/62daab1092be17c963dce3c57f52cc966a449125))
 
 #### Corners cases to fix in later versions
 
