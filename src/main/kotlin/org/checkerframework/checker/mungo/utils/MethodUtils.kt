@@ -1,10 +1,8 @@
 package org.checkerframework.checker.mungo.utils
 
-import com.sun.source.tree.MethodTree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.*
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
-import com.sun.tools.javac.tree.JCTree
 import com.sun.tools.javac.util.List as JavacList
 import com.sun.tools.javac.util.Names
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
@@ -12,7 +10,7 @@ import org.checkerframework.javacutil.TypesUtils
 
 class MethodUtils(private val utils: MungoUtils) {
 
-  inner class MethodSymbolWrapper(val sym: Symbol.MethodSymbol) {
+  inner class MethodSymbolWrapper(val sym: Symbol.MethodSymbol, val unknownTypes: List<String> = emptyList()) {
 
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -40,10 +38,19 @@ class MethodUtils(private val utils: MungoUtils) {
   fun wrapMethodSymbol(sym: Symbol.MethodSymbol) = MethodSymbolWrapper(sym)
 
   fun methodNodeToMethodSymbol(treePath: TreePath, node: TMethodNode, owner: Symbol.ClassSymbol): MethodSymbolWrapper {
+    val unknownTypes = mutableListOf<String>()
+    fun resolve(type: String): Type {
+      val resolved = resolver.resolve(treePath, type)
+      return if (resolved == null) {
+        unknownTypes.add(type)
+        symtab.unknownType
+      } else resolved
+    }
+
     val flags = Flags.PUBLIC.toLong();
     val name = names.fromString(node.name)
-    val argtypes = JavacList.from(node.args.map { resolver.resolve(treePath, it) ?: symtab.unknownType })
-    val restype = resolver.resolve(treePath, node.returnType) ?: symtab.unknownType
+    val argtypes = JavacList.from(node.args.map { resolve(it) })
+    val restype = resolve(node.returnType)
     val thrown = JavacList.nil<Type>() // TODO
     // TODO generics?
     return MethodSymbolWrapper(Symbol.MethodSymbol(
@@ -56,7 +63,7 @@ class MethodUtils(private val utils: MungoUtils) {
         symtab.methodClass // Type.MethodType#tsym
       ),
       owner
-    ))
+    ), unknownTypes)
   }
 
   private fun isSameType(a: Type?, b: Type?): Boolean {

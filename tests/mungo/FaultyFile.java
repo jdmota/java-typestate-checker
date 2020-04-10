@@ -7,6 +7,7 @@ import org.checkerframework.checker.mungo.lib.MungoTypestate;
 // :: error: (Unexpected decision state in transition int read() on state Read)
 // :: error: (Expected decision state with two labels (true/false) in transition boolean hasNext() on state Open)
 // :: error: (Expected decision state to include all enumeration labels in transition Status open() on state Init)
+// :: error: (Unknown type intt in transition intt read() on state Read)
 class FaultyFile {
 
   public enum Status {
