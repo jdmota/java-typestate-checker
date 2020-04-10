@@ -120,6 +120,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [x] Upon a declaration like `Iterator it`, all possible states should be considered, but the `end` state
     - Solution: Create "EndedType" distinguishing from normal states
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
+- [ ] `Object` should have its special type, like `Unknown` but without `null`
+    - Follow-up of [62daab](https://github.com/jdmota/abcd-mungo/commit/62daab1092be17c963dce3c57f52cc966a449125).
 - [x] Force linear use of objects with protocol (preventing aliasing)
     - [x] Basic implementation
         - Commit [8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387).
@@ -151,9 +153,8 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [022107](https://github.com/jdmota/abcd-mungo/commit/022107fb93a87c8d748f8c7b405f1ce9218f4ae0).
 - [x] Validate protocols: check if there are duplicate transitions, if types exist, if decision states include all labels, etc...
     - Commits [e6a1d0](https://github.com/jdmota/abcd-mungo/commit/e6a1d06ac5f64daa82d3c78ab6218304b2a1665e) and [aba5ac](https://github.com/jdmota/abcd-mungo/commit/aba5ac19894fb5fdd9a0cc556821c687c9c20df6).
-- [ ] Understand why Checker is reporting more errors than necessary
-    - Seems to be related with the fact that `Object` has the `NoProtocol` type and everything is extending it
-    - Solution: `Object` should be the super type of objects with protocol and without protocol
+- [x] Fix unnecessary errors reported by Checker
+    - Commit [62daab](https://github.com/jdmota/abcd-mungo/commit/62daab1092be17c963dce3c57f52cc966a449125).
 
 #### Corners cases to fix in later versions
 
