@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.typecheck
 import com.sun.source.tree.*
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
+import org.checkerframework.checker.compilermsgs.qual.CompilerMessageKey
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
 import org.checkerframework.checker.mungo.analysis.MungoValue
@@ -10,10 +11,12 @@ import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.dataflow.cfg.node.LocalVariableNode
+import org.checkerframework.framework.source.Result
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import javax.lang.model.element.ElementKind
+import javax.lang.model.element.ExecutableElement
 
 class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFactory>(checker) {
 
@@ -26,6 +29,31 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
   // TODO visit all annotations to make sure @MungoTypestate only appears in class/interfaces??
   // TODO what if another class points to the same protocol file?? error? or fine? avoid duplicate processing
+
+  override fun checkThisOrSuperConstructorCall(superCall: MethodInvocationTree, errorKey: @CompilerMessageKey String) {
+    // Override this method so that Checker does not report super.invocation.invalid
+    // The change was introduced because of https://github.com/typetools/checker-framework/issues/2264
+    val enclosingMethod = TreeUtils.enclosingMethod(atypeFactory.getPath(superCall))
+    val superType = atypeFactory.getAnnotatedType(superCall)
+    val constructorType = atypeFactory.getAnnotatedType(enclosingMethod)
+    val topAnnotations = atypeFactory.qualifierHierarchy.topAnnotations
+    for (topAnno in topAnnotations) {
+      val superTypeMirror = superType.getAnnotationInHierarchy(topAnno)
+      val constructorTypeMirror = constructorType.returnType.getAnnotationInHierarchy(topAnno)
+      // Invert here
+      // TODO understand why the authors check the opposite...
+      if (!atypeFactory.qualifierHierarchy.isSubtype(constructorTypeMirror, superTypeMirror)) {
+        checker.report(
+          Result.failure(errorKey, constructorTypeMirror, superCall, superTypeMirror),
+          superCall)
+      }
+    }
+  }
+
+  override fun checkConstructorResult(constructorType: AnnotatedTypeMirror.AnnotatedExecutableType, constructorElement: ExecutableElement) {
+    // Do not report inconsistent.constructor.type warning
+    // TODO understand why the result type of the constructor not being top is a problem...
+  }
 
   private fun checkOwnCall(node: MethodInvocationTree, element: Symbol.MethodSymbol): Boolean {
     if (TreeUtils.isSelfAccess(node) && !element.isStatic && !element.isStaticOrInstanceInit && !element.isPrivate) {
@@ -40,25 +68,30 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
   override fun visitMethodInvocation(node: MethodInvocationTree, p: Void?): Void? {
     val element = TreeUtils.elementFromUse(node)
-    if (element is Symbol.MethodSymbol && element.getKind() == ElementKind.METHOD && checkOwnCall(node, element)) {
-      val receiverTree = TreeUtils.getReceiverTree(node)
-      if (receiverTree != null) {
-        val receiverValue = typeFactory.getInferredValueFor(receiverTree)
-        val checks = MungoTypecheck.check(c.utils, visitorState.path, receiverValue, node, element)
-        if (!checks) {
-          // Ignore this method invocation tree to avoid (method.invocation.invalid) errors produced by Checker
-          skipMethods[node] = true
+
+    if (element is Symbol.MethodSymbol && element.getKind() == ElementKind.METHOD) {
+
+      if (checkOwnCall(node, element)) {
+        val receiverTree = TreeUtils.getReceiverTree(node)
+        if (receiverTree != null) {
+          val receiverValue = typeFactory.getInferredValueFor(receiverTree)
+          val checks = MungoTypecheck.check(c.utils, visitorState.path, receiverValue, node, element)
+          if (!checks) {
+            // Ignore this method invocation tree to avoid (method.invocation.invalid) errors produced by Checker
+            skipMethods[node] = true
+          }
         }
       }
-    }
 
-    // Returned objects must be assigned so that they complete the protocol
-    val parent = visitorState.path.parentPath.leaf
-    if (parent !is VariableTree && parent !is AssignmentTree) {
-      val returnValue = typeFactory.getInferredValueFor(node)
-      if (returnValue != null && !returnValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        c.utils.err("Returned object did not complete its protocol", node)
+      // Returned objects must be assigned so that they complete the protocol
+      val parent = visitorState.path.parentPath.leaf
+      if (parent !is VariableTree && parent !is AssignmentTree) {
+        val returnValue = typeFactory.getInferredValueFor(node)
+        if (returnValue != null && !returnValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
+          c.utils.err("Returned object did not complete its protocol", node)
+        }
       }
+
     }
 
     return super.visitMethodInvocation(node, p)

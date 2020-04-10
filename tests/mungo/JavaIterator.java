@@ -2,19 +2,16 @@ import org.checkerframework.checker.mungo.lib.MungoTypestate;
 import org.checkerframework.checker.mungo.lib.MungoState;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
 
-import java.util.Iterator;
 import java.util.function.Supplier;
 
 @MungoTypestate("JavaIterator.protocol")
-class JavaIterator implements Iterator<Object> {
+class JavaIterator {
 
-  @Override
   public boolean hasNext() {
     return false;
   }
 
-  @Override
-  public Object next() {
+  public String next() {
     return "";
   }
 
@@ -389,7 +386,8 @@ class JavaIterator implements Iterator<Object> {
     }
   }
 
-  // :: error: (@MungoState has no meaning since this type has no protocol)
+  // :: error: (@MungoState has no meaning in Object type)
+  // :: error: (Object did not complete its protocol)
   public static void use4(@MungoState({"state"}) Object it) {
 
   }

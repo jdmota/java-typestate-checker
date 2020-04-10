@@ -1,6 +1,9 @@
 package org.checkerframework.checker.mungo.annotators
 
-import com.sun.source.tree.*
+import com.sun.source.tree.ClassTree
+import com.sun.source.tree.LambdaExpressionTree
+import com.sun.source.tree.MethodTree
+import com.sun.source.tree.Tree
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoAnalysis
@@ -11,9 +14,9 @@ import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
 import org.checkerframework.checker.mungo.typecheck.*
-import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.AbstractState
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
+import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -23,9 +26,7 @@ import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.framework.flow.CFAbstractAnalysis
 import org.checkerframework.framework.flow.CFCFGBuilder
-import org.checkerframework.framework.type.AnnotatedTypeMirror
-import org.checkerframework.framework.type.GenericAnnotatedTypeFactory
-import org.checkerframework.framework.type.QualifierHierarchy
+import org.checkerframework.framework.type.*
 import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
@@ -84,6 +85,14 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     return MungoQualifierHierarchy(factory, MungoBottomType.SINGLETON.buildAnnotation(checker.processingEnvironment))
   }
 
+  override fun createTypeHierarchy(): TypeHierarchy {
+    return MungoTypeHierarchy(
+      c,
+      qualifierHierarchy,
+      checker.getBooleanOption("ignoreRawTypeArguments", true),
+      checker.hasOption("invariantArrays"))
+  }
+
   private inner class MungoQualifierHierarchy(f: MultiGraphFactory, bottom: AnnotationMirror) : GraphQualifierHierarchy(f, bottom) {
     override fun isSubtype(subAnno: AnnotationMirror, superAnno: AnnotationMirror): Boolean {
       val sub = MungoUtils.mungoTypeFromAnnotation(subAnno)
@@ -119,30 +128,37 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     val stateAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
     val nullableAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoNullableName) }
 
-    val stateTypes = run {
-      val graph = c.utils.classUtils.visitClassDeclaredType(type)
-      if (graph == null) {
+    val types = run {
+      if (ClassUtils.isJavaLangObject(type)) {
         if (stateAnno != null && tree != null) {
-          c.utils.err("@MungoState has no meaning since this type has no protocol", tree)
+          c.utils.err("@MungoState has no meaning in Object type", tree)
         }
-        MungoNoProtocolType.SINGLETON
+        MungoUnknownType.SINGLETON
       } else {
-        val states = if (stateAnno == null) {
-          graph.getAllConcreteStates()
-        } else {
-          val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
-          if (tree != null) {
-            c.utils.checkStates(graph.file, stateNames, tree)
+        val graph = c.utils.classUtils.visitClassDeclaredType(type)
+        if (graph == null) {
+          if (stateAnno != null && tree != null) {
+            c.utils.err("@MungoState has no meaning since this type has no protocol", tree)
           }
-          graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
+          MungoNoProtocolType.SINGLETON
+        } else {
+          val states = if (stateAnno == null) {
+            graph.getAllConcreteStates()
+          } else {
+            val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
+            if (tree != null) {
+              c.utils.checkStates(graph.file, stateNames, tree)
+            }
+            graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
+          }
+          MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
         }
-        MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
       }
     }
 
     val maybeNullableType = if (nullableAnno == null) MungoBottomType.SINGLETON else MungoNullType.SINGLETON
 
-    type.replaceAnnotation(MungoUnionType.create(listOf(stateTypes, maybeNullableType)).buildAnnotation(checker.processingEnvironment))
+    type.replaceAnnotation(MungoUnionType.create(listOf(types, maybeNullableType)).buildAnnotation(checker.processingEnvironment))
   }
 
   // This might be an hack, but is probably the best we can do now:

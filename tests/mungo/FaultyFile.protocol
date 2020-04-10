@@ -11,8 +11,8 @@ typestate FileProtocol {
   }
 
   Read = {
-    intt read(): <true: Read, false: Close>,
-    void close(): end
+    int read(): <true: Read, false: Close>,
+    voidd close(): end
   }
 
   Close = {

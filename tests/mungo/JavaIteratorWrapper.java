@@ -2,7 +2,6 @@ import org.checkerframework.checker.mungo.lib.MungoTypestate;
 import org.checkerframework.checker.mungo.lib.MungoState;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
 
-import java.util.Iterator;
 import java.util.function.Supplier;
 
 @MungoTypestate("JavaIteratorWrapper.protocol")
@@ -18,7 +17,7 @@ class JavaIteratorWrapper1 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     return iterator.next();
   }
 
@@ -39,7 +38,7 @@ class JavaIteratorWrapper2 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     return iterator.next();
   }
 
@@ -59,7 +58,7 @@ class JavaIteratorWrapper3 {
     return true;
   }
 
-  public Object next() {
+  public String next() {
     // :: error: (Cannot call next on state HasNext (got: HasNext, Next))
     return iterator.next();
   }
@@ -80,7 +79,7 @@ class JavaIteratorWrapper4_2 {
     return true;
   }
 
-  public Object next() {
+  public String next() {
     // :: error: (Cannot call hasNext on ended protocol)
     if (iterator.hasNext()) {
       return iterator.next();
@@ -107,7 +106,7 @@ class JavaIteratorWrapper4 {
     return false; // TODO detect that this always returns false and "next" will never be called?
   }
 
-  public Object next() {
+  public String next() {
     // :: error: (Cannot call next on ended protocol)
     return iterator.next();
   }
@@ -129,7 +128,7 @@ class JavaIteratorWrapper5 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     return iterator.next();
   }
 
@@ -158,7 +157,7 @@ class JavaIteratorWrapper6 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     // :: error: (Cannot call its own public method)
     this.hasNext();
     // :: error: (Cannot call next on unknown)
@@ -181,7 +180,7 @@ class JavaIteratorWrapper7 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     return iterator.next();
   }
 
@@ -210,7 +209,7 @@ class JavaIteratorWrapper8 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     return iterator.next();
   }
 
@@ -239,7 +238,7 @@ class JavaIteratorWrapper9 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     return iterator.next();
   }
 
@@ -268,7 +267,7 @@ class JavaIteratorWrapper10 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     return iterator.next();
   }
 
@@ -292,7 +291,7 @@ class JavaIteratorWrapper11 {
     return iterator.hasNext();
   }
 
-  public Object next() {
+  public String next() {
     return iterator.next();
   }
 

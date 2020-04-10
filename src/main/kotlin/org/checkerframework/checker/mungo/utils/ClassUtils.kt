@@ -100,6 +100,10 @@ class ClassUtils(private val utils: MungoUtils) {
     fun getNonStaticPublicMethods(classTree: ClassTree) = getNonStaticMethods(classTree).filter { it.modifiers.flags.contains(Modifier.PUBLIC) }
 
     fun getEnumLabels(classSymbol: Symbol.ClassSymbol) = classSymbol.members().symbols.filter { it.isEnum }.map { it.name.toString() }
+
+    fun isJavaLangObject(element: Element) = element is Symbol.ClassSymbol && element.qualifiedName.contentEquals("java.lang.Object")
+
+    fun isJavaLangObject(type: AnnotatedTypeMirror.AnnotatedDeclaredType) = isJavaLangObject(type.underlyingType.asElement())
   }
 
 }

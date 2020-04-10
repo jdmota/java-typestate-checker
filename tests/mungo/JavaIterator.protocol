@@ -4,6 +4,6 @@ typestate JavaIterator {
     }
     Next = {
         boolean hasNext(): <true: Next, false: end>,
-        Object next(): HasNext
+        String next(): HasNext
     }
 }
