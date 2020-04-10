@@ -149,11 +149,11 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
         - Commit [01cc8e](https://github.com/jdmota/abcd-mungo/commit/01cc8e640c4cbccbfa9472815b4043f585a8a1e0).
     - [x] Forbid object with protocol from calling its own public methods
         - Commit [022107](https://github.com/jdmota/abcd-mungo/commit/022107fb93a87c8d748f8c7b405f1ce9218f4ae0).
-- [ ] Validate protocols: check if there are duplicate transitions, if types exist, if decision states include all labels, etc...
+- [x] Validate protocols: check if there are duplicate transitions, if types exist, if decision states include all labels, etc...
+    - Commits [e6a1d0](https://github.com/jdmota/abcd-mungo/commit/e6a1d06ac5f64daa82d3c78ab6218304b2a1665e) and [aba5ac](https://github.com/jdmota/abcd-mungo/commit/aba5ac19894fb5fdd9a0cc556821c687c9c20df6).
 - [ ] Understand why Checker is reporting more errors than necessary
     - Seems to be related with the fact that `Object` has the `NoProtocol` type and everything is extending it
     - Solution: `Object` should be the super type of objects with protocol and without protocol
-- [ ] Refactoring
 
 #### Corners cases to fix in later versions
 
