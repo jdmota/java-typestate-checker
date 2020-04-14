@@ -16,7 +16,7 @@ class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker
 
     // If Object, give it the unknown type
     if (ClassUtils.isJavaLangObject(element)) {
-      set.add(MungoUnknownType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+      set.add(MungoObjectType.SINGLETON.buildAnnotation(checker.processingEnvironment))
     } else {
       // Extract information from class declaration
       val graph = checker.utils.classUtils.visitClassSymbol(element)
@@ -50,7 +50,7 @@ class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker
 
   override fun visitPrimitive(type: AnnotatedTypeMirror.AnnotatedPrimitiveType, p: Void?): Void? {
     val ret = super.visitPrimitive(type, p)
-    type.replaceAnnotation(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    type.replaceAnnotation(MungoPrimitiveType.SINGLETON.buildAnnotation(checker.processingEnvironment))
     return ret
   }
 

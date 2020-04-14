@@ -103,7 +103,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return skipMethods.contains(node) || super.skipReceiverSubtypeCheck(node, methodDefinitionReceiver, methodCallReceiver)
   }
 
-  private val acceptedFinalTypes = listOf(MungoNullType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON, MungoNoProtocolType.SINGLETON)
+  private val acceptedFinalTypes = listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON, MungoNoProtocolType.SINGLETON)
 
   override fun commonAssignmentCheck(left: Tree, right: ExpressionTree, errorKey: String?) {
     super.commonAssignmentCheck(left, right, errorKey)

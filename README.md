@@ -6,15 +6,17 @@ This version of Mungo is implemented as a plugin for the Checker Framework. Addi
 
 ### Type system
 
-<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmooznpKj9JK4L1GkXAmmeoY_9Jyv7Dw0q1qt4DxyCg1bcC4JCAR-a93-N2rC4OIogS6aEgW3OK1GHXzIy5A1t0000 -->
+<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmJyfAJIxXWb0G8R_y4jUybDGK5464249PG55-INvoFfg9VgKvQ281HPcvcIMPPQcemhxvPK0ZORP1n9poIqhoSxamHH2seGgNvg0AmEr24GLRXIBYa9gN0WmC0000 -->
 
 ![Type system](./type_system.svg)
 
 - `Unknown` is the top type. It includes all possible values.
+- `Object` contains all objects except `null`.
 - `NotEnded` is the set of all objects with protocols that have not completed.
 - `Ended` is the set of all objects with completed protocols.
 - `NoProtocol` is the set of all objects without protocol.
 - `Null` is the set with only the `null` value.
+- `Primitive` is the set of all primitive values. Like integers and booleans.
 - `Moved` is a type applied to variables that point to an object that was moved. Like in Rust, where if something takes ownership of some data, that data is considered to have been moved. Variables with the `Moved` type cannot be used, because they no longer own the data.
 - `Bottom` is the bottom type. Used for computations that do not finish or error. Empty set. Like `Nothing` in many languages or like `never` in TypeScript.
 
@@ -116,7 +118,7 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [x] Upon a declaration like `Iterator it`, all possible states should be considered, but the `end` state
     - Solution: Create "EndedType" distinguishing from normal states
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
-- [ ] `Object` should have its special type, like `Unknown` but without `null`
+- [ ] `java.lang.Object` should have the `Object` type (instead of `Unknown`, so that `null` is excluded) and primitives should have the `Primitive` type (instead of `NoProtocol`)
     - Follow-up of [62daab](https://github.com/jdmota/abcd-mungo/commit/62daab1092be17c963dce3c57f52cc966a449125).
 - [x] Force linear use of objects with protocol (preventing aliasing)
     - [x] Basic implementation ([8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387))

@@ -96,7 +96,8 @@ class JavaIterator {
     }
   }
 
-  public static @MungoState({"HasNext"}) JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
+  public static @MungoState({"HasNext"})
+  JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
     it.next();
     return it;
   }
@@ -198,6 +199,12 @@ class JavaIterator {
       alias.next();
       it = alias;
     }
+  }
+
+  public static void assigmentsAndMoves3() {
+    JavaIterator it = new JavaIterator();
+    // :: error: (Object did not complete its protocol)
+    Object alias = it;
   }
 
   public static void incompatibleArg() {

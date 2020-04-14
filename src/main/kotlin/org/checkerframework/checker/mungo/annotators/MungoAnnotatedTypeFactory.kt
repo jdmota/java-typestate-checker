@@ -133,7 +133,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
         if (stateAnno != null && tree != null) {
           c.utils.err("@MungoState has no meaning in Object type", tree)
         }
-        MungoUnknownType.SINGLETON
+        MungoObjectType.SINGLETON
       } else {
         val graph = c.utils.classUtils.visitClassDeclaredType(type)
         if (graph == null) {

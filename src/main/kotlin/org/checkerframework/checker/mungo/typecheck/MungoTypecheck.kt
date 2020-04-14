@@ -22,8 +22,10 @@ object MungoTypecheck {
     }
     val error = when (val info = receiverValue.info) {
       is MungoUnknownType -> createErrorMsg(node, isUnknown = true)
+      is MungoObjectType -> createErrorMsg(node, isObject = true)
       is MungoBottomType -> null // Allow operations on the BottomType to avoid propagating errors
       is MungoNoProtocolType -> null
+      is MungoPrimitiveType -> null // Calls on primitive values are not possible, so just ignore
       is MungoNullType -> createErrorMsg(node, isNull = true)
       is MungoEndedType -> createErrorMsg(node, isEnded = true)
       is MungoMovedType -> createErrorMsg(node, isMoved = true)
@@ -37,11 +39,13 @@ object MungoTypecheck {
       is MungoUnionType -> {
         val currentStates = mutableListOf<String>()
         val unexpectedStates = mutableListOf<String>()
+        var isObject = false
         var isNull = false
         var isEnded = false
         var isMoved = false
         for (type in info.types) {
           when (type) {
+            is MungoObjectType -> isObject = true
             is MungoNullType -> isNull = true
             is MungoEndedType -> isEnded = true
             is MungoMovedType -> isMoved = true
@@ -54,7 +58,7 @@ object MungoTypecheck {
           }
         }
         if (isNull || isEnded || isMoved || unexpectedStates.size > 0) {
-          createErrorMsg(node, isNull = isNull, isEnded = isEnded, isMoved = isMoved, unexpectedStates = unexpectedStates, currentStates = currentStates)
+          createErrorMsg(node, isObject = isObject, isNull = isNull, isEnded = isEnded, isMoved = isMoved, unexpectedStates = unexpectedStates, currentStates = currentStates)
         } else {
           null
         }
@@ -71,6 +75,7 @@ object MungoTypecheck {
   private fun createErrorMsg(
     node: MethodInvocationTree,
     isUnknown: Boolean = false,
+    isObject: Boolean = false,
     isNull: Boolean = false,
     isEnded: Boolean = false,
     isMoved: Boolean = false,
@@ -80,6 +85,7 @@ object MungoTypecheck {
     val m = TreeUtils.methodName(node)
     val items = mutableListOf<String>()
     if (isUnknown) items.add("on unknown")
+    if (isObject) items.add("on object")
     if (isNull) items.add("on null")
     if (isEnded) items.add("on ended protocol")
     if (isMoved) items.add("on moved value")
@@ -91,6 +97,8 @@ object MungoTypecheck {
     return when (type) {
       // Unknown stays Unknown
       is MungoUnknownType -> MungoUnknownType.SINGLETON
+      // Object stays Object
+      is MungoObjectType -> MungoObjectType.SINGLETON
       // Bottom stays bottom
       is MungoBottomType -> MungoBottomType.SINGLETON
       // Calling a method on null would produce an exception, so the method call has bottom type
@@ -99,6 +107,8 @@ object MungoTypecheck {
       is MungoEndedType -> MungoBottomType.SINGLETON
       // Refine to bottom to avoid propagating errors
       is MungoMovedType -> MungoBottomType.SINGLETON
+      // Calls on primitive values not possible anyway
+      is MungoPrimitiveType -> MungoBottomType.SINGLETON
       // Objects with no protocol, stay like that
       is MungoNoProtocolType -> MungoNoProtocolType.SINGLETON
       // Refine...
@@ -124,15 +134,11 @@ object MungoTypecheck {
 
   fun refineToNonNull(type: MungoType): MungoType {
     return when (type) {
-      is MungoUnknownType -> type
-      is MungoBottomType -> type
-      is MungoEndedType -> type
-      is MungoMovedType -> type
-      is MungoNoProtocolType -> type
-      is MungoStateType -> type
       // Refine...
       is MungoNullType -> MungoBottomType.SINGLETON
       is MungoUnionType -> MungoUnionType.create(type.types.map { refineToNonNull(it) })
+      // Others...
+      else -> type
     }
   }
 }
