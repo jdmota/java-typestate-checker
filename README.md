@@ -118,8 +118,9 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - [x] Upon a declaration like `Iterator it`, all possible states should be considered, but the `end` state
     - Solution: Create "EndedType" distinguishing from normal states
     - Commit [b86fad](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148). [Relevant changes](https://github.com/jdmota/abcd-mungo/commit/b86fadd117e6fb2044cad2325bce7d2386d80148#diff-f6e3068f239b50fb479594bf289764e7).
-- [ ] `java.lang.Object` should have the `Object` type (instead of `Unknown`, so that `null` is excluded) and primitives should have the `Primitive` type (instead of `NoProtocol`)
+- [x] `java.lang.Object` should have the `Object` type (instead of `Unknown`, so that `null` is excluded) and primitives should have the `Primitive` type (instead of `NoProtocol`)
     - Follow-up of [62daab](https://github.com/jdmota/abcd-mungo/commit/62daab1092be17c963dce3c57f52cc966a449125).
+    - Commit [2830a6](https://github.com/jdmota/abcd-mungo/commit/2830a6f2504d38c32fa2d2a2d9d5b8b72920ef70).
 - [x] Force linear use of objects with protocol (preventing aliasing)
     - [x] Basic implementation ([8f39c4](https://github.com/jdmota/abcd-mungo/commit/8f39c407e7acb7c7e48739ebc47e32565c2cd387))
     - [x] Upon return, refine the type to "moved" ([6c94a7](https://github.com/jdmota/abcd-mungo/commit/6c94a74c99e1ac4a3c6a685f581339c4f5b33368))
