@@ -3,7 +3,6 @@ package org.checkerframework.checker.mungo.typecheck
 import com.sun.source.tree.MethodInvocationTree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
-import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -13,14 +12,11 @@ object MungoTypecheck {
   fun check(
     utils: MungoUtils,
     tree: TreePath,
-    receiverValue: MungoValue?,
+    info: MungoType,
     node: MethodInvocationTree,
     method: Symbol.MethodSymbol
   ): Boolean {
-    if (receiverValue == null) {
-      return true
-    }
-    val error = when (val info = receiverValue.info) {
+    val error = when (info) {
       is MungoUnknownType -> createErrorMsg(node, isUnknown = true)
       is MungoObjectType -> createErrorMsg(node, isObject = true)
       is MungoBottomType -> null // Allow operations on the BottomType to avoid propagating errors

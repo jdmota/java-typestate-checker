@@ -113,6 +113,9 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     }
   }
 
+  fun getTypeFor(tree: Tree, type: AnnotatedTypeMirror = getAnnotatedType(tree)) = getInferredValueFor(tree)?.info
+    ?: MungoUtils.mungoTypeFromAnnotations(type.annotations)
+
   fun replaceWithInferredInfo(tree: Tree, type: AnnotatedTypeMirror) {
     val value = getInferredValueFor(tree)
     if (value != null) {

@@ -144,7 +144,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
       if (value != null) {
         val type = value.info
-        if (type !is MungoNoProtocolType && type !is MungoMovedType && type !is MungoNullType) {
+        if (type !is MungoNoProtocolType && type !is MungoMovedType && type !is MungoNullType && type !is MungoPrimitiveType) {
           val newValue = MungoValue(value, MungoMovedType.SINGLETON)
           if (result.containsTwoStores()) {
             result.thenStore.replaceValue(r, newValue)
