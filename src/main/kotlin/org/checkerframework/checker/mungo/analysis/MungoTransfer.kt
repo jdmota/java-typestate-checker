@@ -136,15 +136,21 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return if (moved) newResult(result) else result
   }
 
+  private val noProtocolOrMoved = MungoUnionType.create(listOf(MungoNoProtocolType.SINGLETON, MungoMovedType.SINGLETON, MungoNullType.SINGLETON, MungoPrimitiveType.SINGLETON))
+
   // Returns true iff store changed
-  private fun handleMove(node: Node, result: TransferResult<MungoValue, MungoStore>): Boolean {
+  private fun handleMove(initialNode: Node, result: TransferResult<MungoValue, MungoStore>): Boolean {
+    var node = initialNode
+    while (node is TypeCastNode) {
+      node = node.operand
+    }
     if (node is LocalVariableNode || node is FieldAccessNode) {
       val r = FlowExpressions.internalReprOf(analysis.typeFactory, node)
       val value = result.regularStore.getValue(r)
 
       if (value != null) {
         val type = value.info
-        if (type !is MungoNoProtocolType && type !is MungoMovedType && type !is MungoNullType && type !is MungoPrimitiveType) {
+        if (!type.isSubtype(noProtocolOrMoved)) {
           val newValue = MungoValue(value, MungoMovedType.SINGLETON)
           if (result.containsTwoStores()) {
             result.thenStore.replaceValue(r, newValue)
