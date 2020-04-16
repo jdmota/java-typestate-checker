@@ -96,8 +96,7 @@ class JavaIterator {
     }
   }
 
-  public static @MungoState({"HasNext"})
-  JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
+  public static @MungoState({"HasNext"}) JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
     it.next();
     return it;
   }
