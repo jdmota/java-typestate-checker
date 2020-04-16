@@ -21,7 +21,7 @@ public class MungoTest extends CheckerFrameworkPerDirectoryTest {
       testFiles,
       MungoChecker.class,
       "mungo",
-      "-Anomsgtext");
+      "-Anomsgtext", "-AshowTypeInfo");
   }
 
   @Parameters

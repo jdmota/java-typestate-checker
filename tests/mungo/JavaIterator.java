@@ -18,18 +18,23 @@ class JavaIterator {
   public static void basicOk() {
     JavaIterator it = new JavaIterator();
 
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
 
   public static void nullUse() {
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: Unknown)
     // :: error: (Cannot override because object has not ended its protocol)
     it = null;
 
+    // :: warning: (it: Null)
     // :: error: (Cannot call hasNext on null)
     while (it.hasNext()) {
+      // :: warning: (it: Bottom)
       it.next();
     }
   }
@@ -37,9 +42,12 @@ class JavaIterator {
   public static void nullUse2() {
     JavaIterator it = new JavaIterator();
 
+    // :: warning: (it: JavaIterator{HasNext} | Null)
     // :: error: (Cannot call hasNext on null)
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
+      // :: warning: (it: Unknown)
       // :: error: (Cannot override because object has not ended its protocol)
       it = null;
     }
@@ -47,79 +55,121 @@ class JavaIterator {
 
   public static void nullOk() {
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
+    // :: warning: (it: Unknown)
     it = null;
   }
 
   public static void initializedNull() {
     // :: error: (assignment.type.incompatible)
     JavaIterator it = null;
+    // :: warning: (it: Unknown)
     it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
 
   public static void initializedNullOk() {
     @MungoNullable JavaIterator it = null;
+    // :: warning: (it: Unknown)
     it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
 
   public static void refineNull(@MungoNullable JavaIterator it) {
+    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
     if (it != null) {
+      // :: warning: (it: JavaIterator{HasNext|Next})
       while (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
         it.next();
       }
     }
   }
 
-  public static JavaIterator refineNull2(@MungoNullable JavaIterator it) {
+  public static void refineNull2(@MungoNullable JavaIterator it) {
+    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
+    if (null != it) {
+      // :: warning: (it: JavaIterator{HasNext|Next})
+      while (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
+        it.next();
+      }
+    }
+  }
+
+  public static JavaIterator refineNull3(@MungoNullable JavaIterator it) {
+    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
     if (it instanceof JavaIterator) {
+      // :: warning: (it: JavaIterator{HasNext|Next})
       return it;
     }
     throw new RuntimeException("");
   }
 
-  public static void refineNull3(@MungoNullable JavaIterator it) {
+  public static void refineNull4(@MungoNullable JavaIterator it) {
+    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
     if (it == null) {
+      // :: warning: (it: Null)
       // :: error: (Cannot call hasNext on null)
       it.hasNext();
     } else {
+      // :: warning: (it: JavaIterator{HasNext|Next})
       while (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
         it.next();
       }
     }
   }
 
-  public static @MungoState({"HasNext"}) JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
+  public static @MungoState({"HasNext"})
+  JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
+    // :: warning: (it: JavaIterator{Next})
     it.next();
+    // :: warning: (it: JavaIterator{HasNext})
     return it;
   }
 
   public static void override() {
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     if (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
+    // :: warning: (it: Unknown)
     // :: error: (Cannot override because object has not ended its protocol)
     it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
 
   public static void overrideOk() {
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
+    // :: warning: (it: Unknown)
     it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
@@ -130,7 +180,9 @@ class JavaIterator {
     JavaIterator it = new JavaIterator();
 
     while (true) {
+      // :: warning: (it: JavaIterator{HasNext})
       if (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
         it.next();
       } else {
         break;
@@ -143,7 +195,9 @@ class JavaIterator {
     JavaIterator it = new JavaIterator();
 
     while (true) {
+      // :: warning: (it: JavaIterator{HasNext})
       if (!it.hasNext()) {
+        // :: warning: (it: Ended)
         // :: error: (Cannot call next on ended protocol)
         it.next();
       } else {
@@ -154,27 +208,34 @@ class JavaIterator {
 
   public static void assigment1() {
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     // :: error: (assignment.type.incompatible)
     @MungoState({"Next"}) JavaIterator it2 = it;
 
+    // :: warning: (it2: JavaIterator{HasNext})
     while (it2.hasNext()) {
+      // :: warning: (it2: JavaIterator{Next})
       it2.next();
     }
   }
 
   public static void assigment2() {
     // :: error: (assignment.type.incompatible)
-    @MungoState({"Next"}) JavaIterator it3 = new JavaIterator();
+    @MungoState({"Next"}) JavaIterator it = new JavaIterator();
 
-    while (it3.hasNext()) {
-      it3.next();
+    // :: warning: (it: JavaIterator{HasNext})
+    while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
+      it.next();
     }
   }
 
   public static void assigment3() {
     @MungoState({"HasNext", "Next"}) JavaIterator it = new JavaIterator();
 
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
@@ -182,9 +243,14 @@ class JavaIterator {
   public static void assigmentsAndMoves() {
     JavaIterator it = new JavaIterator();
 
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       JavaIterator alias = it;
+      // :: warning: (alias: JavaIterator{Next})
       alias.next();
+      // :: warning: (it: Unknown)
+      // :: warning: (alias: JavaIterator{HasNext})
       it = alias;
     }
   }
@@ -192,52 +258,67 @@ class JavaIterator {
   public static void assigmentsAndMoves2() {
     JavaIterator it = new JavaIterator();
 
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
       // FIXME The code is safe, but should we error here? Or disallow @MungoState on variable declarations?
+      // :: warning: (it: JavaIterator{Next})
       @MungoState({"HasNext", "Next"}) JavaIterator alias = it;
+      // :: warning: (alias: JavaIterator{Next})
       alias.next();
+      // :: warning: (it: Unknown)
+      // :: warning: (alias: JavaIterator{HasNext})
       it = alias;
     }
   }
 
   public static void assigmentsAndMoves3() {
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     // :: error: (Object did not complete its protocol)
     Object alias = it;
   }
 
   public static void incompatibleArg() {
-    JavaIterator it4 = new JavaIterator();
+    JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     // :: error: (argument.type.incompatible)
-    use2(it4);
+    use2(it);
   }
 
   public static void validMove() {
-    JavaIterator it5 = new JavaIterator();
-    if (it5.hasNext()) {
-      use2(it5);
+    JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
+    if (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
+      use2(it);
     }
   }
 
   public static void wrongMove1() {
-    JavaIterator it6 = new JavaIterator();
+    JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     // :: error: (Object did not complete its protocol)
-    JavaIterator moved = it6;
+    JavaIterator moved = it;
+    // :: warning: (it: Moved)
     // :: error: (Cannot call hasNext on moved value)
-    it6.hasNext();
+    it.hasNext();
   }
 
   public static void wrongMove2() {
-    JavaIterator it6 = new JavaIterator();
-    use1(it6);
+    JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
+    use1(it);
+    // :: warning: (it: Moved)
     // :: error: (Cannot call hasNext on moved value)
-    it6.hasNext();
+    it.hasNext();
   }
 
   public static void didNotComplete() {
     // :: error: (Object did not complete its protocol)
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     if (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
@@ -245,9 +326,11 @@ class JavaIterator {
   public static void didNotComplete2() {
     if (true) {
       // :: error: (Object did not complete its protocol)
-      JavaIterator it10 = new JavaIterator();
-      if (it10.hasNext()) {
-        it10.next();
+      JavaIterator it = new JavaIterator();
+      // :: warning: (it: JavaIterator{HasNext})
+      if (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
+        it.next();
       }
     }
   }
@@ -255,9 +338,11 @@ class JavaIterator {
   public static JavaIterator didNotComplete3() {
     do {
       // :: error: (Object did not complete its protocol)
-      JavaIterator it11 = new JavaIterator();
-      if (it11.hasNext()) {
-        it11.next();
+      JavaIterator it = new JavaIterator();
+      // :: warning: (it: JavaIterator{HasNext})
+      if (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
+        it.next();
       }
     } while (true);
   }
@@ -265,9 +350,11 @@ class JavaIterator {
   public static void didNotComplete4() {
     while (true) {
       // :: error: (Object did not complete its protocol)
-      JavaIterator it12 = new JavaIterator();
-      if (it12.hasNext()) {
-        it12.next();
+      JavaIterator it = new JavaIterator();
+      // :: warning: (it: JavaIterator{HasNext})
+      if (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
+        it.next();
       }
     }
   }
@@ -276,30 +363,40 @@ class JavaIterator {
     JavaIterator it = new JavaIterator();
     boolean bool = true;
     if (bool) {
+      // :: warning: (it: JavaIterator{HasNext})
       return it;
     }
+    // :: warning: (it: JavaIterator{HasNext})
     return it;
   }
 
   public static JavaIterator willBeCompleted() {
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     return it;
   }
 
   public static void completeReturned() {
     JavaIterator it = willBeCompleted();
+    // :: warning: (it: JavaIterator{HasNext|Next})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
 
   public static void completeReturned2() {
     JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
+    // :: warning: (it: Unknown)
     it = willBeCompleted();
+    // :: warning: (it: JavaIterator{HasNext|Next})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
@@ -312,7 +409,9 @@ class JavaIterator {
   public static void leftIncompleteReturned2() {
     // :: error: (Object did not complete its protocol)
     JavaIterator it = willBeCompleted();
+    // :: warning: (it: JavaIterator{HasNext|Next})
     if (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
@@ -320,7 +419,9 @@ class JavaIterator {
   public static void completeInsideLambda() {
     Supplier<String> fn = () -> {
       JavaIterator it = new JavaIterator();
+      // :: warning: (it: JavaIterator{HasNext})
       while (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
         it.next();
       }
       return "";
@@ -331,7 +432,9 @@ class JavaIterator {
     Object obj = new Object() {
       public void use() {
         JavaIterator it = new JavaIterator();
+        // :: warning: (it: JavaIterator{HasNext})
         while (it.hasNext()) {
+          // :: warning: (it: JavaIterator{Next})
           it.next();
         }
       }
@@ -342,7 +445,9 @@ class JavaIterator {
     Supplier<String> fn = () -> {
       // :: error: (Object did not complete its protocol)
       JavaIterator it = new JavaIterator();
+      // :: warning: (it: JavaIterator{HasNext})
       if (it.hasNext()) {
+        // :: warning: (it: JavaIterator{Next})
         it.next();
       }
       return "";
@@ -354,7 +459,9 @@ class JavaIterator {
       public void use() {
         // :: error: (Object did not complete its protocol)
         JavaIterator it = new JavaIterator();
+        // :: warning: (it: JavaIterator{HasNext})
         if (it.hasNext()) {
+          // :: warning: (it: JavaIterator{Next})
           it.next();
         }
       }
@@ -362,23 +469,31 @@ class JavaIterator {
   }
 
   public static JavaIterator cannotReturnEnded() {
-    JavaIterator it13 = new JavaIterator();
-    while (it13.hasNext()) {
-      it13.next();
+    JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext})
+    while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
+      it.next();
     }
+    // :: warning: (it: Ended)
     // :: error: (return.type.incompatible)
-    return it13;
+    return it;
   }
 
   public static void use1(JavaIterator it) {
+    // :: warning: (it: JavaIterator{HasNext|Next})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
 
   public static void use2(@MungoState({"Next"}) JavaIterator it) {
+    // :: warning: (it: JavaIterator{Next})
     it.next();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
@@ -386,8 +501,11 @@ class JavaIterator {
   // :: error: (JavaIterator.protocol has no WrongName state)
   // :: error: (State end is final. Will have no effect in @MungoState)
   public static void use3(@MungoState({"Next", "WrongName", "end"}) JavaIterator it) {
+    // :: warning: (it: JavaIterator{Next})
     it.next();
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
@@ -402,6 +520,7 @@ class JavaIterator {
     // :: error: (Object did not complete its protocol)
     JavaIterator it = new JavaIterator();
     Supplier<String> fn = () -> {
+      // :: warning: (it: JavaIterator{HasNext})
       // :: error: (it was moved to a different closure)
       it.hasNext();
       return "";
@@ -413,6 +532,7 @@ class JavaIterator {
     JavaIterator it = new JavaIterator();
     Object obj = new Object() {
       public void use() {
+        // :: warning: (it: JavaIterator{HasNext})
         // :: error: (it was moved to a different closure)
         it.hasNext();
       }

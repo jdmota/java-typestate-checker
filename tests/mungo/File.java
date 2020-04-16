@@ -23,36 +23,40 @@ class File {
   }
 
   public static void main1(String[] args) {
-
     File f = new File();
 
+    // :: warning: (f: FileProtocol{Init})
     switch (f.open()) {
       case OK:
+        // :: warning: (f: FileProtocol{Open})
         while (f.hasNext()) {
+          // :: warning: (f: FileProtocol{Read})
           f.read();
         }
+        // :: warning: (f: FileProtocol{Close})
         f.close();
         break;
       case ERROR:
         break;
     }
-
   }
 
   public static void main2(String[] args) {
-
     File f = new File();
 
+    // :: warning: (f: FileProtocol{Init})
     switch (f.open()) {
       case OK:
       case ERROR:
+        // :: warning: (f: FileProtocol{Open} | Ended)
         // :: error: (Cannot call hasNext on ended protocol)
         while (f.hasNext()) {
+          // :: warning: (f: FileProtocol{Read})
           f.read();
         }
+        // :: warning: (f: FileProtocol{Close})
         f.close();
     }
-
   }
 
 }

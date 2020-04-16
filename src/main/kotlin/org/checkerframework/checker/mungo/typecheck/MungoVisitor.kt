@@ -167,10 +167,25 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return p
   }
 
+  private fun printTypeInfo(node: IdentifierTree) {
+    if (c.shouldReportTypeInfo() && !node.name.contentEquals("this")) {
+      val annotatedType = typeFactory.getAnnotatedType(node)
+      if (annotatedType != null) {
+        val type = MungoUtils.mungoTypeFromAnnotations(annotatedType.annotations)
+        if (type !is MungoNoProtocolType && type !is MungoPrimitiveType) {
+          c.reportWarning(node, "$node: ${type.format()}")
+        }
+      }
+    }
+  }
+
   override fun visitIdentifier(node: IdentifierTree, p: Void?): Void? {
     super.visitIdentifier(node, p)
 
     val element = TreeUtils.elementFromTree(node) as? Symbol.VarSymbol ?: return p
+
+    // Print type information for testing purposes
+    printTypeInfo(node)
 
     // See if it has protocol
     c.utils.classUtils.visitClassOfElement(element) ?: return p

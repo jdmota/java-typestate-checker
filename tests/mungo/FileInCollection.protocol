@@ -1,4 +1,4 @@
-typestate FileInCollectionProtocol {
+typestate FileInCollection {
 
   Init = {
     State state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,

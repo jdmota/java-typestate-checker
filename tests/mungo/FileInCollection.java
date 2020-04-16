@@ -39,13 +39,18 @@ class FileInCollection {
     list.add(new FileInCollection());
 
     for (FileInCollection f : list) {
+      // :: warning: (f: FileInCollection{Init|Open|Read|Close})
       switch (f.state()) {
         case INIT:
+          // :: warning: (f: FileInCollection{Init})
           switch (f.open()) {
             case OK:
+              // :: warning: (f: FileInCollection{Open})
               while (f.hasNext()) {
+                // :: warning: (f: FileInCollection{Read})
                 f.read();
               }
+              // :: warning: (f: FileInCollection{Close})
               f.close();
               break;
             case ERROR:
@@ -54,12 +59,16 @@ class FileInCollection {
           break;
         case OPEN:
         case READ:
+          // :: warning: (f: FileInCollection{Read|Open})
           while (f.hasNext()) {
+            // :: warning: (f: FileInCollection{Read})
             f.read();
           }
+          // :: warning: (f: FileInCollection{Close})
           f.close();
           break;
         case CLOSE:
+          // :: warning: (f: FileInCollection{Close})
           f.close();
           break;
       }

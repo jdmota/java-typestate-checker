@@ -10,14 +10,18 @@ class JavaIteratorWrapper1 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }
 
   public boolean hasNext() {
+    // :: warning: (iterator: JavaIterator{HasNext|Next})
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (iterator: JavaIterator{Next})
     return iterator.next();
   }
 
@@ -34,11 +38,13 @@ class JavaIteratorWrapper2 {
   }
 
   public boolean hasNext() {
+    // :: warning: (iterator: Null)
     // :: error: (Cannot call hasNext on null)
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (iterator: Bottom)
     return iterator.next();
   }
 
@@ -51,6 +57,8 @@ class JavaIteratorWrapper3 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }
 
@@ -59,6 +67,7 @@ class JavaIteratorWrapper3 {
   }
 
   public String next() {
+    // :: warning: (iterator: JavaIterator{HasNext|Next})
     // :: error: (Cannot call next on state HasNext (got: HasNext, Next))
     return iterator.next();
   }
@@ -72,6 +81,8 @@ class JavaIteratorWrapper4_2 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }
 
@@ -80,8 +91,10 @@ class JavaIteratorWrapper4_2 {
   }
 
   public String next() {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended)
     // :: error: (Cannot call hasNext on ended protocol)
     if (iterator.hasNext()) {
+      // :: warning: (iterator: JavaIterator{Next})
       return iterator.next();
     }
     return "";
@@ -95,18 +108,23 @@ class JavaIteratorWrapper4 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }
 
   public boolean hasNext() {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended)
     // :: error: (Cannot call hasNext on ended protocol)
     while (iterator.hasNext()) {
+      // :: warning: (iterator: JavaIterator{Next})
       iterator.next();
     }
     return false; // TODO detect that this always returns false and "next" will never be called?
   }
 
   public String next() {
+    // :: warning: (iterator: Ended)
     // :: error: (Cannot call next on ended protocol)
     return iterator.next();
   }
@@ -119,21 +137,28 @@ class JavaIteratorWrapper5 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
+    // :: warning: (iterator: JavaIterator{HasNext|Next})
     use(iterator);
   }
 
   public boolean hasNext() {
+    // :: warning: (iterator: Moved)
     // :: error: (Cannot call hasNext on moved value)
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (iterator: Bottom)
     return iterator.next();
   }
 
   public static void use(JavaIterator it) {
+    // :: warning: (it: JavaIterator{HasNext|Next})
     while (it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
       it.next();
     }
   }
@@ -147,12 +172,15 @@ class JavaIteratorWrapper6 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }
 
   public boolean hasNext() {
     // :: error: (Cannot call its own public method)
     hasNext();
+    // :: warning: (iterator: Unknown)
     // :: error: (Cannot call hasNext on unknown)
     return iterator.hasNext();
   }
@@ -160,6 +188,7 @@ class JavaIteratorWrapper6 {
   public String next() {
     // :: error: (Cannot call its own public method)
     this.hasNext();
+    // :: warning: (iterator: Unknown)
     // :: error: (Cannot call next on unknown)
     return iterator.next();
   }
@@ -172,20 +201,24 @@ class JavaIteratorWrapper7 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }
 
   public boolean hasNext() {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Moved)
     // :: error: (Cannot call hasNext on moved value)
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (iterator: JavaIterator{Next})
     return iterator.next();
   }
 
   public JavaIterator getIterator() {
-    // TODO better message, the problem is that calling getIterator() once moves it
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Moved)
     // :: error: (return.type.incompatible)
     return iterator;
   }
@@ -198,6 +231,8 @@ class JavaIteratorWrapper8 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
     // :: error: (Possible 'this' leak)
     use(this);
@@ -205,11 +240,13 @@ class JavaIteratorWrapper8 {
 
   public boolean hasNext() {
     // This error exists because the "use" call invalidates information
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
     // :: error: (Cannot call hasNext on null)
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (iterator: JavaIterator{Next})
     return iterator.next();
   }
 
@@ -226,19 +263,24 @@ class JavaIteratorWrapper9 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
     // :: error: (Possible 'this' leak)
     JavaIteratorWrapper9 wrapper = this;
+    // :: warning: (wrapper: JavaIteratorWrapper{Start|HasNext|Next})
     use(wrapper);
   }
 
   public boolean hasNext() {
     // This error exists because the "use" call invalidates information
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
     // :: error: (Cannot call hasNext on null)
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (iterator: JavaIterator{Next})
     return iterator.next();
   }
 
@@ -255,6 +297,8 @@ class JavaIteratorWrapper10 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
     Supplier<Object> fn = () -> {
       // :: error: (this was moved to a different closure)
@@ -264,10 +308,12 @@ class JavaIteratorWrapper10 {
   }
 
   public boolean hasNext() {
+    // :: warning: (iterator: JavaIterator{HasNext|Next})
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (iterator: JavaIterator{Next})
     return iterator.next();
   }
 
@@ -279,6 +325,8 @@ class JavaIteratorWrapper11 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
     Supplier<Object> fn = () -> {
       // :: error: (JavaIteratorWrapper11.this was moved to a different closure)
@@ -288,10 +336,12 @@ class JavaIteratorWrapper11 {
   }
 
   public boolean hasNext() {
+    // :: warning: (iterator: JavaIterator{HasNext|Next})
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (iterator: JavaIterator{Next})
     return iterator.next();
   }
 

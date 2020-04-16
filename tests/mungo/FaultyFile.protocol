@@ -1,4 +1,4 @@
-typestate FileProtocol {
+typestate FaultyFile {
 
   Init = {
     Status open(): <OK: Open, FOO: end>

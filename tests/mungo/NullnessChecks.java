@@ -6,12 +6,14 @@ public class NullnessChecks {
 
   public static void main1() {
     @MungoNullable NullnessChecks n = null;
+    // :: warning: (n: Null)
     // :: error: (dereference.of.nullable)
     System.out.println(n.obj);
   }
 
   public static void main2() {
     @MungoNullable NullnessChecks n = null;
+    // :: warning: (n: Null)
     // :: warning: (cast.unsafe)
     System.out.println((Object) n);
   }
