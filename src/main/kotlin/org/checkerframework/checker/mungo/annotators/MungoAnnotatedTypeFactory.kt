@@ -30,12 +30,14 @@ import org.checkerframework.framework.type.*
 import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
+import org.checkerframework.framework.util.DefaultAnnotationFormatter
 import org.checkerframework.framework.util.GraphQualifierHierarchy
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.Pair
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
+import java.lang.StringBuilder
 import java.util.*
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Modifier
@@ -48,6 +50,27 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
   init {
     postInit()
+  }
+
+  override fun createAnnotatedTypeFormatter(): AnnotatedTypeFormatter {
+    val printVerboseGenerics = checker.hasOption("printVerboseGenerics")
+    val defaultPrintInvisibleAnnos = printVerboseGenerics || checker.hasOption("printAllQualifiers")
+    return DefaultAnnotatedTypeFormatter(
+      MungoAnnotationFormatter(),
+      printVerboseGenerics, // -AprintVerboseGenerics implies -AprintAllQualifiers
+      defaultPrintInvisibleAnnos
+    )
+  }
+
+  class MungoAnnotationFormatter : DefaultAnnotationFormatter() {
+    override fun formatAnnotationMirror(am: AnnotationMirror, sb: StringBuilder) {
+      if (MungoUtils.isMungoAnnotation(am)) {
+        val type = MungoUtils.mungoTypeFromAnnotation(am)
+        sb.append(type.format())
+      } else {
+        super.formatAnnotationMirror(am, sb)
+      }
+    }
   }
 
   override fun applyInferredAnnotations(type: AnnotatedTypeMirror, value: MungoValue) {

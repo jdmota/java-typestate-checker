@@ -32,6 +32,7 @@ sealed class MungoType {
   abstract fun intersect(other: MungoType): MungoType
   abstract fun mostSpecific(other: MungoType): MungoType?
   abstract fun leastUpperBound(other: MungoType): MungoType
+  abstract fun format(): String
 }
 
 private var uuid = 0L
@@ -166,6 +167,23 @@ class MungoUnionType private constructor(val types: Set<MungoType>) : MungoTypeW
 
   override fun hashCode() = types.hashCode()
   override fun toString() = "MungoUnionType$types"
+
+  private var formatCache: String? = null
+
+  override fun format() = formatCache ?: run {
+    val states = types.filterIsInstance<MungoStateType>()
+    val notStates = types.filterNot { it is MungoStateType }
+
+    val map = mutableMapOf<Graph, MutableList<MungoStateType>>()
+    for (state in states) map.computeIfAbsent(state.graph) { mutableListOf() }.add(state)
+
+    val cache = map.entries.map { (graph, types) ->
+      "${graph.typestateName}{${types.joinToString("|") { it.state.name }}}"
+    }.plus(notStates.map { it.format() }).joinToString(" | ")
+
+    formatCache = cache
+    cache
+  }
 }
 
 class MungoStateType private constructor(val graph: Graph, val state: State) : MungoTypeWithId() {
@@ -186,6 +204,7 @@ class MungoStateType private constructor(val graph: Graph, val state: State) : M
 
   override fun hashCode() = 31 * graph.hashCode() + state.name.hashCode()
   override fun toString() = "MungoStateType$state"
+  override fun format() = "${graph.typestateName}{${state.name}}"
 }
 
 sealed class MungoTypeSingletons(private val hashCode: Int) : MungoTypeWithId() {
@@ -204,6 +223,7 @@ class MungoObjectType private constructor() : MungoTypeSingletons(7) {
   }
 
   override fun toString() = "MungoObjectType"
+  override fun format() = "Object"
 }
 
 class MungoEndedType private constructor() : MungoTypeSingletons(6) {
@@ -217,6 +237,7 @@ class MungoEndedType private constructor() : MungoTypeSingletons(6) {
   }
 
   override fun toString() = "MungoEndedType"
+  override fun format() = "Ended"
 }
 
 class MungoNoProtocolType private constructor() : MungoTypeSingletons(5) {
@@ -230,6 +251,7 @@ class MungoNoProtocolType private constructor() : MungoTypeSingletons(5) {
   }
 
   override fun toString() = "MungoNoProtocolType"
+  override fun format() = "NoProtocol"
 }
 
 class MungoMovedType private constructor() : MungoTypeSingletons(4) {
@@ -243,6 +265,7 @@ class MungoMovedType private constructor() : MungoTypeSingletons(4) {
   }
 
   override fun toString() = "MungoMovedType"
+  override fun format() = "Moved"
 }
 
 class MungoPrimitiveType private constructor() : MungoTypeSingletons(3) {
@@ -256,6 +279,7 @@ class MungoPrimitiveType private constructor() : MungoTypeSingletons(3) {
   }
 
   override fun toString() = "MungoPrimitiveType"
+  override fun format() = "Primitive"
 }
 
 class MungoNullType private constructor() : MungoTypeSingletons(2) {
@@ -269,6 +293,7 @@ class MungoNullType private constructor() : MungoTypeSingletons(2) {
   }
 
   override fun toString() = "MungoNullType"
+  override fun format() = "Null"
 }
 
 class MungoUnknownType private constructor() : MungoType() {
@@ -284,6 +309,7 @@ class MungoUnknownType private constructor() : MungoType() {
   override fun equals(other: Any?) = this === other
   override fun hashCode() = 1
   override fun toString() = "MungoUnknownType"
+  override fun format() = "Unknown"
 }
 
 class MungoBottomType private constructor() : MungoType() {
@@ -299,4 +325,5 @@ class MungoBottomType private constructor() : MungoType() {
   override fun equals(other: Any?) = this === other
   override fun hashCode() = 0
   override fun toString() = "MungoBottomType"
+  override fun format() = "Bottom"
 }

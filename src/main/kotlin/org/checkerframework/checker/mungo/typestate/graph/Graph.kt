@@ -7,7 +7,7 @@ import org.checkerframework.checker.mungo.typestate.graph.exceptions.StateNotDef
 import org.checkerframework.checker.mungo.typestate.graph.exceptions.UnusedStates
 import java.nio.file.Path
 
-class Graph private constructor(val file: Path) {
+class Graph private constructor(val file: Path, val typestateName: String) {
   private var initialState: State? = null
   private val endState = EndState()
   private val finalStates = HashSet<State>()
@@ -125,7 +125,7 @@ class Graph private constructor(val file: Path) {
     val RESERVED_STATE_NAMES: List<String> = listOf(END_STATE_NAME)
 
     fun fromTypestate(file: Path, node: TDeclarationNode): Graph {
-      val g = Graph(file)
+      val g = Graph(file, node.name)
       g.traverseTypestate(node)
       return g
     }
