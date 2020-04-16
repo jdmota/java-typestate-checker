@@ -174,7 +174,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   }
 
   // Adapted from NullnessTransfer#strengthenAnnotationOfEqualTo
-  override fun strengthenAnnotationOfEqualTo(res: TransferResult<MungoValue, MungoStore>, firstNode: Node, secondNode: Node?, firstValue: MungoValue, secondValue: MungoValue?, notEqualTo: Boolean): TransferResult<MungoValue, MungoStore> {
+  override fun strengthenAnnotationOfEqualTo(res: TransferResult<MungoValue, MungoStore>, firstNode: Node, secondNode: Node, firstValue: MungoValue, secondValue: MungoValue, notEqualTo: Boolean): TransferResult<MungoValue, MungoStore> {
     val result = super.strengthenAnnotationOfEqualTo(res, firstNode, secondNode, firstValue, secondValue, notEqualTo)
 
     if (firstNode is NullLiteralNode) {
@@ -187,7 +187,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
           thenStore = thenStore ?: result.thenStore
           elseStore = elseStore ?: result.elseStore
           val storeToUpdate = if (notEqualTo) thenStore else elseStore
-          storeToUpdate.insertValue(secondInternal, MungoValue(firstValue, MungoTypecheck.refineToNonNull(firstValue.info)))
+          storeToUpdate.insertValue(secondInternal, MungoValue(secondValue, MungoTypecheck.refineToNonNull(secondValue.info)))
         }
       }
       if (thenStore != null) {
