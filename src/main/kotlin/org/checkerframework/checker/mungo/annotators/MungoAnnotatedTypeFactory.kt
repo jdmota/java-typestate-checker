@@ -50,6 +50,12 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     postInit()
   }
 
+  override fun applyInferredAnnotations(type: AnnotatedTypeMirror, value: MungoValue) {
+    // By setting omitSubtypingCheck to true, inferred information will always override the default type information
+    val applier = DefaultInferredTypesApplier(true, qualifierHierarchy, this)
+    applier.applyInferredType(type, value.annotations, value.underlyingType)
+  }
+
   override fun getStoreAfter(node: Node): MungoStore? {
     return if (!analysis.isRunning) {
       // Fix assertion error "assert transferInput != null" on AnalysisResult#runAnalysisFor
@@ -115,13 +121,6 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
   fun getTypeFor(tree: Tree, type: AnnotatedTypeMirror = getAnnotatedType(tree)) = getInferredValueFor(tree)?.info
     ?: MungoUtils.mungoTypeFromAnnotations(type.annotations)
-
-  fun replaceWithInferredInfo(tree: Tree, type: AnnotatedTypeMirror) {
-    val value = getInferredValueFor(tree)
-    if (value != null) {
-      type.replaceAnnotation(value.info.buildAnnotation(checker.processingEnvironment))
-    }
-  }
 
   // This is called in both MungoTreeAnnotator#visitVariable and MungoDefaultQualifierForUseTypeAnnotator#visitDeclared
   // For some reason, it must be called in "visitDeclared" as well...

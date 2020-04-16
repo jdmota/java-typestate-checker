@@ -139,9 +139,6 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       }
     }
 
-    // Assignments checks should use the inferred type information
-    typeFactory.replaceWithInferredInfo(valueTree, valueType)
-
     if (!nullnessCommonAssignmentCheck(varType, valueType, valueTree)) {
       // Only issue the unboxing of nullable error
       return
