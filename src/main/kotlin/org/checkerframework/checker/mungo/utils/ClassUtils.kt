@@ -50,7 +50,7 @@ class ClassUtils(private val utils: MungoUtils) {
   private fun getMungoTypestateAnnotation(tree: JCTree.JCClassDecl): AnnotationTree? {
     val annotations = tree.modifiers.annotations.filter {
       val elem = TreeUtils.elementFromTree(it.annotationType)
-      elem is TypeElement && elem.qualifiedName.contentEquals(MungoUtils.mungoTypestateName)
+      elem is TypeElement && (elem.qualifiedName.contentEquals(MungoUtils.mungoTypestateName) || elem.qualifiedName.contentEquals(MungoUtils.mungoTypestateAliasName))
     }
     if (annotations.size > 1) {
       utils.err("There is more than 1 @MungoTypestate annotation", tree)

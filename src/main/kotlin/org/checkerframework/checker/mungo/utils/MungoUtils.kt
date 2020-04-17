@@ -66,6 +66,7 @@ class MungoUtils(val checker: MungoChecker) {
     val mungoTypestateName: String = MungoTypestate::class.java.canonicalName
     val mungoStateName: String = MungoState::class.java.canonicalName
     val mungoNullableName: String = MungoNullable::class.java.canonicalName
+    val mungoTypestateAliasName: String = "mungo.lib.Typestate"
 
     // Internal annotations for type information
     val mungoUnknownName: String = MungoUnknown::class.java.canonicalName
