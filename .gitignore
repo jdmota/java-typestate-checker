@@ -13,3 +13,8 @@ out
 *~
 
 mungo-checker-lib/src
+
+# Examples
+
+examples/**/*.class
+examples/checker-framework-*
