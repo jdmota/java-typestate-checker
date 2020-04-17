@@ -100,7 +100,7 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     // Do not remove entries for other fields
     // Since non-existent information is assumed to be the bottom type
     // Which is different from what Checker normally does (see description above)
-    // See assign to unknown type
+    // We assign to unknown type
     for ((key, prevValue) in oldFields) {
       if (!fieldValues.containsKey(key)) {
         fieldValues[key] = MungoValue(prevValue, MungoUnknownType.SINGLETON)
@@ -146,5 +146,9 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     } else {
       false
     }
+  }
+
+  override fun getValue(expr: FlowExpressions.Receiver): MungoValue? {
+    return if (expr is FlowExpressions.Unknown) null else super.getValue(expr)
   }
 }
