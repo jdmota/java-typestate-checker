@@ -13,6 +13,36 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
  */
 public interface TypestateListener extends ParseTreeListener {
 	/**
+	 * Enter a parse tree produced by {@link TypestateParser#start}.
+	 * @param ctx the parse tree
+	 */
+	void enterStart(TypestateParser.StartContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TypestateParser#start}.
+	 * @param ctx the parse tree
+	 */
+	void exitStart(TypestateParser.StartContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link TypestateParser#package_statement}.
+	 * @param ctx the parse tree
+	 */
+	void enterPackage_statement(TypestateParser.Package_statementContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TypestateParser#package_statement}.
+	 * @param ctx the parse tree
+	 */
+	void exitPackage_statement(TypestateParser.Package_statementContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link TypestateParser#import_statement}.
+	 * @param ctx the parse tree
+	 */
+	void enterImport_statement(TypestateParser.Import_statementContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TypestateParser#import_statement}.
+	 * @param ctx the parse tree
+	 */
+	void exitImport_statement(TypestateParser.Import_statementContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link TypestateParser#typestate_declaration}.
 	 * @param ctx the parse tree
 	 */

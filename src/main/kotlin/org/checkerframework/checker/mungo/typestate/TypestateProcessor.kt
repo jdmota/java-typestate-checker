@@ -68,7 +68,7 @@ class TypestateProcessor {
       val tokens = CommonTokenStream(lexer)
       val parser = TypestateParser(tokens)
       parser.errorHandler = BailErrorStrategy()
-      val ast = parser.typestate_declaration().ast
+      val ast = parser.start().ast
       // println(Dot.fromGraph(graph))
       return Graph.fromTypestate(file, ast)
     }

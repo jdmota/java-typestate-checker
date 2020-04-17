@@ -9,6 +9,15 @@ import static org.checkerframework.checker.mungo.typestate.Utils.map;
 
 // Info: https://github.com/antlr/antlr4/blob/master/doc/parser-rules.md
 
+start returns [TDeclarationNode ast] :
+  package_statement? import_statement* t=typestate_declaration
+  {$ast=$t.ast;}
+;
+
+package_statement : 'package' ID ( '.' ID )* ';' ;
+
+import_statement : 'import' ID ( '.' ID )* ( '.' '*' )? ';' ;
+
 typestate_declaration returns [TDeclarationNode ast] :
   t='typestate' ID '{' typestate_body '}' EOF
   {$ast=new TDeclarationNode(tokenToPos($t), $ID.getText(), $typestate_body.states);}
@@ -60,3 +69,7 @@ ID : [$_a-zA-Z]+[$_a-zA-Z0-9]* ;
 
 // skip spaces, tabs, newlines
 WS : [ \t\r\n]+ -> skip ;
+
+// skip comments
+BlockComment : '/*' .*? '*/' -> skip ;
+LineComment : '//' ~[\r\n]* -> skip ;
