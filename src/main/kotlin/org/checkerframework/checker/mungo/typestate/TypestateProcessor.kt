@@ -15,7 +15,9 @@ import org.checkerframework.checker.mungo.typestate.parser.TypestateParser
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MethodUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
+import java.nio.file.Paths
 
 class TypestateProcessor {
   private val graphs: MutableMap<Path, GraphOrError> = HashMap()
@@ -55,7 +57,14 @@ class TypestateProcessor {
 
     @Throws(Exception::class)
     private fun fromPath(file: Path): Graph {
-      val lexer = TypestateLexer(CharStreams.fromPath(file))
+      val stream = run {
+        try {
+          CharStreams.fromPath(file)
+        } catch (exp: NoSuchFileException) {
+          CharStreams.fromPath(Paths.get("$file.protocol"))
+        }
+      }
+      val lexer = TypestateLexer(stream)
       val tokens = CommonTokenStream(lexer)
       val parser = TypestateParser(tokens)
       parser.errorHandler = BailErrorStrategy()
