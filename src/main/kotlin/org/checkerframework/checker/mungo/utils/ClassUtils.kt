@@ -11,6 +11,7 @@ import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.*
 import javax.lang.model.element.Element
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
@@ -85,11 +86,14 @@ class ClassUtils(private val utils: MungoUtils) {
         processMungoTypestateAnnotation(sourceFilePath, it)
       }?.let {
         TypestateProcessor.validateClassAndGraph(utils, treePath, tree, it)
+      }.let {
+        // "computeIfAbsent" does not store null values, store an Optional instead
+        Optional.ofNullable(it)
       }
-    }
+    }.orElse(null)
   }
 
-  private val classTreeToGraph = WeakIdentityHashMap<JCTree.JCClassDecl, Graph?>()
+  private val classTreeToGraph = WeakIdentityHashMap<JCTree.JCClassDecl, Optional<Graph>>()
 
   companion object {
     fun getNonStaticMethods(classTree: ClassTree) = classTree.members.filterIsInstance(MethodTree::class.java).filter {
