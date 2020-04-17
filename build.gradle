@@ -59,7 +59,7 @@ tasks.withType(JavaCompile) {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin}"
+    compile "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin}"
 
     antlr "org.antlr:antlr4:${versions.antlr4}"
     compile "org.antlr:antlr4-runtime:${versions.antlr4}"
