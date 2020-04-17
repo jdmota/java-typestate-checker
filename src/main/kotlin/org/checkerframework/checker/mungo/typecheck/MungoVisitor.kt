@@ -89,7 +89,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       if (parent !is VariableTree && parent !is AssignmentTree) {
         val type = typeFactory.getTypeFor(node)
         if (!type.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-          c.utils.err("Returned object did not complete its protocol", node)
+          c.utils.err("Returned object did not complete its protocol. Type: ${type.format()}", node)
         }
       }
 
@@ -226,7 +226,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     // Make sure protocols of local variables complete
     for ((key, value) in exitStore.iterateOverLocalVars()) {
       if (!value.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        c.utils.err("Object did not complete its protocol", key.element)
+        c.utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.element)
       }
     }
   }
@@ -245,7 +245,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     // Make sure protocols of fields complete
     for ((key, value) in exitStore.iterateOverFields()) {
       if (!value.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        c.utils.err("Object did not complete its protocol", key.field)
+        c.utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.field)
       }
     }
   }

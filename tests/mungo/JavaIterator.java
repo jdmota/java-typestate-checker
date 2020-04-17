@@ -176,7 +176,7 @@ class JavaIterator {
 
   public static void whileTrueOk() {
     // FIXME this error exists because "true" is not being considered
-    // :: error: (Object did not complete its protocol)
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
     JavaIterator it = new JavaIterator();
 
     while (true) {
@@ -191,7 +191,7 @@ class JavaIterator {
   }
 
   public static void whileTrueError() {
-    // :: error: (Object did not complete its protocol)
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{Next|HasNext})
     JavaIterator it = new JavaIterator();
 
     while (true) {
@@ -274,7 +274,7 @@ class JavaIterator {
   public static void assigmentsAndMoves3() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
-    // :: error: (Object did not complete its protocol)
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
     Object alias = it;
   }
 
@@ -297,7 +297,7 @@ class JavaIterator {
   public static void wrongMove1() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
-    // :: error: (Object did not complete its protocol)
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
     JavaIterator moved = it;
     // :: warning: (it: Moved)
     // :: error: (Cannot call hasNext on moved value)
@@ -314,7 +314,7 @@ class JavaIterator {
   }
 
   public static void didNotComplete() {
-    // :: error: (Object did not complete its protocol)
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
     JavaIterator it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     if (it.hasNext()) {
@@ -325,7 +325,7 @@ class JavaIterator {
 
   public static void didNotComplete2() {
     if (true) {
-      // :: error: (Object did not complete its protocol)
+      // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
       JavaIterator it = new JavaIterator();
       // :: warning: (it: JavaIterator{HasNext})
       if (it.hasNext()) {
@@ -337,7 +337,7 @@ class JavaIterator {
 
   public static JavaIterator didNotComplete3() {
     do {
-      // :: error: (Object did not complete its protocol)
+      // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
       JavaIterator it = new JavaIterator();
       // :: warning: (it: JavaIterator{HasNext})
       if (it.hasNext()) {
@@ -349,7 +349,7 @@ class JavaIterator {
 
   public static void didNotComplete4() {
     while (true) {
-      // :: error: (Object did not complete its protocol)
+      // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
       JavaIterator it = new JavaIterator();
       // :: warning: (it: JavaIterator{HasNext})
       if (it.hasNext()) {
@@ -402,12 +402,12 @@ class JavaIterator {
   }
 
   public static void leftIncompleteReturned() {
-    // :: error: (Returned object did not complete its protocol)
+    // :: error: (Returned object did not complete its protocol. Type: JavaIterator{HasNext|Next})
     willBeCompleted();
   }
 
   public static void leftIncompleteReturned2() {
-    // :: error: (Object did not complete its protocol)
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
     JavaIterator it = willBeCompleted();
     // :: warning: (it: JavaIterator{HasNext|Next})
     if (it.hasNext()) {
@@ -443,7 +443,7 @@ class JavaIterator {
 
   public static void incompleteInsideLambda() {
     Supplier<String> fn = () -> {
-      // :: error: (Object did not complete its protocol)
+      // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
       JavaIterator it = new JavaIterator();
       // :: warning: (it: JavaIterator{HasNext})
       if (it.hasNext()) {
@@ -457,7 +457,7 @@ class JavaIterator {
   public static void incompleteInsideMethod() {
     Object obj = new Object() {
       public void use() {
-        // :: error: (Object did not complete its protocol)
+        // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
         JavaIterator it = new JavaIterator();
         // :: warning: (it: JavaIterator{HasNext})
         if (it.hasNext()) {
@@ -511,13 +511,14 @@ class JavaIterator {
   }
 
   // :: error: (@MungoState has no meaning in Object type)
-  // :: error: (Object did not complete its protocol)
+  // :: error: (Object did not complete its protocol. Type: Object)
   public static void use4(@MungoState({"state"}) Object it) {
 
   }
 
   public static void moveToLambda() {
-    // :: error: (Object did not complete its protocol)
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{Next} | Ended)
     JavaIterator it = new JavaIterator();
     Supplier<String> fn = () -> {
       // :: warning: (it: JavaIterator{HasNext})
@@ -528,7 +529,8 @@ class JavaIterator {
   }
 
   public static void moveToMethod() {
-    // :: error: (Object did not complete its protocol)
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{Next} | Ended)
     JavaIterator it = new JavaIterator();
     Object obj = new Object() {
       public void use() {

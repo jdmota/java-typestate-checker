@@ -32,7 +32,7 @@ class JavaIteratorWrapper2 {
 
   private @MungoNullable JavaIterator iterator = null;
 
-  // :: error: (Object did not complete its protocol)
+  // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext|Next})
   public void init(JavaIterator it) {
 
   }
@@ -53,7 +53,7 @@ class JavaIteratorWrapper2 {
 @MungoTypestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper3 {
 
-  // :: error: (Object did not complete its protocol)
+  // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext|Next})
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
@@ -77,7 +77,7 @@ class JavaIteratorWrapper3 {
 @MungoTypestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper4_2 {
 
-  // :: error: (Object did not complete its protocol)
+  // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext|Next} | Ended)
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
@@ -168,7 +168,7 @@ class JavaIteratorWrapper5 {
 @MungoTypestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper6 {
 
-  // :: error: (Object did not complete its protocol)
+  // :: error: (Object did not complete its protocol. Type: Unknown)
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
@@ -250,7 +250,7 @@ class JavaIteratorWrapper8 {
     return iterator.next();
   }
 
-  // :: error: (Object did not complete its protocol)
+  // :: error: (Object did not complete its protocol. Type: JavaIteratorWrapper{Start|HasNext|Next})
   public static void use(JavaIteratorWrapper8 it) {
 
   }
@@ -284,7 +284,7 @@ class JavaIteratorWrapper9 {
     return iterator.next();
   }
 
-  // :: error: (Object did not complete its protocol)
+  // :: error: (Object did not complete its protocol. Type: JavaIteratorWrapper{Start|HasNext|Next})
   public static void use(JavaIteratorWrapper9 it) {
 
   }
