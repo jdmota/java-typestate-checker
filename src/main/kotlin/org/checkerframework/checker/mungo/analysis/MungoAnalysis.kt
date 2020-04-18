@@ -12,6 +12,8 @@ import javax.lang.model.type.TypeMirror
 class MungoAnalysis(checker: MungoChecker, factory: MungoAnnotatedTypeFactory, fieldValues: List<Pair<VariableElement, MungoValue>>) : CFAbstractAnalysis<MungoValue, MungoStore, MungoTransfer>(checker, factory, fieldValues) {
 
   val c = checker
+  var inClassAnalysis: Boolean = false
+  var creatingInitialStore: Boolean = false
 
   override fun createEmptyStore(sequentialSemantics: Boolean): MungoStore {
     return MungoStore(this, sequentialSemantics)

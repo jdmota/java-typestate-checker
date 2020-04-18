@@ -5,8 +5,11 @@ import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.State
+import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
+import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.TreeUtils
+import javax.lang.model.type.TypeMirror
 
 object MungoTypecheck {
   fun check(
@@ -136,5 +139,28 @@ object MungoTypecheck {
       // Others...
       else -> type
     }
+  }
+
+  // Get the least upper bound of the possible type, assuming anything happened
+  fun invalidate(utils: MungoUtils, type: TypeMirror): MungoType {
+    val isNullable = type.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
+
+    val mungoType = if (ClassUtils.isJavaLangObject(type)) {
+      MungoObjectType.SINGLETON
+    } else if (type.kind.isPrimitive) {
+      MungoPrimitiveType.SINGLETON
+    } else {
+      val graph = utils.classUtils.visitClassTypeMirror(type)
+      if (graph == null) {
+        MungoNoProtocolType.SINGLETON
+      } else {
+        val states = graph.getAllConcreteStates()
+        MungoUnionType.create(states.map { MungoStateType.create(graph, it) }.plus(MungoEndedType.SINGLETON))
+      }
+    }
+
+    val maybeNullableType = if (isNullable) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
+
+    return MungoUnionType.create(listOf(mungoType, maybeNullableType))
   }
 }

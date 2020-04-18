@@ -149,7 +149,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   // For some reason, it must be called in "visitDeclared" as well...
   // Nonetheless, "visitVariable" is always called for both method arguments and variable declarations,
   // so we only report errors in that case, which provides "tree", for error location.
-  fun visitMungoAnnotations(type: AnnotatedTypeMirror.AnnotatedDeclaredType, tree: Tree?) {
+  fun visitDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType, tree: Tree?) {
     val stateAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
     val isNullable = type.underlyingType.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
 
@@ -271,7 +271,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     }
 
     // Now analyze public methods keeping in mind the accepted method call orders in the protocol
-    analyzeClass(queue, lambdaQueue, fieldValues, publicMethods, graph, initialStore)
+    analyzeClass(queue, lambdaQueue, publicMethods, graph, initialStore)
   }
 
   // TODO infer method side-effects so that we do not just invalidate everything upon a method call...
@@ -280,7 +280,6 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   private fun analyzeClass(
     classQueue: Queue<Pair<ClassTree, MungoStore?>>,
     lambdaQueue: Queue<Pair<LambdaExpressionTree, MungoStore?>>,
-    fieldValues: List<Pair<VariableElement, MungoValue?>>,
     publicMethods: List<UnderlyingAST.CFGMethod>,
     graph: Graph,
     initialStore: MungoStore
@@ -341,6 +340,8 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
     mergeStateStore(graph.getInitialState(), initialStore)
 
+    analysis.inClassAnalysis = true
+
     while (stateQueue.isNotEmpty()) {
       val state = stateQueue.first()
       stateQueue.remove(state)
@@ -353,7 +354,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
         val cfg = methodToCFG[method]!!
 
         transfer.setFixedInitialStore(entryStore)
-        analysis.performAnalysis(cfg, fieldValues)
+        analysis.performAnalysis(cfg, entryStore.getFields())
 
         val exitResult = analysis.getInput(cfg.regularExitBlock)!!
         val regularExitStore = exitResult.regularStore
@@ -381,6 +382,8 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
         }
       }
     }
+
+    analysis.inClassAnalysis = false
 
     // Finally, combine results into flowResult...
     for ((_, result) in results) {

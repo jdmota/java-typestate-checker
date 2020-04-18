@@ -9,30 +9,10 @@ import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 
 class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker, private val factory: MungoAnnotatedTypeFactory) : DefaultQualifierForUseTypeAnnotator(factory) {
-  // This is called by Checker when a reference to a class is encountered
-  // to provide a variable with the default type information
-  override fun getExplicitAnnos(element: Element): Set<AnnotationMirror> {
-    val set = super.getExplicitAnnos(element).toMutableSet()
-
-    // If Object, give it the unknown type
-    if (ClassUtils.isJavaLangObject(element)) {
-      set.add(MungoObjectType.SINGLETON.buildAnnotation(checker.processingEnvironment))
-    } else {
-      // Extract information from class declaration
-      val graph = checker.utils.classUtils.visitClassSymbol(element)
-      if (graph == null) {
-        set.add(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
-      } else {
-        set.add(createTypeWithAllStates(graph).buildAnnotation(checker.processingEnvironment))
-      }
-    }
-
-    return set
-  }
 
   override fun visitDeclared(type: AnnotatedTypeMirror.AnnotatedDeclaredType, aVoid: Void?): Void? {
     val ret = super.visitDeclared(type, aVoid)
-    factory.visitMungoAnnotations(type, null)
+    factory.visitDeclaredType(type, null)
     return ret
   }
 

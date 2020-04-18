@@ -1,18 +1,29 @@
 package org.checkerframework.checker.mungo.analysis
 
 import org.checkerframework.checker.mungo.typecheck.MungoNoProtocolType
-import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
+import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
 import org.checkerframework.dataflow.analysis.FlowExpressions
-import org.checkerframework.dataflow.cfg.node.FieldAccessNode
 import org.checkerframework.dataflow.cfg.node.MethodInvocationNode
 import org.checkerframework.framework.flow.CFAbstractStore
 import org.checkerframework.framework.type.AnnotatedTypeFactory
+import org.checkerframework.javacutil.Pair
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
+import javax.lang.model.element.VariableElement
 
 class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
-  constructor(analysis: MungoAnalysis, sequentialSemantics: Boolean) : super(analysis, sequentialSemantics)
-  constructor(other: MungoStore) : super(other)
+
+  private val a: MungoAnalysis
+
+  constructor(analysis: MungoAnalysis, sequentialSemantics: Boolean) : super(analysis, sequentialSemantics) {
+    a = analysis
+  }
+
+  constructor(other: MungoStore) : super(other) {
+    a = other.a
+  }
+
+  private val utils get() = a.c.utils
 
   // We adapt the default implementation of CFAbstractStore#leastUpperBound.
   // Issue: the exit store of a method should include all variables so they can be checked.
@@ -91,19 +102,19 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     // Call super method
     super.updateForMethodCall(n, atypeFactory, value)
 
-    // See if the receiver is an object with protocol
+    // See if the current class has protocol and if the receiver is an object with protocol
     // In that case, we are controlling it, no need to invalidate it
-    if (receiver is FlowExpressions.FieldAccess && receiverValue != null && !MungoNoProtocolType.SINGLETON.isSubtype(receiverValue.info)) {
-      fieldValues[receiver] = receiverValue
+    if (a.inClassAnalysis) {
+      if (receiver is FlowExpressions.FieldAccess && receiverValue != null && !MungoNoProtocolType.SINGLETON.isSubtype(receiverValue.info)) {
+        fieldValues[receiver] = receiverValue
+      }
     }
 
-    // Do not remove entries for other fields
-    // Since non-existent information is assumed to be the bottom type
+    // Since non-existent information is assumed to be the bottom type, do not remove entries for other fields
     // Which is different from what Checker normally does (see description above)
-    // We assign to unknown type
     for ((key, prevValue) in oldFields) {
       if (!fieldValues.containsKey(key)) {
-        fieldValues[key] = MungoValue(prevValue, MungoUnknownType.SINGLETON)
+        fieldValues[key] = MungoValue(prevValue, MungoTypecheck.invalidate(utils, key.type))
       }
     }
   }
@@ -125,6 +136,10 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
 
   fun iterateOverFields(): Iterator<Map.Entry<FlowExpressions.FieldAccess, MungoValue>> {
     return fieldValues.iterator()
+  }
+
+  fun getFields(): List<Pair<VariableElement, MungoValue>> {
+    return fieldValues.map { (key, value) -> Pair.of(key.field, value) }
   }
 
   fun replaceValueIfDiff(r: FlowExpressions.Receiver, value: MungoValue): Boolean {
@@ -149,6 +164,15 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
   }
 
   override fun getValue(expr: FlowExpressions.Receiver): MungoValue? {
+    // Workaround
     return if (expr is FlowExpressions.Unknown) null else super.getValue(expr)
+  }
+
+  override fun insertValue(r: FlowExpressions.Receiver, value: MungoValue?) {
+    if (a.inClassAnalysis && a.creatingInitialStore && r is FlowExpressions.FieldAccess) {
+      // Workaround CFTransfer#initialStore modifying information of our fixed store
+      return
+    }
+    super.insertValue(r, value)
   }
 }

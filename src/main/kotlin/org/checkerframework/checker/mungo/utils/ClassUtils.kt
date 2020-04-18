@@ -15,6 +15,8 @@ import java.util.*
 import javax.lang.model.element.Element
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
+import javax.lang.model.type.DeclaredType
+import javax.lang.model.type.TypeMirror
 
 class ClassUtils(private val utils: MungoUtils) {
 
@@ -64,6 +66,10 @@ class ClassUtils(private val utils: MungoUtils) {
     return visitClassDeclaredType(type)
   }
 
+  fun visitClassTypeMirror(type: TypeMirror): Graph? {
+    return if (type is DeclaredType) visitClassSymbol(type.asElement()) else null
+  }
+
   fun visitClassDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType): Graph? {
     return visitClassSymbol(type.underlyingType.asElement())
   }
@@ -106,6 +112,8 @@ class ClassUtils(private val utils: MungoUtils) {
     fun getEnumLabels(classSymbol: Symbol.ClassSymbol) = classSymbol.members().symbols.filter { it.isEnum }.map { it.name.toString() }
 
     fun isJavaLangObject(element: Element) = element is Symbol.ClassSymbol && element.qualifiedName.contentEquals("java.lang.Object")
+
+    fun isJavaLangObject(type: TypeMirror) = if (type is DeclaredType) isJavaLangObject(type.asElement()) else false
 
     fun isJavaLangObject(type: AnnotatedTypeMirror.AnnotatedDeclaredType) = isJavaLangObject(type.underlyingType.asElement())
   }

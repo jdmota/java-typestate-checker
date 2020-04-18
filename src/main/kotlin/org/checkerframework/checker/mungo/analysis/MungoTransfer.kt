@@ -5,11 +5,11 @@ import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.dataflow.analysis.*
+import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractStore
 import org.checkerframework.framework.flow.CFAbstractTransfer
 import javax.lang.model.element.ElementKind
-
 
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
 
@@ -225,6 +225,13 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val store = input.regularStore
     val value = store.getValue(n) ?: getValueFromFactory(n.tree, n)
     return RegularTransferResult(finishValue(value, store), store)
+  }
+
+  override fun initialStore(underlyingAST: UnderlyingAST?, parameters: MutableList<LocalVariableNode>?): MungoStore {
+    a.creatingInitialStore = true
+    val ret = super.initialStore(underlyingAST, parameters)
+    a.creatingInitialStore = false
+    return ret
   }
 
 }

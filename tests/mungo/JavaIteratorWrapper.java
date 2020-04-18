@@ -168,7 +168,6 @@ class JavaIteratorWrapper5 {
 @MungoTypestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper6 {
 
-  // :: error: (Object did not complete its protocol. Type: Unknown)
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
@@ -180,16 +179,16 @@ class JavaIteratorWrapper6 {
   public boolean hasNext() {
     // :: error: (Cannot call its own public method)
     hasNext();
-    // :: warning: (iterator: Unknown)
-    // :: error: (Cannot call hasNext on unknown)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Null)
+    // :: error: (Cannot call hasNext on null, on ended protocol)
     return iterator.hasNext();
   }
 
   public String next() {
     // :: error: (Cannot call its own public method)
     this.hasNext();
-    // :: warning: (iterator: Unknown)
-    // :: error: (Cannot call next on unknown)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Null)
+    // :: error: (Cannot call next on null, on ended protocol, on state HasNext (got: HasNext, Next))
     return iterator.next();
   }
 
@@ -240,8 +239,8 @@ class JavaIteratorWrapper8 {
 
   public boolean hasNext() {
     // This error exists because the "use" call invalidates information
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
-    // :: error: (Cannot call hasNext on null)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Null)
+    // :: error: (Cannot call hasNext on null, on ended protocol)
     return iterator.hasNext();
   }
 
@@ -274,8 +273,8 @@ class JavaIteratorWrapper9 {
 
   public boolean hasNext() {
     // This error exists because the "use" call invalidates information
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
-    // :: error: (Cannot call hasNext on null)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Null)
+    // :: error: (Cannot call hasNext on null, on ended protocol)
     return iterator.hasNext();
   }
 
