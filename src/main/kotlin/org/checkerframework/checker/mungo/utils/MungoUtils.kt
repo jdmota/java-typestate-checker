@@ -63,10 +63,25 @@ class MungoUtils(val checker: MungoChecker) {
   }
 
   companion object {
-    val mungoTypestateName: String = MungoTypestate::class.java.canonicalName
     val mungoStateName: String = MungoState::class.java.canonicalName
-    val mungoNullableName: String = MungoNullable::class.java.canonicalName
-    val mungoTypestateAliasName: String = "mungo.lib.Typestate"
+    val typestateAnnotations = setOf(MungoTypestate::class.java.canonicalName, "mungo.lib.Typestate")
+    val nullableAnnotations = setOf(
+      MungoNullable::class.java.canonicalName,
+      // From https://github.com/JetBrains/kotlin/blob/master/core/descriptors.jvm/src/org/jetbrains/kotlin/load/java/JvmAnnotationNames.kt
+      "org.jetbrains.annotations.Nullable",
+      "androidx.annotation.Nullable",
+      "android.support.annotation.Nullable",
+      "android.annotation.Nullable",
+      "com.android.annotations.Nullable",
+      "org.eclipse.jdt.annotation.Nullable",
+      "org.checkerframework.checker.nullness.qual.Nullable",
+      "javax.annotation.Nullable",
+      "javax.annotation.CheckForNull",
+      "edu.umd.cs.findbugs.annotations.CheckForNull",
+      "edu.umd.cs.findbugs.annotations.Nullable",
+      "edu.umd.cs.findbugs.annotations.PossiblyNull",
+      "io.reactivex.annotations.Nullable"
+    )
 
     // Internal annotations for type information
     val mungoUnknownName: String = MungoUnknown::class.java.canonicalName

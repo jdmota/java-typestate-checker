@@ -151,7 +151,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   // so we only report errors in that case, which provides "tree", for error location.
   fun visitMungoAnnotations(type: AnnotatedTypeMirror.AnnotatedDeclaredType, tree: Tree?) {
     val stateAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
-    val nullableAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoNullableName) }
+    val isNullable = type.underlyingType.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
 
     val types = run {
       if (ClassUtils.isJavaLangObject(type)) {
@@ -181,7 +181,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       }
     }
 
-    val maybeNullableType = if (nullableAnno == null) MungoBottomType.SINGLETON else MungoNullType.SINGLETON
+    val maybeNullableType = if (isNullable) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
 
     type.replaceAnnotation(MungoUnionType.create(listOf(types, maybeNullableType)).buildAnnotation(checker.processingEnvironment))
   }
