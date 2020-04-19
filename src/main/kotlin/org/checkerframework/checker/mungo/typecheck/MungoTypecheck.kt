@@ -155,7 +155,7 @@ object MungoTypecheck {
         MungoNoProtocolType.SINGLETON
       } else {
         val states = graph.getAllConcreteStates()
-        MungoUnionType.create(states.map { MungoStateType.create(graph, it) }.plus(MungoEndedType.SINGLETON))
+        MungoUnionType.create(states.map { MungoStateType.create(graph, it) }.plus(MungoEndedType.SINGLETON).plus(MungoMovedType.SINGLETON))
       }
     }
 

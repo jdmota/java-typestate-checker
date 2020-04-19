@@ -179,16 +179,16 @@ class JavaIteratorWrapper6 {
   public boolean hasNext() {
     // :: error: (Cannot call its own public method)
     hasNext();
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Null)
-    // :: error: (Cannot call hasNext on null, on ended protocol)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Moved | Null)
+    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
     return iterator.hasNext();
   }
 
   public String next() {
     // :: error: (Cannot call its own public method)
     this.hasNext();
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Null)
-    // :: error: (Cannot call next on null, on ended protocol, on state HasNext (got: HasNext, Next))
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Moved | Null)
+    // :: error: (Cannot call next on null, on ended protocol, on moved value, on state HasNext (got: HasNext, Next))
     return iterator.next();
   }
 
@@ -239,8 +239,8 @@ class JavaIteratorWrapper8 {
 
   public boolean hasNext() {
     // This error exists because the "use" call invalidates information
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Null)
-    // :: error: (Cannot call hasNext on null, on ended protocol)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Moved | Null)
+    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
     return iterator.hasNext();
   }
 
@@ -273,8 +273,8 @@ class JavaIteratorWrapper9 {
 
   public boolean hasNext() {
     // This error exists because the "use" call invalidates information
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Null)
-    // :: error: (Cannot call hasNext on null, on ended protocol)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Moved | Null)
+    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
     return iterator.hasNext();
   }
 
