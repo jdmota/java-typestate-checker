@@ -10,7 +10,6 @@ import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.dataflow.cfg.node.LocalVariableNode
-import org.checkerframework.framework.source.Result
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
@@ -44,9 +43,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       // Invert here
       // TODO understand why the authors check the opposite...
       if (!atypeFactory.qualifierHierarchy.isSubtype(constructorTypeMirror, superTypeMirror)) {
-        checker.report(
-          Result.failure(errorKey, constructorTypeMirror, superCall, superTypeMirror),
-          superCall)
+        checker.reportError(superCall, errorKey, constructorTypeMirror, superCall, superTypeMirror)
       }
     }
   }

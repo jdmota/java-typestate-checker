@@ -15,7 +15,6 @@ import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.checker.mungo.typecheck.getTypeFromAnnotation
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
-import org.checkerframework.framework.source.Result
 import org.checkerframework.javacutil.AnnotationUtils
 import java.nio.file.Path
 import java.util.*
@@ -39,7 +38,7 @@ class MungoUtils(val checker: MungoChecker) {
     }
 
   fun err(message: String, where: Any) {
-    checker.report(Result.failure(message), where)
+    checker.reportError(where, message)
   }
 
   fun checkStates(file: Path, states: List<String>, src: Any) {
