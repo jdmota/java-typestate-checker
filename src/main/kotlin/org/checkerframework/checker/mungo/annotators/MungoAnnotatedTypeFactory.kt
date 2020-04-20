@@ -1,9 +1,6 @@
 package org.checkerframework.checker.mungo.annotators
 
-import com.sun.source.tree.ClassTree
-import com.sun.source.tree.LambdaExpressionTree
-import com.sun.source.tree.MethodTree
-import com.sun.source.tree.Tree
+import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoAnalysis
@@ -33,20 +30,17 @@ import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseT
 import org.checkerframework.framework.util.DefaultAnnotationFormatter
 import org.checkerframework.framework.util.GraphQualifierHierarchy
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
-import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.Pair
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
-import java.lang.StringBuilder
 import java.util.*
-import javax.lang.model.element.AnnotationMirror
-import javax.lang.model.element.Modifier
-import javax.lang.model.element.VariableElement
+import javax.lang.model.element.*
 import kotlin.collections.LinkedHashSet
 
 class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFactory<MungoValue, MungoStore, MungoTransfer, MungoAnalysis>(checker) {
 
   private val c = checker
+  val typeApplier = MungoTypeApplier(c)
 
   init {
     postInit()
@@ -144,47 +138,6 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
   fun getTypeFor(tree: Tree, type: AnnotatedTypeMirror = getAnnotatedType(tree)) = getInferredValueFor(tree)?.info
     ?: MungoUtils.mungoTypeFromAnnotations(type.annotations)
-
-  // This is called in both MungoTreeAnnotator#visitVariable and MungoDefaultQualifierForUseTypeAnnotator#visitDeclared
-  // For some reason, it must be called in "visitDeclared" as well...
-  // Nonetheless, "visitVariable" is always called for both method arguments and variable declarations,
-  // so we only report errors in that case, which provides "tree", for error location.
-  fun visitDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType, tree: Tree?) {
-    val stateAnno = type.underlyingType.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
-    val isNullable = type.underlyingType.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
-
-    val types = run {
-      if (ClassUtils.isJavaLangObject(type)) {
-        if (stateAnno != null && tree != null) {
-          c.utils.err("@MungoState has no meaning in Object type", tree)
-        }
-        MungoObjectType.SINGLETON
-      } else {
-        val graph = c.utils.classUtils.visitClassDeclaredType(type)
-        if (graph == null) {
-          if (stateAnno != null && tree != null) {
-            c.utils.err("@MungoState has no meaning since this type has no protocol", tree)
-          }
-          MungoNoProtocolType.SINGLETON
-        } else {
-          val states = if (stateAnno == null) {
-            graph.getAllConcreteStates()
-          } else {
-            val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
-            if (tree != null) {
-              c.utils.checkStates(graph.file, stateNames, tree)
-            }
-            graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
-          }
-          MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
-        }
-      }
-    }
-
-    val maybeNullableType = if (isNullable) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
-
-    type.replaceAnnotation(MungoUnionType.create(listOf(types, maybeNullableType)).buildAnnotation(checker.processingEnvironment))
-  }
 
   // This might be an hack, but is probably the best we can do now:
   // Intercept the analysis of a method in a class with protocol and redirect that processing to our own class analysis

@@ -1,9 +1,6 @@
 package org.checkerframework.checker.mungo.annotators
 
-import com.sun.source.tree.LiteralTree
-import com.sun.source.tree.NewClassTree
-import com.sun.source.tree.Tree
-import com.sun.source.tree.VariableTree
+import com.sun.source.tree.*
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.typecheck.MungoNoProtocolType
@@ -41,7 +38,15 @@ class MungoTreeAnnotator(private val checker: MungoChecker, private val factory:
   override fun visitVariable(node: VariableTree, type: AnnotatedTypeMirror): Void? {
     val ret = super.visitVariable(node, type)
     if (type is AnnotatedTypeMirror.AnnotatedDeclaredType) {
-      factory.visitDeclaredType(type, node)
+      factory.typeApplier.apply(node, type)
+    }
+    return ret
+  }
+
+  override fun visitMemberSelect(node: MemberSelectTree, type: AnnotatedTypeMirror): Void? {
+    val ret = super.visitMemberSelect(node, type)
+    if (type is AnnotatedTypeMirror.AnnotatedDeclaredType) {
+      factory.typeApplier.apply(node, type)
     }
     return ret
   }

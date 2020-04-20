@@ -2,17 +2,14 @@ package org.checkerframework.checker.mungo.annotators
 
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.*
-import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
-import javax.lang.model.element.AnnotationMirror
-import javax.lang.model.element.Element
 
 class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker, private val factory: MungoAnnotatedTypeFactory) : DefaultQualifierForUseTypeAnnotator(factory) {
 
   override fun visitDeclared(type: AnnotatedTypeMirror.AnnotatedDeclaredType, aVoid: Void?): Void? {
     val ret = super.visitDeclared(type, aVoid)
-    factory.visitDeclaredType(type, null)
+    factory.typeApplier.apply(type)
     return ret
   }
 
