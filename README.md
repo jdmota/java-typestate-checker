@@ -65,15 +65,31 @@ Since annotations are only able to store some types of values, not arbitrary obj
 
 More details: [Manual - How to create a Checker plugin](https://checkerframework.org/manual/#creating-a-checker)
 
-## Building
+## Build and test
 
 - Unix: `./gradlew build`
 - Windows: `gradlew.bat build`
+
+## Build jar file
+
+- Unix: `./gradlew buildJar`
+- Windows: `gradlew.bat buildJar`
+
+The produced jar file goes into the `examples` folder.
 
 ## Remote testing
 
 - Unix: `./gradlew test --debug-jvm`
 - Windows: `gradlew.bat test --debug-jvm`
+
+## Running comparison tests
+
+1. Extract [Checker Framework](https://checkerframework.org/) into the `examples` folder.
+1. Build jar file.
+1. Run:
+    - Unix: TODO
+    - Windows: `cd examples && run.bat`
+1. Check `examples/comparison` and nested folders for results.
 
 ## Roadmap and TODO's
 

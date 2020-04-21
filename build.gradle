@@ -89,6 +89,11 @@ jar {
     }
 }
 
+task buildJar(type: Copy) {
+    from jar
+    into "examples"
+}
+
 tasks.withType(JavaCompile).all {
     options.compilerArgs.add("-Xlint:all")
 }
