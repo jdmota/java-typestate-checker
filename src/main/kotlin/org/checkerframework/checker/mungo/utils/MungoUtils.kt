@@ -15,6 +15,7 @@ import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.checker.mungo.typecheck.getTypeFromAnnotation
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
+import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.javacutil.AnnotationUtils
 import java.nio.file.Path
 import java.util.*
@@ -41,9 +42,8 @@ class MungoUtils(val checker: MungoChecker) {
     checker.reportError(where, message)
   }
 
-  fun checkStates(file: Path, states: List<String>, src: Any) {
-    val graph = processor.lookupGraph(file)
-    val basename = file.fileName
+  fun checkStates(graph: Graph, states: List<String>, src: Any) {
+    val basename = graph.resolvedFile.fileName
     for (state in states) {
       if (graph.isFinalState(state)) {
         err("State $state is final. Will have no effect in @MungoState", src)

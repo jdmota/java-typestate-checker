@@ -57,11 +57,13 @@ class TypestateProcessor {
 
     @Throws(Exception::class)
     private fun fromPath(file: Path): Graph {
+      var resolvedFile = file
       val stream = run {
         try {
           CharStreams.fromPath(file)
         } catch (exp: NoSuchFileException) {
-          CharStreams.fromPath(Paths.get("$file.protocol"))
+          resolvedFile = Paths.get("$file.protocol")
+          CharStreams.fromPath(resolvedFile)
         }
       }
       val lexer = TypestateLexer(stream)
@@ -70,7 +72,7 @@ class TypestateProcessor {
       parser.errorHandler = BailErrorStrategy()
       val ast = parser.start().ast
       // println(Dot.fromGraph(graph))
-      return Graph.fromTypestate(file, ast)
+      return Graph.fromTypestate(file, resolvedFile, ast)
     }
 
     private fun err(utils: MungoUtils, text: String, transition: TMethodNode, state: State, tree: JCTree.JCClassDecl) {

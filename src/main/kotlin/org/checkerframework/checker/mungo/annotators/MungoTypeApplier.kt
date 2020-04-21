@@ -53,7 +53,7 @@ class MungoTypeApplier(private val c: MungoChecker) {
             } else {
               val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
               if (tree != null) {
-                c.utils.checkStates(graph.file, stateNames, tree)
+                c.utils.checkStates(graph, stateNames, tree)
               }
               graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
             }

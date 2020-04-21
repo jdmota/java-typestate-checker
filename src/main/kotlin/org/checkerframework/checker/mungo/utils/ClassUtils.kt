@@ -22,8 +22,7 @@ class ClassUtils(private val utils: MungoUtils) {
 
   private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationTree): Graph? {
     val args = annotation.arguments
-    val file: String
-    file = try {
+    val file = try {
       val arg = args[0]
       val expr = (arg as AssignmentTree).expression
       val value = (expr as LiteralTree).value
