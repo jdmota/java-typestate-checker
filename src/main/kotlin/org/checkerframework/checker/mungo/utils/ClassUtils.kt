@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.utils
 import com.sun.source.tree.*
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
@@ -12,6 +13,7 @@ import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
+import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
@@ -20,7 +22,7 @@ import javax.lang.model.type.TypeMirror
 
 class ClassUtils(private val utils: MungoUtils) {
 
-  private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationTree): Graph? {
+  private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationTree, src: Tree): Graph? {
     val args = annotation.arguments
     val file = try {
       val arg = args[0]
@@ -28,24 +30,44 @@ class ClassUtils(private val utils: MungoUtils) {
       val value = (expr as LiteralTree).value
       value as String
     } catch (exp: ClassCastException) {
-      utils.err("Expected 1 string argument in @MungoTypestate", annotation)
+      utils.err("Expected 1 string argument in @MungoTypestate", src)
       return null
     } catch (exp: IndexOutOfBoundsException) {
-      utils.err("Expected 1 string argument in @MungoTypestate", annotation)
+      utils.err("Expected 1 string argument in @MungoTypestate", src)
       return null
     }
     if (file.isEmpty()) {
-      utils.err("String in @MungoTypestate is empty", annotation)
+      utils.err("String in @MungoTypestate is empty", src)
       return null
     }
     // Get the path of the protocol file relative to the source file
     val protocolFilePath = sourceFilePath.resolveSibling(file).normalize()
     // Parse and process typestate
     val result = utils.processor.getGraph(protocolFilePath)
-    if (result.error != null) {
-      utils.err(result.error.format(), annotation)
+    result.error?.let { utils.err(result.error.format(), src) }
+    return result.graph
+  }
+
+  private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationMirror, src: Element): Graph? {
+    val args = annotation.elementValues.values
+    val file = try {
+      args.firstOrNull()?.value as String
+    } catch (exp: ClassCastException) {
+      utils.err("Expected 1 string argument in @MungoTypestate", src)
+      return null
+    } catch (exp: IndexOutOfBoundsException) {
+      utils.err("Expected 1 string argument in @MungoTypestate", src)
       return null
     }
+    if (file.isEmpty()) {
+      utils.err("String in @MungoTypestate is empty", src)
+      return null
+    }
+    // Get the path of the protocol file relative to the source file
+    val protocolFilePath = sourceFilePath.resolveSibling(file).normalize()
+    // Parse and process typestate
+    val result = utils.processor.getGraph(protocolFilePath)
+    result.error?.let { utils.err(result.error.format(), src) }
     return result.graph
   }
 
@@ -56,6 +78,14 @@ class ClassUtils(private val utils: MungoUtils) {
     }
     if (annotations.size > 1) {
       utils.err("There is more than 1 @MungoTypestate annotation", tree)
+    }
+    return annotations.firstOrNull()
+  }
+
+  private fun getMungoTypestateAnnotation(annotationMirrors: Collection<AnnotationMirror>): AnnotationMirror? {
+    val annotations = annotationMirrors.filter {
+      val elem = it.annotationType
+      elem is Type && MungoUtils.typestateAnnotations.contains(elem.tsym.qualifiedName.toString())
     }
     return annotations.firstOrNull()
   }
@@ -77,10 +107,18 @@ class ClassUtils(private val utils: MungoUtils) {
     if (element !is Symbol.ClassSymbol) {
       return null
     }
-    // "getPath" may return null for java.lang.Object for example
-    val path = utils.factory.treeUtils.getPath(element) ?: return null
-    // Process class tree
-    return visitClassTree(path)
+    val treePath = utils.factory.treeUtils.getPath(element)
+    return if (treePath == null) {
+      if (element.sourcefile != null) {
+        // Workaround issue where ClassTree cannot be found in some instances...
+        val sourceFilePath = Paths.get(element.sourcefile.name).toAbsolutePath()
+        getMungoTypestateAnnotation(element.annotationMirrors)?.let {
+          processMungoTypestateAnnotation(sourceFilePath, it, element)
+        }
+      } else null
+    } else {
+      visitClassTree(treePath)
+    }
   }
 
   fun visitClassTree(treePath: TreePath): Graph? {
@@ -88,7 +126,7 @@ class ClassUtils(private val utils: MungoUtils) {
       // Get the path of the file where the class is
       val sourceFilePath = Paths.get(treePath.compilationUnit.sourceFile.toUri())
       getMungoTypestateAnnotation(tree)?.let {
-        processMungoTypestateAnnotation(sourceFilePath, it)
+        processMungoTypestateAnnotation(sourceFilePath, it, tree)
       }?.let {
         TypestateProcessor.validateClassAndGraph(utils, treePath, tree, it)
       }.let {
