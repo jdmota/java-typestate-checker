@@ -6,20 +6,12 @@ import java.util.LinkedList;
 @MungoTypestate("FileInCollection.protocol")
 class FileInCollection {
 
-  public enum State {
-    INIT, OPEN, READ, CLOSE
+  public FileState state() {
+    return FileState.CLOSE;
   }
 
-  public enum Status {
-    OK, ERROR
-  }
-
-  public State state() {
-    return State.CLOSE;
-  }
-
-  public Status open() {
-    return Status.OK;
+  public FileStatus open() {
+    return FileStatus.OK;
   }
 
   public boolean hasNext() {

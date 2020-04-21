@@ -1,7 +1,8 @@
 package org.checkerframework.checker.mungo.utils
 
-import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.*
+import com.sun.tools.javac.comp.AttrContext
+import com.sun.tools.javac.comp.Env
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.List as JavacList
 import com.sun.tools.javac.util.Names
@@ -37,10 +38,10 @@ class MethodUtils(private val utils: MungoUtils) {
 
   fun wrapMethodSymbol(sym: Symbol.MethodSymbol) = MethodSymbolWrapper(sym)
 
-  fun methodNodeToMethodSymbol(treePath: TreePath, node: TMethodNode, owner: Symbol.ClassSymbol): MethodSymbolWrapper {
+  fun methodNodeToMethodSymbol(env: Env<AttrContext>, node: TMethodNode, owner: Symbol.ClassSymbol): MethodSymbolWrapper {
     val unknownTypes = mutableListOf<String>()
     fun resolve(type: String): Type {
-      val resolved = resolver.resolve(treePath, type)
+      val resolved = resolver.resolve(env, type)
       return if (resolved == null) {
         unknownTypes.add(type)
         symtab.unknownType
@@ -92,16 +93,16 @@ class MethodUtils(private val utils: MungoUtils) {
   }
 
   // We could use "typeUtils.isSameType" with the MethodType, but it does not compare thrown types
-  private fun sameMethod(tree: TreePath, name: String, type: Type, node: TMethodNode): Boolean {
+  private fun sameMethod(env: Env<AttrContext>, name: String, type: Type, node: TMethodNode): Boolean {
     // TODO deal with thrownTypes and typeArguments
     return name == node.name &&
-      isSameType(type.returnType, resolver.resolve(tree, node.returnType)) &&
-      isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(tree, it) }) &&
+      isSameType(type.returnType, resolver.resolve(env, node.returnType)) &&
+      isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it) }) &&
       isSameTypes(type.thrownTypes, listOf())
   }
 
-  fun sameMethod(tree: TreePath, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
-    return sameMethod(tree, sym.name.toString(), sym.type, node)
+  fun sameMethod(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
+    return sameMethod(env, sym.name.toString(), sym.type, node)
   }
 
   fun returnsBoolean(method: Symbol.MethodSymbol): Boolean {

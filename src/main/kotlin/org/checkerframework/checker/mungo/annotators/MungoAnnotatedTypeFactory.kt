@@ -2,6 +2,7 @@ package org.checkerframework.checker.mungo.annotators
 
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoAnalysis
 import org.checkerframework.checker.mungo.analysis.MungoStore
@@ -253,13 +254,15 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       Pair(it.method, TreeUtils.elementFromTree(it.method) as Symbol.MethodSymbol)
     }
 
-    val currentClassPath = visitorState.path
     val methodToStatesCache = mutableMapOf<State, Map<MethodTree, AbstractState<*>>>()
 
-    fun getMethodToState(state: State) = methodsWithTypes.mapNotNull { (method, symbol) ->
-      val t = state.transitions.entries.find { c.utils.methodUtils.sameMethod(currentClassPath, symbol, it.key) }
-      t?.value?.let { Pair(method, it) }
-    }.toMap()
+    fun getMethodToState(state: State) = run {
+      val env = state.graph.getEnv()
+      methodsWithTypes.mapNotNull { (method, symbol) ->
+        val t = state.transitions.entries.find { c.utils.methodUtils.sameMethod(env, symbol, it.key) }
+        t?.value?.let { Pair(method, it) }
+      }.toMap()
+    }
 
     // States lead us to methods that may be called. So we need information about each state.
     val stateToStore = mutableMapOf<State, MungoStore>()

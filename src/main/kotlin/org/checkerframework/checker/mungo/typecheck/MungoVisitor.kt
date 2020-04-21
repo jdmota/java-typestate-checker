@@ -73,7 +73,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
         val receiverTree = TreeUtils.getReceiverTree(node)
         if (receiverTree != null) {
           val type = typeFactory.getTypeFor(receiverTree)
-          val checks = MungoTypecheck.check(c.utils, visitorState.path, type, node, element)
+          val checks = MungoTypecheck.check(c.utils, type, node, element)
           if (!checks) {
             // Ignore this method invocation tree to avoid (method.invocation.invalid) errors produced by Checker
             skipMethods[node] = true

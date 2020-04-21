@@ -14,7 +14,6 @@ import javax.lang.model.type.TypeMirror
 object MungoTypecheck {
   fun check(
     utils: MungoUtils,
-    tree: TreePath,
     info: MungoType,
     node: MethodInvocationTree,
     method: Symbol.MethodSymbol
@@ -29,7 +28,8 @@ object MungoTypecheck {
       is MungoEndedType -> createErrorMsg(node, isEnded = true)
       is MungoMovedType -> createErrorMsg(node, isMoved = true)
       is MungoStateType -> {
-        if (info.state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
+        val env = info.graph.getEnv()
+        if (info.state.transitions.entries.any { utils.methodUtils.sameMethod(env, method, it.key) }) {
           null
         } else {
           createErrorMsg(node, unexpectedStates = listOf(info.state.name), currentStates = listOf(info.state.name))
@@ -48,12 +48,17 @@ object MungoTypecheck {
             is MungoNullType -> isNull = true
             is MungoEndedType -> isEnded = true
             is MungoMovedType -> isMoved = true
+            is MungoPrimitiveType -> {
+              // Calls on primitive values are not possible, so just ignore
+            }
             is MungoStateType -> {
               currentStates.add(type.state.name)
-              if (!type.state.transitions.entries.any { utils.methodUtils.sameMethod(tree, method, it.key) }) {
+              val env = type.graph.getEnv()
+              if (!type.state.transitions.entries.any { utils.methodUtils.sameMethod(env, method, it.key) }) {
                 unexpectedStates.add(type.state.name)
               }
             }
+            else -> throw AssertionError("union has ${type.javaClass}")
           }
         }
         if (isNull || isEnded || isMoved || unexpectedStates.size > 0) {
@@ -112,13 +117,14 @@ object MungoTypecheck {
       is MungoNoProtocolType -> MungoNoProtocolType.SINGLETON
       // Refine...
       is MungoUnionType -> MungoUnionType.create(type.types.map { refine(utils, tree, it, method, predicate) })
-      is MungoStateType -> MungoUnionType.create(refine(utils, tree, type, method, predicate))
+      is MungoStateType -> MungoUnionType.create(refine(utils, type, method, predicate))
     }
   }
 
-  private fun refine(utils: MungoUtils, tree: TreePath, type: MungoStateType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): List<MungoType> {
+  private fun refine(utils: MungoUtils, type: MungoStateType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): List<MungoType> {
+    val env = type.graph.getEnv()
     // Given a current state, produce a set of possible destination states
-    val dest = type.state.transitions.entries.find { utils.methodUtils.sameMethod(tree, method, it.key) }?.value
+    val dest = type.state.transitions.entries.find { utils.methodUtils.sameMethod(env, method, it.key) }?.value
     return when (dest) {
       is State -> listOf(MungoStateType.create(type.graph, dest))
       is DecisionState -> dest.transitions.entries.filter { predicate(it.key.label) }.map { MungoStateType.create(type.graph, it.value) }

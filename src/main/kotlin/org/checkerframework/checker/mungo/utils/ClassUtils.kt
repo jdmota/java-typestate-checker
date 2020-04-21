@@ -8,6 +8,7 @@ import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.type.AnnotatedTypeMirror
+import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.nio.file.Path
@@ -128,7 +129,7 @@ class ClassUtils(private val utils: MungoUtils) {
       getMungoTypestateAnnotation(tree)?.let {
         processMungoTypestateAnnotation(sourceFilePath, it, tree)
       }?.let {
-        TypestateProcessor.validateClassAndGraph(utils, treePath, tree, it)
+        TypestateProcessor.validateClassAndGraph(utils, tree, it)
       }.let {
         // "computeIfAbsent" does not store null values, store an Optional instead
         Optional.ofNullable(it)

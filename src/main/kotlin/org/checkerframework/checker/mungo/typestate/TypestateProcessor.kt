@@ -1,6 +1,5 @@
 package org.checkerframework.checker.mungo.typestate
 
-import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.antlr.v4.runtime.BailErrorStrategy
@@ -19,7 +18,7 @@ import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.Paths
 
-class TypestateProcessor {
+class TypestateProcessor(private val utils: MungoUtils) {
   private val graphs: MutableMap<Path, GraphOrError> = HashMap()
 
   class GraphOrError {
@@ -37,26 +36,20 @@ class TypestateProcessor {
     }
   }
 
-  fun lookupGraph(file: Path): Graph {
-    val graph = graphs[file]?.graph
-    return graph ?: throw AssertionError("no graph for $file")
-  }
-
   fun getGraph(file: Path): GraphOrError {
-    return graphs.computeIfAbsent(file.normalize()) { process(it) }
+    return graphs.computeIfAbsent(file.normalize()) { process(utils, it) }
   }
 
   companion object {
-    private fun process(file: Path): GraphOrError {
+    private fun process(utils: MungoUtils,file: Path): GraphOrError {
       return try {
-        GraphOrError(fromPath(file))
+        GraphOrError(fromPath(utils, file))
       } catch (exp: Exception) {
         GraphOrError(TypestateProcessingError(exp))
       }
     }
 
-    @Throws(Exception::class)
-    private fun fromPath(file: Path): Graph {
+    private fun fromPath(utils: MungoUtils, file: Path): Graph {
       var resolvedFile = file
       val stream = run {
         try {
@@ -72,14 +65,15 @@ class TypestateProcessor {
       parser.errorHandler = BailErrorStrategy()
       val ast = parser.start().ast
       // println(Dot.fromGraph(graph))
-      return Graph.fromTypestate(file, resolvedFile, ast)
+      return Graph.fromTypestate(utils, file, resolvedFile, ast)
     }
 
     private fun err(utils: MungoUtils, text: String, transition: TMethodNode, state: State, tree: JCTree.JCClassDecl) {
       utils.err("$text transition ${transition.format()} on state ${state.name}", tree)
     }
 
-    fun validateClassAndGraph(utils: MungoUtils, treePath: TreePath, tree: JCTree.JCClassDecl, graph: Graph): Graph {
+    fun validateClassAndGraph(utils: MungoUtils, tree: JCTree.JCClassDecl, graph: Graph): Graph {
+      val env = graph.getEnv()
       val methodTrees = ClassUtils.getNonStaticPublicMethods(tree).map {
         utils.methodUtils.wrapMethodSymbol((it as JCTree.JCMethodDecl).sym)
       }
@@ -87,7 +81,7 @@ class TypestateProcessor {
       for (state in graph.getAllConcreteStates()) {
         val seen = mutableSetOf<MethodUtils.MethodSymbolWrapper>()
         for ((transition, dest) in state.transitions) {
-          val method = utils.methodUtils.methodNodeToMethodSymbol(treePath, transition, tree.sym)
+          val method = utils.methodUtils.methodNodeToMethodSymbol(env, transition, tree.sym)
 
           if (method.unknownTypes.isNotEmpty()) {
             err(utils, "Unknown type${if (method.unknownTypes.size == 1) "" else "s"} ${method.unknownTypes.joinToString(", ")} in", transition, state, tree)

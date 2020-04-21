@@ -26,7 +26,7 @@ class MungoUtils(val checker: MungoChecker) {
   val resolver = Resolver(checker.processingEnvironment)
   val classUtils = ClassUtils(this)
 
-  val processor = TypestateProcessor()
+  val processor = TypestateProcessor(this)
   val methodUtils = MethodUtils(this)
 
   private lateinit var _factory: MungoAnnotatedTypeFactory

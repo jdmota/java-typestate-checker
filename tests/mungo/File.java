@@ -3,12 +3,8 @@ import org.checkerframework.checker.mungo.lib.MungoTypestate;
 @MungoTypestate("File.protocol")
 class File {
 
-  public enum Status {
-    OK, ERROR
-  }
-
-  public Status open() {
-    return Status.OK;
+  public FileStatus open() {
+    return FileStatus.OK;
   }
 
   public boolean hasNext() {

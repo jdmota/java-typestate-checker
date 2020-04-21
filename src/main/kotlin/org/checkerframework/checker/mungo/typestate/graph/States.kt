@@ -4,11 +4,11 @@ import org.checkerframework.checker.mungo.typestate.ast.*
 
 sealed class AbstractState<N : TNode>(var node: N?)
 
-open class State private constructor(val name: String, node: TStateNode?) : AbstractState<TStateNode>(node) {
+open class State private constructor(val name: String, node: TStateNode?, val graph: Graph) : AbstractState<TStateNode>(node) {
 
-  protected constructor(name: String) : this(name, null)
+  protected constructor(name: String, graph: Graph) : this(name, null, graph)
 
-  constructor(node: TStateNode) : this(node.name ?: "unknown:${node.pos.lineCol}", node)
+  constructor(node: TStateNode, graph: Graph) : this(node.name ?: "unknown:${node.pos.lineCol}", node, graph)
 
   val transitions: MutableMap<TMethodNode, AbstractState<*>> = HashMap()
 
@@ -34,7 +34,7 @@ class DecisionState(node: TDecisionStateNode?) : AbstractState<TDecisionStateNod
   }
 }
 
-class EndState : State("end") {
+class EndState(graph: Graph) : State("end", graph) {
   override fun addTransition(transition: TMethodNode, destination: AbstractState<*>) {
     throw AssertionError("end state should have no transitions")
   }

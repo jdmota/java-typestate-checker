@@ -1,7 +1,7 @@
 typestate FileProtocol {
 
   Init = {
-    Status open(): <OK: Open, ERROR: end>
+    FileStatus open(): <OK: Open, ERROR: end>
   }
 
   Open = {

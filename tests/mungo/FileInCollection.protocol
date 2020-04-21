@@ -1,25 +1,25 @@
 typestate FileInCollection {
 
   Init = {
-    State state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,
-    Status open(): <OK: Open, ERROR: end>
+    FileState state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,
+    FileStatus open(): <OK: Open, ERROR: end>
   }
 
   Open = {
-    State state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,
+    FileState state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,
     boolean hasNext(): <true: Read, false: Close>,
     void close(): end
   }
 
   Read = {
-    State state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,
+    FileState state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,
     boolean hasNext(): <true: Read, false: Close>,
     int read(): Open,
     void close(): end
   }
 
   Close = {
-    State state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,
+    FileState state(): <INIT: Init, OPEN: Open, READ: Read, CLOSE: Close>,
     void close(): end
   }
 

@@ -1,7 +1,7 @@
 typestate FaultyFile {
 
   Init = {
-    Status open(): <OK: Open, FOO: end>
+    FileStatus open(): <OK: Open, FOO: end>
   }
 
   Open = {
