@@ -1,0 +1,10 @@
+import mungo.lib.Boolean;
+
+typestate JavaIteratorProtocol {
+  HasNext = {
+    Boolean hasNext(): <True: Next, False: end>
+  }
+  Next = {
+    String next(): HasNext
+  }
+}

@@ -7,9 +7,6 @@
 
 ```
 
-FileProtocol.protocol: 4-5: Semantic Error
-		Method Status open() should return an enumeration type.
-
 FileProtocol.protocol: 8-5: Semantic Error
 		Method boolean eof() should return an enumeration type.
 
@@ -18,9 +15,6 @@ FileProtocol.protocol: 8-20: Semantic Error
 
 Main.java: 0-0: Semantic Error
 		Object created at Main.java: 4. Typestate mismatch. Found: int read(), void close(), boolean eof(). Expected: <, >.
-
-FileProtocol.protocol: 4-5: Semantic Error
-		Method Status open() should return an enumeration type.
 
 FileProtocol.protocol: 8-5: Semantic Error
 		Method boolean eof() should return an enumeration type.
