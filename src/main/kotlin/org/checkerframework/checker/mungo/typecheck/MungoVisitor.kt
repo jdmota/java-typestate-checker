@@ -9,7 +9,7 @@ import org.checkerframework.checker.mungo.analysis.MungoStore
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
-import org.checkerframework.dataflow.cfg.node.LocalVariableNode
+import org.checkerframework.dataflow.analysis.FlowExpressions
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
@@ -115,7 +115,10 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       return
     }
 
-    val leftValue = typeFactory.getStoreBefore(left)?.getValue(LocalVariableNode(left)) ?: return
+    if (left !is ExpressionTree) return
+
+    val receiver = FlowExpressions.internalReprOf(typeFactory, left)
+    val leftValue = typeFactory.getStoreBefore(left)?.getValue(receiver) ?: return
 
     // Only allow overrides on null, ended, moved object, or object without protocol
     if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
