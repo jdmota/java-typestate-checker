@@ -10,6 +10,7 @@ import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.dataflow.analysis.FlowExpressions
+import org.checkerframework.dataflow.cfg.node.LocalVariableNode
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
@@ -110,19 +111,20 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       // Since we adapted MungoStore#leastUpperBound,
       // now, while analyzing loops,
       // the store includes information from the previous loop.
-      // Ignore variable declarations
-      // so that they are not considered as overrides.
-      return
-    }
+      // Ensure the object from the previous loop completed.
+      val leftValue = typeFactory.getStoreBefore(left)?.getValue(LocalVariableNode(left)) ?: return
 
-    if (left !is ExpressionTree) return
+      if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
+        c.utils.err("Object did not complete its protocol. Type: ${leftValue.info.format()}", left)
+      }
+    } else if (left is ExpressionTree) {
+      val receiver = FlowExpressions.internalReprOf(typeFactory, left)
+      val leftValue = typeFactory.getStoreBefore(left)?.getValue(receiver) ?: return
 
-    val receiver = FlowExpressions.internalReprOf(typeFactory, left)
-    val leftValue = typeFactory.getStoreBefore(left)?.getValue(receiver) ?: return
-
-    // Only allow overrides on null, ended, moved object, or object without protocol
-    if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-      c.utils.err("Cannot override because object has not ended its protocol", left)
+      // Only allow overrides on null, ended, moved object, or object without protocol
+      if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
+        c.utils.err("Cannot override because object has not ended its protocol", left)
+      }
     }
   }
 
