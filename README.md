@@ -91,6 +91,10 @@ The produced jar file goes into the `examples` folder.
     - Windows: `cd examples && run.bat`
 1. Check `examples/comparison` and nested folders for results.
 
+## Comparison
+
+[Comparison table between this version of Mungo and other versions](https://github.com/jdmota/abcd-mungo/wiki/Comparison)
+
 ## Roadmap and TODO's
 
 [Roadmap and TODO's](https://github.com/jdmota/abcd-mungo/wiki/Roadmap-and-TODOs)
