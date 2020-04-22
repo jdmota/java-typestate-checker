@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 // Use: @MungoTypestate("FileProtocol.protocol")
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE_USE, ElementType.TYPE_PARAMETER})
+@Target({ElementType.TYPE})
 public @interface MungoTypestate {
   String value();
 }
