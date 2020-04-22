@@ -31,6 +31,7 @@ REM comparison/iterator-attempt7
 FOR %%F IN (
   comparison/basic-checking
   comparison/boolean-decision
+  comparison/nullness-checking
 ) DO (
   cd %%F
   echo Running tests in "%%F"

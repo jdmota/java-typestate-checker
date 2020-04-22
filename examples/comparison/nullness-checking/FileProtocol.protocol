@@ -1,0 +1,15 @@
+typestate FileProtocol {
+
+  Init = {
+    FileStatus open(): <OK: Read, ERROR: end>
+  }
+
+  Read = {
+    String read(): Close
+  }
+
+  Close = {
+    void close(): end
+  }
+
+}
