@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 // Use: @MungoState({"HasNext", "Next"})
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE_USE, ElementType.TYPE_PARAMETER})
+@Target({ElementType.LOCAL_VARIABLE, ElementType.PARAMETER, ElementType.TYPE_USE})
 public @interface MungoState {
   String[] value();
 }
