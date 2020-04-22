@@ -213,6 +213,16 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return ConditionalTransferResult(result.resultValue, thenStore, elseStore)
   }
 
+  override fun visitBooleanLiteral(n: BooleanLiteralNode, p: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val result = super.visitBooleanLiteral(n, p)
+    val bool = n.value!!
+    return if (bool) {
+      ConditionalTransferResult(result.resultValue, result.thenStore, result.elseStore.withoutLocalVariables())
+    } else {
+      ConditionalTransferResult(result.resultValue, result.elseStore.withoutLocalVariables(), result.elseStore)
+    }
+  }
+
   // Prefer the inferred type information instead of using "mostSpecific" with information in factory
 
   override fun visitLocalVariable(n: LocalVariableNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {

@@ -175,8 +175,6 @@ class JavaIterator {
   }
 
   public static void whileTrueOk() {
-    // FIXME this error exists because "true" is not being considered
-    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
     JavaIterator it = new JavaIterator();
 
     while (true) {
@@ -191,7 +189,7 @@ class JavaIterator {
   }
 
   public static void whileTrueError() {
-    // :: error: (Object did not complete its protocol. Type: JavaIterator{Next|HasNext})
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{Next})
     JavaIterator it = new JavaIterator();
 
     while (true) {

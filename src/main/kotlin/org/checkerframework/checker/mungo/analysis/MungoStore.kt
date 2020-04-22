@@ -130,6 +130,12 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     return newStore
   }
 
+  fun withoutLocalVariables(): MungoStore {
+    val copy = analysis.createCopiedStore(this)
+    copy.localVariableValues.clear()
+    return copy
+  }
+
   fun iterateOverLocalVars(): Iterator<Map.Entry<FlowExpressions.LocalVariable, MungoValue>> {
     return localVariableValues.iterator()
   }
