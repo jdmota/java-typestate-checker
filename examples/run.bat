@@ -18,15 +18,18 @@ if not exist %checker% (
   exit /b 1
 )
 
+REM comparison/file-1
+REM comparison/iterator-attempt1
+REM comparison/iterator-attempt2
+REM comparison/iterator-attempt3
+REM comparison/iterator-attempt4
+REM comparison/iterator-attempt5
+REM comparison/iterator-attempt6
+REM comparison/iterator-attempt7
+
 FOR %%F IN (
-  comparison/file-1
-  comparison/iterator-attempt1
-  comparison/iterator-attempt2
-  comparison/iterator-attempt3
-  comparison/iterator-attempt4
-  comparison/iterator-attempt5
-  comparison/iterator-attempt6
-  comparison/iterator-attempt7
+  comparison/basic-checking
+  comparison/boolean-decision
 ) DO (
   cd %%F
   echo Running tests in "%%F"
