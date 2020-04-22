@@ -19,7 +19,7 @@ dependencies {
 task copySources(type: Copy) {
     includeEmptyDirs = false
     doFirst {
-        // Delete the directory in case a previously copied file should no longer be in checker-qual
+        // Delete the directory in case a previously copied file should no longer be present
         delete file('src/main/java')
     }
 
@@ -41,6 +41,11 @@ jar {
 
 compileJava {
     dependsOn copySources
+}
+
+task buildJar(type: Copy) {
+    from jar
+    into "../examples"
 }
 
 clean {

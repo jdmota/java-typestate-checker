@@ -7,6 +7,7 @@ set examplesDir=%CD%
 set originalMungo=%CD%/mungo-73dd8ae.jar
 
 set mungoChecker=%CD%/mungo-checker.jar
+set mungoCheckerLib=%CD%/mungo-checker-lib.jar
 set mungoCheckerClass=org.checkerframework.checker.mungo.MungoChecker
 
 set checkerVersion=3.3.0
@@ -43,7 +44,7 @@ FOR %%F IN (
     echo ## Original Mungo's output
     echo.
     echo ```
-    java -jar "%originalMungo%" -classpath "%originalMungo%" *.java
+    java -jar "%originalMungo%" -classpath "%originalMungo%;%mungoCheckerLib%" *.java
     echo ```
   ) > README.md 2>&1
   cd %examplesDir%
