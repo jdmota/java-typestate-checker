@@ -13,18 +13,17 @@ import com.sun.tools.javac.tree.TreeMaker
 import com.sun.tools.javac.util.List
 import com.sun.tools.javac.util.Name
 import com.sun.tools.javac.util.Names
+import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import java.lang.reflect.Method
-import java.nio.file.Paths
-import javax.annotation.processing.ProcessingEnvironment
 import javax.lang.model.element.Element
 import javax.tools.JavaFileManager
 
 // Adapted from org.checkerframework.javacutil.Resolver
-class Resolver(env: ProcessingEnvironment) {
+class Resolver(checker: MungoChecker) {
 
-  private val ctx = (env as JavacProcessingEnvironment).context
-  private val trees = Trees.instance(env)
+  private val ctx = (checker.processingEnvironment as JavacProcessingEnvironment).context
+  private val trees = Trees.instance(checker.processingEnvironment)
   private val symtab = Symtab.instance(ctx)
   private val names = Names.instance(ctx)
   private val resolve = Resolve.instance(ctx)
@@ -35,7 +34,7 @@ class Resolver(env: ProcessingEnvironment) {
 
   private val findType = Resolve::class.java.getDeclaredMethod("findType", Env::class.java, Name::class.java)
   private val findIdent = Resolve::class.java.getDeclaredMethod("findIdent", Env::class.java, Name::class.java, Kinds.KindSelector::class.java)
-  private val findIdentInPackage = Resolve::class.java.getDeclaredMethod("findIdentInPackage", Env::class.java, Symbol.TypeSymbol::class.java, Name::class.java, Kinds.KindSelector::class.java)
+  private val findIdentInPackage = Resolve::class.java.getDeclaredMethod("findIdentInPackage", Env::class.java, TypeSymbol::class.java, Name::class.java, Kinds.KindSelector::class.java)
 
   init {
     findType.isAccessible = true
@@ -46,7 +45,7 @@ class Resolver(env: ProcessingEnvironment) {
   // TODO
   fun createEnv(graph: Graph): Env<AttrContext>? {
     val tree = maker.TopLevel(List.nil())
-    tree.sourcefile = fileManager.getJavaFileObject(Paths.get("virtual.java").toAbsolutePath())
+    tree.sourcefile = fileManager.getJavaFileObject(graph.userPath)
 
     return if (modules.enter(List.of(tree), null)) {
       enter.complete(List.of(tree), null)

@@ -1,16 +1,13 @@
 ## Mungo Checker's output
 
 ```
-JavaIterator.java:6: error: [Class has no public method for transition Boolean hasNext() on state HasNext] (Class has no public method for transition Boolean hasNext() on state HasNext)
-public class JavaIterator {
-       ^
-JavaIterator.java:6: error: [Expected decision state with two labels (true/false) in transition Boolean hasNext() on state HasNext] (Expected decision state with two labels (true/false) in transition Boolean hasNext() on state HasNext)
-public class JavaIterator {
-       ^
-Main.java:8: error: [Cannot call hasNext on state HasNext (got: HasNext)] (Cannot call hasNext on state HasNext (got: HasNext))
-    while(it.hasNext() == Boolean.True){
-                    ^
-3 errors
+JavaIteratorProtocol.protocol:5: error: (Class JavaIterator has no public method for this transition)
+    Boolean hasNext(): <True: Next, False: end>
+    ^
+JavaIteratorProtocol.protocol:5: error: (Expected decision state with two labels (true/false))
+    Boolean hasNext(): <True: Next, False: end>
+                       ^
+2 errors
 ```
 
 ## Original Mungo's output

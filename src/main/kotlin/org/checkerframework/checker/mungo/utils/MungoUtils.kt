@@ -2,6 +2,9 @@ package org.checkerframework.checker.mungo.utils
 
 import com.sun.source.tree.Tree
 import com.sun.source.util.TreePath
+import com.sun.tools.javac.file.JavacFileManager
+import com.sun.tools.javac.processing.JavacProcessingEnvironment
+import com.sun.tools.javac.util.Log
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.lib.MungoNullable
@@ -18,31 +21,49 @@ import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.javacutil.AnnotationUtils
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import javax.lang.model.element.AnnotationMirror
+import javax.lang.model.element.Element
+import javax.tools.JavaFileManager
 
 class MungoUtils(val checker: MungoChecker) {
 
-  val resolver = Resolver(checker.processingEnvironment)
+  class LazyField<T>(private val fn: () -> T) {
+    private var value: T? = null
+    fun get() = value ?: run {
+      val v = fn()
+      value = v
+      v
+    }
+  }
+
+  val ctx = (checker.processingEnvironment as JavacProcessingEnvironment).context
+  val log = Log.instance(ctx)
+  val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
+
+  val resolver = Resolver(checker)
   val classUtils = ClassUtils(this)
 
   val processor = TypestateProcessor(this)
   val methodUtils = MethodUtils(this)
 
-  private lateinit var _factory: MungoAnnotatedTypeFactory
-  val factory: MungoAnnotatedTypeFactory
-    get() {
-      if (!this::_factory.isInitialized) {
-        _factory = checker.typeFactory as MungoAnnotatedTypeFactory
-      }
-      return _factory
-    }
+  private val _factory = LazyField { checker.typeFactory as MungoAnnotatedTypeFactory }
+  val factory get() = _factory.get()
 
-  fun err(message: String, where: Any) {
+  fun err(message: String, where: Tree) {
     checker.reportError(where, message)
   }
 
-  fun checkStates(graph: Graph, states: List<String>, src: Any) {
+  fun err(message: String, where: Element) {
+    checker.reportError(where, message)
+  }
+
+  fun err(message: String, file: Path, pos: Int) {
+    checker.reportError(file, pos, message)
+  }
+
+  fun checkStates(graph: Graph, states: List<String>, src: Tree) {
     val basename = graph.resolvedFile.fileName
     for (state in states) {
       if (graph.isFinalState(state)) {
@@ -138,6 +159,10 @@ class MungoUtils(val checker: MungoChecker) {
       }
       return null
     }
+
+    val cwd = Paths.get("").toAbsolutePath()
+
+    fun getUserPath(p: Path) = if (p.isAbsolute) cwd.relativize(p) else p
 
     fun printStack() {
       try {

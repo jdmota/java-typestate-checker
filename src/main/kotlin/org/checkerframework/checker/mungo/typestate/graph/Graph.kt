@@ -3,14 +3,15 @@ package org.checkerframework.checker.mungo.typestate.graph
 import com.sun.tools.javac.comp.AttrContext
 import com.sun.tools.javac.comp.Env
 import org.checkerframework.checker.mungo.typestate.ast.*
-import org.checkerframework.checker.mungo.typestate.graph.exceptions.*
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import java.nio.file.Path
 
-class Graph private constructor(val file: Path, val resolvedFile: Path, val typestateName: String) {
+class Graph private constructor(val resolvedFile: Path, val typestateName: String) {
+  val userPath = MungoUtils.getUserPath(resolvedFile)
+
   private var env: Env<AttrContext>? = null
   private var initialState: State? = null
-  private val endState = EndState(this)
+  private val endState = EndState()
   private val finalStates = HashSet<State>()
   private val namedStates = HashMap<String, State>() // Does not include "end"
   private val referencedStates = HashSet<String>()
@@ -46,7 +47,7 @@ class Graph private constructor(val file: Path, val resolvedFile: Path, val type
 
   private fun getStateByNode(node: TStateNode): State {
     return if (node.name == null) {
-      State(node, this)
+      State(node)
     } else namedStates[node.name]!!
     // namedStates is initialized by the time this is called
   }
@@ -63,7 +64,7 @@ class Graph private constructor(val file: Path, val resolvedFile: Path, val type
       throw ReservedStateName(node)
     }
     namedStates.compute(node.name) { _: String?, old: State? ->
-      if (old == null) State(node, this) else throw DuplicateState(old.node!!, node)
+      if (old == null) State(node) else throw DuplicateState(old.node!!, node)
     }
   }
 
@@ -127,13 +128,10 @@ class Graph private constructor(val file: Path, val resolvedFile: Path, val type
     const val END_STATE_NAME = "end"
     val RESERVED_STATE_NAMES: List<String> = listOf(END_STATE_NAME)
 
-    fun fromTypestate(utils: MungoUtils, file: Path, resolvedFile: Path, node: TDeclarationNode): Graph {
-      val g = Graph(file, resolvedFile, node.name)
+    fun fromTypestate(utils: MungoUtils, resolvedFile: Path, node: TDeclarationNode): Graph {
+      val g = Graph(resolvedFile, node.name)
       g.traverseTypestate(node)
-      g.env = utils.resolver.createEnv(g)
-      if (g.env == null) {
-        throw EnvCreationError()
-      }
+      g.env = utils.resolver.createEnv(g) ?: throw EnvCreationError()
       return g
     }
   }

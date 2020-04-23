@@ -1,22 +1,29 @@
 typestate FaultyFile {
 
   Init = {
+    // :: error: (Expected decision state to include all enumeration labels)
     FileStatus open(): <OK: Open, FOO: end>
   }
 
   Open = {
+    // :: error: (Class FaultyFile has no public method for this transition)
+    // :: error: (Expected decision state with two labels (true/false))
     boolean hasNext(): <true: Read>,
+    // :: error: (Expected a decision state)
     boolean hasNext2(): {},
     void close(): end
   }
 
   Read = {
+    // :: error: (Unexpected decision state)
     int read(): <true: Read, false: Close>,
+    // :: error: (Unknown type voidd)
     voidd close(): end
   }
 
   Close = {
     void close(): end,
+    // :: error: (Duplicate transition)
     void close(): Close
   }
 

@@ -9,9 +9,7 @@ import javax.lang.model.element.TypeElement
 import javax.lang.model.type.TypeMirror
 
 // Filter Mungo annotations out
-private fun filter(value: MungoValue): List<AnnotationMirror> {
-  return value.annotations.filterNot { MungoUtils.isMungoAnnotation(it) }
-}
+private fun filter(value: MungoValue) = value.annotations.filterNot { MungoUtils.isMungoAnnotation(it) }
 
 class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, underlyingType: TypeMirror) : CFAbstractValue<MungoValue>(analysis, annotations, underlyingType) {
 

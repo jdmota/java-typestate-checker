@@ -17,7 +17,7 @@ import java.util.*
  * errors and warnings; see
  * https://github.com/typetools/checker-framework/blob/master/checker/tests/README
  */
-class MungoTest(testFiles: List<File?>?) : CheckerFrameworkPerDirectoryTest(
+class MungoTest(testFiles: List<File>) : CheckerFrameworkPerDirectoryTest(
   testFiles,
   MungoChecker::class.java,
   "mungo",
@@ -32,7 +32,7 @@ class MungoTest(testFiles: List<File?>?) : CheckerFrameworkPerDirectoryTest(
       testFiles, setOf(checkerName),
       customizedOptions,
       shouldEmitDebugInfo)
-    val testResult = MungoTypecheckExecutor().runTest(config)
+    val testResult = MungoTypecheckExecutor(testDir).runTest(config)
     TestUtilities.assertResultsAreValid(testResult)
   }
 

@@ -1,29 +1,20 @@
 package org.checkerframework.checker.mungo.annotators
 
 import com.sun.source.tree.*
-import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
-import org.checkerframework.checker.mungo.analysis.MungoAnalysis
-import org.checkerframework.checker.mungo.analysis.MungoStore
-import org.checkerframework.checker.mungo.analysis.MungoTransfer
-import org.checkerframework.checker.mungo.analysis.MungoValue
+import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
 import org.checkerframework.checker.mungo.typecheck.*
-import org.checkerframework.checker.mungo.typestate.graph.AbstractState
-import org.checkerframework.checker.mungo.typestate.graph.DecisionState
-import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.analysis.AnalysisResult
-import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.framework.flow.CFAbstractAnalysis
-import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.framework.type.*
 import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator
 import org.checkerframework.framework.type.treeannotator.TreeAnnotator
@@ -36,7 +27,6 @@ import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
 import javax.lang.model.element.*
-import kotlin.collections.LinkedHashSet
 
 class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFactory<MungoValue, MungoStore, MungoTransfer, MungoAnalysis>(checker) {
 
@@ -169,15 +159,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       return
     }
 
-    // ...in classes with protocol
-    val graph = c.utils.classUtils.visitClassTree(visitorState.path)
-    if (graph == null) {
-      skipMethods.clear()
-      super.analyze(queue, lambdaQueue, ast, fieldValues, topClass, isInitializationCode, updateInitializationStore, isStatic, capturedStore)
-      return
-    }
-
-    // Ignore static methods as well and take the time to fix an issue with Checker:
+    // Ignore static methods and take the time to fix an issue with Checker:
     // isStatic should be true
     // TODO make sure this is really an issue
     if (ast.method.modifiers.flags.contains(Modifier.STATIC)) {
@@ -185,7 +167,14 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       return
     }
 
-    val classTree = ast.classTree
+    // ...in classes with protocol
+    val classTree = ast.classTree as JCTree.JCClassDecl
+    val graph = c.utils.classUtils.visitClassSymbol(classTree.sym)
+    if (graph == null) {
+      skipMethods.clear()
+      super.analyze(queue, lambdaQueue, ast, fieldValues, topClass, isInitializationCode, updateInitializationStore, isStatic, capturedStore)
+      return
+    }
 
     // Repeat the logic in GenericAnnotatedTypeFactory#performFlowAnalysis to get all the relevant methods
     // And ignore static methods as well
@@ -225,133 +214,26 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     }
 
     // Now analyze public methods keeping in mind the accepted method call orders in the protocol
-    analyzeClass(queue, lambdaQueue, publicMethods, graph, initialStore)
-  }
-
-  // TODO infer method side-effects so that we do not just invalidate everything upon a method call...
-  // TODO refactor this out
-
-  private fun analyzeClass(
-    classQueue: Queue<Pair<ClassTree, MungoStore?>>,
-    lambdaQueue: Queue<Pair<LambdaExpressionTree, MungoStore?>>,
-    publicMethods: List<UnderlyingAST.CFGMethod>,
-    graph: Graph,
-    initialStore: MungoStore
-  ) {
-    val methodToCFG = mutableMapOf<MethodTree, ControlFlowGraph>()
-
-    // Pre-work
-    for (method in publicMethods) {
-      val cfg = CFCFGBuilder.build(root, method, checker, this, processingEnv)
-      methodToCFG[method.method] = cfg
-      // TODO if (checker.hasOption("flowdotdir") || checker.hasOption("cfgviz")) handleCFGViz()
-      // Add classes and lambdas declared in method
-      for (cls in cfg.declaredClasses) classQueue.add(Pair.of(cls, getStoreBefore(cls)))
-      for (lambda in cfg.declaredLambdas) lambdaQueue.add(Pair.of(lambda, getStoreBefore(lambda)))
-    }
-
-    val methodsWithTypes = publicMethods.map {
-      Pair(it.method, TreeUtils.elementFromTree(it.method) as Symbol.MethodSymbol)
-    }
-
-    val methodToStatesCache = mutableMapOf<State, Map<MethodTree, AbstractState<*>>>()
-
-    fun getMethodToState(state: State) = run {
-      val env = state.graph.getEnv()
-      methodsWithTypes.mapNotNull { (method, symbol) ->
-        val t = state.transitions.entries.find { c.utils.methodUtils.sameMethod(env, symbol, it.key) }
-        t?.value?.let { Pair(method, it) }
-      }.toMap()
-    }
-
-    // States lead us to methods that may be called. So we need information about each state.
-    val stateToStore = mutableMapOf<State, MungoStore>()
-    // But since the same method may be available from different states,
-    // we also need to store the entry store for each method.
-    val methodToStore = mutableMapOf<MethodTree, MungoStore>()
-    // States that need recomputing. Use a LinkedHashSet to keep some order and avoid duplicates.
-    val stateQueue = LinkedHashSet<State>()
-    // The results for each method to be merged later.
-    val results = mutableMapOf<MethodTree, AnalysisResult<MungoValue, MungoStore>>()
-
-    // Update the state's store. Queue the state again if it changed.
-    fun mergeStateStore(state: State, store: MungoStore) {
-      val currStore = stateToStore[state] ?: emptyStore
-      val newStore = currStore.leastUpperBoundFields(store)
-      if (currStore != newStore) {
-        stateToStore[state] = newStore
-        stateQueue.add(state)
-      }
-    }
-
-    // Returns the merge result if it changed. Returns null otherwise.
-    fun mergeMethodStore(method: MethodTree, store: MungoStore): MungoStore? {
-      val currStore = methodToStore[method] ?: emptyStore
-      val newStore = currStore.leastUpperBoundFields(store)
-      return if (currStore != newStore) {
-        methodToStore[method] = newStore
-        newStore
-      } else null
-    }
-
-    mergeStateStore(graph.getInitialState(), initialStore)
-
-    analysis.inClassAnalysis = true
-
-    while (stateQueue.isNotEmpty()) {
-      val state = stateQueue.first()
-      stateQueue.remove(state)
-
-      val store = stateToStore[state]!!
-      val methodToStates = methodToStatesCache.computeIfAbsent(state, ::getMethodToState)
-
-      for ((method, destState) in methodToStates) {
-        val entryStore = mergeMethodStore(method, store) ?: continue
-        val cfg = methodToCFG[method]!!
-
-        transfer.setFixedInitialStore(entryStore)
-        analysis.performAnalysis(cfg, entryStore.getFields())
-
-        val exitResult = analysis.getInput(cfg.regularExitBlock)!!
-        val regularExitStore = exitResult.regularStore
-
-        // Store/override result
-        results[method] = analysis.result
-
-        // Store/override exit and return statement stores
-        regularExitStores[method] = regularExitStore
-        returnStatementStores[method] = analysis.returnStatementStores
-
-        // Merge new exit store with the stores of each destination state
-        when (destState) {
-          is State -> mergeStateStore(destState, regularExitStore)
-          is DecisionState -> {
-            // TODO handle enumeration values as well
-            for ((label, dest) in destState.transitions) {
-              when (label.label) {
-                "true" -> mergeStateStore(dest, exitResult.thenStore)
-                "false" -> mergeStateStore(dest, exitResult.elseStore)
-                else -> mergeStateStore(dest, regularExitStore)
-              }
-            }
-          }
-        }
-      }
-    }
-
-    analysis.inClassAnalysis = false
-
-    // Finally, combine results into flowResult...
-    for ((_, result) in results) {
-      flowResult.combine(result)
-    }
-
-    // And save the state -> store mapping for later checking
-    classTreeToStatesToStore[visitorState.classTree] = stateToStore
+    MungoClassAnalysis(c, this, analysis, transfer).analyzeClass(queue, lambdaQueue, root, classTree, publicMethods, graph, initialStore)
   }
 
   private val classTreeToStatesToStore = mutableMapOf<ClassTree, Map<State, MungoStore>>()
 
   fun getStatesToStore(tree: ClassTree) = classTreeToStatesToStore[tree]
+
+  fun storeClassResult(classTree: ClassTree, stateToStore: Map<State, MungoStore>) {
+    classTreeToStatesToStore[classTree] = stateToStore
+  }
+
+  fun storeMethodResults(method: MethodTree, regularExitStore: MungoStore) {
+    regularExitStores[method] = regularExitStore
+    returnStatementStores[method] = analysis.returnStatementStores
+  }
+
+  fun combineFlowResults(results: Iterable<AnalysisResult<MungoValue, MungoStore>>) {
+    for (result in results) {
+      flowResult.combine(result)
+    }
+  }
 
 }

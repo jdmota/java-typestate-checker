@@ -5,7 +5,7 @@ import com.sun.tools.javac.tree.JCTree
 import org.antlr.v4.runtime.BailErrorStrategy
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
+import org.checkerframework.checker.mungo.typestate.ast.TNode
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
@@ -37,11 +37,11 @@ class TypestateProcessor(private val utils: MungoUtils) {
   }
 
   fun getGraph(file: Path): GraphOrError {
-    return graphs.computeIfAbsent(file.normalize()) { process(utils, it) }
+    return graphs.computeIfAbsent(file.toAbsolutePath()) { process(utils, it) }
   }
 
   companion object {
-    private fun process(utils: MungoUtils,file: Path): GraphOrError {
+    private fun process(utils: MungoUtils, file: Path): GraphOrError {
       return try {
         GraphOrError(fromPath(utils, file))
       } catch (exp: Exception) {
@@ -53,7 +53,7 @@ class TypestateProcessor(private val utils: MungoUtils) {
       var resolvedFile = file
       val stream = run {
         try {
-          CharStreams.fromPath(file)
+          CharStreams.fromPath(resolvedFile)
         } catch (exp: NoSuchFileException) {
           resolvedFile = Paths.get("$file.protocol")
           CharStreams.fromPath(resolvedFile)
@@ -65,62 +65,65 @@ class TypestateProcessor(private val utils: MungoUtils) {
       parser.errorHandler = BailErrorStrategy()
       val ast = parser.start().ast
       // println(Dot.fromGraph(graph))
-      return Graph.fromTypestate(utils, file, resolvedFile, ast)
+      return Graph.fromTypestate(utils, resolvedFile, ast)
     }
 
-    private fun err(utils: MungoUtils, text: String, transition: TMethodNode, state: State, tree: JCTree.JCClassDecl) {
-      utils.err("$text transition ${transition.format()} on state ${state.name}", tree)
-    }
+    fun validateClassAndGraph(utils: MungoUtils, element: Symbol.ClassSymbol, graph: Graph): Graph? {
+      var hasErrors = false
 
-    fun validateClassAndGraph(utils: MungoUtils, tree: JCTree.JCClassDecl, graph: Graph): Graph {
+      fun err(text: String, node: TNode) {
+        utils.err(text, graph.userPath, node.pos.pos)
+        hasErrors = true
+      }
+
       val env = graph.getEnv()
-      val methodTrees = ClassUtils.getNonStaticPublicMethods(tree).map {
-        utils.methodUtils.wrapMethodSymbol((it as JCTree.JCMethodDecl).sym)
+      val methodSymbols = ClassUtils.getNonStaticPublicMethods(element).map {
+        utils.methodUtils.wrapMethodSymbol(it)
       }
 
       for (state in graph.getAllConcreteStates()) {
         val seen = mutableSetOf<MethodUtils.MethodSymbolWrapper>()
         for ((transition, dest) in state.transitions) {
-          val method = utils.methodUtils.methodNodeToMethodSymbol(env, transition, tree.sym)
+          val method = utils.methodUtils.methodNodeToMethodSymbol(env, transition, element)
 
           if (method.unknownTypes.isNotEmpty()) {
-            err(utils, "Unknown type${if (method.unknownTypes.size == 1) "" else "s"} ${method.unknownTypes.joinToString(", ")} in", transition, state, tree)
+            err("Unknown type${if (method.unknownTypes.size == 1) "" else "s"} ${method.unknownTypes.joinToString(", ")}", transition)
             continue
           }
 
           if (seen.add(method)) {
-            if (!methodTrees.any { it == method }) {
-              err(utils, "Class has no public method for", transition, state, tree)
+            if (!methodSymbols.any { it == method }) {
+              err("Class ${element.name} has no public method for this transition", transition)
             }
           } else {
-            err(utils, "Duplicate", transition, state, tree)
+            err("Duplicate transition", transition)
           }
 
           when (dest) {
             is State -> if (method.returnsBoolean() || method.returnsEnum()) {
-              err(utils, "Expected a decision state in", transition, state, tree)
+              err("Expected a decision state", transition.destination)
             }
             is DecisionState -> if (method.returnsBoolean()) {
               val booleanLabels = listOf("true", "false")
               val labels = dest.transitions.map { it.key.label }
               if (labels.size != booleanLabels.size || !labels.containsAll(booleanLabels)) {
-                err(utils, "Expected decision state with two labels (true/false) in", transition, state, tree)
+                err("Expected decision state with two labels (true/false)", transition.destination)
               }
             } else if (method.returnsEnum()) {
               val classSymbol = method.sym.returnType.tsym as Symbol.ClassSymbol
               val enumLabels = ClassUtils.getEnumLabels(classSymbol)
               val labels = dest.transitions.map { it.key.label }
               if (labels.size != enumLabels.size || !labels.containsAll(enumLabels)) {
-                err(utils, "Expected decision state to include all enumeration labels in", transition, state, tree)
+                err("Expected decision state to include all enumeration labels", transition.destination)
               }
             } else {
-              err(utils, "Unexpected decision state in", transition, state, tree)
+              err("Unexpected decision state", transition.destination)
             }
           }
         }
       }
 
-      return graph
+      return if (hasErrors) null else graph
     }
   }
 }

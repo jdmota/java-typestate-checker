@@ -94,6 +94,8 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     return super.isSideEffectFree(atypeFactory, method)
   }
 
+  // TODO infer method side-effects so that we do not just invalidate everything upon a method call...
+
   override fun updateForMethodCall(n: MethodInvocationNode, atypeFactory: AnnotatedTypeFactory, value: MungoValue?) {
     val oldFields = fieldValues
     val receiver = FlowExpressions.internalReprOf(atypeFactory, n.target.receiver)

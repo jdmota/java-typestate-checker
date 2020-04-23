@@ -4,13 +4,13 @@ import org.checkerframework.checker.mungo.typestate.ast.*
 
 sealed class AbstractState<N : TNode>(var node: N?)
 
-open class State private constructor(val name: String, node: TStateNode?, val graph: Graph) : AbstractState<TStateNode>(node) {
+open class State private constructor(val name: String, node: TStateNode?) : AbstractState<TStateNode>(node) {
 
-  protected constructor(name: String, graph: Graph) : this(name, null, graph)
+  protected constructor(name: String) : this(name, null)
 
-  constructor(node: TStateNode, graph: Graph) : this(node.name ?: "unknown:${node.pos.lineCol}", node, graph)
+  constructor(node: TStateNode) : this(node.name ?: "unknown:${node.pos.lineCol}", node)
 
-  val transitions: MutableMap<TMethodNode, AbstractState<*>> = HashMap()
+  val transitions: MutableMap<TMethodNode, AbstractState<*>> = LinkedHashMap()
 
   open fun addTransition(transition: TMethodNode, destination: AbstractState<*>) {
     transitions[transition] = destination
@@ -21,9 +21,9 @@ open class State private constructor(val name: String, node: TStateNode?, val gr
   }
 }
 
-class DecisionState(node: TDecisionStateNode?) : AbstractState<TDecisionStateNode>(node) {
+class DecisionState(node: TDecisionStateNode) : AbstractState<TDecisionStateNode>(node) {
 
-  val transitions: MutableMap<TDecisionNode, State> = HashMap()
+  val transitions: MutableMap<TDecisionNode, State> = LinkedHashMap()
 
   fun addTransition(transition: TDecisionNode, destination: State) {
     transitions[transition] = destination
@@ -34,7 +34,7 @@ class DecisionState(node: TDecisionStateNode?) : AbstractState<TDecisionStateNod
   }
 }
 
-class EndState(graph: Graph) : State("end", graph) {
+class EndState() : State("end") {
   override fun addTransition(transition: TMethodNode, destination: AbstractState<*>) {
     throw AssertionError("end state should have no transitions")
   }

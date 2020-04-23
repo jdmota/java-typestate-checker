@@ -1,9 +1,13 @@
 package org.checkerframework.checker.mungo
 
+import com.sun.tools.javac.util.JCDiagnostic
 import org.checkerframework.checker.mungo.typecheck.MungoVisitor
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeChecker
 import org.checkerframework.common.basetype.BaseTypeVisitor
+import org.checkerframework.javacutil.BugInCF
+import java.nio.file.Path
+import java.util.*
 
 const val showTypeInfoOpt = "showTypeInfo"
 
@@ -12,14 +16,8 @@ const val showTypeInfoOpt = "showTypeInfo"
  */
 class MungoChecker : BaseTypeChecker() {
 
-  private lateinit var _utils: MungoUtils
-  val utils: MungoUtils
-    get() {
-      if (!this::_utils.isInitialized) {
-        _utils = MungoUtils(this)
-      }
-      return _utils
-    }
+  private val _utils = MungoUtils.LazyField { MungoUtils(this) }
+  val utils get() = _utils.get()
 
   override fun createSourceVisitor(): BaseTypeVisitor<*> {
     return MungoVisitor(this)
@@ -28,4 +26,31 @@ class MungoChecker : BaseTypeChecker() {
   override fun getSupportedOptions() = super.getSupportedOptions().plus(showTypeInfoOpt)
 
   fun shouldReportTypeInfo() = hasOption(showTypeInfoOpt)
+
+  // Adapted from SourceChecker#report and JavacTrees#printMessage
+  fun reportError(file: Path, pos: Int, messageKey: String, vararg args: Any?) {
+    val defaultFormat = "($messageKey)"
+    val fmtString = if (processingEnv.options != null && processingEnv.options.containsKey("nomsgtext")) {
+      defaultFormat
+    } else if (processingEnv.options != null && processingEnv.options.containsKey("detailedmsgtext")) {
+      // TODO detailedMsgTextPrefix(source, defaultFormat, args) + fullMessageOf(messageKey, defaultFormat)
+      defaultFormat
+    } else {
+      // TODO "[" + suppressionKey(messageKey) + "] " + fullMessageOf(messageKey, defaultFormat)
+      defaultFormat
+    }
+    val messageText = try {
+      String.format(fmtString, *args)
+    } catch (e: Exception) {
+      throw BugInCF("Invalid format string: \"$fmtString\" args: " + args.contentToString(), e)
+    }
+
+    val newSource = utils.fileManager.getJavaFileObject(MungoUtils.getUserPath(file))
+    val oldSource = utils.log.useSource(newSource)
+    try {
+      utils.log.error(JCDiagnostic.DiagnosticFlag.MULTIPLE, JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
+    } finally {
+      utils.log.useSource(oldSource)
+    }
+  }
 }
