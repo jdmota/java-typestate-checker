@@ -112,7 +112,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       // now, while analyzing loops,
       // the store includes information from the previous loop.
       // Ensure the object from the previous loop completed.
-      val leftValue = typeFactory.getStoreBefore(left)?.getValue(LocalVariableNode(left)) ?: return
+      val leftValue = typeFactory.getStoreBefore(left)?.getValueIfTracked(LocalVariableNode(left)) ?: return
 
       if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
         c.utils.err("Object did not complete its protocol. Type: ${leftValue.info.format()}", left)

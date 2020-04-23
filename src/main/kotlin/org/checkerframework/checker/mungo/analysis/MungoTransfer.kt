@@ -26,18 +26,15 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   // Returns true if store changed
   private fun refineStore(tree: TreePath, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean, maybePrevValue: MungoValue? = null): Boolean {
     val prevValue = maybePrevValue ?: store.getValue(receiver)
-    if (prevValue != null) {
-      val prevInfo = prevValue.info
-      val newInfo = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
-      return if (maybePrevValue == null) {
-        store.replaceValueIfDiff(receiver, MungoValue(prevValue, newInfo))
-      } else {
-        // We are refining a switch case, so intersect with the old information
-        // To exclude states already handled in previous cases
-        store.intersectValueIfDiff(receiver, MungoValue(prevValue, newInfo))
-      }
+    val prevInfo = prevValue.info
+    val newInfo = MungoTypecheck.refine(c.utils, tree, prevInfo, method, predicate)
+    return if (maybePrevValue == null) {
+      store.replaceValueIfDiff(receiver, MungoValue(prevValue, newInfo))
+    } else {
+      // We are refining a switch case, so intersect with the old information
+      // To exclude states already handled in previous cases
+      store.intersectValueIfDiff(receiver, MungoValue(prevValue, newInfo))
     }
-    return false
   }
 
   override fun visitMethodInvocation(n: MethodInvocationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
@@ -147,19 +144,16 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     if (node is LocalVariableNode || node is FieldAccessNode) {
       val r = FlowExpressions.internalReprOf(analysis.typeFactory, node)
       val value = result.regularStore.getValue(r)
-
-      if (value != null) {
-        val type = value.info
-        if (!type.isSubtype(noProtocolOrMoved)) {
-          val newValue = MungoValue(value, MungoMovedType.SINGLETON)
-          if (result.containsTwoStores()) {
-            result.thenStore.replaceValue(r, newValue)
-            result.elseStore.replaceValue(r, newValue)
-          } else {
-            result.regularStore.replaceValue(r, newValue)
-          }
-          return true
+      val type = value.info
+      if (!type.isSubtype(noProtocolOrMoved)) {
+        val newValue = MungoValue(value, MungoMovedType.SINGLETON)
+        if (result.containsTwoStores()) {
+          result.thenStore.replaceValue(r, newValue)
+          result.elseStore.replaceValue(r, newValue)
+        } else {
+          result.regularStore.replaceValue(r, newValue)
         }
+        return true
       }
     }
     return false
@@ -206,9 +200,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
     val internal = FlowExpressions.internalReprOf(c.typeFactory, n.operand)
     val prevValue = thenStore.getValue(internal)
-    if (prevValue != null) {
-      thenStore.insertValue(internal, MungoValue(prevValue, MungoTypecheck.refineToNonNull(prevValue.info)))
-    }
+    thenStore.insertValue(internal, MungoValue(prevValue, MungoTypecheck.refineToNonNull(prevValue.info)))
 
     return ConditionalTransferResult(result.resultValue, thenStore, elseStore)
   }
@@ -217,23 +209,30 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val result = super.visitBooleanLiteral(n, p)
     val bool = n.value!!
     return if (bool) {
-      ConditionalTransferResult(result.resultValue, result.thenStore, result.elseStore.withoutLocalVariables())
+      ConditionalTransferResult(result.resultValue, result.thenStore, result.elseStore.toBottom())
     } else {
-      ConditionalTransferResult(result.resultValue, result.elseStore.withoutLocalVariables(), result.elseStore)
+      ConditionalTransferResult(result.resultValue, result.thenStore.toBottom(), result.elseStore)
     }
+  }
+
+  override fun visitVariableDeclaration(n: VariableDeclarationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    // Make sure the entry for this variable is clear
+    val store = input.regularStore
+    store.clearValue(FlowExpressions.LocalVariable(LocalVariableNode(n.tree)))
+    return RegularTransferResult(finishValue(null, store), store)
   }
 
   // Prefer the inferred type information instead of using "mostSpecific" with information in factory
 
   override fun visitLocalVariable(n: LocalVariableNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val store = input.regularStore
-    val value = store.getValue(n) ?: getValueFromFactory(n.tree, n)
+    val value = store.getValue(n)
     return RegularTransferResult(finishValue(value, store), store)
   }
 
   override fun visitFieldAccess(n: FieldAccessNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val store = input.regularStore
-    val value = store.getValue(n) ?: getValueFromFactory(n.tree, n)
+    val value = store.getValue(n)
     return RegularTransferResult(finishValue(value, store), store)
   }
 

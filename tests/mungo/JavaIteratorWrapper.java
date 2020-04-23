@@ -53,7 +53,6 @@ class JavaIteratorWrapper2 {
 @MungoTypestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper3 {
 
-  // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext|Next})
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
@@ -77,7 +76,6 @@ class JavaIteratorWrapper3 {
 @MungoTypestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper4_2 {
 
-  // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext|Next} | Ended)
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
@@ -114,18 +112,16 @@ class JavaIteratorWrapper4 {
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended)
-    // :: error: (Cannot call hasNext on ended protocol)
+    // :: warning: (iterator: JavaIterator{HasNext|Next})
     while (iterator.hasNext()) {
       // :: warning: (iterator: JavaIterator{Next})
       iterator.next();
     }
-    return false; // TODO detect that this always returns false and "next" will never be called?
+    return false;
   }
 
   public String next() {
-    // :: warning: (iterator: Ended)
-    // :: error: (Cannot call next on ended protocol)
+    // :: warning: (iterator: Bottom)
     return iterator.next();
   }
 

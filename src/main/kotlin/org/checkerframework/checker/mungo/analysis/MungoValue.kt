@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.analysis
 
+import org.checkerframework.checker.mungo.typecheck.MungoBottomType
 import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.flow.CFAbstractValue
@@ -18,6 +19,8 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
   val info: MungoType = MungoUtils.mungoTypeFromAnnotations(annotations)
 
   constructor(prevValue: MungoValue, newInfo: MungoType) : this(prevValue.a, filter(prevValue).plus(newInfo.buildAnnotation(prevValue.a.typeFactory.processingEnv)).toSet(), prevValue.underlyingType)
+
+  constructor(analysis: MungoAnalysis, newInfo: MungoType, underlyingType: TypeMirror) : this(analysis, setOf(newInfo.buildAnnotation(analysis.typeFactory.processingEnv)), underlyingType)
 
   override fun toString(): String {
     return "MungoValue{info=$info, annos=${annotations.joinToString {
@@ -47,10 +50,12 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
     if (other == null) {
       return this
     }
-    val result = super.mostSpecific(other, backup)
+    val result = super.mostSpecific(other, backup) ?: return null
     val newInfo = info.mostSpecific(other.info) ?: return null
-    return MungoValue(result ?: this, newInfo)
+    return MungoValue(result, newInfo)
   }
+
+  fun toBottom() = MungoValue(this, MungoBottomType.SINGLETON)
 
   override fun hashCode(): Int {
     var result = super.hashCode()

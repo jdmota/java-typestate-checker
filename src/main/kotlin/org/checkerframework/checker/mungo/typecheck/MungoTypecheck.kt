@@ -9,6 +9,7 @@ import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.TreeUtils
+import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
 object MungoTypecheck {
@@ -153,7 +154,7 @@ object MungoTypecheck {
 
     val mungoType = if (ClassUtils.isJavaLangObject(type)) {
       MungoObjectType.SINGLETON
-    } else if (type.kind.isPrimitive) {
+    } else if (type.kind.isPrimitive || type.kind == TypeKind.VOID) {
       MungoPrimitiveType.SINGLETON
     } else {
       val graph = utils.classUtils.visitClassTypeMirror(type)

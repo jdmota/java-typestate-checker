@@ -31,9 +31,10 @@ class MungoDefaultQualifierForUseTypeAnnotator(private val checker: MungoChecker
     return ret
   }
 
+  // Handle void
   override fun visitNoType(type: AnnotatedTypeMirror.AnnotatedNoType, p: Void?): Void? {
     val ret = super.visitNoType(type, p)
-    type.replaceAnnotation(MungoNoProtocolType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    type.replaceAnnotation(MungoPrimitiveType.SINGLETON.buildAnnotation(checker.processingEnvironment))
     return ret
   }
 

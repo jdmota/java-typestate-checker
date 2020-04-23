@@ -31,7 +31,8 @@ class FileInCollection {
     list.add(new FileInCollection());
 
     for (FileInCollection f : list) {
-      // :: warning: (f: FileInCollection{Init|Open|Read|Close})
+      // :: warning: (f: FileInCollection{Init|Open|Read|Close} | Ended | Moved)
+      // :: error: (Cannot call state on ended protocol, on moved value)
       switch (f.state()) {
         case INIT:
           // :: warning: (f: FileInCollection{Init})
