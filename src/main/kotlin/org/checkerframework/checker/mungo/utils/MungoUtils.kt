@@ -2,6 +2,9 @@ package org.checkerframework.checker.mungo.utils
 
 import com.sun.source.tree.Tree
 import com.sun.source.util.TreePath
+import com.sun.source.util.Trees
+import com.sun.tools.javac.code.Symtab
+import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.file.JavacFileManager
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Log
@@ -20,11 +23,13 @@ import org.checkerframework.checker.mungo.typecheck.getTypeFromAnnotation
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.javacutil.AnnotationUtils
+import org.checkerframework.javacutil.TypesUtils
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
+import javax.lang.model.type.TypeMirror
 import javax.tools.JavaFileManager
 
 class MungoUtils(val checker: MungoChecker) {
@@ -39,9 +44,12 @@ class MungoUtils(val checker: MungoChecker) {
   }
 
   val ctx = (checker.processingEnvironment as JavacProcessingEnvironment).context
+  val trees = Trees.instance(checker.processingEnvironment)
+  val symtab = Symtab.instance(ctx)
   val log = Log.instance(ctx)
   val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
 
+  val typeUtils = checker.typeUtils
   val resolver = Resolver(checker)
   val classUtils = ClassUtils(this)
 
@@ -72,6 +80,27 @@ class MungoUtils(val checker: MungoChecker) {
         err("$basename has no $state state", src)
       }
     }
+  }
+
+  fun isSameType(a: Type?, b: Type?): Boolean {
+    if (a == null) return b == null
+    if (b == null) return false
+    // isSameType for methods does not take thrown exceptions into account
+    return typeUtils.isSameType(a, b) && isSameTypes(a.thrownTypes, b.thrownTypes)
+  }
+
+  fun isSameTypes(aList: List<Type?>, bList: List<Type?>): Boolean {
+    if (aList.size != bList.size) {
+      return false
+    }
+    val bIt = bList.iterator()
+    for (a in aList) {
+      val b = bIt.next()
+      if (!isSameType(a, b)) {
+        return false
+      }
+    }
+    return true
   }
 
   fun breakpoint() {
@@ -140,6 +169,14 @@ class MungoUtils(val checker: MungoChecker) {
         }
       }
       return MungoUnknownType.SINGLETON
+    }
+
+    fun isBoolean(type: TypeMirror): Boolean {
+      return TypesUtils.isBooleanType(type)
+    }
+
+    fun isEnum(type: TypeMirror): Boolean {
+      return (type as Type).tsym.isEnum
     }
 
     // Adapted from TreeUtils.enclosingMethodOrLambda to return a TreePath instead of Tree

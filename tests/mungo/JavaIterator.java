@@ -5,7 +5,7 @@ import org.checkerframework.checker.mungo.lib.MungoNullable;
 import java.util.function.Supplier;
 
 @MungoTypestate("JavaIterator.protocol")
-class JavaIterator {
+public class JavaIterator {
 
   public boolean hasNext() {
     return false;
@@ -21,6 +21,28 @@ class JavaIterator {
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
       // :: warning: (it: JavaIterator{Next})
+      it.next();
+    }
+  }
+
+  public static void negatedOk() {
+    JavaIterator it = new JavaIterator();
+
+    // :: warning: (it: JavaIterator{HasNext})
+    while (!!it.hasNext()) {
+      // :: warning: (it: JavaIterator{Next})
+      it.next();
+    }
+  }
+
+  public static void negatedError() {
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{Next})
+    JavaIterator it = new JavaIterator();
+
+    // :: warning: (it: JavaIterator{HasNext})
+    while (!it.hasNext()) {
+      // :: warning: (it: Ended)
+      // :: error: (Cannot call next on ended protocol)
       it.next();
     }
   }
@@ -133,8 +155,7 @@ class JavaIterator {
     }
   }
 
-  public static @MungoState({"HasNext"})
-  JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
+  public static @MungoState({"HasNext"}) JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
     // :: warning: (it: JavaIterator{Next})
     it.next();
     // :: warning: (it: JavaIterator{HasNext})

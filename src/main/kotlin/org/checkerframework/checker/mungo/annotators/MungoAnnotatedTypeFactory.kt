@@ -11,9 +11,12 @@ import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
+import org.checkerframework.checker.nullness.qual.Nullable
 import org.checkerframework.dataflow.analysis.AnalysisResult
+import org.checkerframework.dataflow.analysis.TransferResult
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.Node
+import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFAbstractAnalysis
 import org.checkerframework.framework.type.*
 import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator
@@ -36,6 +39,8 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   init {
     postInit()
   }
+
+  fun getRoot() = root
 
   override fun createAnnotatedTypeFormatter(): AnnotatedTypeFormatter {
     val printVerboseGenerics = checker.hasOption("printVerboseGenerics")
@@ -225,9 +230,9 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     classTreeToStatesToStore[classTree] = stateToStore
   }
 
-  fun storeMethodResults(method: MethodTree, regularExitStore: MungoStore) {
+  fun storeMethodResults(method: MethodTree, regularExitStore: MungoStore, returnStores: List<Pair<ReturnNode, TransferResult<MungoValue, MungoStore>?>>) {
     regularExitStores[method] = regularExitStore
-    returnStatementStores[method] = analysis.returnStatementStores
+    returnStatementStores[method] = returnStores
   }
 
   fun combineFlowResults(results: Iterable<AnalysisResult<MungoValue, MungoStore>>) {

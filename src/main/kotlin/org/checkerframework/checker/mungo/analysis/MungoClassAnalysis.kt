@@ -13,8 +13,11 @@ import org.checkerframework.checker.mungo.typestate.graph.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.dataflow.analysis.AnalysisResult
+import org.checkerframework.dataflow.analysis.TransferResult
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
+import org.checkerframework.dataflow.cfg.node.BooleanLiteralNode
+import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
@@ -72,11 +75,13 @@ class MungoClassAnalysis(
     // The results for each method to be merged later.
     val results = mutableMapOf<MethodTree, AnalysisResult<MungoValue, MungoStore>>()
 
+    val emptyStore = initialStore.toBottom()
+
     // Update the state's store. Queue the state again if it changed.
     fun mergeStateStore(state: State, store: MungoStore) {
-      val currStore = stateToStore[state] ?: f.emptyStore
+      val currStore = stateToStore[state] ?: emptyStore
       val newStore = currStore.leastUpperBoundFields(store)
-      if (currStore != newStore) {
+      if (!stateToStore.containsKey(state) || currStore != newStore) {
         stateToStore[state] = newStore
         stateQueue.add(state)
       }
@@ -84,9 +89,9 @@ class MungoClassAnalysis(
 
     // Returns the merge result if it changed. Returns null otherwise.
     fun mergeMethodStore(method: MethodTree, store: MungoStore): MungoStore? {
-      val currStore = methodToStore[method] ?: f.emptyStore
+      val currStore = methodToStore[method] ?: emptyStore
       val newStore = currStore.leastUpperBoundFields(store)
-      return if (currStore != newStore) {
+      return if (!methodToStore.containsKey(method) || currStore != newStore) {
         methodToStore[method] = newStore
         newStore
       } else null
@@ -117,7 +122,10 @@ class MungoClassAnalysis(
         results[method] = a.result
 
         // Store/override exit and return statement stores
-        f.storeMethodResults(method, regularExitStore)
+        val returnStores = a.returnStatementStores
+        f.storeMethodResults(method, regularExitStore, returnStores)
+
+        val constantReturn = getConstantReturn(returnStores.map { it.first })
 
         // Merge new exit store with the stores of each destination state
         when (destState) {
@@ -126,8 +134,8 @@ class MungoClassAnalysis(
             // TODO handle enumeration values as well
             for ((label, dest) in destState.transitions) {
               when (label.label) {
-                "true" -> mergeStateStore(dest, exitResult.thenStore)
-                "false" -> mergeStateStore(dest, exitResult.elseStore)
+                "true" -> mergeStateStore(dest, if (constantReturn != false) exitResult.thenStore else emptyStore)
+                "false" -> mergeStateStore(dest, if (constantReturn != true) exitResult.elseStore else emptyStore)
                 else -> mergeStateStore(dest, regularExitStore)
               }
             }
@@ -143,6 +151,24 @@ class MungoClassAnalysis(
 
     // And save the state -> store mapping for later checking
     f.storeClassResult(classTree, stateToStore)
+  }
+
+  private fun getConstantReturn(returnStores: List<ReturnNode>): Boolean? {
+    var sawTrue = false
+    var sawFalse = false
+    for (ret in returnStores) {
+      when (val result = ret.result) {
+        is BooleanLiteralNode -> if (result.value!!) {
+          if (sawFalse) return null
+          sawTrue = true
+        } else {
+          if (sawTrue) return null
+          sawFalse = true
+        }
+        else -> return null
+      }
+    }
+    return sawTrue
   }
 
 }

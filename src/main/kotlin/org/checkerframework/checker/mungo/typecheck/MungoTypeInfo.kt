@@ -128,6 +128,10 @@ class MungoUnionType private constructor(val types: Set<MungoType>) : MungoTypeW
 
   init {
     map[id] = this
+    if (types.isEmpty()) {
+      MungoUtils.printStack()
+      throw AssertionError("union invariant")
+    }
   }
 
   // invariant: types.size > 1
@@ -153,7 +157,7 @@ class MungoUnionType private constructor(val types: Set<MungoType>) : MungoTypeW
       if (flatTypes.contains(MungoUnknownType.SINGLETON)) return MungoUnknownType.SINGLETON
       // Simplify if ObjectType is present
       if (flatTypes.contains(MungoObjectType.SINGLETON)) {
-        return MungoUnionType(flatTypes.filter { isObjectType(it) }.toSet())
+        return MungoUnionType(flatTypes.filterNot { isObjectType(it) }.toSet())
       }
       return MungoUnionType(flatTypes)
     }

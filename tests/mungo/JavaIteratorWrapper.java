@@ -341,3 +341,29 @@ class JavaIteratorWrapper11 {
   }
 
 }
+
+@MungoTypestate("JavaIteratorWrapper.protocol")
+class JavaIteratorWrapperPropagation {
+
+  private @MungoNullable JavaIterator iterator = null;
+
+  public void init(JavaIterator it) {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext|Next})
+    iterator = it;
+  }
+
+  public boolean hasNext() {
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended)
+    // :: error: (Cannot call hasNext on ended protocol)
+    iterator.hasNext();
+    return true;
+  }
+
+  public String next() {
+    // :: warning: (iterator: JavaIterator{Next} | Ended)
+    // :: error: (Cannot call next on ended protocol)
+    return iterator.next();
+  }
+
+}

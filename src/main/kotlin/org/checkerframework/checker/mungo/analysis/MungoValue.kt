@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.analysis
 
+import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.typecheck.MungoBottomType
 import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -55,7 +56,7 @@ class MungoValue(analysis: MungoAnalysis, annotations: Set<AnnotationMirror>, un
     return MungoValue(result, newInfo)
   }
 
-  fun toBottom() = MungoValue(this, MungoBottomType.SINGLETON)
+  fun toBottom() = MungoValue(a, MungoBottomType.SINGLETON, a.utils.symtab.botType)
 
   override fun hashCode(): Int {
     var result = super.hashCode()

@@ -7,7 +7,6 @@ import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.List as JavacList
 import com.sun.tools.javac.util.Names
 import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
-import org.checkerframework.javacutil.TypesUtils
 
 class MethodUtils(private val utils: MungoUtils) {
 
@@ -67,50 +66,31 @@ class MethodUtils(private val utils: MungoUtils) {
     ), unknownTypes)
   }
 
-  private fun isSameType(a: Type?, b: Type?): Boolean {
-    if (a == null) return b == null
-    if (b == null) return false
-    // isSameType for methods does not take thrown exceptions into account
-    return typeUtils.isSameType(a, b) && isSameTypes(a.thrownTypes, b.thrownTypes)
-  }
-
-  private fun isSameTypes(aList: List<Type?>, bList: List<Type?>): Boolean {
-    if (aList.size != bList.size) {
-      return false
-    }
-    val bIt = bList.iterator()
-    for (a in aList) {
-      val b = bIt.next()
-      if (!isSameType(a, b)) {
-        return false
-      }
-    }
-    return true
-  }
-
   fun sameMethod(a: Symbol.MethodSymbol, b: Symbol.MethodSymbol): Boolean {
-    return a.name.toString() == b.name.toString() && isSameType(a.type, b.type)
+    return a.name.toString() == b.name.toString() && utils.isSameType(a.type, b.type)
   }
 
   // We could use "typeUtils.isSameType" with the MethodType, but it does not compare thrown types
   private fun sameMethod(env: Env<AttrContext>, name: String, type: Type, node: TMethodNode): Boolean {
     // TODO deal with thrownTypes and typeArguments
     return name == node.name &&
-      isSameType(type.returnType, resolver.resolve(env, node.returnType)) &&
-      isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it) }) &&
-      isSameTypes(type.thrownTypes, listOf())
+      utils.isSameType(type.returnType, resolver.resolve(env, node.returnType)) &&
+      utils.isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it) }) &&
+      utils.isSameTypes(type.thrownTypes, listOf())
   }
 
   fun sameMethod(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
     return sameMethod(env, sym.name.toString(), sym.type, node)
   }
 
-  fun returnsBoolean(method: Symbol.MethodSymbol): Boolean {
-    return TypesUtils.isBooleanType(method.returnType)
-  }
+  companion object {
+    fun returnsBoolean(method: Symbol.MethodSymbol): Boolean {
+      return MungoUtils.isBoolean(method.returnType)
+    }
 
-  fun returnsEnum(method: Symbol.MethodSymbol): Boolean {
-    return method.returnType.tsym.isEnum;
+    fun returnsEnum(method: Symbol.MethodSymbol): Boolean {
+      return MungoUtils.isEnum(method.returnType)
+    }
   }
 
 }
