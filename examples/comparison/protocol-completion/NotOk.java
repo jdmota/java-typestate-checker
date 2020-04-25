@@ -2,23 +2,29 @@ import java.util.*;
 import java.util.function.Supplier;
 
 public class NotOk {
-  public static void main1(String[] args) {
-    JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
+  public static void main1() {
+    File f = new File();
   }
 
-  public static void main2(String[] args) {
-    JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
-    use(it);
+  public static void main2() {
+    File f = new File();
+    System.out.println(f);
   }
 
-  public static void main3(String[] args) {
-    JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
-    Supplier<Boolean> fn = () -> {
-      return it.hasNext();
+  public static void main3() {
+    File f = new File();
+    use(f);
+  }
+
+  public static void main4() {
+    File f = new File();
+    Supplier<String> fn = () -> {
+      return f.read();
     };
+    fn.get();
   }
 
-  public static void use(JavaIterator it) {
+  public static void use(File f) {
 
   }
 }

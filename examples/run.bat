@@ -22,6 +22,7 @@ if not exist %checker% (
 FOR %%F IN (
   comparison/basic-checking
   comparison/boolean-decision
+  comparison/state-refinement
   comparison/nullness-checking
   comparison/linearity-checking
   comparison/protocol-completion
