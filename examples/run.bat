@@ -23,6 +23,8 @@ FOR %%F IN (
   comparison/basic-checking
   comparison/boolean-decision
   comparison/nullness-checking
+  comparison/linearity-checking
+  comparison/protocol-completion
   comparison/file-1
   comparison/iterator-attempt1
   comparison/iterator-attempt2

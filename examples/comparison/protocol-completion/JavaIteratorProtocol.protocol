@@ -1,0 +1,9 @@
+typestate JavaIteratorProtocol {
+  HasNext = {
+    Boolean hasNext(): <True: Next, False: end>
+  }
+  Next = {
+    Boolean hasNext(): <True: Next, False: end>,
+    String next(): HasNext
+  }
+}
