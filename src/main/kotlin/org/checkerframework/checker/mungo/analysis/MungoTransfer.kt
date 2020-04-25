@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.analysis
 
+import com.sun.source.tree.IdentifierTree
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.*
@@ -10,12 +11,14 @@ import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractStore
 import org.checkerframework.framework.flow.CFAbstractTransfer
+import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.ElementKind
 
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
 
   private val c = checker
   private val a = analysis
+  private val utils get() = c.utils
 
   private val allLabels: (String) -> Boolean = { true }
   private val ifTrue: (String) -> Boolean = { it == "true" }
@@ -25,7 +28,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   private fun refineStore(invocation: MethodInvocationNode, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean): Boolean {
     val prevValue = store.getValue(receiver)
     val prevInfo = prevValue.info
-    val newInfo = MungoTypecheck.refine(c.utils, invocation.treePath, prevInfo, method, predicate)
+    val newInfo = MungoTypecheck.refine(utils, invocation.treePath, prevInfo, method, predicate)
     return store.replaceValueIfDiff(receiver, MungoValue(prevValue, newInfo))
   }
 
@@ -34,7 +37,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val prevValue = a.getValue(invocation.target.receiver)
     return if (prevValue != null) {
       val prevInfo = prevValue.info
-      val newInfo = MungoTypecheck.refine(c.utils, invocation.treePath, prevInfo, method, predicate)
+      val newInfo = MungoTypecheck.refine(utils, invocation.treePath, prevInfo, method, predicate)
       // We are refining a switch case or an expression after the method invocation was done,
       // so intersect with the old information.
       store.intersectValueIfDiff(receiver, MungoValue(prevValue, newInfo))
@@ -262,17 +265,32 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return refineCondition(n, super.visitBooleanLiteral(n, p))
   }
 
-  // Prefer the inferred type information instead of using "mostSpecific" with information in factory
+  private fun wasMovedToClosure(n: LocalVariableNode): Boolean {
+    val tree = n.tree as? IdentifierTree ?: return false
+    val path = utils.getPath(tree) ?: return false
+    val element = TreeUtils.elementFromTree(tree) as? Symbol.VarSymbol ?: return false
+    return utils.wasMovedToDiffClosure(path, tree, element)
+  }
 
   override fun visitLocalVariable(n: LocalVariableNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val store = input.regularStore
     val value = store.getValue(n)
-    return RegularTransferResult(finishValue(value, store), store)
+    return if (wasMovedToClosure(n)) {
+      // MungoVisitor will error when it detects a moved variable
+      // So refine to bottom to avoid duplicate errors
+      val newValue = value.toBottom()
+      store.replaceValue(FlowExpressions.LocalVariable(n), newValue)
+      RegularTransferResult(finishValue(newValue, store), store)
+    } else {
+      // Prefer the inferred type information instead of using "mostSpecific" with information in factory
+      RegularTransferResult(finishValue(value, store), store)
+    }
   }
 
   override fun visitFieldAccess(n: FieldAccessNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val store = input.regularStore
     val value = store.getValue(n)
+    // Prefer the inferred type information instead of using "mostSpecific" with information in factory
     return RegularTransferResult(finishValue(value, store), store)
   }
 

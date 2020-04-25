@@ -40,7 +40,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     postInit()
   }
 
-  fun getRoot() = root
+  fun getCurrentRoot(): CompilationUnitTree = visitorState.path.compilationUnit
 
   override fun createAnnotatedTypeFormatter(): AnnotatedTypeFormatter {
     val printVerboseGenerics = checker.hasOption("printVerboseGenerics")

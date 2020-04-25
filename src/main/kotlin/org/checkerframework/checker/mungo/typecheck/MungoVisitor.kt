@@ -1,7 +1,6 @@
 package org.checkerframework.checker.mungo.typecheck
 
 import com.sun.source.tree.*
-import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.compilermsgs.qual.CompilerMessageKey
 import org.checkerframework.checker.mungo.MungoChecker
@@ -22,6 +21,7 @@ import javax.lang.model.element.ExecutableElement
 class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFactory>(checker) {
 
   private val c = checker
+  private val utils get() = c.utils
 
   override fun createTypeFactory(): MungoAnnotatedTypeFactory {
     // Pass "checker" and not "c" because "c" is initialized after "super()" and "createTypeFactory()"...
@@ -56,9 +56,9 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
   private fun checkOwnCall(node: MethodInvocationTree, element: Symbol.MethodSymbol): Boolean {
     if (TreeUtils.isSelfAccess(node) && !element.isStatic && !element.isStaticOrInstanceInit && !element.isPrivate) {
-      val hasProtocol = c.utils.classUtils.visitClassSymbol(element.enclosingElement) != null
+      val hasProtocol = utils.classUtils.visitClassSymbol(element.enclosingElement) != null
       if (hasProtocol) {
-        c.utils.err("Cannot call its own public method", node)
+        utils.err("Cannot call its own public method", node)
         return false
       }
     }
@@ -74,7 +74,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
         val receiverTree = TreeUtils.getReceiverTree(node)
         if (receiverTree != null) {
           val type = typeFactory.getTypeFor(receiverTree)
-          val checks = MungoTypecheck.check(c.utils, type, node, element)
+          val checks = MungoTypecheck.check(utils, type, node, element)
           if (!checks) {
             // Ignore this method invocation tree to avoid (method.invocation.invalid) errors produced by Checker
             skipMethods[node] = true
@@ -87,7 +87,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       if (parent !is VariableTree && parent !is AssignmentTree) {
         val type = typeFactory.getTypeFor(node)
         if (!type.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-          c.utils.err("Returned object did not complete its protocol. Type: ${type.format()}", node)
+          utils.err("Returned object did not complete its protocol. Type: ${type.format()}", node)
         }
       }
 
@@ -115,7 +115,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       val leftValue = typeFactory.getStoreBefore(left)?.getValueIfTracked(LocalVariableNode(left)) ?: return
 
       if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        c.utils.err("Object did not complete its protocol. Type: ${leftValue.info.format()}", left)
+        utils.err("Object did not complete its protocol. Type: ${leftValue.info.format()}", left)
       }
     } else if (left is ExpressionTree) {
       val receiver = FlowExpressions.internalReprOf(typeFactory, left)
@@ -123,7 +123,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
       // Only allow overrides on null, ended, moved object, or object without protocol
       if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        c.utils.err("Cannot override because object has not ended its protocol", left)
+        utils.err("Cannot override because object has not ended its protocol", left)
       }
     }
   }
@@ -133,9 +133,9 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     if (valueTree is ExpressionTree && TreeUtils.isExplicitThisDereference(valueTree)) {
       val element = TreeUtils.elementFromTree(valueTree)
       if (element != null) {
-        val hasProtocol = c.utils.classUtils.visitClassSymbol(element.enclosingElement) != null
+        val hasProtocol = utils.classUtils.visitClassSymbol(element.enclosingElement) != null
         if (hasProtocol) {
-          c.utils.err("Possible 'this' leak", valueTree)
+          utils.err("Possible 'this' leak", valueTree)
           return
         }
       }
@@ -156,13 +156,13 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     val element = TreeUtils.elementFromTree(node) ?: return p
 
     // See if it has protocol
-    c.utils.classUtils.visitClassOfElement(element) ?: return p
+    utils.classUtils.visitClassOfElement(element) ?: return p
 
     // If "this"...
     if (TreeUtils.isExplicitThisDereference(node)) {
       val enclosingMethodOrLambda = MungoUtils.enclosingMethodOrLambda(visitorState.path) ?: return p
       if (enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION) {
-        c.utils.err("$node was moved to a different closure", node)
+        utils.err("$node was moved to a different closure", node)
       }
     }
 
@@ -189,36 +189,8 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     // Print type information for testing purposes
     printTypeInfo(node)
 
-    // See if it has protocol
-    c.utils.classUtils.visitClassOfElement(element) ?: return p
-
-    // If "this"...
-    if (TreeUtils.isExplicitThisDereference(node)) {
-      val enclosingMethodOrLambda = MungoUtils.enclosingMethodOrLambda(visitorState.path) ?: return p
-      if (enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION) {
-        c.utils.err("$node was moved to a different closure", node)
-      }
-      return p
-    }
-
-    // Find declaration and enclosing method/lambda
-    val declarationTree = typeFactory.declarationFromElement(element) ?: return p
-    val declaration = c.treeUtils.getPath(visitorState.path.compilationUnit, declarationTree) ?: return p
-    val enclosingMethodOrLambda = MungoUtils.enclosingMethodOrLambda(visitorState.path) ?: return p
-
-    // See if variable declaration is enclosed in the enclosing method or lambda or not
-    var path1: TreePath? = declaration
-    var path2: TreePath? = enclosingMethodOrLambda
-    while (path1 != null && path2 != null && path1 != enclosingMethodOrLambda) {
-      path1 = path1.parentPath
-      path2 = path2.parentPath
-    }
-
-    // Error if:
-    // 1. Declaration is closer to the root (path1 == null && path2 != null)
-    // 2. Both are at the same level (path1 == null && path2 == null) and identifier is enclosed in a lambda
-    if (path1 == null && (path2 != null || enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION)) {
-      c.utils.err("${node.name} was moved to a different closure", node)
+    if (utils.wasMovedToDiffClosure(visitorState.path, node, element)) {
+      utils.err("$node was moved to a different closure", node)
     }
 
     return p
@@ -228,7 +200,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     // Make sure protocols of local variables complete
     for ((key, value) in exitStore.iterateOverLocalVars()) {
       if (!value.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        c.utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.element)
+        utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.element)
       }
     }
   }
@@ -247,7 +219,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     // Make sure protocols of fields complete
     for ((key, value) in exitStore.iterateOverFields()) {
       if (!value.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        c.utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.field)
+        utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.field)
       }
     }
   }

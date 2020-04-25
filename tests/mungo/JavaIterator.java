@@ -537,23 +537,32 @@ public class JavaIterator {
 
   public static void moveToLambda() {
     // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
-    // :: error: (Object did not complete its protocol. Type: JavaIterator{Next} | Ended)
     JavaIterator it = new JavaIterator();
     Supplier<String> fn = () -> {
-      // :: warning: (it: JavaIterator{HasNext})
+      // :: warning: (it: Bottom)
       // :: error: (it was moved to a different closure)
       it.hasNext();
       return "";
     };
   }
 
+  public static void moveToLambda2() {
+    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
+    JavaIterator it = new JavaIterator();
+    Supplier<String> fn = () -> {
+      // :: warning: (it: Bottom)
+      // :: error: (it was moved to a different closure)
+      System.out.println(it);
+      return "";
+    };
+  }
+
   public static void moveToMethod() {
     // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
-    // :: error: (Object did not complete its protocol. Type: JavaIterator{Next} | Ended)
     JavaIterator it = new JavaIterator();
     Object obj = new Object() {
       public void use() {
-        // :: warning: (it: JavaIterator{HasNext})
+        // :: warning: (it: Bottom)
         // :: error: (it was moved to a different closure)
         it.hasNext();
       }

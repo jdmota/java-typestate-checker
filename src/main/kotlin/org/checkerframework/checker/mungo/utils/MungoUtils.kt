@@ -1,8 +1,9 @@
 package org.checkerframework.checker.mungo.utils
 
+import com.sun.source.tree.IdentifierTree
 import com.sun.source.tree.Tree
 import com.sun.source.util.TreePath
-import com.sun.source.util.Trees
+import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Symtab
 import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.file.JavacFileManager
@@ -23,6 +24,7 @@ import org.checkerframework.checker.mungo.typecheck.getTypeFromAnnotation
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.javacutil.AnnotationUtils
+import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.javacutil.TypesUtils
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -44,12 +46,13 @@ class MungoUtils(val checker: MungoChecker) {
   }
 
   val ctx = (checker.processingEnvironment as JavacProcessingEnvironment).context
-  val trees = Trees.instance(checker.processingEnvironment)
   val symtab = Symtab.instance(ctx)
   val log = Log.instance(ctx)
   val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
 
+  val treeUtils = checker.treeUtils
   val typeUtils = checker.typeUtils
+
   val resolver = Resolver(checker)
   val classUtils = ClassUtils(this)
 
@@ -101,6 +104,37 @@ class MungoUtils(val checker: MungoChecker) {
       }
     }
     return true
+  }
+
+  fun getPath(tree: Tree): TreePath? = treeUtils.getPath(factory.getCurrentRoot(), tree)
+
+  fun wasMovedToDiffClosure(path: TreePath, tree: IdentifierTree, element: Symbol.VarSymbol): Boolean {
+    // See if it has protocol
+    classUtils.visitClassOfElement(element) ?: return false
+
+    // If "this"...
+    if (TreeUtils.isExplicitThisDereference(tree)) {
+      val enclosingMethodOrLambda = enclosingMethodOrLambda(path) ?: return false
+      return enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION
+    }
+
+    // Find declaration and enclosing method/lambda
+    val declarationTree = factory.declarationFromElement(element) ?: return false
+    val declaration = treeUtils.getPath(path.compilationUnit, declarationTree) ?: return false
+    val enclosingMethodOrLambda = enclosingMethodOrLambda(path) ?: return false
+
+    // See if variable declaration is enclosed in the enclosing method or lambda or not
+    var path1: TreePath? = declaration
+    var path2: TreePath? = enclosingMethodOrLambda
+    while (path1 != null && path2 != null && path1 != enclosingMethodOrLambda) {
+      path1 = path1.parentPath
+      path2 = path2.parentPath
+    }
+
+    // Was moved if:
+    // 1. Declaration is closer to the root (path1 == null && path2 != null)
+    // 2. Both are at the same level (path1 == null && path2 == null) and identifier is enclosed in a lambda
+    return path1 == null && (path2 != null || enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION)
   }
 
   fun breakpoint() {

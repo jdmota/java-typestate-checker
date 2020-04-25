@@ -7,16 +7,13 @@ NotOk.java:6: error: [Object did not complete its protocol. Type: JavaIteratorPr
 NotOk.java:15: error: [Object did not complete its protocol. Type: JavaIteratorProtocol{HasNext}] (Object did not complete its protocol. Type: JavaIteratorProtocol{HasNext})
     JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
                  ^
-NotOk.java:15: error: [Object did not complete its protocol. Type: JavaIteratorProtocol{Next} | Ended] (Object did not complete its protocol. Type: JavaIteratorProtocol{Next} | Ended)
-    JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
-                 ^
 NotOk.java:17: error: [it was moved to a different closure] (it was moved to a different closure)
       return it.hasNext();
              ^
 NotOk.java:21: error: [Object did not complete its protocol. Type: JavaIteratorProtocol{HasNext|Next}] (Object did not complete its protocol. Type: JavaIteratorProtocol{HasNext|Next})
   public static void use(JavaIterator it) {
                                       ^
-5 errors
+4 errors
 ```
 
 ## Original Mungo's output
