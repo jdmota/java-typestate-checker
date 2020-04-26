@@ -1,0 +1,9 @@
+typestate FileWrapperProtocol {
+  Init = {
+    void init(File): Read
+  }
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}

@@ -26,6 +26,10 @@ FOR %%F IN (
   comparison/nullness-checking
   comparison/linearity-checking
   comparison/protocol-completion
+  comparison/class-analysis
+  comparison/droppable-objects
+  comparison/generics
+  comparison/auction
   comparison/file-1
   comparison/iterator-attempt1
   comparison/iterator-attempt2

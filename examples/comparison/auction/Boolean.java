@@ -1,0 +1,3 @@
+enum Boolean {
+  True, False
+}

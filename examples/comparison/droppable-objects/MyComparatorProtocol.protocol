@@ -1,0 +1,5 @@
+typestate MyComparatorProtocol {
+  Start = {
+    int compare(int, int): Start
+  }
+}

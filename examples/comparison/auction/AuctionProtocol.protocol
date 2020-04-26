@@ -1,0 +1,9 @@
+typestate AuctionProtocol {
+  Unknown = {
+    Boolean canBid(int, double): <True: Bidding, False: Unknown>,
+    int finish(): end
+  }
+  Bidding = {
+    void bid(int, double): Unknown
+  }
+}

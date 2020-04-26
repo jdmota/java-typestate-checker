@@ -1,0 +1,8 @@
+typestate ClientProtocol {
+  Running = {
+    int getId(): Running,
+    double getBid(): Running,
+    void bid(double): Running,
+    void close(): end
+  }
+}
