@@ -1,0 +1,24 @@
+typestate FaultyFile2 {
+
+  // :: error: (mismatched input '=' expecting '}')
+  = {
+    FileStatus open(): <OK: Open, FOO: end>
+  }
+
+  Open = {
+    boolean hasNext(): <true: Read>,
+    boolean hasNext2(): {},
+    void close(): end
+  }
+
+  Read = {
+    int read(): <true: Read, false: Close>,
+    voidd close(): end
+  }
+
+  Close = {
+    void close(): end,
+    void close(): Close
+  }
+
+}

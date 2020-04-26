@@ -3,9 +3,10 @@ package org.checkerframework.checker.mungo.typestate
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.InputMismatchException
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import org.checkerframework.checker.mungo.typestate.ast.Position
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
+import javax.lang.model.element.Element
 
 class TypestateProcessingError(exp: Exception) : Exception(exp) {
   fun format(): String {
@@ -20,6 +21,18 @@ class TypestateProcessingError(exp: Exception) : Exception(exp) {
     }
     cause.printStackTrace()
     return cause.message ?: "error with no message"
+  }
+
+  fun report(utils: MungoUtils, element: Element) {
+    if (cause is ParseCancellationException) {
+      val e = cause.cause as RecognitionException
+      val token = e.offendingToken
+      val file = token.tokenSource.sourceName
+      val pos = token.startIndex
+      utils.err(format(), Paths.get(file), pos)
+    } else {
+      utils.err(format(), element)
+    }
   }
 
   companion object {
@@ -74,13 +87,12 @@ class TypestateProcessingError(exp: Exception) : Exception(exp) {
     private fun errorToString(exception: ParseCancellationException): String {
       val e = exception.cause as RecognitionException
       val parser = e.recognizer as Parser
-      val msg = when (e) {
+      return when (e) {
         is NoViableAltException -> reportNoViableAlternative(parser, e)
         is InputMismatchException -> reportInputMismatch(parser, e)
         is FailedPredicateException -> reportFailedPredicate(parser, e)
         else -> "unknown recognition error"
       }
-      return msg + " at " + Position.tokenToPos(e.offendingToken)
     }
   }
 }

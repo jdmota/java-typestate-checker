@@ -37,7 +37,7 @@ class ClassUtils(private val utils: MungoUtils) {
     val protocolFilePath = sourceFilePath.toAbsolutePath().resolveSibling(file).normalize()
     // Parse and process typestate
     val result = utils.processor.getGraph(protocolFilePath)
-    result.error?.let { utils.err(result.error.format(), src) }
+    result.error?.report(utils, src)
     return result.graph
   }
 
