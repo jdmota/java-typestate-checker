@@ -6,7 +6,7 @@ import com.sun.tools.javac.comp.Env
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.List as JavacList
 import com.sun.tools.javac.util.Names
-import org.checkerframework.checker.mungo.typestate.ast.TMethodNode
+import org.checkerframework.checker.mungo.typestate.TMethodNode
 
 class MethodUtils(private val utils: MungoUtils) {
 

@@ -1,8 +1,8 @@
 // Generated from org\checkerframework\checker\mungo\typestate\parser\Typestate.g4 by ANTLR 4.8
 
 package org.checkerframework.checker.mungo.typestate.parser;
-import org.checkerframework.checker.mungo.typestate.ast.*;
-import static org.checkerframework.checker.mungo.typestate.ast.Position.tokenToPos;
+import org.checkerframework.checker.mungo.typestate.*;
+import static org.checkerframework.checker.mungo.typestate.Position.tokenToPos;
 import static org.checkerframework.checker.mungo.typestate.Utils.map;
 
 import org.antlr.v4.runtime.Lexer;

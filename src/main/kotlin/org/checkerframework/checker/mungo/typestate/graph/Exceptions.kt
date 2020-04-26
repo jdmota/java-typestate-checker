@@ -1,7 +1,7 @@
 package org.checkerframework.checker.mungo.typestate.graph
 
-import org.checkerframework.checker.mungo.typestate.ast.TIdNode
-import org.checkerframework.checker.mungo.typestate.ast.TStateNode
+import org.checkerframework.checker.mungo.typestate.TIdNode
+import org.checkerframework.checker.mungo.typestate.TStateNode
 
 sealed class TypestateError : RuntimeException()
 

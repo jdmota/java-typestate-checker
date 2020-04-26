@@ -1,6 +1,6 @@
 package org.checkerframework.checker.mungo.typestate.graph
 
-import org.checkerframework.checker.mungo.typestate.ast.*
+import org.checkerframework.checker.mungo.typestate.*
 
 sealed class AbstractState<N : TNode>(var node: N?)
 

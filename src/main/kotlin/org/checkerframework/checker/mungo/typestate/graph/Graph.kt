@@ -2,7 +2,7 @@ package org.checkerframework.checker.mungo.typestate.graph
 
 import com.sun.tools.javac.comp.AttrContext
 import com.sun.tools.javac.comp.Env
-import org.checkerframework.checker.mungo.typestate.ast.*
+import org.checkerframework.checker.mungo.typestate.*
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import java.nio.file.Path
 

@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.typestate.ast
+package org.checkerframework.checker.mungo.typestate
 
 import org.antlr.v4.runtime.Token
 import java.nio.file.Paths

@@ -2,8 +2,8 @@ grammar Typestate;
 
 @header {
 package org.checkerframework.checker.mungo.typestate.parser;
-import org.checkerframework.checker.mungo.typestate.ast.*;
-import static org.checkerframework.checker.mungo.typestate.ast.Position.tokenToPos;
+import org.checkerframework.checker.mungo.typestate.*;
+import static org.checkerframework.checker.mungo.typestate.Position.tokenToPos;
 import static org.checkerframework.checker.mungo.typestate.Utils.map;
 }
 

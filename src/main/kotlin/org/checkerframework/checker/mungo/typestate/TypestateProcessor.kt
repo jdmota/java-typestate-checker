@@ -5,7 +5,7 @@ import com.sun.tools.javac.tree.JCTree
 import org.antlr.v4.runtime.BailErrorStrategy
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import org.checkerframework.checker.mungo.typestate.ast.TNode
+import org.checkerframework.checker.mungo.typestate.TNode
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
