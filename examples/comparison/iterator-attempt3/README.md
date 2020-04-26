@@ -1,13 +1,6 @@
 ## Mungo Checker's output
 
 ```
-JavaIteratorProtocol.protocol:5: error: (Class JavaIterator has no public method for this transition)
-    Boolean hasNext(): <True: Next, False: end>
-    ^
-JavaIteratorProtocol.protocol:5: error: (Expected decision state with two labels (true/false))
-    Boolean hasNext(): <True: Next, False: end>
-                       ^
-2 errors
 ```
 
 ## Original Mungo's output

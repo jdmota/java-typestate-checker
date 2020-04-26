@@ -1,9 +1,9 @@
 ## Mungo Checker's output
 
 ```
-MyComparator.java:4: error: [mismatched input '<' expecting '{' at MyComparatorProtocol.protocol:1:30] (mismatched input '<' expecting '{' at MyComparatorProtocol.protocol:1:30)
-public class MyComparator<T> {
-       ^
+MyComparatorProtocol.protocol:1: error: (mismatched input '<' expecting '{')
+typestate MyComparatorProtocol<T> {
+                              ^
 Ok.java:4: error: [argument.type.incompatible] incompatible types in argument.
     System.out.println(comparator.compare(10, 5));
                                           ^
