@@ -3,9 +3,9 @@ package tests
 import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
-private const val dir = "mungo"
+private const val dir = "resolution"
 
-class MungoTest(testFiles: List<File>) : MungoPerDirectoryTest(
+class MungoResolutionTest(testFiles: List<File>) : MungoPerDirectoryTest(
   dir,
   testFiles
 ) {

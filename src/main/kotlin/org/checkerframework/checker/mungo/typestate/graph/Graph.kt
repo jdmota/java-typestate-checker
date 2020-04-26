@@ -128,10 +128,10 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
     const val END_STATE_NAME = "end"
     val RESERVED_STATE_NAMES: List<String> = listOf(END_STATE_NAME)
 
-    fun fromTypestate(utils: MungoUtils, resolvedFile: Path, node: TDeclarationNode): Graph {
-      val g = Graph(resolvedFile, node.name)
-      g.traverseTypestate(node)
-      g.env = utils.resolver.createEnv(g) ?: throw EnvCreationError()
+    fun fromTypestate(utils: MungoUtils, resolvedFile: Path, node: TTypestateNode): Graph {
+      val g = Graph(resolvedFile, node.decl.name)
+      g.traverseTypestate(node.decl)
+      g.env = utils.resolver.createEnv(g.userPath, node) ?: throw EnvCreationError()
       return g
     }
   }

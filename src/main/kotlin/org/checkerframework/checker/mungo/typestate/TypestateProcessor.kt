@@ -1,11 +1,9 @@
 package org.checkerframework.checker.mungo.typestate
 
 import com.sun.tools.javac.code.Symbol
-import com.sun.tools.javac.tree.JCTree
 import org.antlr.v4.runtime.BailErrorStrategy
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import org.checkerframework.checker.mungo.typestate.TNode
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
@@ -25,7 +23,7 @@ class TypestateProcessor(private val utils: MungoUtils) {
     val graph: Graph?
     val error: TypestateProcessingError?
 
-    constructor(graph: Graph) {
+    constructor(graph: Graph?) {
       this.graph = graph
       error = null
     }
@@ -49,7 +47,7 @@ class TypestateProcessor(private val utils: MungoUtils) {
       }
     }
 
-    private fun fromPath(utils: MungoUtils, file: Path): Graph {
+    private fun fromPath(utils: MungoUtils, file: Path): Graph? {
       var resolvedFile = file
       val stream = run {
         try {
@@ -65,10 +63,12 @@ class TypestateProcessor(private val utils: MungoUtils) {
       parser.errorHandler = BailErrorStrategy()
       val ast = parser.start().ast
       // println(Dot.fromGraph(graph))
-      return Graph.fromTypestate(utils, resolvedFile, ast)
+      val graph = Graph.fromTypestate(utils, resolvedFile, ast)
+      return validateGraph(utils, graph)
     }
 
-    fun validateClassAndGraph(utils: MungoUtils, element: Symbol.ClassSymbol, graph: Graph): Graph? {
+    // Validate typestate by itself
+    private fun validateGraph(utils: MungoUtils, graph: Graph): Graph? {
       var hasErrors = false
 
       fun err(text: String, node: TNode) {
@@ -77,25 +77,18 @@ class TypestateProcessor(private val utils: MungoUtils) {
       }
 
       val env = graph.getEnv()
-      val methodSymbols = ClassUtils.getNonStaticPublicMethods(element).map {
-        utils.methodUtils.wrapMethodSymbol(it)
-      }
 
       for (state in graph.getAllConcreteStates()) {
         val seen = mutableSetOf<MethodUtils.MethodSymbolWrapper>()
         for ((transition, dest) in state.transitions) {
-          val method = utils.methodUtils.methodNodeToMethodSymbol(env, transition, element)
+          val method = utils.methodUtils.methodNodeToMethodSymbol(env, transition, utils.symtab.unknownSymbol)
 
           if (method.unknownTypes.isNotEmpty()) {
             err("Unknown type${if (method.unknownTypes.size == 1) "" else "s"} ${method.unknownTypes.joinToString(", ")}", transition)
             continue
           }
 
-          if (seen.add(method)) {
-            if (!methodSymbols.any { it == method }) {
-              err("Class ${element.name} has no public method for this transition", transition)
-            }
-          } else {
+          if (!seen.add(method)) {
             err("Duplicate transition", transition)
           }
 
@@ -118,6 +111,36 @@ class TypestateProcessor(private val utils: MungoUtils) {
               }
             } else {
               err("Unexpected decision state", transition.destination)
+            }
+          }
+        }
+      }
+
+      return if (hasErrors) null else graph
+    }
+
+    // Validate typestate as it relates to the class that uses it
+    fun validateClassAndGraph(utils: MungoUtils, element: Symbol.ClassSymbol, graph: Graph): Graph? {
+      var hasErrors = false
+
+      fun err(text: String, node: TNode) {
+        utils.err(text, graph.userPath, node.pos.pos)
+        hasErrors = true
+      }
+
+      val env = graph.getEnv()
+      val methodSymbols = ClassUtils.getNonStaticPublicMethods(element).map {
+        utils.methodUtils.wrapMethodSymbol(it)
+      }
+
+      for (state in graph.getAllConcreteStates()) {
+        val seen = mutableSetOf<MethodUtils.MethodSymbolWrapper>()
+        for (transition in state.transitions.keys) {
+          val method = utils.methodUtils.methodNodeToMethodSymbol(env, transition, element)
+
+          if (seen.add(method)) {
+            if (!methodSymbols.any { it == method }) {
+              err("Class ${element.name} has no public method for this transition", transition)
             }
           }
         }

@@ -33,6 +33,18 @@ public class TypestateBaseListener implements TypestateListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRef(TypestateParser.RefContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRef(TypestateParser.RefContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterPackage_statement(TypestateParser.Package_statementContext ctx) { }
 	/**
 	 * {@inheritDoc}

@@ -9,18 +9,29 @@ import static org.checkerframework.checker.mungo.typestate.Utils.map;
 
 // Info: https://github.com/antlr/antlr4/blob/master/doc/parser-rules.md
 
-start returns [TDeclarationNode ast] :
-  package_statement? import_statement* t=typestate_declaration
-  {$ast=$t.ast;}
+start returns [TTypestateNode ast] locals [TPackageNode pkg] :
+  ( p=package_statement {$pkg=$p.node;} )? ( i+=import_statement )* t=typestate_declaration
+  {$ast=new TTypestateNode($pkg, map($i, i -> i.node), $t.node);}
 ;
 
-package_statement : 'package' ID ( '.' ID )* ';' ;
+ref returns [TRefNode node] :
+  id {$node=$id.node;} |
+  r=ref '.' id {$node=new TMemberNode($r.node.getPos(), $r.node, $id.node);}
+;
 
-import_statement : 'import' ID ( '.' ID )* ( '.' '*' )? ';' ;
+package_statement returns [TPackageNode node] :
+  t='package' ref ';'
+  {$node=new TPackageNode(tokenToPos($t), $ref.node);}
+;
 
-typestate_declaration returns [TDeclarationNode ast] :
+import_statement returns [TImportNode node] :
+  t='import' s='static'? ref ( '.' star='*' )? ';'
+  {$node=new TImportNode(tokenToPos($t), $ref.node, $s != null, $star != null);}
+;
+
+typestate_declaration returns [TDeclarationNode node] :
   t='typestate' ID '{' typestate_body '}' EOF
-  {$ast=new TDeclarationNode(tokenToPos($t), $ID.getText(), $typestate_body.states);}
+  {$node=new TDeclarationNode(tokenToPos($t), $ID.getText(), $typestate_body.states);}
 ;
 
 typestate_body returns [List<TStateNode> states] :
@@ -39,12 +50,12 @@ state returns [TStateNode node] :
 ;
 
 method returns [TMethodNode node] locals [TNode destination] :
-  return_type=ID name=ID '(' ( args+=ID ( ',' args+=ID )* )? ')' ':' (
-    id {$destination=$id.node;} |
+  return_type=ref name=ID '(' ( args+=ref ( ',' args+=ref )* )? ')' ':' (
+    ref {$destination=$ref.node;} |
     state {$destination=$state.node;} |
     decision_state {$destination=$decision_state.node;}
   )
-  {$node=new TMethodNode(tokenToPos($return_type), $return_type.getText(), $name.getText(), map($args, a -> a.getText()), $destination);}
+  {$node=new TMethodNode($return_type.node.getPos(), $return_type.node, $name.getText(), map($args, a -> a.node), $destination);}
 ;
 
 decision_state returns [TDecisionStateNode node] :
@@ -54,7 +65,7 @@ decision_state returns [TDecisionStateNode node] :
 
 decision returns [TDecisionNode node] :
   label=ID ':' (
-    id {$node=new TDecisionNode(tokenToPos($label), $label.getText(), $id.node);} |
+    ref {$node=new TDecisionNode(tokenToPos($label), $label.getText(), $ref.node);} |
     state {$node=new TDecisionNode(tokenToPos($label), $label.getText(), $state.node);}
   )
 ;

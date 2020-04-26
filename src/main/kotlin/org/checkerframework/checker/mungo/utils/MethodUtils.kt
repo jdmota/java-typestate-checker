@@ -49,8 +49,8 @@ class MethodUtils(private val utils: MungoUtils) {
 
     val flags = Flags.PUBLIC.toLong();
     val name = names.fromString(node.name)
-    val argtypes = JavacList.from(node.args.map { resolve(it) })
-    val restype = resolve(node.returnType)
+    val argtypes = JavacList.from(node.args.map { resolve(it.stringName()) })
+    val restype = resolve(node.returnType.stringName())
     val thrown = JavacList.nil<Type>() // TODO
     // TODO generics?
     return MethodSymbolWrapper(Symbol.MethodSymbol(
@@ -74,8 +74,8 @@ class MethodUtils(private val utils: MungoUtils) {
   private fun sameMethod(env: Env<AttrContext>, name: String, type: Type, node: TMethodNode): Boolean {
     // TODO deal with thrownTypes and typeArguments
     return name == node.name &&
-      utils.isSameType(type.returnType, resolver.resolve(env, node.returnType)) &&
-      utils.isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it) }) &&
+      utils.isSameType(type.returnType, resolver.resolve(env, node.returnType.stringName())) &&
+      utils.isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it.stringName()) }) &&
       utils.isSameTypes(type.thrownTypes, listOf())
   }
 

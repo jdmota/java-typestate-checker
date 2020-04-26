@@ -6,7 +6,6 @@ typestate FaultyFile {
   }
 
   Open = {
-    // :: error: (Class FaultyFile has no public method for this transition)
     // :: error: (Expected decision state with two labels (true/false))
     boolean hasNext(): <true: Read>,
     // :: error: (Expected a decision state)

@@ -1,0 +1,14 @@
+import utils.JavaIterator;
+
+typestate JavaIteratorWrapper {
+    Start = {
+        void init(JavaIterator): HasNext
+    }
+    HasNext = {
+        boolean hasNext(): <true: Next, false: end>
+    }
+    Next = {
+        boolean hasNext(): <true: Next, false: end>,
+        String next(): HasNext
+    }
+}

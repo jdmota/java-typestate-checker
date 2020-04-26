@@ -9,13 +9,19 @@ import com.sun.tools.javac.code.Symbol.*
 import com.sun.tools.javac.comp.*
 import com.sun.tools.javac.file.JavacFileManager
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
+import com.sun.tools.javac.tree.JCTree
 import com.sun.tools.javac.tree.TreeMaker
 import com.sun.tools.javac.util.List
 import com.sun.tools.javac.util.Name
 import com.sun.tools.javac.util.Names
 import org.checkerframework.checker.mungo.MungoChecker
+import org.checkerframework.checker.mungo.typestate.TIdNode
+import org.checkerframework.checker.mungo.typestate.TMemberNode
+import org.checkerframework.checker.mungo.typestate.TRefNode
+import org.checkerframework.checker.mungo.typestate.TTypestateNode
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import java.lang.reflect.Method
+import java.nio.file.Path
 import javax.lang.model.element.Element
 import javax.tools.JavaFileManager
 
@@ -42,10 +48,26 @@ class Resolver(checker: MungoChecker) {
     findIdentInPackage.isAccessible = true
   }
 
-  // TODO
-  fun createEnv(graph: Graph): Env<AttrContext>? {
-    val tree = maker.TopLevel(List.nil())
-    tree.sourcefile = fileManager.getJavaFileObject(graph.userPath)
+  private fun refToJCExpression(ref: TRefNode): JCTree.JCExpression {
+    return when (ref) {
+      is TIdNode -> maker.Ident(names.fromString(ref.name))
+      is TMemberNode -> maker.Select(refToJCExpression(ref.ref), names.fromString(ref.id.name))
+    }
+  }
+
+  fun createEnv(userPath: Path, typestate: TTypestateNode): Env<AttrContext>? {
+
+    val pkg = typestate.pkg?.let {
+      maker.PackageDecl(List.nil(), refToJCExpression(it.ref))
+    }
+
+    val imports: List<JCTree> = List.from(typestate.imports.map {
+      val expr = if (it.star) maker.Select(refToJCExpression(it.ref), names.asterisk) else refToJCExpression(it.ref)
+      maker.Import(expr, it.static)
+    })
+
+    val tree = maker.TopLevel(if (pkg == null) imports else imports.prepend(pkg))
+    tree.sourcefile = fileManager.getJavaFileObject(userPath)
 
     return if (modules.enter(List.of(tree), null)) {
       enter.complete(List.of(tree), null)
