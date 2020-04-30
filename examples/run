@@ -1,0 +1,55 @@
+#!/bin/bash
+
+CD=`pwd`
+
+if [[ "$CD" =~ ^\/cygdrive.* ]]; then
+	CD=`cygpath -w "$CD"`
+fi
+
+originalMungo="$CD/mungo-73dd8ae.jar"
+
+mungoChecker="$CD/mungo-checker.jar"
+mungoCheckerLib="$CD/mungo-checker-lib.jar"
+mungoCheckerClass="org.checkerframework.checker.mungo.MungoChecker"
+
+checkerVersion="3.3.0"
+checker="$CD/checker-framework-$checkerVersion/checker/dist/checker.jar"
+
+if [ ! -f "$checker" ]; then
+  echo "Comparison tests depend on the Checker Framework"
+  echo "Did not find file $checker"
+  exit 1
+fi
+
+tests=(
+  "comparison/basic-checking"
+  "comparison/boolean-decision"
+  "comparison/state-refinement"
+  "comparison/nullness-checking"
+  "comparison/linearity-checking"
+  "comparison/protocol-completion"
+  "comparison/class-analysis"
+  "comparison/droppable-objects"
+  "comparison/generics"
+  "comparison/auction"
+  "comparison/file-1"
+  "comparison/iterator-attempt1"
+  "comparison/iterator-attempt2"
+  "comparison/iterator-attempt3"
+  "comparison/iterator-attempt4"
+  "comparison/iterator-attempt5"
+  "comparison/iterator-attempt6"
+  "comparison/iterator-attempt7"
+  "comparison/original-mungo-continue-issue"
+)
+
+for folder in "${tests[@]}"
+do
+  cd "$folder"
+  echo "Running tests in $folder"
+  output1=`java -jar "$originalMungo" -classpath "$originalMungo;$mungoCheckerLib" *.java 2>&1`
+  output2=`java -jar "$checker" -classpath "$mungoChecker" -processor "$mungoCheckerClass" *.java 2>&1`
+  printf "## Original Mungo's output\n\n\`\`\`\n%s\`\`\`\n\n" "$output1" > README.md
+  printf "## Mungo Checker's output\n\n\`\`\`\n%s\`\`\`\n" "$output2" >> README.md
+  cd "$CD"
+done

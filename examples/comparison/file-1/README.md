@@ -1,8 +1,3 @@
-## Mungo Checker's output
-
-```
-```
-
 ## Original Mungo's output
 
 ```
@@ -22,5 +17,9 @@ FileProtocol.protocol: 8-5: Semantic Error
 FileProtocol.protocol: 8-20: Semantic Error
 		Duplicate case label: .
 FileProtocol.protocol:8,21: error: unexpected token "true"
-FileProtocol.protocol:8,34: error: unexpected token "false"
+FileProtocol.protocol:8,34: error: unexpected token "false"```
+
+## Mungo Checker's output
+
+```
 ```

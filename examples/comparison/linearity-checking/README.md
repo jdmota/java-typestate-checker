@@ -1,3 +1,19 @@
+## Original Mungo's output
+
+```
+
+NotOk.java: 7-9: Semantic Error
+		Object reference is used uninitialised.
+
+NotOk.java: 13-9: Semantic Error
+		Object reference is used uninitialised.
+
+NotOk.java: 19-15: Semantic Error
+		Object reference is used uninitialised.
+
+NotOk.java: 26-15: Semantic Error
+		Object reference is used uninitialised.```
+
 ## Mungo Checker's output
 
 ```
@@ -20,22 +36,4 @@ NotOk.java:28: error: [argument.type.incompatible] incompatible types in argumen
 NotOk.java:34: error: [f was moved to a different closure] (f was moved to a different closure)
       return f.read();
              ^
-5 errors
-```
-
-## Original Mungo's output
-
-```
-
-NotOk.java: 7-9: Semantic Error
-		Object reference is used uninitialised.
-
-NotOk.java: 13-9: Semantic Error
-		Object reference is used uninitialised.
-
-NotOk.java: 19-15: Semantic Error
-		Object reference is used uninitialised.
-
-NotOk.java: 26-15: Semantic Error
-		Object reference is used uninitialised.
-```
+5 errors```

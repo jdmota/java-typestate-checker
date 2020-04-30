@@ -86,9 +86,7 @@ The produced jar file goes into the `examples` folder.
 
 1. Extract [Checker Framework](https://checkerframework.org/) into the `examples` folder.
 1. Build jar file.
-1. Run:
-    - Unix: TODO
-    - Windows: `cd examples && run.bat`
+1. Run `cd examples && bash run` on Unix or Cygwin.
 1. Check `examples/comparison` and nested folders for results.
 
 ## Comparison

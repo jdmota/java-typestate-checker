@@ -1,3 +1,10 @@
+## Original Mungo's output
+
+```
+
+NotOkFileWrapper1.java: 7-31: Semantic Error
+		Object reference is used uninitialised.```
+
 ## Mungo Checker's output
 
 ```
@@ -22,13 +29,4 @@ NotOkFileWrapper3.java:19: error: [Cannot call read on ended protocol] (Cannot c
 NotOkFileWrapper3.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
   private @MungoNullable File file = null;
                               ^
-7 errors
-```
-
-## Original Mungo's output
-
-```
-
-NotOkFileWrapper1.java: 7-31: Semantic Error
-		Object reference is used uninitialised.
-```
+7 errors```
