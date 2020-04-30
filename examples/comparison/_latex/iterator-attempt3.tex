@@ -1,0 +1,69 @@
+\lstset{caption=\textit{JavaIteratorProtocol.protocol}}
+\begin{code}
+import mungo.lib.Boolean;
+
+typestate JavaIteratorProtocol {
+  HasNext = {
+    Boolean hasNext(): <True: Next, False: end>
+  }
+  Next = {
+    String next(): HasNext
+  }
+}\end{code}
+
+\lstset{caption=\textit{JavaIterator.java}}
+\begin{code}
+import java.util.Iterator;
+import mungo.lib.Typestate;
+import mungo.lib.Boolean;
+
+@Typestate("JavaIteratorProtocol")
+public class JavaIterator {
+
+  private Iterator<String> it;
+
+  public JavaIterator(Iterator<String> it) {
+    this.it = it;
+  }
+
+	public Boolean hasNext() {
+    return it.hasNext() ? Boolean.True : Boolean.False;
+  }
+
+  public String next() {
+    return it.next();
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{Main.java}}
+\begin{code}
+import java.util.*;
+import mungo.lib.Boolean;
+
+public class Main {
+	public static void main(String[] args) {
+		JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
+    
+    while(it.hasNext() == Boolean.True){
+      System.out.println(it.next());
+    }
+	}
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+
+JavaIteratorProtocol.protocol: 5-5: Semantic Error
+		Method Boolean hasNext() should return an enumeration type.
+
+Main.java: 0-0: Semantic Error
+		Object created at Main.java: 6. Typestate mismatch. Found: String next(), end, Boolean hasNext(). Expected: <True, False>.
+
+JavaIteratorProtocol.protocol: 5-5: Semantic Error
+		Method Boolean hasNext() should return an enumeration type.\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+\end{code}
+

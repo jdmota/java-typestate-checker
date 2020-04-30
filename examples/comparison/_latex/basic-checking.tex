@@ -1,0 +1,95 @@
+\lstset{caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+
+  Init = {
+    FileStatus open(): <OK: Read, ERROR: end>
+  }
+
+  Read = {
+    String read(): Close
+  }
+
+  Close = {
+    void close(): end
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+public class File {
+
+  public FileStatus open() {
+    return FileStatus.OK;
+  }
+
+  public String read() {
+    return "";
+  }
+
+  public void close() {
+
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{FileStatus.java}}
+\begin{code}
+public enum FileStatus {
+  OK, ERROR
+}\end{code}
+
+\lstset{caption=\textit{NotOk.java}}
+\begin{code}
+public class NotOk {
+  public static void main(String args[]) {
+    File f = new File();
+
+    switch (f.open()) {
+      case ERROR:
+        System.out.println(f.read());
+        f.close();
+        break;
+      case OK:
+        break;
+    }
+  }
+}\end{code}
+
+\lstset{caption=\textit{Ok.java}}
+\begin{code}
+public class Ok {
+  public static void main(String args[]) {
+    File f = new File();
+
+    switch (f.open()) {
+      case OK:
+        System.out.println(f.read());
+        f.close();
+        break;
+      case ERROR:
+        break;
+    }
+  }
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+
+NotOk.java: 10-7: Semantic Error
+		Object created at NotOk.java: 3. Typestate mismatch. Found: end. Expected: String read().\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+NotOk.java:3: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+    File f = new File();
+         ^
+NotOk.java:7: error: [Cannot call read on ended protocol] (Cannot call read on ended protocol)
+        System.out.println(f.read());
+                                 ^
+2 errors\end{code}
+

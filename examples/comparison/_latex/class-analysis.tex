@@ -1,0 +1,163 @@
+\lstset{caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}\end{code}
+
+\lstset{caption=\textit{FileWrapperProtocol.protocol}}
+\begin{code}
+typestate FileWrapperProtocol {
+  Init = {
+    void init(File): Read
+  }
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}\end{code}
+
+\lstset{caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+class File {
+
+  public String read() {
+    return "";
+  }
+
+  public void close() {
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{NotOkFileWrapper1.java}}
+\begin{code}
+import mungo.lib.Typestate;
+import org.checkerframework.checker.mungo.lib.MungoNullable;
+
+@Typestate("FileWrapperProtocol")
+class NotOkFileWrapper1 {
+
+  private @MungoNullable File file = null;
+
+  public void init(File file) {}
+
+  public String read() {
+    return file.read();
+  }
+
+  public void close() {
+    file.close();
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{NotOkFileWrapper2.java}}
+\begin{code}
+import mungo.lib.Typestate;
+import org.checkerframework.checker.mungo.lib.MungoNullable;
+
+@Typestate("FileWrapperProtocol")
+class NotOkFileWrapper2 {
+
+  private @MungoNullable File file = null;
+
+  public void init(File file) {
+    this.file = file;
+  }
+
+  public String read() {
+    return file.read();
+  }
+
+  public void close() {
+
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{NotOkFileWrapper3.java}}
+\begin{code}
+import mungo.lib.Typestate;
+import org.checkerframework.checker.mungo.lib.MungoNullable;
+
+@Typestate("FileWrapperProtocol")
+class NotOkFileWrapper3 {
+
+  private @MungoNullable File file = null;
+
+  public void init(File file) {
+    this.file = file;
+  }
+
+  public String read() {
+    file.close();
+    return "";
+  }
+
+  public void close() {
+    file.read();
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{OkFileWrapper.java}}
+\begin{code}
+import mungo.lib.Typestate;
+import org.checkerframework.checker.mungo.lib.MungoNullable;
+
+@Typestate("FileWrapperProtocol")
+class OkFileWrapper {
+
+  private @MungoNullable File file = null;
+
+  public void init(File file) {
+    this.file = file;
+  }
+
+  public String read() {
+    return file.read();
+  }
+
+  public void close() {
+    file.close();
+  }
+
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+
+NotOkFileWrapper1.java: 7-31: Semantic Error
+		Object reference is used uninitialised.\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+NotOkFileWrapper1.java:9: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+  public void init(File file) {}
+                        ^
+NotOkFileWrapper1.java:12: error: [Cannot call read on null] (Cannot call read on null)
+    return file.read();
+                    ^
+NotOkFileWrapper1.java:16: error: [Cannot call close on null] (Cannot call close on null)
+    file.close();
+              ^
+NotOkFileWrapper2.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+  private @MungoNullable File file = null;
+                              ^
+NotOkFileWrapper3.java:14: error: [Cannot call close on ended protocol] (Cannot call close on ended protocol)
+    file.close();
+              ^
+NotOkFileWrapper3.java:19: error: [Cannot call read on ended protocol] (Cannot call read on ended protocol)
+    file.read();
+             ^
+NotOkFileWrapper3.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+  private @MungoNullable File file = null;
+                              ^
+7 errors\end{code}
+

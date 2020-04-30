@@ -1,0 +1,64 @@
+\lstset{caption=\textit{MyComparatorProtocol.protocol}}
+\begin{code}
+typestate MyComparatorProtocol<T> {
+  Start = {
+    int compare(T, T): Start
+  }
+}\end{code}
+
+\lstset{caption=\textit{MyComparator.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("MyComparatorProtocol")
+public class MyComparator<T> {
+  public int compare(T a, T b) {
+    throw new RuntimeException("not implemented");
+  }
+}\end{code}
+
+\lstset{caption=\textit{Ok.java}}
+\begin{code}
+public class Ok {
+	public static void main(String[] args) {
+		MyComparator<Integer> comparator = new MyComparator<Integer>();
+    System.out.println(comparator.compare(10, 5));
+	}
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+MyComparator.java:5,22: error: no visible type named T
+MyComparator.java:5,27: error: no visible type named T
+Ok.java:3: error: MyComparator is not a generic type but used as one in MyComparator<Integer>
+Ok.java:3: error: MyComparator is not a generic type but used as one in MyComparator<Integer>
+
+MyComparator.java: 0-0: Semantic Error
+		Cannot find typestate MyComparatorProtocol defined for class MyComparator.
+
+MyComparator.java: 0-0: Semantic Error
+		Cannot find typestate MyComparatorProtocol defined for class MyComparator.
+MyComparator.java:5,22: error: no visible type named T
+MyComparator.java:5,27: error: no visible type named T
+Ok.java:3: error: MyComparator is not a generic type but used as one in MyComparator<Integer>
+Ok.java:3: error: MyComparator is not a generic type but used as one in MyComparator<Integer>
+MyComparatorProtocol.protocol:1,31: error: unexpected token "<"
+MyComparatorProtocol.protocol:6,1: error: unexpected token ""\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+MyComparatorProtocol.protocol:1: error: (mismatched input '<' expecting '{')
+typestate MyComparatorProtocol<T> {
+                              ^
+Ok.java:4: error: [argument.type.incompatible] incompatible types in argument.
+    System.out.println(comparator.compare(10, 5));
+                                          ^
+  found   : Primitive int
+  required: NoProtocol Integer
+Ok.java:4: error: [argument.type.incompatible] incompatible types in argument.
+    System.out.println(comparator.compare(10, 5));
+                                              ^
+  found   : Primitive int
+  required: NoProtocol Integer
+3 errors\end{code}
+

@@ -1,0 +1,132 @@
+\lstset{caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}\end{code}
+
+\lstset{caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+class File {
+
+  public String read() {
+    return "";
+  }
+
+  public void close() {
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{NotOk.java}}
+\begin{code}
+import java.util.*;
+import java.util.function.Supplier;
+
+public class NotOk {
+  public static void main1() {
+    File f = new File();
+    use(f);
+    f.read();
+  }
+
+  public static void main2() {
+    File f = new File();
+    use(f);
+    use(f);
+  }
+
+  public static void main3() {
+    File f = new File();
+    File f2 = f;
+    use(f2);
+    f.read();
+  }
+
+  public static void main4() {
+    File f = new File();
+    File f2 = f;
+    use(f2);
+    use(f);
+  }
+
+  public static void main5() {
+    File f = new File();
+    Supplier<String> fn = () -> {
+      return f.read();
+    };
+    f.close();
+    fn.get();
+  }
+
+  public static void use(File f) {
+    System.out.println(f.read());
+    f.close();
+  }
+}\end{code}
+
+\lstset{caption=\textit{Ok.java}}
+\begin{code}
+import java.util.*;
+
+public class Ok {
+  public static void main1() {
+    File f = new File();
+    use(f);
+  }
+
+  public static void main2() {
+    File f = new File();
+    File f2 = f;
+    use(f2);
+  }
+
+  public static void use(File f) {
+    System.out.println(f.read());
+    f.close();
+  }
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+
+NotOk.java: 7-9: Semantic Error
+		Object reference is used uninitialised.
+
+NotOk.java: 13-9: Semantic Error
+		Object reference is used uninitialised.
+
+NotOk.java: 19-15: Semantic Error
+		Object reference is used uninitialised.
+
+NotOk.java: 26-15: Semantic Error
+		Object reference is used uninitialised.\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+NotOk.java:8: error: [Cannot call read on moved value] (Cannot call read on moved value)
+    f.read();
+          ^
+NotOk.java:14: error: [argument.type.incompatible] incompatible types in argument.
+    use(f);
+        ^
+  found   : Moved File
+  required: FileProtocol{Read} File
+NotOk.java:21: error: [Cannot call read on moved value] (Cannot call read on moved value)
+    f.read();
+          ^
+NotOk.java:28: error: [argument.type.incompatible] incompatible types in argument.
+    use(f);
+        ^
+  found   : Moved File
+  required: FileProtocol{Read} File
+NotOk.java:34: error: [f was moved to a different closure] (f was moved to a different closure)
+      return f.read();
+             ^
+5 errors\end{code}
+

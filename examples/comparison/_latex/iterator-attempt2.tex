@@ -1,0 +1,73 @@
+\lstset{caption=\textit{JavaIteratorProtocol.protocol}}
+\begin{code}
+typestate JavaIteratorProtocol {
+  HasNext = {
+    boolean hasNext(): <true: Next, false: end>
+  }
+  Next = {
+    String next(): HasNext
+  }
+}\end{code}
+
+\lstset{caption=\textit{JavaIterator.java}}
+\begin{code}
+import java.util.Iterator;
+import mungo.lib.Typestate;
+
+@Typestate("JavaIteratorProtocol")
+public class JavaIterator {
+
+  private Iterator<String> it;
+
+  public JavaIterator(Iterator<String> it) {
+    this.it = it;
+  }
+
+	public boolean hasNext() {
+    return it.hasNext();
+  }
+
+  public String next() {
+    return it.next();
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{Main.java}}
+\begin{code}
+import java.util.*;
+
+public class Main {
+	public static void main(String[] args) {
+		JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
+    
+    while(it.hasNext()){
+      System.out.println(it.next());
+    }
+	}
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+
+JavaIteratorProtocol.protocol: 3-5: Semantic Error
+		Method boolean hasNext() should return an enumeration type.
+
+JavaIteratorProtocol.protocol: 3-24: Semantic Error
+		Duplicate case label: .
+
+Main.java: 0-0: Semantic Error
+		Object created at Main.java: 5. Typestate mismatch. Found: String next(), end, boolean hasNext(). Expected: <, >.
+
+JavaIteratorProtocol.protocol: 3-5: Semantic Error
+		Method boolean hasNext() should return an enumeration type.
+
+JavaIteratorProtocol.protocol: 3-24: Semantic Error
+		Duplicate case label: .
+JavaIteratorProtocol.protocol:3,25: error: unexpected token "true"
+JavaIteratorProtocol.protocol:3,37: error: unexpected token "false"\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+\end{code}
+

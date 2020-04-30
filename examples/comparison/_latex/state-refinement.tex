@@ -1,0 +1,111 @@
+\lstset{caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+
+  Init = {
+    FileStatus open(): <OK: Read, ERROR: end>
+  }
+
+  Read = {
+    String read(): Close,
+    void close(): end
+  }
+
+  Close = {
+    void close(): end
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+class File {
+
+  public FileStatus open() {
+    return FileStatus.OK;
+  }
+
+  public String read() {
+    return "";
+  }
+
+  public void close() {
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{FileStatus.java}}
+\begin{code}
+public enum FileStatus {
+  OK, ERROR
+}\end{code}
+
+\lstset{caption=\textit{NotOk.java}}
+\begin{code}
+import org.checkerframework.checker.mungo.lib.MungoState;
+
+public class NotOk {
+
+  public static void main() {
+    File f = new File();
+
+    switch (f.open()) {
+      case OK:
+        use(f);
+        break;
+      case ERROR:
+        break;
+    }
+  }
+
+  public static void use(@MungoState("Close") File f) {
+    f.read();
+    f.close();
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{Ok.java}}
+\begin{code}
+import org.checkerframework.checker.mungo.lib.MungoState;
+
+public class Ok {
+
+  public static void main() {
+    File f = new File();
+
+    switch (f.open()) {
+      case OK:
+        use(f);
+        break;
+      case ERROR:
+        break;
+    }
+  }
+
+  public static void use(@MungoState("Read") File f) {
+    f.read();
+    f.close();
+  }
+
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+NotOk.java:10: error: [argument.type.incompatible] incompatible types in argument.
+        use(f);
+            ^
+  found   : FileProtocol{Read} File
+  required: FileProtocol{Close} File
+NotOk.java:18: error: [Cannot call read on state Close (got: Close)] (Cannot call read on state Close (got: Close))
+    f.read();
+          ^
+2 errors\end{code}
+

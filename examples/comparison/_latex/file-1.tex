@@ -1,0 +1,99 @@
+\lstset{caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+
+  Init = {
+    FileStatus open(): <OK: Open, ERROR: end>
+  }
+
+  Open = {
+    boolean eof(): <true: Close, false: Read>,
+    void close(): end
+  }
+
+  Read = {
+    int read(): Open,
+    void close(): end
+  }
+
+  Close = {
+    void close(): end
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+class File {
+
+  public FileStatus open() {
+    return FileStatus.OK;
+  }
+
+  public boolean eof() {
+    return false;
+  }
+
+  public int read() {
+    return -1;
+  }
+
+  public void close() {
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{FileStatus.java}}
+\begin{code}
+public enum FileStatus {
+  OK, ERROR
+}\end{code}
+
+\lstset{caption=\textit{Main.java}}
+\begin{code}
+public class Main {
+
+  public static void main(String[] args) {
+    File f = new File();
+
+    switch (f.open()) {
+      case OK:
+        while (!f.eof()) {
+          f.read();
+        }
+        f.close();
+        break;
+      case ERROR:
+        break;
+    }
+  }
+
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+
+FileProtocol.protocol: 8-5: Semantic Error
+		Method boolean eof() should return an enumeration type.
+
+FileProtocol.protocol: 8-20: Semantic Error
+		Duplicate case label: .
+
+Main.java: 0-0: Semantic Error
+		Object created at Main.java: 4. Typestate mismatch. Found: int read(), void close(), boolean eof(). Expected: <, >.
+
+FileProtocol.protocol: 8-5: Semantic Error
+		Method boolean eof() should return an enumeration type.
+
+FileProtocol.protocol: 8-20: Semantic Error
+		Duplicate case label: .
+FileProtocol.protocol:8,21: error: unexpected token "true"
+FileProtocol.protocol:8,34: error: unexpected token "false"\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+\end{code}
+
