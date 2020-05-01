@@ -1,0 +1,73 @@
+\lstset{caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}\end{code}
+
+\lstset{caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+class File {
+
+  public String read() {
+    return "";
+  }
+
+  public void close() {
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{Ok.java}}
+\begin{code}
+import java.util.*;
+import java.util.function.Supplier;
+
+public class Ok {
+  public static void main1() {
+    Supplier<String> fn = () -> {
+      File f = new File();
+      f.read();
+      f.close();
+      return "";
+    };
+  }
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+Exception in thread "main" java.lang.NullPointerException
+	at org.extendj.ast.Declarator.typestateCheck(Declarator.java:157)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:610)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.Program.collect(Program.java:582)
+	at org.extendj.ast.Program.compile(Program.java:604)
+	at org.extendj.TypestateChecker.run(TypestateChecker.java:32)
+	at org.extendj.TypestateChecker.main(TypestateChecker.java:18)\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+\end{code}
+

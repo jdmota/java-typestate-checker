@@ -43,6 +43,7 @@ tests=(
   "iterator-attempt6"
   "iterator-attempt7"
   "original-mungo-continue-issue"
+  "original-mungo-lambda-issue"
 )
 
 mkdir -p "$latexFolder"

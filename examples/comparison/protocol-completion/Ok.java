@@ -13,16 +13,6 @@ public class Ok {
     use(f);
   }
 
-  public static void main3() {
-    /*Supplier<String> fn = () -> {
-      File f = new File();
-      use(f);
-      return "";
-    };
-    fn.get();
-    */
-  }
-
   public static void use(File f) {
     System.out.println(f.read());
     f.close();
