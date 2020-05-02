@@ -1,0 +1,44 @@
+\lstset{caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}\end{code}
+
+\lstset{caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+class File {
+
+  public String read() {
+    return "";
+  }
+
+  public void close() {
+  }
+
+}\end{code}
+
+\lstset{caption=\textit{NotOk.java}}
+\begin{code}
+import java.util.*;
+
+public class NotOk {
+  public static void main1() {
+    List<File> list = new LinkedList<>();
+    list.add(new File());
+  }
+}\end{code}
+
+\lstset{caption=Original Mungo output}
+\begin{code}
+\end{code}
+
+\lstset{caption=New Mungo output}
+\begin{code}
+\end{code}
+
