@@ -81,6 +81,14 @@ do
     printf "$latexCode" "$file" "$contents" >> "$latexFile"
   done
   
+  if [[ "$output1" == "" ]]; then
+    output1=$'None\n'
+  fi
+  
+  if [[ "$output2" == "" ]]; then
+    output2=$'None\n'
+  fi
+  
   printf "$latexOutput1" "$output1" >> "$latexFile"
   printf "$latexOutput2" "$output2" >> "$latexFile"
   
