@@ -1,4 +1,4 @@
-\lstset{caption=\textit{MyComparatorProtocol.protocol}}
+\lstset{language=,caption=\textit{MyComparatorProtocol.protocol}}
 \begin{code}
 typestate MyComparatorProtocol<T> {
   Start = {
@@ -6,7 +6,7 @@ typestate MyComparatorProtocol<T> {
   }
 }\end{code}
 
-\lstset{caption=\textit{MyComparator.java}}
+\lstset{language=Java,caption=\textit{MyComparator.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -17,7 +17,7 @@ public class MyComparator<T> {
   }
 }\end{code}
 
-\lstset{caption=\textit{Ok.java}}
+\lstset{language=Java,caption=\textit{Ok.java}}
 \begin{code}
 public class Ok {
 	public static void main(String[] args) {
@@ -26,7 +26,7 @@ public class Ok {
 	}
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 MyComparator.java:5,22: error: no visible type named T
 MyComparator.java:5,27: error: no visible type named T
@@ -45,7 +45,7 @@ Ok.java:3: error: MyComparator is not a generic type but used as one in MyCompar
 MyComparatorProtocol.protocol:1,31: error: unexpected token "<"
 MyComparatorProtocol.protocol:6,1: error: unexpected token ""\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 MyComparatorProtocol.protocol:1: error: (mismatched input '<' expecting '{')
 typestate MyComparatorProtocol<T> {

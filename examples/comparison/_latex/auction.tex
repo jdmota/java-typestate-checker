@@ -1,4 +1,4 @@
-\lstset{caption=\textit{AuctionProtocol.protocol}}
+\lstset{language=,caption=\textit{AuctionProtocol.protocol}}
 \begin{code}
 typestate AuctionProtocol {
   Unknown = {
@@ -10,7 +10,7 @@ typestate AuctionProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{ClientProtocol.protocol}}
+\lstset{language=,caption=\textit{ClientProtocol.protocol}}
 \begin{code}
 typestate ClientProtocol {
   Running = {
@@ -21,7 +21,7 @@ typestate ClientProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{Auction.java}}
+\lstset{language=Java,caption=\textit{Auction.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -59,13 +59,13 @@ public class Auction {
   }
 }\end{code}
 
-\lstset{caption=\textit{Boolean.java}}
+\lstset{language=Java,caption=\textit{Boolean.java}}
 \begin{code}
 enum Boolean {
   True, False
 }\end{code}
 
-\lstset{caption=\textit{Client.java}}
+\lstset{language=Java,caption=\textit{Client.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -91,7 +91,7 @@ public class Client {
   }
 }\end{code}
 
-\lstset{caption=\textit{Main.java}}
+\lstset{language=Java,caption=\textit{Main.java}}
 \begin{code}
 public class Main {
   public static void main(String[] args) {
@@ -107,7 +107,7 @@ public class Main {
   }
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 Auction.java: 29-17: Semantic Error
@@ -119,7 +119,7 @@ Auction.java: 29-17: Semantic Error
 Auction.java: 29-17: Semantic Error
 		Object reference is used uninitialised.\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 Auction.java:13: error: [Cannot override because object has not ended its protocol] (Cannot override because object has not ended its protocol)
       clients[i] = new Client(i);

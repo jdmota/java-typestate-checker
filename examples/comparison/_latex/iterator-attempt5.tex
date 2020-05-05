@@ -1,4 +1,4 @@
-\lstset{caption=\textit{JavaIteratorProtocol.protocol}}
+\lstset{language=,caption=\textit{JavaIteratorProtocol.protocol}}
 \begin{code}
 typestate JavaIteratorProtocol {
   HasNext = {
@@ -9,13 +9,13 @@ typestate JavaIteratorProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{Boolean.java}}
+\lstset{language=Java,caption=\textit{Boolean.java}}
 \begin{code}
 enum Boolean {
 	True, False;
 }\end{code}
 
-\lstset{caption=\textit{JavaIterator.java}}
+\lstset{language=Java,caption=\textit{JavaIterator.java}}
 \begin{code}
 import java.util.Iterator;
 import mungo.lib.Typestate;
@@ -39,7 +39,7 @@ public class JavaIterator {
 
 }\end{code}
 
-\lstset{caption=\textit{Main.java}}
+\lstset{language=Java,caption=\textit{Main.java}}
 \begin{code}
 import java.util.*;
 
@@ -59,13 +59,13 @@ public class Main {
 	}
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 Main.java: 0-0: Semantic Error
 		Object created at Main.java: 5. Typestate mismatch. Found: end, Boolean hasNext(). Expected: Boolean hasNext().\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 None
 \end{code}

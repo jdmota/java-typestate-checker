@@ -1,4 +1,4 @@
-\lstset{caption=\textit{FileProtocol.protocol}}
+\lstset{language=,caption=\textit{FileProtocol.protocol}}
 \begin{code}
 typestate FileProtocol {
   Read = {
@@ -7,7 +7,7 @@ typestate FileProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{File.java}}
+\lstset{language=Java,caption=\textit{File.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -23,7 +23,7 @@ class File {
 
 }\end{code}
 
-\lstset{caption=\textit{NotOk.java}}
+\lstset{language=Java,caption=\textit{NotOk.java}}
 \begin{code}
 import java.util.*;
 import java.util.function.Supplier;
@@ -70,7 +70,7 @@ public class NotOk {
   }
 }\end{code}
 
-\lstset{caption=\textit{Ok.java}}
+\lstset{language=Java,caption=\textit{Ok.java}}
 \begin{code}
 import java.util.*;
 
@@ -92,7 +92,7 @@ public class Ok {
   }
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 NotOk.java: 7-9: Semantic Error
@@ -107,7 +107,7 @@ NotOk.java: 19-15: Semantic Error
 NotOk.java: 26-15: Semantic Error
 		Object reference is used uninitialised.\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 NotOk.java:8: error: [Cannot call read on moved value] (Cannot call read on moved value)
     f.read();

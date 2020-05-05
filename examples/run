@@ -50,9 +50,10 @@ tests=(
 
 mkdir -p "$latexFolder"
 
-latexCode="\\\\lstset{caption=\\\\textit{%s}}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
-latexOutput1="\\\\lstset{caption=Original Mungo output}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
-latexOutput2="\\\\lstset{caption=New Mungo output}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
+latexCode="\\\\lstset{language=,caption=\\\\textit{%s}}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
+latexJavaCode="\\\\lstset{language=Java,caption=\\\\textit{%s}}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
+latexOutput1="\\\\lstset{language=,caption=Original Mungo output}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
+latexOutput2="\\\\lstset{language=,caption=New Mungo output}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
 
 for testName in "${tests[@]}"
 do
@@ -78,7 +79,7 @@ do
   for file in *.java
   do
     contents=`cat "$file"`
-    printf "$latexCode" "$file" "$contents" >> "$latexFile"
+    printf "$latexJavaCode" "$file" "$contents" >> "$latexFile"
   done
   
   if [[ "$output1" == "" ]]; then

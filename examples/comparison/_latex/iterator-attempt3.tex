@@ -1,4 +1,4 @@
-\lstset{caption=\textit{JavaIteratorProtocol.protocol}}
+\lstset{language=,caption=\textit{JavaIteratorProtocol.protocol}}
 \begin{code}
 import mungo.lib.Boolean;
 
@@ -11,7 +11,7 @@ typestate JavaIteratorProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{JavaIterator.java}}
+\lstset{language=Java,caption=\textit{JavaIterator.java}}
 \begin{code}
 import java.util.Iterator;
 import mungo.lib.Typestate;
@@ -36,7 +36,7 @@ public class JavaIterator {
 
 }\end{code}
 
-\lstset{caption=\textit{Main.java}}
+\lstset{language=Java,caption=\textit{Main.java}}
 \begin{code}
 import java.util.*;
 import mungo.lib.Boolean;
@@ -51,7 +51,7 @@ public class Main {
 	}
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 JavaIteratorProtocol.protocol: 5-5: Semantic Error
@@ -63,7 +63,7 @@ Main.java: 0-0: Semantic Error
 JavaIteratorProtocol.protocol: 5-5: Semantic Error
 		Method Boolean hasNext() should return an enumeration type.\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 None
 \end{code}

@@ -1,4 +1,4 @@
-\lstset{caption=\textit{FileProtocol.protocol}}
+\lstset{language=,caption=\textit{FileProtocol.protocol}}
 \begin{code}
 typestate FileProtocol {
   Read = {
@@ -7,7 +7,7 @@ typestate FileProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{File.java}}
+\lstset{language=Java,caption=\textit{File.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -23,7 +23,7 @@ class File {
 
 }\end{code}
 
-\lstset{caption=\textit{NotOk.java}}
+\lstset{language=Java,caption=\textit{NotOk.java}}
 \begin{code}
 import java.util.*;
 
@@ -40,7 +40,7 @@ public class NotOk {
   }
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.ast.MethodAccess.getTypestateVar(MethodAccess.java:1909)
@@ -60,7 +60,7 @@ Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.TypestateChecker.run(TypestateChecker.java:32)
 	at org.extendj.TypestateChecker.main(TypestateChecker.java:18)\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 None
 \end{code}

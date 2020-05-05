@@ -1,4 +1,4 @@
-\lstset{caption=\textit{FileProtocol.protocol}}
+\lstset{language=,caption=\textit{FileProtocol.protocol}}
 \begin{code}
 typestate FileProtocol {
 
@@ -22,7 +22,7 @@ typestate FileProtocol {
 
 }\end{code}
 
-\lstset{caption=\textit{File.java}}
+\lstset{language=Java,caption=\textit{File.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -46,13 +46,13 @@ class File {
 
 }\end{code}
 
-\lstset{caption=\textit{FileStatus.java}}
+\lstset{language=Java,caption=\textit{FileStatus.java}}
 \begin{code}
 public enum FileStatus {
   OK, ERROR
 }\end{code}
 
-\lstset{caption=\textit{Main.java}}
+\lstset{language=Java,caption=\textit{Main.java}}
 \begin{code}
 public class Main {
 
@@ -73,7 +73,7 @@ public class Main {
 
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 FileProtocol.protocol: 8-5: Semantic Error
@@ -93,7 +93,7 @@ FileProtocol.protocol: 8-20: Semantic Error
 FileProtocol.protocol:8,21: error: unexpected token "true"
 FileProtocol.protocol:8,34: error: unexpected token "false"\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 None
 \end{code}

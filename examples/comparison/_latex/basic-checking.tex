@@ -1,4 +1,4 @@
-\lstset{caption=\textit{FileProtocol.protocol}}
+\lstset{language=,caption=\textit{FileProtocol.protocol}}
 \begin{code}
 typestate FileProtocol {
 
@@ -16,7 +16,7 @@ typestate FileProtocol {
 
 }\end{code}
 
-\lstset{caption=\textit{File.java}}
+\lstset{language=Java,caption=\textit{File.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -37,13 +37,13 @@ public class File {
 
 }\end{code}
 
-\lstset{caption=\textit{FileStatus.java}}
+\lstset{language=Java,caption=\textit{FileStatus.java}}
 \begin{code}
 public enum FileStatus {
   OK, ERROR
 }\end{code}
 
-\lstset{caption=\textit{NotOk.java}}
+\lstset{language=Java,caption=\textit{NotOk.java}}
 \begin{code}
 public class NotOk {
   public static void main(String args[]) {
@@ -60,7 +60,7 @@ public class NotOk {
   }
 }\end{code}
 
-\lstset{caption=\textit{Ok.java}}
+\lstset{language=Java,caption=\textit{Ok.java}}
 \begin{code}
 public class Ok {
   public static void main(String args[]) {
@@ -77,13 +77,13 @@ public class Ok {
   }
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 NotOk.java: 10-7: Semantic Error
 		Object created at NotOk.java: 3. Typestate mismatch. Found: end. Expected: String read().\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 NotOk.java:3: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
     File f = new File();

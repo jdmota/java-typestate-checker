@@ -1,4 +1,4 @@
-\lstset{caption=\textit{JavaIteratorProtocol.protocol}}
+\lstset{language=,caption=\textit{JavaIteratorProtocol.protocol}}
 \begin{code}
 typestate JavaIteratorProtocol {
   HasNext = {
@@ -9,7 +9,7 @@ typestate JavaIteratorProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{JavaIterator.java}}
+\lstset{language=Java,caption=\textit{JavaIterator.java}}
 \begin{code}
 import java.util.Iterator;
 import mungo.lib.Typestate;
@@ -33,7 +33,7 @@ public class JavaIterator {
 
 }\end{code}
 
-\lstset{caption=\textit{Main.java}}
+\lstset{language=Java,caption=\textit{Main.java}}
 \begin{code}
 import java.util.*;
 
@@ -47,7 +47,7 @@ public class Main {
 	}
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 JavaIteratorProtocol.protocol: 3-5: Semantic Error
@@ -67,7 +67,7 @@ JavaIteratorProtocol.protocol: 3-24: Semantic Error
 JavaIteratorProtocol.protocol:3,25: error: unexpected token "true"
 JavaIteratorProtocol.protocol:3,37: error: unexpected token "false"\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 None
 \end{code}

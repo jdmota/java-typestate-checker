@@ -1,4 +1,4 @@
-\lstset{caption=\textit{MyComparatorProtocol.protocol}}
+\lstset{language=,caption=\textit{MyComparatorProtocol.protocol}}
 \begin{code}
 typestate MyComparatorProtocol {
   Start = {
@@ -6,7 +6,7 @@ typestate MyComparatorProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{MyComparator.java}}
+\lstset{language=Java,caption=\textit{MyComparator.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -17,7 +17,7 @@ public class MyComparator {
   }
 }\end{code}
 
-\lstset{caption=\textit{Ok.java}}
+\lstset{language=Java,caption=\textit{Ok.java}}
 \begin{code}
 public class Ok {
 	public static void main(String[] args) {
@@ -26,13 +26,13 @@ public class Ok {
 	}
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 Ok.java: 0-0: Semantic Error
 		Object created at Ok.java: 3. Typestate mismatch. Found: end. Expected: int compare(int, int).\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 Ok.java:3: error: [Object did not complete its protocol. Type: MyComparatorProtocol{Start}] (Object did not complete its protocol. Type: MyComparatorProtocol{Start})
 		MyComparator comparator = new MyComparator();

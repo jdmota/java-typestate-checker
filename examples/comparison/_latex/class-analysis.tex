@@ -1,4 +1,4 @@
-\lstset{caption=\textit{FileProtocol.protocol}}
+\lstset{language=,caption=\textit{FileProtocol.protocol}}
 \begin{code}
 typestate FileProtocol {
   Read = {
@@ -7,7 +7,7 @@ typestate FileProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{FileWrapperProtocol.protocol}}
+\lstset{language=,caption=\textit{FileWrapperProtocol.protocol}}
 \begin{code}
 typestate FileWrapperProtocol {
   Init = {
@@ -19,7 +19,7 @@ typestate FileWrapperProtocol {
   }
 }\end{code}
 
-\lstset{caption=\textit{File.java}}
+\lstset{language=Java,caption=\textit{File.java}}
 \begin{code}
 import mungo.lib.Typestate;
 
@@ -35,7 +35,7 @@ class File {
 
 }\end{code}
 
-\lstset{caption=\textit{NotOkFileWrapper1.java}}
+\lstset{language=Java,caption=\textit{NotOkFileWrapper1.java}}
 \begin{code}
 import mungo.lib.Typestate;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
@@ -57,7 +57,7 @@ class NotOkFileWrapper1 {
 
 }\end{code}
 
-\lstset{caption=\textit{NotOkFileWrapper2.java}}
+\lstset{language=Java,caption=\textit{NotOkFileWrapper2.java}}
 \begin{code}
 import mungo.lib.Typestate;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
@@ -81,7 +81,7 @@ class NotOkFileWrapper2 {
 
 }\end{code}
 
-\lstset{caption=\textit{NotOkFileWrapper3.java}}
+\lstset{language=Java,caption=\textit{NotOkFileWrapper3.java}}
 \begin{code}
 import mungo.lib.Typestate;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
@@ -106,7 +106,7 @@ class NotOkFileWrapper3 {
 
 }\end{code}
 
-\lstset{caption=\textit{OkFileWrapper.java}}
+\lstset{language=Java,caption=\textit{OkFileWrapper.java}}
 \begin{code}
 import mungo.lib.Typestate;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
@@ -130,13 +130,13 @@ class OkFileWrapper {
 
 }\end{code}
 
-\lstset{caption=Original Mungo output}
+\lstset{language=,caption=Original Mungo output}
 \begin{code}
 
 NotOkFileWrapper1.java: 7-31: Semantic Error
 		Object reference is used uninitialised.\end{code}
 
-\lstset{caption=New Mungo output}
+\lstset{language=,caption=New Mungo output}
 \begin{code}
 NotOkFileWrapper1.java:9: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
   public void init(File file) {}
