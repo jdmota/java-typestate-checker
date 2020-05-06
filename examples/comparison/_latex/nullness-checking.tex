@@ -45,6 +45,8 @@ public enum FileStatus {
 
 \lstset{language=Java,caption=\textit{NotOk.java}}
 \begin{code}
+import org.checkerframework.checker.mungo.lib.MungoState;
+
 public class NotOk {
   public static void main1(String args[]) {
     File f = new File();
@@ -64,8 +66,15 @@ public class NotOk {
     use(null);
   }
 
-  public static void use(File f) {
-
+  public static void use(@MungoState("Init") File f) {
+    switch (f.open()) {
+      case OK:
+        System.out.println(f.read());
+        f.close();
+        break;
+      case ERROR:
+        break;
+    }
   }
 }\end{code}
 
@@ -75,20 +84,18 @@ import org.checkerframework.checker.mungo.lib.MungoNullable;
 
 public class Ok {
   public static void main(String args[]) {
-    @MungoNullable File f = args.length > 0 ? null : new File();
+    @MungoNullable File f = null;
 
-    if (f == null) {
-      f = new File();
-    }
-
-    switch (f.open()) {
-      case OK:
-        System.out.println(f.read());
-        f.close();
-        f = null;
-        break;
-      case ERROR:
-        break;
+    if (f != null) {
+      switch (f.open()) {
+        case OK:
+          System.out.println(f.read());
+          f.close();
+          f = null;
+          break;
+        case ERROR:
+          break;
+      }
     }
   }
 }\end{code}
@@ -96,30 +103,27 @@ public class Ok {
 \lstset{language=,caption=Original Mungo output}
 \begin{code}
 
-NotOk.java: 8-13: Semantic Error
+NotOk.java: 10-13: Semantic Error
 		Object reference is used uninitialised.
 
 NotOk.java: 0-0: Semantic Error
-		Object created at NotOk.java: 3. Typestate mismatch. Found: end. Expected: void close().
+		Object created at NotOk.java: 5. Typestate mismatch. Found: end. Expected: void close().
 
 Ok.java: 5-25: Semantic Error
 		Object reference is used uninitialised.\end{code}
 
 \lstset{language=,caption=New Mungo output}
 \begin{code}
-NotOk.java:8: error: [Cannot override because object has not ended its protocol] (Cannot override because object has not ended its protocol)
+NotOk.java:10: error: [Cannot override because object has not ended its protocol] (Cannot override because object has not ended its protocol)
         f = null;
         ^
-NotOk.java:9: error: [Cannot call close on null] (Cannot call close on null)
+NotOk.java:11: error: [Cannot call close on null] (Cannot call close on null)
         f.close();
                ^
-NotOk.java:17: error: [argument.type.incompatible] incompatible types in argument.
+NotOk.java:19: error: [argument.type.incompatible] incompatible types in argument.
     use(null);
         ^
   found   : Null null
-  required: FileProtocol{Init|Read|Close} File
-NotOk.java:20: error: [Object did not complete its protocol. Type: FileProtocol{Init|Read|Close}] (Object did not complete its protocol. Type: FileProtocol{Init|Read|Close})
-  public static void use(File f) {
-                              ^
-4 errors\end{code}
+  required: FileProtocol{Init} File
+3 errors\end{code}
 

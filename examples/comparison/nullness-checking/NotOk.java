@@ -1,3 +1,5 @@
+import org.checkerframework.checker.mungo.lib.MungoState;
+
 public class NotOk {
   public static void main1(String args[]) {
     File f = new File();
@@ -17,7 +19,14 @@ public class NotOk {
     use(null);
   }
 
-  public static void use(File f) {
-
+  public static void use(@MungoState("Init") File f) {
+    switch (f.open()) {
+      case OK:
+        System.out.println(f.read());
+        f.close();
+        break;
+      case ERROR:
+        break;
+    }
   }
 }

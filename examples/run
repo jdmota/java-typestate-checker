@@ -33,6 +33,7 @@ tests=(
   "protocol-completion"
   "protocol-completion-corner-cases"
   "class-analysis"
+  "class-analysis-2"
   "droppable-objects"
   "generics"
   "auction"

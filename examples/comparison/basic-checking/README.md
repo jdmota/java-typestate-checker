@@ -2,16 +2,13 @@
 
 ```
 
-NotOk.java: 10-7: Semantic Error
-		Object created at NotOk.java: 3. Typestate mismatch. Found: end. Expected: String read().```
+NotOk.java: 3-14: Semantic Error
+		Object created at NotOk.java: 3. Typestate mismatch. Found: String read(). Expected: FileStatus open().```
 
 ## Mungo Checker's output
 
 ```
-NotOk.java:3: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
-    File f = new File();
-         ^
-NotOk.java:7: error: [Cannot call read on ended protocol] (Cannot call read on ended protocol)
-        System.out.println(f.read());
-                                 ^
-2 errors```
+NotOk.java:5: error: [Cannot call read on state Init (got: Init)] (Cannot call read on state Init (got: Init))
+    System.out.println(f.read());
+                             ^
+1 error```
