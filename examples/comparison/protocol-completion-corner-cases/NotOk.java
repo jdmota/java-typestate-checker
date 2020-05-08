@@ -5,4 +5,12 @@ public class NotOk {
     List<File> list = new LinkedList<>();
     list.add(new File());
   }
+  
+  public static class FileWrapper {
+    public File file = new File();
+  }
+  
+  public static void main2() {
+    FileWrapper file = new FileWrapper();
+  }
 }

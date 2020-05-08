@@ -1,5 +1,3 @@
-import java.util.*;
-
 public class Ok {
   public static void main1() {
     File f = new File();

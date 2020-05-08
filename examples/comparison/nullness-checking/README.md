@@ -8,7 +8,7 @@ NotOk.java: 10-13: Semantic Error
 NotOk.java: 0-0: Semantic Error
 		Object created at NotOk.java: 5. Typestate mismatch. Found: end. Expected: void close().
 
-Ok.java: 5-25: Semantic Error
+Ok.java: 6-25: Semantic Error
 		Object reference is used uninitialised.```
 
 ## Mungo Checker's output

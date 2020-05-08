@@ -5,8 +5,7 @@ typestate FileProtocol {
   }
 
   Read = {
-    String read(): Close,
-    void close(): end
+    String read(): Close
   }
 
   Close = {
