@@ -115,6 +115,9 @@ publishing {
 test {
     testLogging.showStandardStreams = true
 
+    inputs.files("tests/mungo")
+    inputs.files("tests/resolution")
+
     if (!JavaVersion.current().java9Compatible) {
         jvmArgs "-Xbootclasspath/p:${configurations.errorproneJavac.asPath}"
     }
