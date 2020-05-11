@@ -1,0 +1,104 @@
+module demos.http.Http_Http_S;
+
+type <java> "java.lang.String" from "java.lang.String" as str;
+type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+
+local protocol Http_S(role C, role S) {
+    choice at C {
+        request(str) from C;
+        rec X {
+            choice at C {
+                host(str) from C;
+                continue X;
+            } or {
+                userA(str) from C;
+                continue X;
+            } or {
+                acceptT(str) from C;
+                continue X;
+            } or {
+                acceptL(str) from C;
+                continue X;
+            } or {
+                acceptE(str) from C;
+                continue X;
+            } or {
+                DNT(int) from C;
+                continue X;
+            } or {
+                connection(str) from C;
+                continue X;
+            } or {
+                upgradeIR(str) from C;
+                continue X;
+            } or {
+                cookie(str) from C;
+                continue X;
+            } or {
+                body(str) from C;
+            }
+        }
+    }
+    httpv(str) to C;
+    choice at S {
+        200(str) to C;
+    } or {
+        404(str) to C;
+    }
+    rec Y {
+        choice at S {
+            date(str) to C;
+            continue Y;
+        } or {
+            server(str) to C;
+            continue Y;
+        } or {
+            strictTS(str) to C;
+            continue Y;
+        } or {
+            lastM(str) to C;
+            continue Y;
+        } or {
+            eTag(str) to C;
+            continue Y;
+        } or {
+            acceptR(str) to C;
+            continue Y;
+        } or {
+            contentL(int) to C;
+            continue Y;
+        } or {
+            vary(str) to C;
+            continue Y;
+        } or {
+            contentT(str) to C;
+            continue Y;
+        } or {
+            via(str) to C;
+            continue Y;
+        } or {
+            cacheC(str) to C;
+            continue Y;
+        } or {
+            p3p(str) to C;
+            continue Y;
+        } or {
+            xxssProtection(str) to C;
+            continue Y;
+        } or {
+            xframeOpt(str) to C;
+            continue Y;
+        } or {
+            setCookie(str) to C;
+            continue Y;
+        } or {
+            transferE(str) to C;
+            continue Y;
+        } or {
+            expires(str) to C;
+            continue Y;
+        } or {
+            body(str) to C;
+        }
+    }
+}
