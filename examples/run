@@ -45,8 +45,9 @@ tests=(
   "iterator-attempt5"
   "iterator-attempt6"
   "iterator-attempt7"
-  "original-mungo-continue-issue"
-  "original-mungo-lambda-issue"
+  "original-mungo-crashes"
+  "original-mungo-flow-issue-1"
+  "original-mungo-flow-issue-2"
 )
 
 mkdir -p "$latexFolder"
