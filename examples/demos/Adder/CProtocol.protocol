@@ -1,0 +1,21 @@
+package demos.Adder;
+
+//type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+typestate CProtocol {
+    State0 = {
+        void send_ADDToS(): State1,
+        void send_BYEToS(): State4
+    }
+    State1 = {
+        void send_AddintToS(Integer): State2
+    }
+    State2 = {
+        void send_AddintToS(Integer): State3
+    }
+    State3 = {
+        Integer receive_ResintFromS(): State0
+    }
+    State4 = {
+        void send_ByeToS(): end
+    }
+}

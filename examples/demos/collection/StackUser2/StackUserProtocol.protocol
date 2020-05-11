@@ -1,0 +1,15 @@
+package demos.collection.StackUser2;
+
+typestate StackUserProtocol {
+	Init = {
+		void produce(int) : Consume,
+		void produce() : Consume,
+		void close() : end
+	}
+
+	Consume = {
+		void produce(int) : Consume,
+		void produce() : Consume,
+		void consume() : Init
+	}
+}

@@ -1,0 +1,20 @@
+module demos.BuyTicket;
+
+type <java> "java.lang.String" from "java.lang.String" as String;
+type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+
+global protocol BuyTicket(role R, role A, role F) {
+	request(String) from R to A;
+	quote(int) from A to R;
+	check(int) from R to F;
+	choice at F {
+		approve(int) from F to R;
+		approve(int) from F to A;
+		ticket(String) from A to R;
+		invoice(int) from A to F;
+		payment(int) from F to A;
+	} or {
+		refuse(String) from F to R;
+		refuse(String) from F to A;
+	}
+}

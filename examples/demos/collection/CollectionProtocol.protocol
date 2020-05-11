@@ -1,0 +1,22 @@
+package demos.collection;
+
+typestate CollectionProtocol {
+	Init = {
+		void initialise(int) : Empty
+	}
+
+	Empty = {
+		void put(Node) : NonEmpty,
+		void close(): end
+	}
+
+	NonEmpty = {
+		void put(Node) : NonEmpty,
+		Node get() : Unknown
+	}
+
+	Unknown = {
+		void put(Node) : NonEmpty,
+		BooleanChoice isEmpty() : <TRUE: Empty, FALSE: NonEmpty>
+	}
+}

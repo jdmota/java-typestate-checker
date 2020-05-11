@@ -1,0 +1,22 @@
+module demos.fibonacci.scribble.Fib;
+
+
+type <java> "java.lang.Long" from "rt.jar" as Long;
+
+
+global protocol Fibonacci(role A, role B)
+{
+	rec Fib
+	{
+		choice at A
+		{
+			fibonacci(Long) from A to B;
+			fibonacci(Long) from B to A;
+			continue Fib;
+		}
+		or
+		{
+			end() from A to B;
+		}
+	}
+}

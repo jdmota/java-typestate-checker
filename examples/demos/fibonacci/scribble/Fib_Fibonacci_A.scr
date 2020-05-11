@@ -1,0 +1,15 @@
+module demos.fibonacci.scribble.Fib_Fibonacci_A;
+
+type <java> "java.lang.Long" from "java.lang.Long" as Long;
+
+local protocol Fibonacci_A(role A, role B) {
+    rec Fib {
+        choice at A {
+            fibonacci(Long) to B;
+            fibonacci(Long) from B;
+            continue Fib;
+        } or {
+            end() to B;
+        }
+    }
+}

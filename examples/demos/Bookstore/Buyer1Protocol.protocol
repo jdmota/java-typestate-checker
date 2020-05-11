@@ -1,0 +1,27 @@
+package demos.Bookstore;
+//type <java> "java.lang.String" from "java.lang.String" as String;
+//type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+typestate Buyer1Protocol {
+	State0 = {
+		void send_bookStringToSeller(String): State1
+	}
+	State1 = {
+		int receive_bookintFromSeller(): State2
+	}
+	State2 = {
+		void send_quoteintToBuyer2(int): State3
+	}
+	State3 = {
+		Choice1 receive_Choice1LabelFromBuyer2():
+		<AGREE: State4, QUIT: State6>
+	}
+	State4 = {
+		String receive_agreeStringFromBuyer2(): State5
+	}
+	State5 = {
+		void send_transferintToSeller(int): end
+	}
+	State6 = {
+		String receive_quitStringFromBuyer2(): end
+	}
+}

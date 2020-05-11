@@ -1,0 +1,109 @@
+module demos.http.Http;
+
+type <java> "java.lang.String" from "java.lang.String" as str;
+type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+
+
+global protocol Http(role C, role S){
+	// Request
+	choice at C{
+		request(str) from C to S;  // GET / HTTP/1.1
+		rec X{
+			choice at C{
+				host(str) from C to S;  // Host: www.google.co.uk
+				continue X;
+			}or{
+				userA(str) from C to S;  // User-Agent
+				continue X;
+			}or{
+				acceptT(str) from C to S;  // Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+				continue X;
+			}or{
+				acceptL(str) from C to S;  // Accept-Language: en-GB,en;q=0.5
+				continue X;
+			}or{
+				acceptE(str) from C to S;  // Accept-Encoding: gzip, deflate
+				continue X;
+			}or{
+				DNT(int) from C to S;  // DNT: 1
+				continue X;
+			}or{
+				connection(str) from C to S;  // Connection: keep-alive
+				continue X;
+			}or{
+				upgradeIR(str) from C to S;  // Upgrade-Insecure-Requests: 1
+				continue X;
+			}or{
+				cookie(str) from C to S;  // Cookie: __utma=111872281.1372348290.1498163262.1498163262.1498163262.1; __utmz=111872281.1498163262.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)
+				continue X;
+			}or{
+				body(str) from C to S;  //optional for client
+			}
+		}
+	}
+
+	//response
+	httpv(str) from S to C;  // HTTP/1.1
+	choice at S{
+		200(str) from S to C;  // 200 OK
+	}or{
+		404(str) from S to C;
+	}
+
+  rec Y{
+		choice at S{
+			date(str) from S to C;  // Date: Sun, 24 May 2015 21:04:36 GMT
+			continue Y;
+		}or{
+			server(str) from S to C;  // Server: Apache
+			continue Y;
+		}or{
+			strictTS(str) from S to C;  // Strict-Transport-Security: max-age=31536000; preload; includeSubDomains
+			continue Y;
+		}or{
+			lastM(str) from S to C;  // Last-Modified: Sat, 23 Jul 2011 09:38:43 GMT
+			continue Y;
+		}or{
+			eTag(str) from S to C;  // ETag: "ac6fa008-559-4a8b95908aec0"
+			continue Y;
+		}or{
+			acceptR(str) from S to C;  // Accept-Ranges: bytes
+			continue Y;
+		}or{
+			contentL(int) from S to C;  // Content-Length: 1369
+			continue Y;
+		}or{
+			vary(str) from S to C;  // Vary: Accept-Encoding
+			continue Y;
+		}or{
+			contentT(str) from S to C;  // Content-Type: text/html
+			continue Y;
+		}or{
+			via(str) from S to C;  // Via: 1.1 www.google.co.uk
+			continue Y;
+		}or{
+         	cacheC(str) from S to C;  // Cache-Control: private, max-age=0
+         	continue Y;
+        }or{
+            p3p(str) from S to C;  // P3P: CP="This is not a P3P policy! See g.co/p3phelp for more info."
+            continue Y;
+        }or{
+            xxssProtection(str) from S to C;  // X-XSS-Protection: 0
+            continue Y;
+        }or{
+            xframeOpt(str) from S to C;  // X-Frame-Options: SAMEORIGIN: private, max-age=0
+            continue Y;
+        }or{
+            setCookie(str) from S to C;  // Set-Cookie:1P_JAR=2020-04-01-15; expires=Fri, 01-May-2020 15:55:50 GMT; path=/; domain=.google.com; Secure
+            continue Y;
+		}or{
+            transferE(str) from S to C;  // Transfer-Encoding: chunked
+            continue Y;
+        }or{
+            expires(str) from S to C;  // Expires: -1
+            continue Y;
+        }or{
+			body(str) from S to C;  // Message length indicated by Content-Length
+		}
+	}
+}

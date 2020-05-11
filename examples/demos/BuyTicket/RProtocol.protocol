@@ -1,0 +1,27 @@
+package demos.BuyTicket;
+//type <java> "java.lang.String" from "java.lang.String" as String;
+//type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+typestate RProtocol {
+	State0 = {
+		void send_requestStringToA(String): State1
+	}
+	State1 = {
+		int receive_quoteintFromA(): State2
+	}
+	State2 = {
+		void send_checkintToF(int): State3
+	}
+	State3 = {
+		Choice1 receive_Choice1LabelFromF():
+		<APPROVE: State4, REFUSE: State6>
+	}
+	State4 = {
+		int receive_approveintFromF(): State5
+	}
+	State5 = {
+		String receive_ticketStringFromA(): end
+	}
+	State6 = {
+		String receive_refuseStringFromF(): end
+	}
+}

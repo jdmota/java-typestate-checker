@@ -1,0 +1,16 @@
+module demos.Bookstore.Bookstore_Seller;
+
+type <java> "java.lang.String" from "java.lang.String" as String;
+type <java> "java.lang.Integer" from "java.lang.Integer" as int;
+
+local protocol Bookstore_Seller(self Seller, role Buyer2, role Buyer1) {
+    book(String) from Buyer1;
+    book(int) to Buyer1;
+    choice at Buyer2 {
+        agree(String) from Buyer2;
+        transfer(int) from Buyer1;
+        transfer(int) from Buyer2;
+    } or {
+        quit(String) from Buyer2;
+    }
+}

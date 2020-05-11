@@ -1,0 +1,188 @@
+module demos.POP3.POP3;
+
+type <java> "java.lang.String" from "rt.jar" as String;
+type <java> "java.lang.Integer" from "rt.jar" as Int;
+type <java> "java.lang.Integer" from "rt.jar" as TwoInt;
+	//expresses multiple Integer payload
+type <java> "java.lang.String" from "rt.jar" as Void;
+	//expresses an empty payload
+type <java> "java.lang.String" from "rt.jar" as IntString;
+	//expresses a payload of Integer and String
+
+//POP3  based on RFC 1939
+
+//Start: Client send connection request to server
+// S=Server, C=Client
+
+global protocol ProtocolName(role S, role C) {
+	OKN(String) from S to C;				//connection acknowledged - start of authentication
+	rec authentication_username {	
+	choice at C
+		{
+		USER(String) from C to S;			//1st step authentication choice1: send user-name
+		choice at S
+			{
+			OK(String) from S to C;			//option1: acknowledged - valid mailbox
+			//choice with error at the bottom
+			rec authentication_password {
+			choice at C
+				{
+				PASS(String) from C to S;				//2nd step authentication choice1: send password
+				choice at S
+					{
+					OK(String) from S to C;				//option1: acknowledged - maildrop locked and ready
+					rec transaction {
+					choice at C							//start of transaction
+						{									//opening bracket STAT
+						STAT(Void) from C to S; 				//choice1: request number of unread messages
+						OKN(TwoInt) from S to C;				//acknowledged - send number of unread messages 
+						//return: multiple message numbers
+						continue transaction;
+						} or {								//closing bracket STAT and opening bracket LIST
+						//LIST optional payload Int, expressed as two seperate commands, with payload (LIST_n) and without (LIST)
+						LIST(Void) from C to S;					//choice2: size of all messages
+						choice at S
+							{
+							OK(String) from S to C;			//acknowledged - send size of all messages
+							rec summary_choice_list {
+							choice at S							//option to either return line (summary) or to terminate (dot)
+								{DOT(Void) from S to C;			//terminate
+								continue transaction;
+								} or {
+								SUM(TwoInt) from S to C;			//summary: line with content returned - Int, Int
+								continue summary_choice_list;
+								}
+							}		//rec summary_choice_list closing bracket
+							} or {	//choice_list closing brackets and opening brackets list error
+							ERR(String) from S to C;			//error: no such message
+							continue transaction;
+							}
+						} or {
+						LIST_n(Int) from C to S;			//choice3: request size of message n
+						choice at S
+							{
+							OK(TwoInt) from S to C;			//acknowledged - send size of message n
+							continue transaction;
+							} or {
+							ERR(String) from S to C;			//error: no such message
+							continue transaction;
+							}
+						} or {								//closing bracket LIST and opening bracket RETR
+						RETR_n(Int) from C to S;			//choice4: request message number n
+						choice at S
+							{
+							OK(String) from S to C;				//option1: acknowledged - message available
+							rec summary_choice_retrieve {
+							choice at S							//option to either return line (summary) or to terminate (dot)
+								{
+								DOT(Void) from S to C;			//terminate
+								continue transaction;							
+								} or {
+								SUM(String) from S to C;			//summary: line with content returned - Int, Int
+								continue summary_choice_retrieve;
+								}
+							}		//rec summary_choice_retrieve closing bracket
+							} or {
+							ERR(String) from S to C;			//option2: error - no such message
+							continue transaction;
+							}
+						} or {								//closing bracket RETR and opening bracket DELE
+						DELE_n(Int) from C to S;			//choice5: delete message number n
+						choice at S
+							{
+							OK(String) from S to C;				//acknowledged - message deleted
+							continue transaction;
+							} or {
+							ERR(String) from S to C;			//error: no such message
+							continue transaction;
+							}
+						} or {								//closing bracket DELE and opening bracket RSET										
+						RSET(Void) from C to S;					//choice6: undelete all messages, reset message number to 1
+						OKN(String) from S to C;				//acknowledged - all messages restored, message number rest to 1
+						continue transaction;
+						} or {								//closing bracket RSET and opening bracket TOP
+						TOP_n(TwoInt) from C to S;		//choice7: print header and x lines of message n
+						//user chooses how many lines of which message they want to print in addition to the header
+						choice at S
+							{
+							OK(String) from S to C;			//acknowledged - print header and x lines of message n
+							rec summary_choice_top {
+							choice at S							//option to either return line (summary) or to terminate (dot)
+								{
+								DOT(Void) from S to C;			//terminate
+								continue transaction;							
+								} or {
+								SUM(String) from S to C;			//summary: line with content returned - Int, Int
+								continue summary_choice_top;
+								}
+							}		//rec summary_choice_top closing bracket
+							} or {
+							ERR(String) from S to C;		//error: no such message
+							continue transaction;
+							}
+						} or {								//closing bracket TOP and opening bracket NOOP
+						//server response in NOOP necessary for validation of connection in idle state
+						NOOP(Void) from C to S;					//choice8: do nothing
+						OKN(Void) from S to C;				//acknowledged - do nothing	
+						continue transaction;				
+						} or {								//closing bracket NOOP and opening bracket QUIT
+						QUIT(Void) from C to S;			//choice9: quit
+						OKN(String)from S to C;				//acknowledged - end
+						//no continue transaction following the QUIt choice - for obvious logical reasons
+						} or {								//closing bracket QUIT and opening bracket UIDL
+						//UIDL optional payload Int
+						UIDL(Void) from C to S;					//choice10: unique id listing - request all UIDLs
+						choice at S
+							{
+							OK(String) from S to C;		//acknowledged - unique id listing follows
+							//return: multiple unique IDs
+							rec summary_choice_uidl {
+							choice at S							//option to either return line (summary) or to terminate (dot)
+								{
+								DOT(Void) from S to C;			//terminate
+								continue transaction;
+								} or {
+								SUM(IntString) from S to C;			//summary: line with content returned - Int, Int
+								continue summary_choice_uidl;
+								}
+							}		//rec summary_choice_uidl closing bracket
+							} or {
+							ERR(String) from S to C;			//error: no such message
+							continue transaction;
+							}
+						} or {								//closing bracket UIDL, opening bracket UIDL_n
+						UIDL_n(Int) from C to S;			//choice11: unique id listing - request UIDL of message n
+						choice at S
+							{
+							OK(IntString) from S to C;				//acknowledged - unique id listing of message n follows
+							continue transaction;
+							} or {
+							ERR(String) from S to C;			//error: no such message
+							continue transaction;
+							}
+						} 	
+					} //rec transaction closing brackets
+					} or {	//choice closing brackets and opening brackets authentication error
+					ERR(String) from S to C;				//option2: error a - invalid password
+					//changed from ERR_a to ERR, reduced to one error for simplycity
+					continue authentication_password;
+					//} or {
+					//ERR_b(String) from S to C;			//option3: error b - unable to lock maildrop
+					//continue authentication;
+					}
+				} or {
+				QUIT(Void) from C to S;			//2nd step authentication_password choice2: quit
+				OKN(String) from S to C;				//acknowledged - end
+				//no continue authentication following the QUIT choice - for obvious logical reasons
+				}
+			} //red authentication_password closing bracket
+			} or {
+			ERR(String) from S to C;			//option2: error - unknown mailbox name
+			continue authentication_username;
+			}		
+		} or {
+		QUIT(Void) from C to S;			//1st step authentication_username choice2: quit
+		OKN(String) from S to C;				//acknowledged - end
+		}	
+	}	//rec authentication_username closing bracket
+}
