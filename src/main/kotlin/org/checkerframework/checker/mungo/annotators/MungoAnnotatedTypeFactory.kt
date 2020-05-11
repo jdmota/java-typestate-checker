@@ -133,7 +133,9 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   }
 
   fun getTypeFor(tree: Tree, type: AnnotatedTypeMirror = getAnnotatedType(tree)) = getInferredValueFor(tree)?.info
-    ?: MungoUtils.mungoTypeFromAnnotations(type.annotations)
+    ?: getTypeFor(type)
+
+  fun getTypeFor(type: AnnotatedTypeMirror) = MungoUtils.mungoTypeFromAnnotations(type.annotations)
 
   // This might be an hack, but is probably the best we can do now:
   // Intercept the analysis of a method in a class with protocol and redirect that processing to our own class analysis

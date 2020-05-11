@@ -141,13 +141,24 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       }
     }
 
-    if (!nullnessCommonAssignmentCheck(varType, valueType, valueTree)) {
-      // Only issue the unboxing of nullable error
-      return
+    if (TypesUtils.isPrimitive(varType.underlyingType) && TypesUtils.isBoxedPrimitive(valueType.underlyingType)) {
+      if (!checkForNullability(valueType, valueTree, UNBOXING_OF_NULLABLE)) {
+        // Only issue the unboxing of nullable error
+        return
+      }
     }
+
+    // Assignments from boxed primitives to primitives and vice-versa should be allowed
+    val varMungoType = atypeFactory.getTypeFor(varType)
+    val valMungoType = atypeFactory.getTypeFor(valueTree, valueType)
+    if (isPrimitiveAndBoxedPrimitive(varMungoType, valMungoType, valueType)) return
+    if (isPrimitiveAndBoxedPrimitive(valMungoType, varMungoType, varType)) return
 
     super.commonAssignmentCheck(varType, valueType, valueTree, errorKey)
   }
+
+  private fun isPrimitiveAndBoxedPrimitive(aType: MungoType, bType: MungoType, bMirror: AnnotatedTypeMirror) =
+    aType.isSubtype(MungoPrimitiveType.SINGLETON) && bType.isSubtype(MungoNoProtocolType.SINGLETON) && TypesUtils.isBoxedPrimitive(bMirror.underlyingType)
 
   override fun visitMemberSelect(node: MemberSelectTree, p: Void?): Void? {
     nullnessVisitMemberSelect(node)
@@ -240,13 +251,6 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   // Adapted from https://github.com/typetools/checker-framework/blob/master/checker/src/main/java/org/checkerframework/checker/nullness/NullnessVisitor.java
   // TODO check redundant tests
   // TODO check arrays of non-null items are initialized
-
-  private fun nullnessCommonAssignmentCheck(varType: AnnotatedTypeMirror, valueType: AnnotatedTypeMirror, valueTree: Tree): Boolean {
-    if (TypesUtils.isPrimitive(varType.underlyingType) && !TypesUtils.isPrimitive(valueType.underlyingType)) {
-      return checkForNullability(valueType, valueTree, UNBOXING_OF_NULLABLE)
-    }
-    return true
-  }
 
   /** Case 1: Check for null dereferencing.  */
   private fun nullnessVisitMemberSelect(node: MemberSelectTree) {
