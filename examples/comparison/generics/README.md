@@ -24,14 +24,4 @@ MyComparatorProtocol.protocol:6,1: error: unexpected token ""```
 MyComparatorProtocol.protocol:1: error: (mismatched input '<' expecting '{')
 typestate MyComparatorProtocol<T> {
                               ^
-Ok.java:4: error: [argument.type.incompatible] incompatible types in argument.
-    System.out.println(comparator.compare(10, 5));
-                                          ^
-  found   : Primitive int
-  required: NoProtocol Integer
-Ok.java:4: error: [argument.type.incompatible] incompatible types in argument.
-    System.out.println(comparator.compare(10, 5));
-                                              ^
-  found   : Primitive int
-  required: NoProtocol Integer
-3 errors```
+1 error```

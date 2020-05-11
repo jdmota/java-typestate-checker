@@ -23,20 +23,10 @@ class File {
 
 }\end{code}
 
-\lstset{language=Java,caption=\textit{Ok.java}}
+\lstset{language=Java,caption=\textit{FileWrapper.java}}
 \begin{code}
-import java.util.*;
-import java.util.function.Supplier;
-
-public class Ok {
-  public static void main1() {
-    Supplier<String> fn = () -> {
-      File f = new File();
-      f.read();
-      f.close();
-      return "";
-    };
-  }
+class FileWrapper {
+  public File file = new File();
 }\end{code}
 
 \lstset{language=,caption=Original Mungo output}
@@ -44,18 +34,6 @@ public class Ok {
 Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.ast.Declarator.typestateCheck(Declarator.java:157)
 	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:610)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
-	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
 	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
 	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
 	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)

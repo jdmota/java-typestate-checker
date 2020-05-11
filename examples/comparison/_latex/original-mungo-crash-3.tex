@@ -1,0 +1,64 @@
+\lstset{language=,caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}\end{code}
+
+\lstset{language=Java,caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+class File {
+
+  public String read() {
+    return "";
+  }
+
+  public void close() {
+  }
+
+}\end{code}
+
+\lstset{language=Java,caption=\textit{Main.java}}
+\begin{code}
+import java.util.*;
+
+public class Main {
+  public static void main() {
+    List<File> list = new LinkedList<>();
+    list.add(new File());
+    File f1 = list.get(0);
+  }
+}\end{code}
+
+\lstset{language=,caption=Original Mungo output}
+\begin{code}
+Exception in thread "main" java.lang.NullPointerException
+	at org.extendj.ast.MethodAccess.getTypestateVar(MethodAccess.java:1909)
+	at org.extendj.ast.Dot.getTypestateVar(Dot.java:855)
+	at org.extendj.ast.Declarator.getGraph(Declarator.java:855)
+	at org.extendj.ast.VarDeclStmt.getGraph(VarDeclStmt.java:567)
+	at org.extendj.ast.Block.getGraph(Block.java:723)
+	at org.extendj.ast.MethodDecl.getGraph(MethodDecl.java:2202)
+	at org.extendj.ast.ClassDecl.getGraph_compute(ClassDecl.java:2586)
+	at org.extendj.ast.ClassDecl.getGraph(ClassDecl.java:2550)
+	at org.extendj.ast.ClassDecl.typestateCheck(ClassDecl.java:220)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:610)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.ASTNode.collectTypestate(ASTNode.java:612)
+	at org.extendj.ast.Program.collect(Program.java:582)
+	at org.extendj.ast.Program.compile(Program.java:604)
+	at org.extendj.TypestateChecker.run(TypestateChecker.java:32)
+	at org.extendj.TypestateChecker.main(TypestateChecker.java:18)\end{code}
+
+\lstset{language=,caption=New Mungo output}
+\begin{code}
+Main.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+    File f1 = list.get(0);
+         ^
+1 error\end{code}
+
