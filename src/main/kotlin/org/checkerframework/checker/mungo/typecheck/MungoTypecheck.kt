@@ -23,7 +23,7 @@ object MungoTypecheck {
       is MungoUnknownType -> createErrorMsg(node, isUnknown = true)
       is MungoObjectType -> createErrorMsg(node, isObject = true)
       is MungoBottomType -> null // Allow operations on the BottomType to avoid propagating errors
-      is MungoNoProtocolType -> null
+      is MungoNoProtocolType -> null // Any call allowed on NoProtocol
       is MungoPrimitiveType -> null // Calls on primitive values are not possible, so just ignore
       is MungoNullType -> createErrorMsg(node, isNull = true)
       is MungoEndedType -> createErrorMsg(node, isEnded = true)
@@ -51,6 +51,9 @@ object MungoTypecheck {
             is MungoMovedType -> isMoved = true
             is MungoPrimitiveType -> {
               // Calls on primitive values are not possible, so just ignore
+            }
+            is MungoNoProtocolType -> {
+              // Any call allowed on NoProtocol
             }
             is MungoStateType -> {
               currentStates.add(type.state.name)
