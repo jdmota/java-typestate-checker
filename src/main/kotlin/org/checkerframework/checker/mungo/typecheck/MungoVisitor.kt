@@ -238,12 +238,16 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   override fun processClassTree(classTree: ClassTree) {
     super.processClassTree(classTree)
 
-    val statesToStore = typeFactory.getStatesToStore(classTree) ?: return
-
-    for ((state, store) in statesToStore) {
-      if (state.transitions.isEmpty()) {
-        ensureFieldsCompleteness(store)
+    typeFactory.getStatesToStore(classTree)?.let {
+      for ((state, store) in it) {
+        if (state.transitions.isEmpty()) {
+          ensureFieldsCompleteness(store)
+        }
       }
+    }
+
+    typeFactory.getGlobalStore(classTree)?.let {
+      ensureFieldsCompleteness(it)
     }
   }
 

@@ -1,6 +1,5 @@
 package org.checkerframework.checker.mungo.analysis
 
-import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.typecheck.MungoBottomType
 import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.utils.MungoUtils

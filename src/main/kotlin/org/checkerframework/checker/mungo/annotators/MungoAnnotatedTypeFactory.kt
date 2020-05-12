@@ -174,14 +174,8 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       return
     }
 
-    // ...in classes with protocol
     val classTree = ast.classTree as JCTree.JCClassDecl
     val graph = c.utils.classUtils.visitClassSymbol(classTree.sym)
-    if (graph == null) {
-      skipMethods.clear()
-      super.analyze(queue, lambdaQueue, ast, fieldValues, topClass, isInitializationCode, updateInitializationStore, isStatic, capturedStore)
-      return
-    }
 
     // Repeat the logic in GenericAnnotatedTypeFactory#performFlowAnalysis to get all the relevant methods
     // And ignore static methods as well
@@ -203,16 +197,11 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       super.analyze(queue, lambdaQueue, method, fieldValues, topClass, true, false, false, capturedStore)
     }
 
-    // Then analyze non-public methods
-    for (method in nonPublicMethods) {
-      super.analyze(queue, lambdaQueue, method, fieldValues, topClass, false, false, false, capturedStore)
-    }
-
     // For the initial type information, just merge the exit stores of all the constructors
     // Even if a constructor calls another constructor, that should be fine.
     // Upon method invocations, CFAbstractStore#updateForMethodCall will invalidate previous information
     // In the worst case, all fields will be marked with unknown type...
-    var initialStore = initializationStore ?: emptyStore
+    var initialStore = emptyStore
     for (method in methodConstructors) {
       val store = regularExitStores[method.method]
       if (store != null) {
@@ -220,16 +209,26 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
       }
     }
 
-    // Now analyze public methods keeping in mind the accepted method call orders in the protocol
-    MungoClassAnalysis(c, this, analysis, transfer).analyzeClass(queue, lambdaQueue, root, classTree, publicMethods, graph, initialStore)
+    // Now analyze methods
+    MungoClassAnalysis(c, this, analysis, transfer).analyzeClass(queue, lambdaQueue, root, classTree, publicMethods, nonPublicMethods, graph, initialStore)
   }
 
+  // Mapping from state to store for classes with protocol
   private val classTreeToStatesToStore = mutableMapOf<ClassTree, Map<State, MungoStore>>()
+
+  // Global upper bound store for classes without protocol
+  private val classTreeToGlobalStore = mutableMapOf<ClassTree, MungoStore>()
 
   fun getStatesToStore(tree: ClassTree) = classTreeToStatesToStore[tree]
 
+  fun getGlobalStore(tree: ClassTree) = classTreeToGlobalStore[tree]
+
   fun storeClassResult(classTree: ClassTree, stateToStore: Map<State, MungoStore>) {
     classTreeToStatesToStore[classTree] = stateToStore
+  }
+
+  fun storeClassResult(classTree: ClassTree, globalStore: MungoStore) {
+    classTreeToGlobalStore[classTree] = globalStore
   }
 
   fun storeMethodResults(method: MethodTree, regularExitStore: MungoStore, returnStores: List<Pair<ReturnNode, TransferResult<MungoValue, MungoStore>?>>) {

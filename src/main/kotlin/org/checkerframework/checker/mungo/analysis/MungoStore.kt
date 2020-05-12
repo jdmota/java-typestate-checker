@@ -2,8 +2,6 @@ package org.checkerframework.checker.mungo.analysis
 
 import org.checkerframework.checker.mungo.typecheck.MungoNoProtocolType
 import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
-import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
-import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.analysis.FlowExpressions
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractStore
@@ -11,6 +9,7 @@ import org.checkerframework.framework.type.AnnotatedTypeFactory
 import org.checkerframework.javacutil.Pair
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
+import javax.lang.model.element.Modifier
 import javax.lang.model.element.VariableElement
 import javax.lang.model.type.TypeMirror
 
@@ -110,9 +109,9 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     // Call super method
     super.updateForMethodCall(n, atypeFactory, value)
 
-    // See if the current class has protocol and if the receiver is an object with protocol
+    // See if we are in class analysis and if the receiver is an object with protocol
     // In that case, we are controlling it, no need to invalidate it
-    if (a.inClassAnalysis) {
+    if (a.inPublicMethodAnalysis) {
       if (receiver is FlowExpressions.FieldAccess && !MungoNoProtocolType.SINGLETON.isSubtype(receiverValue.info)) {
         fieldValues[receiver] = receiverValue
       }
@@ -127,11 +126,39 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     }
   }
 
+  override fun updateForFieldAccessAssignment(fieldAccess: FlowExpressions.FieldAccess, value: MungoValue?) {
+    // Just replace the information. We do our own class analysis, so this is fine.
+    removeConflicting(fieldAccess, null)
+    if (value != null) {
+      fieldValues[fieldAccess] = value
+    }
+  }
+
   fun leastUpperBoundFields(other: MungoStore, shouldWiden: Boolean = false): MungoStore {
     val newStore = analysis.createEmptyStore(sequentialSemantics)
     newStore.fieldValues = HashMap(fieldValues)
     for ((el, otherVal) in other.fieldValues.entries) {
       newStore.fieldValues[el] = upperBoundOfValues(otherVal, fieldValues[el], shouldWiden)
+    }
+    return newStore
+  }
+
+  fun invalidateAllFields(): MungoStore {
+    val newStore = analysis.createEmptyStore(sequentialSemantics)
+    for ((el, value) in fieldValues.entries) {
+      newStore.fieldValues[el] = MungoValue(value, MungoTypecheck.invalidate(utils, el.type))
+    }
+    return newStore
+  }
+
+  fun invalidateNonPrivateFields(): MungoStore {
+    val newStore = analysis.createEmptyStore(sequentialSemantics)
+    for ((el, value) in fieldValues.entries) {
+      if (el.field.modifiers.contains(Modifier.PRIVATE)) {
+        newStore.fieldValues[el] = value
+      } else {
+        newStore.fieldValues[el] = MungoValue(value, MungoTypecheck.invalidate(utils, el.type))
+      }
     }
     return newStore
   }
@@ -191,7 +218,7 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
   }
 
   override fun insertValue(r: FlowExpressions.Receiver, value: MungoValue?) {
-    if (a.inClassAnalysis && a.creatingInitialStore && r is FlowExpressions.FieldAccess) {
+    if (a.inPublicMethodAnalysis && a.creatingInitialStore && r is FlowExpressions.FieldAccess) {
       // Workaround CFTransfer#initialStore modifying information of our fixed store
       return
     }

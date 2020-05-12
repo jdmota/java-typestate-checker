@@ -25,7 +25,7 @@ class MungoAnalysis(checker: MungoChecker, factory: MungoAnnotatedTypeFactory, f
   val c = checker
   val f = factory
   val utils get() = c.utils
-  var inClassAnalysis: Boolean = false
+  var inPublicMethodAnalysis: Boolean = false
   var creatingInitialStore: Boolean = false
 
   override fun createEmptyStore(sequentialSemantics: Boolean): MungoStore {
