@@ -1,0 +1,47 @@
+\lstset{language=,caption=\textit{FileProtocol.protocol}}
+\begin{code}
+typestate FileProtocol {
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}\end{code}
+
+\lstset{language=Java,caption=\textit{File.java}}
+\begin{code}
+import mungo.lib.Typestate;
+
+@Typestate("FileProtocol")
+class File {
+
+  public String read() {
+    return "";
+  }
+
+  public void close() {
+  }
+
+}\end{code}
+
+\lstset{language=Java,caption=\textit{Main.java}}
+\begin{code}
+import java.util.function.Supplier;
+
+public class Main {
+  public static void main() {
+    Supplier<String> fn = () -> {
+      return "";
+    };
+  }
+}\end{code}
+
+\lstset{language=,caption=Original Mungo output}
+\begin{code}
+None
+\end{code}
+
+\lstset{language=,caption=New Mungo output}
+\begin{code}
+None
+\end{code}
+

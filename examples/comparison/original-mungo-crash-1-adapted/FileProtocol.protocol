@@ -1,0 +1,6 @@
+typestate FileProtocol {
+  Read = {
+    String read(): Read,
+    void close(): end
+  }
+}

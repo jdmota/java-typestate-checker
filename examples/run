@@ -50,6 +50,9 @@ tests=(
   "original-mungo-crash-1"
   "original-mungo-crash-2"
   "original-mungo-crash-3"
+  "original-mungo-crash-1-adapted"
+  "original-mungo-crash-2-adapted"
+  "original-mungo-crash-3-adapted"
 )
 
 mkdir -p "$latexFolder"
