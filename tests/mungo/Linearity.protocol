@@ -1,0 +1,15 @@
+typestate Linearity {
+
+  State0 = {
+    void a(): State1,
+    void useOther(Linearity): State0,
+    void finish(): end
+  }
+
+  State1 = {
+    void b(): end,
+    void useOther(Linearity): State1,
+    void finish(): end
+  }
+
+}
