@@ -19,10 +19,8 @@ import org.checkerframework.checker.mungo.typestate.TIdNode
 import org.checkerframework.checker.mungo.typestate.TMemberNode
 import org.checkerframework.checker.mungo.typestate.TRefNode
 import org.checkerframework.checker.mungo.typestate.TTypestateNode
-import org.checkerframework.checker.mungo.typestate.graph.Graph
 import java.lang.reflect.Method
 import java.nio.file.Path
-import javax.lang.model.element.Element
 import javax.tools.JavaFileManager
 
 // Adapted from org.checkerframework.javacutil.Resolver
@@ -38,12 +36,10 @@ class Resolver(checker: MungoChecker) {
   private val modules = Modules.instance(ctx)
   private val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
 
-  private val findType = Resolve::class.java.getDeclaredMethod("findType", Env::class.java, Name::class.java)
   private val findIdent = Resolve::class.java.getDeclaredMethod("findIdent", Env::class.java, Name::class.java, Kinds.KindSelector::class.java)
   private val findIdentInPackage = Resolve::class.java.getDeclaredMethod("findIdentInPackage", Env::class.java, TypeSymbol::class.java, Name::class.java, Kinds.KindSelector::class.java)
 
   init {
-    findType.isAccessible = true
     findIdent.isAccessible = true
     findIdentInPackage.isAccessible = true
   }
@@ -90,28 +86,23 @@ class Resolver(checker: MungoChecker) {
     return (scope as? JavacScope)?.env
   }
 
-  private fun findClass(name: String, env: Env<AttrContext>): Element? {
-    return wrapInvocationOnResolveInstance(findType, env, names.fromString(name))
-  }
-
-  private fun findPackage(name: String, env: Env<AttrContext>): PackageSymbol? {
+  private fun findIdent(name: String, env: Env<AttrContext>): Symbol? {
     val res = wrapInvocationOnResolveInstance(
       findIdent,
       env,
       names.fromString(name),
-      Kinds.KindSelector.PCK)
-    val ps = res as? PackageSymbol ?: return null
-    return if (ps.exists()) ps else null
+      Kinds.KindSelector.TYP_PCK)
+    return if (res?.exists() == true) res else null
   }
 
-  private fun findClassInPackage(name: String, pck: PackageSymbol, env: Env<AttrContext>): ClassSymbol? {
+  private fun findClassInPackage(pck: PackageSymbol, name: String, env: Env<AttrContext>): ClassSymbol? {
     val res = wrapInvocationOnResolveInstance(
       findIdentInPackage,
       env,
       pck,
       names.fromString(name),
       Kinds.KindSelector.TYP)
-    return res as? ClassSymbol
+    return if (res?.exists() == true) res as? ClassSymbol else null
   }
 
   fun resolve(env: Env<AttrContext>, name: String): Type? {
@@ -128,13 +119,18 @@ class Resolver(checker: MungoChecker) {
       else -> {
         val parts = name.split(".")
         if (parts.size == 1) {
-          (findClass(parts[0], env) as? Symbol)?.type
+          (findIdent(parts[0], env) as? ClassSymbol)?.type
         } else {
-          // So that things like java.lang.Object can be resolved
-          val pkgName = parts.subList(0, parts.size - 1).joinToString(".")
-          val pkg = findPackage(pkgName, env) ?: return null
+          val siteName = parts.subList(0, parts.size - 1).joinToString(".")
           val className = parts[parts.lastIndex]
-          findClassInPackage(className, pkg, env)?.asType()
+          when (val site = findIdent(siteName, env)) {
+            is PackageSymbol -> findClassInPackage(site, className, env)?.type
+            is ClassSymbol -> {
+              // TODO what if static member is not public?
+              site.members().symbols.find { it.name.toString() == className && it.isStatic }?.type
+            }
+            else -> null
+          }
         }
       }
     }
