@@ -30,6 +30,7 @@ class FileInCollection {
     List<FileInCollection> list = new LinkedList<>();
     list.add(new FileInCollection());
 
+    // :: error: (enhancedfor.type.incompatible)
     for (FileInCollection f : list) {
       // :: warning: (f: FileInCollection{Init|Open|Read|Close} | Ended | Moved)
       // :: error: (Cannot call state on ended protocol, on moved value)

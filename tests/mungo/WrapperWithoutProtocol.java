@@ -10,7 +10,7 @@ class WrapperWithoutProtocol1 {
   public @MungoNullable JavaIterator iterator = null;
 
   public WrapperWithoutProtocol1(JavaIterator it) {
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Moved | Null)
     // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }
@@ -47,7 +47,7 @@ class WrapperWithoutProtocol2 {
   private @MungoNullable JavaIterator iterator = null;
 
   public WrapperWithoutProtocol2(JavaIterator it) {
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Moved | Null)
     // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }

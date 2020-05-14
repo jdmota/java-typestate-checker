@@ -200,12 +200,16 @@ public class LinearityTests {
   // If an object is moved to a method which we do not have the code for
   public static void main6() {
     List<Linearity> list = new LinkedList<>();
-    list.add(new Linearity());
+    list.add(new Linearity()); // TODO error here, since we do not know what will happen
+    // :: error: (assignment.type.incompatible)
     Linearity obj1 = list.get(0);
+    // :: error: (assignment.type.incompatible)
     Linearity obj2 = list.get(0);
-    // :: warning: (obj1: Linearity{State0|State1})
+    // :: warning: (obj1: Linearity{State0|State1} | Ended | Moved)
+    // :: error: (Cannot call finish on ended protocol, on moved value)
     obj1.finish();
-    // :: warning: (obj2: Linearity{State0|State1})
+    // :: warning: (obj2: Linearity{State0|State1} | Ended | Moved)
+    // :: error: (Cannot call finish on ended protocol, on moved value)
     obj2.finish();
   }
 
@@ -254,13 +258,14 @@ public class LinearityTests {
     w.obj = new Linearity();
   }
 
-  // TODO handle this
   // Implicity move in method reference
   public static void main12() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
     Supplier<Linearity> method = w::get;
+    // :: error: (assignment.type.incompatible)
     Linearity obj = method.get();
-    // :: warning: (obj: Linearity{State0|State1})
+    // :: warning: (obj: Linearity{State0|State1} | Ended | Moved)
+    // :: error: (Cannot call finish on ended protocol, on moved value)
     obj.finish();
   }
 

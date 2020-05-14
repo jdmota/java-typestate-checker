@@ -7,11 +7,11 @@ import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
 import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
-import org.checkerframework.checker.mungo.typecheck.*
+import org.checkerframework.checker.mungo.typecheck.MungoBottomType
+import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
-import org.checkerframework.checker.nullness.qual.Nullable
 import org.checkerframework.dataflow.analysis.AnalysisResult
 import org.checkerframework.dataflow.analysis.TransferResult
 import org.checkerframework.dataflow.cfg.UnderlyingAST
@@ -19,9 +19,6 @@ import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFAbstractAnalysis
 import org.checkerframework.framework.type.*
-import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator
-import org.checkerframework.framework.type.treeannotator.TreeAnnotator
-import org.checkerframework.framework.type.typeannotator.DefaultQualifierForUseTypeAnnotator
 import org.checkerframework.framework.util.DefaultAnnotationFormatter
 import org.checkerframework.framework.util.GraphQualifierHierarchy
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
@@ -29,12 +26,15 @@ import org.checkerframework.javacutil.Pair
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
-import javax.lang.model.element.*
+import javax.lang.model.element.AnnotationMirror
+import javax.lang.model.element.Element
+import javax.lang.model.element.Modifier
+import javax.lang.model.element.VariableElement
 
 class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFactory<MungoValue, MungoStore, MungoTransfer, MungoAnalysis>(checker) {
 
   private val c = checker
-  val typeApplier = MungoTypeApplier(c)
+  private val typeApplier = MungoTypeApplier(c)
 
   init {
     postInit()
@@ -63,6 +63,32 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     }
   }
 
+  override fun addDefaultAnnotations(type: AnnotatedTypeMirror) {
+    typeApplier.visit(type)
+  }
+
+  override fun addComputedTypeAnnotations(elt: Element, type: AnnotatedTypeMirror) {
+    typeApplier.visit(elt, type)
+    if (dependentTypesHelper != null) {
+      dependentTypesHelper.standardizeVariable(type, elt)
+    }
+  }
+
+  private val unknownAnno = MungoUnknownType.SINGLETON.buildAnnotation(c.processingEnvironment)
+
+  override fun addComputedTypeAnnotations(tree: Tree, type: AnnotatedTypeMirror, iUseFlow: Boolean) {
+    if (type.getAnnotationInHierarchy(unknownAnno) == null) {
+      typeApplier.visit(tree, type)
+    }
+
+    if (iUseFlow) {
+      val value = getInferredValueFor(tree)
+      if (value != null) {
+        applyInferredAnnotations(type, value)
+      }
+    }
+  }
+
   override fun applyInferredAnnotations(type: AnnotatedTypeMirror, value: MungoValue) {
     // By setting omitSubtypingCheck to true, inferred information will always override the default type information
     val applier = DefaultInferredTypesApplier(true, qualifierHierarchy, this)
@@ -84,15 +110,6 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
   override fun createFlowTransferFunction(analysis: CFAbstractAnalysis<MungoValue, MungoStore, MungoTransfer>): MungoTransfer {
     return MungoTransfer(c, analysis as MungoAnalysis)
-  }
-
-  override fun createTreeAnnotator(): TreeAnnotator {
-    // TreeAnnotator that adds annotations to a type based on the contents of a tree
-    return ListTreeAnnotator(MungoTreeAnnotator(c, this), super.createTreeAnnotator())
-  }
-
-  override fun createDefaultForUseTypeAnnotator(): DefaultQualifierForUseTypeAnnotator {
-    return MungoDefaultQualifierForUseTypeAnnotator(c, this)
   }
 
   override fun createSupportedTypeQualifiers(): Set<Class<out Annotation>> {

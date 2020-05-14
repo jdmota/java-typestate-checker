@@ -6,11 +6,13 @@ import org.checkerframework.checker.compilermsgs.qual.CompilerMessageKey
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
+import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.dataflow.analysis.FlowExpressions
 import org.checkerframework.dataflow.cfg.node.LocalVariableNode
 import org.checkerframework.framework.type.AnnotatedTypeMirror
+import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.javacutil.TypesUtils
@@ -28,8 +30,40 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return MungoAnnotatedTypeFactory(checker as MungoChecker)
   }
 
-  // TODO visit all annotations to make sure @MungoTypestate only appears in class/interfaces??
-  // TODO what if another class points to the same protocol file?? error? or fine? avoid duplicate processing
+  override fun visitAnnotation(node: AnnotationTree, p: Void?): Void? {
+    super.visitAnnotation(node, p)
+
+    val annoMirror = TreeUtils.annotationFromAnnotationTree(node)
+    val parent = visitorState.path.parentPath.parentPath.leaf
+
+    if (AnnotationUtils.areSameByName(annoMirror, MungoUtils.mungoStateName)) {
+      if ((parent is VariableTree || parent is MethodTree)) {
+        val typeMirror = when (parent) {
+          is VariableTree -> TreeUtils.elementFromTree(parent)?.asType()
+          is MethodTree -> TreeUtils.elementFromTree(parent.returnType)?.asType()
+          else -> null
+        }
+        if (typeMirror != null) {
+          if (ClassUtils.isJavaLangObject(typeMirror)) {
+            utils.err("@MungoState has no meaning in Object type", node)
+          } else {
+            val graph = c.utils.classUtils.visitClassTypeMirror(typeMirror)
+            if (graph == null) {
+              utils.err("@MungoState has no meaning since this type has no protocol", node)
+            } else {
+              val stateNames = AnnotationUtils.getElementValueArray(annoMirror, "value", String::class.java, false)
+              utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
+            }
+          }
+        }
+      } else {
+        utils.err("@MungoState should only be used in declarations or return types", node)
+      }
+    }
+    // TODO visit all annotations to make sure @MungoTypestate only appears in classes
+
+    return null
+  }
 
   override fun checkThisOrSuperConstructorCall(superCall: MethodInvocationTree, errorKey: @CompilerMessageKey String) {
     // Override this method so that Checker does not report super.invocation.invalid

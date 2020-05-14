@@ -48,8 +48,8 @@ public class JavaIterator {
   }
 
   public static void nullUse() {
-    JavaIterator it = new JavaIterator();
-    // :: warning: (it: Unknown)
+    @MungoNullable JavaIterator it = new JavaIterator();
+    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
     // :: error: (Cannot override because object has not ended its protocol)
     it = null;
 
@@ -62,34 +62,34 @@ public class JavaIterator {
   }
 
   public static void nullUse2() {
-    JavaIterator it = new JavaIterator();
+    @MungoNullable JavaIterator it = new JavaIterator();
 
     // :: warning: (it: JavaIterator{HasNext} | Null)
     // :: error: (Cannot call hasNext on null)
     while (it.hasNext()) {
       // :: warning: (it: JavaIterator{Next})
       it.next();
-      // :: warning: (it: Unknown)
+      // :: warning: (it: JavaIterator{HasNext|Next} | Null)
       // :: error: (Cannot override because object has not ended its protocol)
       it = null;
     }
   }
 
   public static void nullOk() {
-    JavaIterator it = new JavaIterator();
+    @MungoNullable JavaIterator it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     }
-    // :: warning: (it: Unknown)
+    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
     it = null;
   }
 
   public static void initializedNull() {
     // :: error: (assignment.type.incompatible)
     JavaIterator it = null;
-    // :: warning: (it: Unknown)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
@@ -100,7 +100,7 @@ public class JavaIterator {
 
   public static void initializedNullOk() {
     @MungoNullable JavaIterator it = null;
-    // :: warning: (it: Unknown)
+    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
@@ -169,7 +169,7 @@ public class JavaIterator {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     }
-    // :: warning: (it: Unknown)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     // :: error: (Cannot override because object has not ended its protocol)
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
@@ -186,7 +186,7 @@ public class JavaIterator {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     }
-    // :: warning: (it: Unknown)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
@@ -268,7 +268,7 @@ public class JavaIterator {
       JavaIterator alias = it;
       // :: warning: (alias: JavaIterator{Next})
       alias.next();
-      // :: warning: (it: Unknown)
+      // :: warning: (it: JavaIterator{HasNext|Next})
       // :: warning: (alias: JavaIterator{HasNext})
       it = alias;
     }
@@ -284,7 +284,7 @@ public class JavaIterator {
       @MungoState({"HasNext", "Next"}) JavaIterator alias = it;
       // :: warning: (alias: JavaIterator{Next})
       alias.next();
-      // :: warning: (it: Unknown)
+      // :: warning: (it: JavaIterator{HasNext|Next})
       // :: warning: (alias: JavaIterator{HasNext})
       it = alias;
     }
@@ -411,7 +411,7 @@ public class JavaIterator {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     }
-    // :: warning: (it: Unknown)
+    // :: warning: (it: JavaIterator{HasNext|Next})
     it = willBeCompleted();
     // :: warning: (it: JavaIterator{HasNext|Next})
     while (it.hasNext()) {

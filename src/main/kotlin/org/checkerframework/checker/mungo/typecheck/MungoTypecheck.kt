@@ -153,12 +153,17 @@ object MungoTypecheck {
 
   // Get the least upper bound of the possible type, assuming anything happened
   fun invalidate(utils: MungoUtils, type: TypeMirror): MungoType {
+    when {
+      type.kind.isPrimitive -> return MungoPrimitiveType.SINGLETON
+      type.kind == TypeKind.VOID -> return MungoPrimitiveType.SINGLETON
+      type.kind == TypeKind.NULL -> return MungoNullType.SINGLETON
+      type.kind == TypeKind.ARRAY -> return MungoNoProtocolType.SINGLETON
+    }
+
     val isNullable = type.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
 
     val mungoType = if (ClassUtils.isJavaLangObject(type)) {
-      MungoObjectType.SINGLETON
-    } else if (type.kind.isPrimitive || type.kind == TypeKind.VOID) {
-      MungoPrimitiveType.SINGLETON
+      MungoUnionType.create(setOf(MungoObjectType.SINGLETON, MungoMovedType.SINGLETON))
     } else {
       val graph = utils.classUtils.visitClassTypeMirror(type)
       if (graph == null) {
@@ -172,5 +177,51 @@ object MungoTypecheck {
     val maybeNullableType = if (isNullable) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
 
     return MungoUnionType.create(listOf(mungoType, maybeNullableType))
+  }
+
+  fun typeDeclaration(utils: MungoUtils, type: TypeMirror): MungoType {
+    when {
+      type.kind.isPrimitive -> return MungoPrimitiveType.SINGLETON
+      type.kind == TypeKind.VOID -> return MungoPrimitiveType.SINGLETON
+      type.kind == TypeKind.NULL -> return MungoNullType.SINGLETON
+      type.kind == TypeKind.ARRAY -> return MungoNoProtocolType.SINGLETON
+    }
+
+    val stateAnno = type.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
+    val isNullable = type.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
+
+    val mungoType = if (ClassUtils.isJavaLangObject(type)) {
+      MungoObjectType.SINGLETON
+    } else {
+      val graph = utils.classUtils.visitClassTypeMirror(type)
+      if (graph == null) {
+        MungoNoProtocolType.SINGLETON
+      } else {
+        val states = if (stateAnno == null) {
+          graph.getAllConcreteStates()
+        } else {
+          val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
+          graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
+        }
+        MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
+      }
+    }
+
+    val maybeNullableType = if (isNullable) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
+
+    return MungoUnionType.create(listOf(mungoType, maybeNullableType))
+  }
+
+  fun objectCreation(utils: MungoUtils, type: TypeMirror): MungoType {
+    return if (ClassUtils.isJavaLangObject(type)) {
+      MungoObjectType.SINGLETON
+    } else {
+      val graph = utils.classUtils.visitClassTypeMirror(type)
+      if (graph == null) {
+        MungoNoProtocolType.SINGLETON
+      } else {
+        MungoStateType.create(graph, graph.getInitialState())
+      }
+    }
   }
 }

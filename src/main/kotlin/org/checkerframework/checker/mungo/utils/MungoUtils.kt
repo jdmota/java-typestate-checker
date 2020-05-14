@@ -74,14 +74,14 @@ class MungoUtils(val checker: MungoChecker) {
     checker.reportError(file, pos, message)
   }
 
-  fun checkStates(graph: Graph, states: List<String>, src: Tree) {
+  fun checkStates(graph: Graph, states: List<String>): List<String> {
     val basename = graph.resolvedFile.fileName
-    for (state in states) {
-      if (graph.isFinalState(state)) {
-        err("State $state is final. Will have no effect in @MungoState", src)
-      } else if (!graph.hasStateByName(state)) {
-        err("$basename has no $state state", src)
-      }
+    return states.mapNotNull {
+      if (graph.isFinalState(it)) {
+        "State $it is final. Will have no effect in @MungoState"
+      } else if (!graph.hasStateByName(it)) {
+        "$basename has no $it state"
+      } else null
     }
   }
 

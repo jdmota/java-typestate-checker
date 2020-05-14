@@ -91,49 +91,6 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     return if (shouldWiden) b.widenUpperBound(a) else b.leastUpperBound(a)
   }
 
-  override fun isSideEffectFree(atypeFactory: AnnotatedTypeFactory, method: ExecutableElement): Boolean {
-    if (method.kind == ElementKind.CONSTRUCTOR && method.simpleName.toString() == "<init>") {
-      // java.lang.Object constructor is side effect free
-      return true
-    }
-    return super.isSideEffectFree(atypeFactory, method)
-  }
-
-  // TODO infer method side-effects so that we do not just invalidate everything upon a method call...
-
-  override fun updateForMethodCall(n: MethodInvocationNode, atypeFactory: AnnotatedTypeFactory, value: MungoValue?) {
-    val oldFields = fieldValues
-    val receiver = FlowExpressions.internalReprOf(atypeFactory, n.target.receiver)
-    val receiverValue = getValue(receiver)
-
-    // Call super method
-    super.updateForMethodCall(n, atypeFactory, value)
-
-    // See if we are in class analysis and if the receiver is an object with protocol
-    // In that case, we are controlling it, no need to invalidate it
-    if (a.inPublicMethodAnalysis) {
-      if (receiver is FlowExpressions.FieldAccess && !MungoNoProtocolType.SINGLETON.isSubtype(receiverValue.info)) {
-        fieldValues[receiver] = receiverValue
-      }
-    }
-
-    // Since non-existent information is assumed to be the bottom type, do not remove entries for other fields
-    // Which is different from what Checker normally does (see description above)
-    for ((key, prevValue) in oldFields) {
-      if (!fieldValues.containsKey(key)) {
-        fieldValues[key] = MungoValue(prevValue, MungoTypecheck.invalidate(utils, key.type))
-      }
-    }
-  }
-
-  override fun updateForFieldAccessAssignment(fieldAccess: FlowExpressions.FieldAccess, value: MungoValue?) {
-    // Just replace the information. We do our own class analysis, so this is fine.
-    removeConflicting(fieldAccess, null)
-    if (value != null) {
-      fieldValues[fieldAccess] = value
-    }
-  }
-
   fun leastUpperBoundFields(other: MungoStore, shouldWiden: Boolean = false): MungoStore {
     val newStore = analysis.createEmptyStore(sequentialSemantics)
     newStore.fieldValues = HashMap(fieldValues)
@@ -182,6 +139,53 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
       newStore.classValues[el] = value.toBottom()
     }
     return newStore
+  }
+
+  /*override fun initializeMethodParameter(p: LocalVariableNode, value: MungoValue) {
+    super.initializeMethodParameter(p, value)
+  }*/
+
+  override fun isSideEffectFree(atypeFactory: AnnotatedTypeFactory, method: ExecutableElement): Boolean {
+    if (method.kind == ElementKind.CONSTRUCTOR && method.simpleName.toString() == "<init>") {
+      // java.lang.Object constructor is side effect free
+      return true
+    }
+    return super.isSideEffectFree(atypeFactory, method)
+  }
+
+  // TODO infer method side-effects so that we do not just invalidate everything upon a method call...
+
+  override fun updateForMethodCall(n: MethodInvocationNode, atypeFactory: AnnotatedTypeFactory, value: MungoValue?) {
+    val oldFields = fieldValues
+    val receiver = FlowExpressions.internalReprOf(atypeFactory, n.target.receiver)
+    val receiverValue = getValue(receiver)
+
+    // Call super method
+    super.updateForMethodCall(n, atypeFactory, value)
+
+    // See if we are in class analysis and if the receiver is an object with protocol
+    // In that case, we are controlling it, no need to invalidate it
+    if (a.inPublicMethodAnalysis) {
+      if (receiver is FlowExpressions.FieldAccess && !MungoNoProtocolType.SINGLETON.isSubtype(receiverValue.info)) {
+        fieldValues[receiver] = receiverValue
+      }
+    }
+
+    // Since non-existent information is assumed to be the bottom type, do not remove entries for other fields
+    // Which is different from what Checker normally does (see description above)
+    for ((key, prevValue) in oldFields) {
+      if (!fieldValues.containsKey(key)) {
+        fieldValues[key] = MungoValue(prevValue, MungoTypecheck.invalidate(utils, key.type))
+      }
+    }
+  }
+
+  override fun updateForFieldAccessAssignment(fieldAccess: FlowExpressions.FieldAccess, value: MungoValue?) {
+    // Just replace the information. We do our own class analysis, so this is fine.
+    removeConflicting(fieldAccess, null)
+    if (value != null) {
+      fieldValues[fieldAccess] = value
+    }
   }
 
   fun iterateOverLocalVars(): Iterator<Map.Entry<FlowExpressions.LocalVariable, MungoValue>> {

@@ -58,8 +58,8 @@ class ClassUtils(private val utils: MungoUtils) {
     return if (type is DeclaredType) visitClassSymbol(type.asElement()) else null
   }
 
-  fun visitClassDeclaredType(type: AnnotatedTypeMirror.AnnotatedDeclaredType): Graph? {
-    return visitClassSymbol(type.underlyingType.asElement())
+  fun visitClassDeclaredType(type: AnnotatedTypeMirror): Graph? {
+    return visitClassTypeMirror(type.underlyingType)
   }
 
   fun visitClassSymbol(element: Element?): Graph? {
@@ -105,7 +105,7 @@ class ClassUtils(private val utils: MungoUtils) {
 
     fun isJavaLangObject(type: TypeMirror) = if (type is DeclaredType) isJavaLangObject(type.asElement()) else false
 
-    fun isJavaLangObject(type: AnnotatedTypeMirror.AnnotatedDeclaredType) = isJavaLangObject(type.underlyingType.asElement())
+    fun isJavaLangObject(type: AnnotatedTypeMirror) = isJavaLangObject(type.underlyingType)
   }
 
 }

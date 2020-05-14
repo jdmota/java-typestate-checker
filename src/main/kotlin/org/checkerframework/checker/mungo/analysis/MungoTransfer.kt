@@ -88,19 +88,8 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val value = result.resultValue
     if (value != null) {
       // Refine resultValue to the initial state
-      val currType = value.info
-      if (currType is MungoUnionType) {
-        val stateType = currType.types.find { it is MungoStateType } as? MungoStateType
-        if (stateType != null) {
-          val newType = MungoStateType.create(stateType.graph, stateType.graph.getInitialState())
-          val newValue = MungoValue(value, newType)
-          return if (result.containsTwoStores()) {
-            ConditionalTransferResult(newValue, result.thenStore, result.elseStore, false)
-          } else {
-            RegularTransferResult(newValue, result.regularStore, false)
-          }
-        }
-      }
+      val newValue = MungoValue(value, MungoTypecheck.objectCreation(utils, value.underlyingType))
+      return RegularTransferResult(newValue, result.regularStore, false)
     }
     return result
   }
@@ -291,6 +280,12 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val store = input.regularStore
     val value = store.getValue(n)
     // Prefer the inferred type information instead of using "mostSpecific" with information in factory
+    return RegularTransferResult(finishValue(value, store), store)
+  }
+
+  override fun visitTypeCast(n: TypeCastNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val store = input.regularStore
+    val value = MungoValue(a, MungoTypecheck.typeDeclaration(utils, n.type), n.type)
     return RegularTransferResult(finishValue(value, store), store)
   }
 
