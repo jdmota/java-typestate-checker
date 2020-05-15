@@ -196,11 +196,11 @@ public class LinearityTests {
     fn.get();
   }
 
-  // TODO handle this case
   // If an object is moved to a method which we do not have the code for
   public static void main6() {
     List<Linearity> list = new LinkedList<>();
-    list.add(new Linearity()); // TODO error here, since we do not know what will happen
+    // :: error: (Passing an object with protocol to a method that cannot be analyzed)
+    list.add(new Linearity());
     // :: error: (assignment.type.incompatible)
     Linearity obj1 = list.get(0);
     // :: error: (assignment.type.incompatible)

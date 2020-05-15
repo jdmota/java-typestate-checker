@@ -28,6 +28,7 @@ class FileInCollection {
   public static void main1(String[] args) {
 
     List<FileInCollection> list = new LinkedList<>();
+    // :: error: (Passing an object with protocol to a method that cannot be analyzed)
     list.add(new FileInCollection());
 
     // :: error: (enhancedfor.type.incompatible)

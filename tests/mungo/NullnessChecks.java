@@ -15,7 +15,8 @@ public class NullnessChecks {
     @MungoNullable NullnessChecks n = null;
     // :: warning: (n: Null)
     // :: warning: (cast.unsafe)
-    System.out.println((Object) n);
+    // :: error: (Object did not complete its protocol. Type: Object)
+    Object obj = (Object) n;
   }
 
   public static void main3() {

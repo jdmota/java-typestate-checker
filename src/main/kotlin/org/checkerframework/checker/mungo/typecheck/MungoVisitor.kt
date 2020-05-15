@@ -2,6 +2,7 @@ package org.checkerframework.checker.mungo.typecheck
 
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.compilermsgs.qual.CompilerMessageKey
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
@@ -24,6 +25,9 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
   private val c = checker
   private val utils get() = c.utils
+
+  private val acceptedFinalTypes = listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON, MungoNoProtocolType.SINGLETON)
+  private val noProtocolTypes = listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON)
 
   override fun createTypeFactory(): MungoAnnotatedTypeFactory {
     // Pass "checker" and not "c" because "c" is initialized after "super()" and "createTypeFactory()"...
@@ -127,6 +131,16 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
     }
 
+    val methodTree = c.treeUtils.getTree(element)
+    if (methodTree == null) {
+      for (arg in node.arguments) {
+        val type = typeFactory.getTypeFor(arg)
+        if (!type.isSubtype(MungoUnionType.create(noProtocolTypes))) {
+          utils.err("Passing an object with protocol to a method that cannot be analyzed", arg)
+        }
+      }
+    }
+
     return super.visitMethodInvocation(node, p)
   }
 
@@ -135,8 +149,6 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   override fun skipReceiverSubtypeCheck(node: MethodInvocationTree, methodDefinitionReceiver: AnnotatedTypeMirror, methodCallReceiver: AnnotatedTypeMirror): Boolean {
     return skipMethods.contains(node) || super.skipReceiverSubtypeCheck(node, methodDefinitionReceiver, methodCallReceiver)
   }
-
-  private val acceptedFinalTypes = listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON, MungoNoProtocolType.SINGLETON)
 
   override fun commonAssignmentCheck(left: Tree, right: ExpressionTree, errorKey: String?) {
     super.commonAssignmentCheck(left, right, errorKey)
@@ -158,6 +170,16 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       // Only allow overrides on null, ended, moved object, or object without protocol
       if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
         utils.err("Cannot override because object has not ended its protocol", left)
+      }
+
+      if (left is JCTree.JCFieldAccess) {
+        val classTree = c.treeUtils.getTree(left.selected.type.asElement())
+        if (classTree == null) {
+          val type = typeFactory.getTypeFor(right)
+          if (!type.isSubtype(MungoUnionType.create(noProtocolTypes))) {
+            utils.err("Assigning an object with protocol to a field that cannot be analyzed", left)
+          }
+        }
       }
     }
   }
