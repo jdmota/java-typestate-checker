@@ -269,6 +269,15 @@ public class LinearityTests {
     obj.finish();
   }
 
+  // Implicity move in method reference
+  public static void main13() {
+    // :: error: (Object did not complete its protocol. Type: Linearity{State0})
+    Linearity obj = new Linearity();
+    // :: warning: (obj: Linearity{State0})
+    // :: error: (Cannot create reference for method of an object with protocol)
+    Runnable method = obj::a;
+  }
+
   // Helpers
 
   public static void use(@MungoState("State0") Linearity obj) {

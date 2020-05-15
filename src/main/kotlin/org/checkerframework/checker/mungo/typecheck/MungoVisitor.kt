@@ -236,6 +236,16 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return p
   }
 
+  override fun visitMemberReference(node: MemberReferenceTree, p: Void?): Void? {
+    val expr = node.qualifierExpression
+    val type = typeFactory.getTypeFor(expr)
+    if (!type.isSubtype(MungoUnionType.create(noProtocolTypes))) {
+      utils.err("Cannot create reference for method of an object with protocol", node)
+    }
+
+    return super.visitMemberReference(node, p)
+  }
+
   private fun printTypeInfo(node: IdentifierTree) {
     if (c.shouldReportTypeInfo() && !node.name.contentEquals("this")) {
       val annotatedType = typeFactory.getAnnotatedType(node)
