@@ -12,7 +12,7 @@ abstract class MungoPerDirectoryTest(testDir: String, testFiles: List<File>) : C
   testFiles,
   MungoChecker::class.java,
   testDir,
-  "-Anomsgtext", "-AshowTypeInfo"
+  "-Anomsgtext", "-AshowTypeInfo", "-AconfigFile=tests/$testDir/mungo.config"
 ) {
   @Test
   override fun run() {

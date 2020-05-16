@@ -31,7 +31,8 @@ object MungoTypecheck {
       is MungoMovedType -> createErrorMsg(node, isMoved = true)
       is MungoStateType -> {
         val env = info.graph.getEnv()
-        if (info.state.transitions.entries.any { utils.methodUtils.sameMethod(env, method, it.key) }) {
+        // TODO use sameMethod instead of sameErasedMethod
+        if (info.state.transitions.entries.any { utils.methodUtils.sameErasedMethod(env, method, it.key) }) {
           null
         } else {
           createErrorMsg(node, unexpectedStates = listOf(info.state.name), currentStates = listOf(info.state.name))

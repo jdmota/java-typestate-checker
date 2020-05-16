@@ -115,6 +115,7 @@ publishing {
 test {
     testLogging.showStandardStreams = true
 
+    inputs.files("tests/config")
     inputs.files("tests/mungo")
     inputs.files("tests/resolution")
 

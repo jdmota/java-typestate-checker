@@ -18,6 +18,13 @@ import javax.lang.model.type.TypeMirror
 
 class ClassUtils(private val utils: MungoUtils) {
 
+  private fun getGraph(protocolFilePath: Path, src: Element): Graph? {
+    // Parse and process typestate
+    val result = utils.processor.getGraph(protocolFilePath)
+    result.error?.report(utils, src)
+    return result.graph
+  }
+
   private fun processMungoTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationMirror, src: Element): Graph? {
     val args = annotation.elementValues.values
     val file = try {
@@ -34,11 +41,9 @@ class ClassUtils(private val utils: MungoUtils) {
       return null
     }
     // Get the path of the protocol file relative to the source file
-    val protocolFilePath = sourceFilePath.toAbsolutePath().resolveSibling(file).normalize()
+    val protocolFilePath = sourceFilePath.resolveSibling(file).normalize()
     // Parse and process typestate
-    val result = utils.processor.getGraph(protocolFilePath)
-    result.error?.report(utils, src)
-    return result.graph
+    return getGraph(protocolFilePath, src)
   }
 
   private fun getMungoTypestateAnnotation(annotationMirrors: Collection<AnnotationMirror>): AnnotationMirror? {
@@ -51,61 +56,54 @@ class ClassUtils(private val utils: MungoUtils) {
 
   fun visitClassOfElement(element: Element): Graph? {
     val type = utils.factory.fromElement(element) as? AnnotatedTypeMirror.AnnotatedDeclaredType ?: return null
-    return visitClassDeclaredType(type)
+    return visitClassTypeMirror(type.underlyingType)
   }
 
   fun visitClassTypeMirror(type: TypeMirror): Graph? {
     return if (type is DeclaredType) visitClassSymbol(type.asElement()) else null
   }
 
-  fun visitClassDeclaredType(type: AnnotatedTypeMirror): Graph? {
-    return visitClassTypeMirror(type.underlyingType)
-  }
-
   fun visitClassSymbol(element: Element?): Graph? {
-    if (element !is Symbol.ClassSymbol) {
-      return null
-    }
-    // Get the path of the file where the class is
-    val file = element.sourcefile?.name
-    return if (file != null) {
-      return classNameToGraph.computeIfAbsent(element) { sym ->
+    if (element !is Symbol.ClassSymbol) return null
+    return classNameToGraph.computeIfAbsent(element) { sym ->
+      val qualifiedName = sym.qualifiedName.toString()
+      val classFile = sym.sourcefile?.name?.let { Paths.get(it).toAbsolutePath() }
+      val protocolFromConfig = utils.configUtils.getConfig().getProtocol(qualifiedName)
+      // Process
+      val graph = classFile?.let { file -> // File where the class is
         getMungoTypestateAnnotation(sym.annotationMirrors)?.let {
-          processMungoTypestateAnnotation(Paths.get(file), it, sym)
-        }?.let {
-          TypestateProcessor.validateClassAndGraph(utils, sym, it)
-        }.let {
-          // "computeIfAbsent" does not store null values, store an Optional instead
-          Optional.ofNullable(it)
+          if (protocolFromConfig != null) {
+            utils.err("Protocol for this class is also defined in the config file", sym)
+          }
+          processMungoTypestateAnnotation(file, it, sym)
         }
-      }.orElse(null)
-    } else null
+      } ?: protocolFromConfig?.let { getGraph(it, sym) }
+      // "computeIfAbsent" does not store null values, store an Optional instead
+      Optional.ofNullable(graph?.let {
+        TypestateProcessor.validateClassAndGraph(utils, sym, it)
+      })
+    }.orElse(null)
   }
 
   private val classNameToGraph = WeakIdentityHashMap<Symbol.ClassSymbol, Optional<Graph>>()
 
   companion object {
-    fun getNonStaticMethods(sym: Symbol.ClassSymbol) = sym.members().symbols.filterIsInstance(Symbol.MethodSymbol::class.java).filter {
+    fun getNonStaticPublicMethods(sym: Symbol.ClassSymbol) = sym.members().symbols.filterIsInstance(Symbol.MethodSymbol::class.java).filter {
       val flags = it.modifiers
-      !flags.contains(Modifier.STATIC) && !flags.contains(Modifier.ABSTRACT) && !flags.contains(Modifier.NATIVE)
+      flags.contains(Modifier.PUBLIC) && !flags.contains(Modifier.STATIC)
     }
 
-    fun getNonStaticPublicMethods(sym: Symbol.ClassSymbol) = getNonStaticMethods(sym).filter { it.modifiers.contains(Modifier.PUBLIC) }
-
-    fun getNonStaticMethods(classTree: ClassTree) = classTree.members.filterIsInstance(MethodTree::class.java).filter {
+    fun getNonStaticMethodsWithBody(classTree: ClassTree) = classTree.members.filterIsInstance(MethodTree::class.java).filter {
       val flags = it.modifiers.flags
       it.body != null && !flags.contains(Modifier.STATIC) && !flags.contains(Modifier.ABSTRACT) && !flags.contains(Modifier.NATIVE)
     }
 
-    fun getNonStaticPublicMethods(classTree: ClassTree) = getNonStaticMethods(classTree).filter { it.modifiers.flags.contains(Modifier.PUBLIC) }
-
     fun getEnumLabels(classSymbol: Symbol.ClassSymbol) = classSymbol.members().symbols.filter { it.isEnum }.map { it.name.toString() }
 
-    fun isJavaLangObject(element: Element) = element is Symbol.ClassSymbol && element.qualifiedName.contentEquals("java.lang.Object")
+    private fun isJavaLangObject(element: Element) = element is Symbol.ClassSymbol && element.qualifiedName.contentEquals("java.lang.Object")
 
     fun isJavaLangObject(type: TypeMirror) = if (type is DeclaredType) isJavaLangObject(type.asElement()) else false
 
-    fun isJavaLangObject(type: AnnotatedTypeMirror) = isJavaLangObject(type.underlyingType)
   }
 
 }

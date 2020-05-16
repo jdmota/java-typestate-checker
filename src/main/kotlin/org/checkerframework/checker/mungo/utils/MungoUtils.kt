@@ -56,6 +56,7 @@ class MungoUtils(val checker: MungoChecker) {
 
   val resolver = Resolver(checker)
   val classUtils = ClassUtils(this)
+  val configUtils = ConfigUtils(checker.getConfigFile())
 
   val processor = TypestateProcessor(this)
   val methodUtils = MethodUtils(this)
@@ -245,7 +246,7 @@ class MungoUtils(val checker: MungoChecker) {
 
     val cwd = Paths.get("").toAbsolutePath()
 
-    fun getUserPath(p: Path) = if (p.isAbsolute) cwd.relativize(p) else p
+    fun getUserPath(p: Path): Path = if (p.isAbsolute) cwd.relativize(p) else p
 
     fun printStack() {
       try {

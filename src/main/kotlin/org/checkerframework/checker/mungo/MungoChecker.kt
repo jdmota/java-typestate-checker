@@ -10,6 +10,7 @@ import java.nio.file.Path
 import java.util.*
 
 const val showTypeInfoOpt = "showTypeInfo"
+const val configFile = "configFile"
 
 /**
  * This is the entry point for pluggable type-checking.
@@ -23,9 +24,11 @@ class MungoChecker : BaseTypeChecker() {
     return MungoVisitor(this)
   }
 
-  override fun getSupportedOptions() = super.getSupportedOptions().plus(showTypeInfoOpt)
+  override fun getSupportedOptions() = super.getSupportedOptions().plus(showTypeInfoOpt).plus(configFile)
 
   fun shouldReportTypeInfo() = hasOption(showTypeInfoOpt)
+
+  fun getConfigFile(): String? = getOption(configFile, null)
 
   // Adapted from SourceChecker#report and JavacTrees#printMessage
   fun reportError(file: Path, pos: Int, messageKey: String, vararg args: Any?) {

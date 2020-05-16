@@ -196,7 +196,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
     // Repeat the logic in GenericAnnotatedTypeFactory#performFlowAnalysis to get all the relevant methods
     // And ignore static methods as well
-    val methods = ClassUtils.getNonStaticMethods(classTree).map { UnderlyingAST.CFGMethod(it, classTree) }
+    val methods = ClassUtils.getNonStaticMethodsWithBody(classTree).map { UnderlyingAST.CFGMethod(it, classTree) }
 
     // Ignore all methods since we are now doing our own full analysis
     for (method in methods) {

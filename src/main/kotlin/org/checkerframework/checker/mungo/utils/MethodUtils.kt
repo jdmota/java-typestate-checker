@@ -15,7 +15,8 @@ class MethodUtils(private val utils: MungoUtils) {
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (other !is MethodSymbolWrapper) return false
-      return sameMethod(sym, other.sym)
+      // TODO use sameMethod instead of sameErasedMethod
+      return sameErasedMethod(sym, other.sym)
     }
 
     override fun hashCode(): Int {
@@ -32,8 +33,10 @@ class MethodUtils(private val utils: MungoUtils) {
 
   private val names = Names.instance((utils.checker.processingEnvironment as JavacProcessingEnvironment).context)
   private val symtab = Symtab.instance((utils.checker.processingEnvironment as JavacProcessingEnvironment).context)
-  private val typeUtils = utils.checker.typeUtils
+  private val types = Types.instance((utils.checker.processingEnvironment as JavacProcessingEnvironment).context)
   private val resolver = utils.resolver
+
+  private fun erasure(sym: Symbol.MethodSymbol): Type = sym.erasure(types)
 
   fun wrapMethodSymbol(sym: Symbol.MethodSymbol) = MethodSymbolWrapper(sym)
 
@@ -66,7 +69,13 @@ class MethodUtils(private val utils: MungoUtils) {
     ), unknownTypes)
   }
 
+  fun sameErasedMethod(a: Symbol.MethodSymbol, b: Symbol.MethodSymbol): Boolean {
+    // TODO deal with thrownTypes?
+    return a.name.toString() == b.name.toString() && utils.isSameType(erasure(a), erasure(b))
+  }
+
   fun sameMethod(a: Symbol.MethodSymbol, b: Symbol.MethodSymbol): Boolean {
+    // TODO deal with thrownTypes?
     return a.name.toString() == b.name.toString() && utils.isSameType(a.type, b.type)
   }
 
@@ -81,6 +90,10 @@ class MethodUtils(private val utils: MungoUtils) {
 
   fun sameMethod(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
     return sameMethod(env, sym.name.toString(), sym.type, node)
+  }
+
+  fun sameErasedMethod(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
+    return sameMethod(env, sym.name.toString(), erasure(sym), node)
   }
 
   companion object {
