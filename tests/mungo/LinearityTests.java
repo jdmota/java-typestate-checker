@@ -243,12 +243,16 @@ public class LinearityTests {
     };
   }
 
-  // TODO handle this
   // Detecting moves to its own method
   public static void main10() {
     Linearity obj = new Linearity();
     // :: warning: (obj: Linearity{State0})
+    // :: warning: (obj: Moved)
+    // :: error: (argument.type.incompatible)
     obj.useOther(obj);
+    // :: warning: (obj: Moved)
+    // :: error: (assignment.type.incompatible)
+    Linearity obj2 = obj;
   }
 
   // Overrides

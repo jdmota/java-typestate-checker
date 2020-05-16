@@ -26,7 +26,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   // Returns true if store changed
   private fun refineStore(invocation: MethodInvocationNode, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean): Boolean {
-    val prevValue = store.getValue(receiver)
+    val prevValue = a.getValue(invocation.target.receiver) ?: return false
     val prevInfo = prevValue.info
     val newInfo = MungoTypecheck.refine(utils, invocation.treePath, prevInfo, method, predicate)
     return store.replaceValueIfDiff(receiver, MungoValue(prevValue, newInfo))
@@ -34,16 +34,12 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   // Returns true if store changed
   private fun refineStoreMore(invocation: MethodInvocationNode, method: Symbol.MethodSymbol, receiver: FlowExpressions.Receiver, store: MungoStore, predicate: (String) -> Boolean): Boolean {
-    val prevValue = a.getValue(invocation.target.receiver)
-    return if (prevValue != null) {
-      val prevInfo = prevValue.info
-      val newInfo = MungoTypecheck.refine(utils, invocation.treePath, prevInfo, method, predicate)
-      // We are refining a switch case or an expression after the method invocation was done,
-      // so intersect with the old information.
-      store.intersectValueIfDiff(receiver, MungoValue(prevValue, newInfo))
-    } else {
-      false
-    }
+    val prevValue = a.getValue(invocation.target.receiver) ?: return false
+    val prevInfo = prevValue.info
+    val newInfo = MungoTypecheck.refine(utils, invocation.treePath, prevInfo, method, predicate)
+    // We are refining a switch case or an expression after the method invocation was done,
+    // so intersect with the old information.
+    return store.intersectValueIfDiff(receiver, MungoValue(prevValue, newInfo))
   }
 
   private fun getMethodToRefine(n: MethodInvocationNode): Symbol.MethodSymbol? {
@@ -55,9 +51,6 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val result = super.visitMethodInvocation(n, input)
     val method = getMethodToRefine(n) ?: return result
 
-    // Handle moves
-    val moved = n.arguments.map { handleMove(it, result) }.any { it }
-
     // Apply type refinements
 
     val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, n.target.receiver)
@@ -67,6 +60,8 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(n, method, receiver, thenStore, ifTrue)
       val didChangeElse = refineStore(n, method, receiver, elseStore, ifFalse)
+      // Handle moves after refinement (in case receiver is in the arguments)
+      val moved = n.arguments.map { handleMove(it, result) }.any { it }
       return if (moved || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     }
 
@@ -75,10 +70,14 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(n, method, receiver, thenStore, allLabels)
       val didChangeElse = refineStore(n, method, receiver, elseStore, allLabels)
+      // Handle moves after refinement (in case receiver is in the arguments)
+      val moved = n.arguments.map { handleMove(it, result) }.any { it }
       if (moved || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     } else {
       val store = result.regularStore
       val didChange = refineStore(n, method, receiver, store, allLabels)
+      // Handle moves after refinement (in case receiver is in the arguments)
+      val moved = n.arguments.map { handleMove(it, result) }.any { it }
       if (moved || didChange) RegularTransferResult(result.resultValue, store, true) else result
     }
   }
@@ -102,9 +101,18 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   }
 
   // Handle move in return
-  override fun visitReturn(n: ReturnNode, p: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
-    val result = super.visitReturn(n, p)
+  override fun visitReturn(n: ReturnNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val result = super.visitReturn(n, input)
     val moved = n.result?.let { handleMove(it, result) } ?: false
+    return if (moved) newResult(result) else result
+  }
+
+  // Mark receiver of method access as moved so that it cannot be used in the arguments
+  // "handleMove" only changes the store, the value of the expression remains the same,
+  // so it will not affect the "refineStore" and "refineStoreMore" operations
+  override fun visitMethodAccess(n: MethodAccessNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    val result = super.visitMethodAccess(n, input)
+    val moved = handleMove(n.receiver, result)
     return if (moved) newResult(result) else result
   }
 
