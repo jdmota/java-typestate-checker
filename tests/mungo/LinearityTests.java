@@ -258,7 +258,7 @@ public class LinearityTests {
   // Overrides
   public static void main11() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: error: (Cannot override because object has not ended its protocol)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Linearity{State0|State1} | Ended | Moved)
     w.obj = new Linearity();
   }
 

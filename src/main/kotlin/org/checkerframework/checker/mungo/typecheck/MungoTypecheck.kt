@@ -9,6 +9,7 @@ import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.TreeUtils
+import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
@@ -197,10 +198,10 @@ object MungoTypecheck {
       if (graph == null) {
         MungoNoProtocolType.SINGLETON
       } else {
-        val states = if (stateAnno == null) {
+        val stateNames = MungoUtils.getAnnotationValue(stateAnno)
+        val states = if (stateNames == null) {
           graph.getAllConcreteStates()
         } else {
-          val stateNames = AnnotationUtils.getElementValueArray(stateAnno, "value", String::class.java, false)
           graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
         }
         MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
@@ -224,4 +225,22 @@ object MungoTypecheck {
       }
     }
   }
+
+  fun typeAfterMethodCall(utils: MungoUtils, type: TypeMirror): MungoType? {
+    if (type.kind != TypeKind.DECLARED) return null
+    if (ClassUtils.isJavaLangObject(type)) return null
+
+    val graph = utils.classUtils.visitClassTypeMirror(type) ?: return null
+
+    val stateAfterAnno = type.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateAfterName) }
+    val stateNames = MungoUtils.getAnnotationValue(stateAfterAnno) ?: return null
+
+    val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
+    return MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
+  }
+
+  val acceptedFinalTypes = MungoUnionType.create(listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON))
+  val noProtocolTypes = MungoUnionType.create(listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON))
+  val noProtocolOrMoved = MungoUnionType.create(listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON, MungoMovedType.SINGLETON))
+
 }

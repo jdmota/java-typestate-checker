@@ -7,10 +7,7 @@ import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractStore
 import org.checkerframework.framework.type.AnnotatedTypeFactory
 import org.checkerframework.javacutil.Pair
-import javax.lang.model.element.ElementKind
-import javax.lang.model.element.ExecutableElement
-import javax.lang.model.element.Modifier
-import javax.lang.model.element.VariableElement
+import javax.lang.model.element.*
 import javax.lang.model.type.TypeMirror
 
 class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
@@ -141,9 +138,12 @@ class MungoStore : CFAbstractStore<MungoValue, MungoStore> {
     return newStore
   }
 
-  /*override fun initializeMethodParameter(p: LocalVariableNode, value: MungoValue) {
-    super.initializeMethodParameter(p, value)
-  }*/
+  override fun initializeMethodParameter(p: LocalVariableNode, value: MungoValue?) {
+    if (value != null) {
+      val type = MungoTypecheck.typeDeclaration(a.utils, value.underlyingType)
+      super.initializeMethodParameter(p, MungoValue(a, type, value.underlyingType))
+    }
+  }
 
   override fun isSideEffectFree(atypeFactory: AnnotatedTypeFactory, method: ExecutableElement): Boolean {
     if (method.kind == ElementKind.CONSTRUCTOR && method.simpleName.toString() == "<init>") {

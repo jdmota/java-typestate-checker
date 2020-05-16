@@ -60,9 +60,9 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(n, method, receiver, thenStore, ifTrue)
       val didChangeElse = refineStore(n, method, receiver, elseStore, ifFalse)
-      // Handle moves after refinement (in case receiver is in the arguments)
-      val moved = n.arguments.map { handleMove(it, result) }.any { it }
-      return if (moved || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
+      // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
+      val argsChange = processMethodArguments(n, method, result)
+      return if (argsChange || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     }
 
     return if (result.containsTwoStores()) {
@@ -70,15 +70,24 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(n, method, receiver, thenStore, allLabels)
       val didChangeElse = refineStore(n, method, receiver, elseStore, allLabels)
-      // Handle moves after refinement (in case receiver is in the arguments)
-      val moved = n.arguments.map { handleMove(it, result) }.any { it }
-      if (moved || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
+      // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
+      val argsChange = processMethodArguments(n, method, result)
+      if (argsChange || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     } else {
       val store = result.regularStore
       val didChange = refineStore(n, method, receiver, store, allLabels)
-      // Handle moves after refinement (in case receiver is in the arguments)
-      val moved = n.arguments.map { handleMove(it, result) }.any { it }
-      if (moved || didChange) RegularTransferResult(result.resultValue, store, true) else result
+      // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
+      val argsChange = processMethodArguments(n, method, result)
+      if (argsChange || didChange) RegularTransferResult(result.resultValue, store, true) else result
+    }
+  }
+
+  private fun processMethodArguments(n: MethodInvocationNode, method: Symbol.MethodSymbol, result: TransferResult<MungoValue, MungoStore>): Boolean {
+    val paramsIt = method.params().iterator()
+    return n.arguments.any {
+      val typeMirror = paramsIt.next().asType()
+      val type = MungoTypecheck.typeAfterMethodCall(utils, typeMirror) ?: MungoMovedType.SINGLETON
+      handlePostCondition(it, result, type)
     }
   }
 
@@ -116,10 +125,13 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return if (moved) newResult(result) else result
   }
 
-  private val noProtocolOrMoved = MungoUnionType.create(listOf(MungoNoProtocolType.SINGLETON, MungoMovedType.SINGLETON, MungoNullType.SINGLETON, MungoPrimitiveType.SINGLETON))
-
   // Returns true iff store changed
   private fun handleMove(initialNode: Node, result: TransferResult<MungoValue, MungoStore>): Boolean {
+    return handlePostCondition(initialNode, result, MungoMovedType.SINGLETON)
+  }
+
+  // Returns true iff store changed
+  private fun handlePostCondition(initialNode: Node, result: TransferResult<MungoValue, MungoStore>, newType: MungoType): Boolean {
     var node = initialNode
     while (node is TypeCastNode) {
       node = node.operand
@@ -128,8 +140,8 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val r = FlowExpressions.internalReprOf(analysis.typeFactory, node)
       val value = result.regularStore.getValue(r)
       val type = value.info
-      if (!type.isSubtype(noProtocolOrMoved)) {
-        val newValue = MungoValue(value, MungoMovedType.SINGLETON)
+      if (!type.isSubtype(MungoTypecheck.noProtocolOrMoved)) {
+        val newValue = MungoValue(value, newType)
         if (result.containsTwoStores()) {
           result.thenStore.replaceValue(r, newValue)
           result.elseStore.replaceValue(r, newValue)

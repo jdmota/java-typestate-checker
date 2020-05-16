@@ -6,6 +6,7 @@ import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.compilermsgs.qual.CompilerMessageKey
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
+import org.checkerframework.checker.mungo.analysis.MungoValue
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -25,9 +26,6 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
   private val c = checker
   private val utils get() = c.utils
-
-  private val acceptedFinalTypes = listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON, MungoNoProtocolType.SINGLETON)
-  private val noProtocolTypes = listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON)
 
   override fun createTypeFactory(): MungoAnnotatedTypeFactory {
     // Pass "checker" and not "c" because "c" is initialized after "super()" and "createTypeFactory()"...
@@ -55,7 +53,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
             if (graph == null) {
               utils.err("@MungoState has no meaning since this type has no protocol", node)
             } else {
-              val stateNames = AnnotationUtils.getElementValueArray(annoMirror, "value", String::class.java, false)
+              val stateNames = MungoUtils.getAnnotationValue(annoMirror)
               utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
             }
           }
@@ -65,6 +63,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       }
     }
     // TODO visit all annotations to make sure @MungoTypestate only appears in classes
+    // TODO validate @MungoStateAfter as well
 
     return null
   }
@@ -124,7 +123,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       val parent = visitorState.path.parentPath.leaf
       if (parent !is VariableTree && parent !is AssignmentTree) {
         val type = typeFactory.getTypeFor(node)
-        if (!type.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
+        if (!type.isSubtype(MungoTypecheck.acceptedFinalTypes)) {
           utils.err("Returned object did not complete its protocol. Type: ${type.format()}", node)
         }
       }
@@ -135,7 +134,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     if (methodTree == null) {
       for (arg in node.arguments) {
         val type = typeFactory.getTypeFor(arg)
-        if (!type.isSubtype(MungoUnionType.create(noProtocolTypes))) {
+        if (!type.isSubtype(MungoTypecheck.noProtocolTypes)) {
           utils.err("Passing an object with protocol to a method that cannot be analyzed", arg)
         }
       }
@@ -150,34 +149,61 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return skipMethods.contains(node) || super.skipReceiverSubtypeCheck(node, methodDefinitionReceiver, methodCallReceiver)
   }
 
+  private fun getParamTypesAfterCall(parameters: List<VariableTree>): Map<String, MungoType?> {
+    return parameters.map {
+      val typeMirror = TreeUtils.elementFromTree(it)!!.asType()
+      val type = MungoTypecheck.typeAfterMethodCall(utils, typeMirror)
+      Pair(it.name.toString(), type)
+    }.toMap()
+  }
+
+  private fun checkFinalType(name: String, value: MungoValue, tree: Tree) {
+    val errorPrefix = if (tree is VariableTree) "Object" else "Cannot override because object"
+
+    // Even if there is a @MungoStateAfter in the enclosing method,
+    // we should always check completion for example if there are assignments inside a loop,
+    // which might create other references different from the one in the parameter.
+    if (!value.info.isSubtype(MungoTypecheck.acceptedFinalTypes)) {
+      utils.err("$errorPrefix has not ended its protocol. Type: ${value.info.format()}", tree)
+    }
+
+    val parameters = when (val method = TreeUtils.enclosingMethodOrLambda(visitorState.path)) {
+      is MethodTree -> method.parameters
+      is LambdaExpressionTree -> method.parameters
+      else -> listOf()
+    }
+    val types = getParamTypesAfterCall(parameters)
+    val finalType = types[name]
+
+    if (finalType != null) {
+      if (!value.info.isSubtype(finalType)) {
+        utils.err("$errorPrefix is not in the state specified by @MungoStateAfter. Type: ${value.info.format()}", tree)
+      }
+    }
+  }
+
   override fun commonAssignmentCheck(left: Tree, right: ExpressionTree, errorKey: String?) {
     super.commonAssignmentCheck(left, right, errorKey)
 
-    if (left is VariableTree) {
-      // Since we adapted MungoStore#leastUpperBound,
-      // now, while analyzing loops,
-      // the store includes information from the previous loop.
-      // Ensure the object from the previous loop completed.
-      val leftValue = typeFactory.getStoreBefore(left)?.getValueIfTracked(LocalVariableNode(left)) ?: return
-
-      if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        utils.err("Object did not complete its protocol. Type: ${leftValue.info.format()}", left)
+    when (left) {
+      is VariableTree -> {
+        // In case we are in a loop, ensure the object from the previous loop has completed its protocol
+        val leftValue = typeFactory.getStoreBefore(left)?.getValueIfTracked(LocalVariableNode(left)) ?: return
+        checkFinalType(left.name.toString(), leftValue, left)
       }
-    } else if (left is ExpressionTree) {
-      val receiver = FlowExpressions.internalReprOf(typeFactory, left)
-      val leftValue = typeFactory.getStoreBefore(left)?.getValue(receiver) ?: return
+      is ExpressionTree -> {
+        val receiver = FlowExpressions.internalReprOf(typeFactory, left)
+        val leftValue = typeFactory.getStoreBefore(left)?.getValue(receiver) ?: return
 
-      // Only allow overrides on null, ended, moved object, or object without protocol
-      if (!leftValue.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        utils.err("Cannot override because object has not ended its protocol", left)
-      }
+        checkFinalType(receiver.toString(), leftValue, left)
 
-      if (left is JCTree.JCFieldAccess) {
-        val classTree = c.treeUtils.getTree(left.selected.type.asElement())
-        if (classTree == null) {
-          val type = typeFactory.getTypeFor(right)
-          if (!type.isSubtype(MungoUnionType.create(noProtocolTypes))) {
-            utils.err("Assigning an object with protocol to a field that cannot be analyzed", left)
+        if (left is JCTree.JCFieldAccess) {
+          val classTree = c.treeUtils.getTree(left.selected.type.asElement())
+          if (classTree == null) {
+            val type = typeFactory.getTypeFor(right)
+            if (!type.isSubtype(MungoTypecheck.noProtocolTypes)) {
+              utils.err("Assigning an object with protocol to a field that cannot be analyzed", left)
+            }
           }
         }
       }
@@ -239,7 +265,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   override fun visitMemberReference(node: MemberReferenceTree, p: Void?): Void? {
     val expr = node.qualifierExpression
     val type = typeFactory.getTypeFor(expr)
-    if (!type.isSubtype(MungoUnionType.create(noProtocolTypes))) {
+    if (!type.isSubtype(MungoTypecheck.noProtocolTypes)) {
       utils.err("Cannot create reference for method of an object with protocol", node)
     }
 
@@ -273,29 +299,39 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return p
   }
 
-  private fun ensureLocalCompleteness(exitStore: MungoStore) {
+  private fun ensureLocalCompleteness(parameters: List<VariableTree>, exitStore: MungoStore) {
+    val paramTypes = getParamTypesAfterCall(parameters)
+
     // Make sure protocols of local variables complete
     for ((key, value) in exitStore.iterateOverLocalVars()) {
-      if (!value.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
-        utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.element)
+      val typeAfterCall = paramTypes[key.toString()]
+
+      if (typeAfterCall == null) {
+        if (!value.info.isSubtype(MungoTypecheck.acceptedFinalTypes)) {
+          utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.element)
+        }
+      } else {
+        if (!value.info.isSubtype(typeAfterCall)) {
+          utils.err("Final type does not match what was specified by @MungoStateAfter. Type: ${value.info.format()}", key.element)
+        }
       }
     }
   }
 
   override fun visitMethod(node: MethodTree, p: Void?): Void? {
-    typeFactory.getRegularExitStore(node)?.let { ensureLocalCompleteness(it) }
+    typeFactory.getRegularExitStore(node)?.let { ensureLocalCompleteness(node.parameters, it) }
     return super.visitMethod(node, p)
   }
 
   override fun visitLambdaExpression(node: LambdaExpressionTree, p: Void?): Void? {
-    typeFactory.getRegularExitStore(node.body)?.let { ensureLocalCompleteness(it) }
+    typeFactory.getRegularExitStore(node.body)?.let { ensureLocalCompleteness(node.parameters, it) }
     return super.visitLambdaExpression(node, p)
   }
 
   private fun ensureFieldsCompleteness(exitStore: MungoStore) {
     // Make sure protocols of fields complete
     for ((key, value) in exitStore.iterateOverFields()) {
-      if (!value.info.isSubtype(MungoUnionType.create(acceptedFinalTypes))) {
+      if (!value.info.isSubtype(MungoTypecheck.acceptedFinalTypes)) {
         utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.field)
       }
     }

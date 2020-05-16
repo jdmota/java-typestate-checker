@@ -37,11 +37,7 @@ class MungoTypeApplier(private val c: MungoChecker) {
   }
 
   private fun shouldRefine(element: Element?): Boolean {
-    return when (element?.kind) {
-      ElementKind.PARAMETER -> true
-      ElementKind.LOCAL_VARIABLE -> true
-      else -> false
-    }
+    return element?.kind == ElementKind.LOCAL_VARIABLE
   }
 
   // Adapted from org.checkerframework.framework.type.visitor.AnnotatedTypeScanner

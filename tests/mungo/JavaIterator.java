@@ -50,7 +50,7 @@ public class JavaIterator {
   public static void nullUse() {
     @MungoNullable JavaIterator it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext|Next} | Null)
-    // :: error: (Cannot override because object has not ended its protocol)
+    // :: error: (Cannot override because object has not ended its protocol. Type: JavaIterator{HasNext})
     it = null;
 
     // :: warning: (it: Null)
@@ -70,7 +70,7 @@ public class JavaIterator {
       // :: warning: (it: JavaIterator{Next})
       it.next();
       // :: warning: (it: JavaIterator{HasNext|Next} | Null)
-      // :: error: (Cannot override because object has not ended its protocol)
+      // :: error: (Cannot override because object has not ended its protocol. Type: JavaIterator{HasNext})
       it = null;
     }
   }
@@ -170,7 +170,7 @@ public class JavaIterator {
       it.next();
     }
     // :: warning: (it: JavaIterator{HasNext|Next})
-    // :: error: (Cannot override because object has not ended its protocol)
+    // :: error: (Cannot override because object has not ended its protocol. Type: JavaIterator{HasNext} | Ended)
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
@@ -356,7 +356,7 @@ public class JavaIterator {
 
   public static JavaIterator didNotComplete3() {
     do {
-      // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
+      // :: error: (Object has not ended its protocol. Type: JavaIterator{HasNext} | Ended)
       JavaIterator it = new JavaIterator();
       // :: warning: (it: JavaIterator{HasNext})
       if (it.hasNext()) {
@@ -368,7 +368,7 @@ public class JavaIterator {
 
   public static void didNotComplete4() {
     while (true) {
-      // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext} | Ended)
+      // :: error: (Object has not ended its protocol. Type: JavaIterator{HasNext} | Ended)
       JavaIterator it = new JavaIterator();
       // :: warning: (it: JavaIterator{HasNext})
       if (it.hasNext()) {

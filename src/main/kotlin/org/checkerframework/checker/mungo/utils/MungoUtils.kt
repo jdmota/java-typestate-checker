@@ -13,6 +13,7 @@ import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
 import org.checkerframework.checker.mungo.lib.MungoNullable
 import org.checkerframework.checker.mungo.lib.MungoState
+import org.checkerframework.checker.mungo.lib.MungoStateAfter
 import org.checkerframework.checker.mungo.lib.MungoTypestate
 import org.checkerframework.checker.mungo.qualifiers.MungoBottom
 import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
@@ -74,7 +75,10 @@ class MungoUtils(val checker: MungoChecker) {
     checker.reportError(file, pos, message)
   }
 
-  fun checkStates(graph: Graph, states: List<String>): List<String> {
+  fun checkStates(graph: Graph, states: List<String>?): List<String> {
+    if (states == null || states.isEmpty()) {
+      return listOf("@MungoState should specify one or more states")
+    }
     val basename = graph.resolvedFile.fileName
     return states.mapNotNull {
       if (graph.isFinalState(it)) {
@@ -147,6 +151,7 @@ class MungoUtils(val checker: MungoChecker) {
 
   companion object {
     val mungoStateName: String = MungoState::class.java.canonicalName
+    val mungoStateAfterName: String = MungoStateAfter::class.java.canonicalName
     val typestateAnnotations = setOf(MungoTypestate::class.java.canonicalName, "mungo.lib.Typestate")
     val nullableAnnotations = setOf(
       MungoNullable::class.java.canonicalName,
@@ -203,6 +208,13 @@ class MungoUtils(val checker: MungoChecker) {
         }
       }
       return MungoUnknownType.SINGLETON
+    }
+
+    fun getAnnotationValue(annotationMirror: AnnotationMirror?): List<String>? {
+      if (annotationMirror == null) return null
+      val value = AnnotationUtils.getElementValueArray(annotationMirror, "value", String::class.java, false)
+      if (value.isEmpty()) return null
+      return value
     }
 
     fun isBoolean(type: TypeMirror): Boolean {
