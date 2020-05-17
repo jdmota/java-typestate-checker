@@ -61,8 +61,12 @@ class MungoUtils(val checker: MungoChecker) {
   val processor = TypestateProcessor(this)
   val methodUtils = MethodUtils(this)
 
-  private val _factory = LazyField { checker.typeFactory as MungoAnnotatedTypeFactory }
-  val factory get() = _factory.get()
+  private var _factory: MungoAnnotatedTypeFactory? = null
+  val factory get() = _factory ?: throw AssertionError("no factory")
+
+  fun setFactory(f: MungoAnnotatedTypeFactory) {
+    _factory = f
+  }
 
   fun err(message: String, where: Tree) {
     checker.reportError(where, message)
@@ -177,7 +181,15 @@ class MungoUtils(val checker: MungoChecker) {
     val mungoInternalInfoName: String = MungoInternalInfo::class.java.canonicalName
     val mungoBottomName: String = MungoBottom::class.java.canonicalName
 
-    fun isMungoAnnotation(annotation: AnnotationMirror): Boolean {
+    fun isMungoLibAnnotation(annotation: AnnotationMirror): Boolean {
+      val name = AnnotationUtils.annotationName(annotation)
+      return name == mungoStateName ||
+        name == mungoStateAfterName ||
+        typestateAnnotations.contains(name) ||
+        nullableAnnotations.contains(name)
+    }
+
+    fun isMungoInternalAnnotation(annotation: AnnotationMirror): Boolean {
       return AnnotationUtils.areSameByName(annotation, mungoUnknownName) ||
         AnnotationUtils.areSameByName(annotation, mungoInternalInfoName) ||
         AnnotationUtils.areSameByName(annotation, mungoBottomName)

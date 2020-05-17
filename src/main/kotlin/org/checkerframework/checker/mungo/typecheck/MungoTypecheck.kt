@@ -181,7 +181,7 @@ object MungoTypecheck {
     return MungoUnionType.create(listOf(mungoType, maybeNullableType))
   }
 
-  fun typeDeclaration(utils: MungoUtils, type: TypeMirror): MungoType {
+  fun typeDeclaration(utils: MungoUtils, type: TypeMirror, annotations: Collection<AnnotationMirror> = type.annotationMirrors): MungoType {
     when {
       type.kind.isPrimitive -> return MungoPrimitiveType.SINGLETON
       type.kind == TypeKind.VOID -> return MungoPrimitiveType.SINGLETON
@@ -189,8 +189,8 @@ object MungoTypecheck {
       type.kind == TypeKind.ARRAY -> return MungoNoProtocolType.SINGLETON
     }
 
-    val stateAnno = type.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
-    val isNullable = type.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
+    val stateAnno = annotations.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
+    val isNullable = annotations.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
 
     val mungoType = if (ClassUtils.isJavaLangObject(type)) {
       MungoObjectType.SINGLETON

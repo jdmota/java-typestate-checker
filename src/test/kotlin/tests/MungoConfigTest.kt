@@ -7,12 +7,12 @@ private const val dir = "config"
 
 class MungoConfigTest(testFiles: List<File>) : MungoPerDirectoryTest(
   dir,
-  testFiles
+  testFiles,
+  arrayOf("-Astubs=tests/$dir/stubs", "-AstubWarnIfNotFound", "-Aignorejdkastub")
 ) {
   companion object {
     @JvmStatic
     @get:Parameters
-    val testDirs
-      get() = arrayOf(dir)
+    val testDirs = arrayOf(dir)
   }
 }

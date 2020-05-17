@@ -8,11 +8,11 @@ import org.junit.Test
 import java.io.File
 import java.util.*
 
-abstract class MungoPerDirectoryTest(testDir: String, testFiles: List<File>) : CheckerFrameworkPerDirectoryTest(
+abstract class MungoPerDirectoryTest(testDir: String, testFiles: List<File>, moreOpts: Array<String> = emptyArray()) : CheckerFrameworkPerDirectoryTest(
   testFiles,
   MungoChecker::class.java,
   testDir,
-  "-Anomsgtext", "-AshowTypeInfo", "-AconfigFile=tests/$testDir/mungo.config"
+  "-Anomsgtext", "-AshowTypeInfo", "-AconfigFile=tests/$testDir/mungo.config", *moreOpts
 ) {
   @Test
   override fun run() {

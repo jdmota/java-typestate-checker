@@ -12,7 +12,6 @@ class MungoResolutionTest(testFiles: List<File>) : MungoPerDirectoryTest(
   companion object {
     @JvmStatic
     @get:Parameters
-    val testDirs
-      get() = arrayOf(dir)
+    val testDirs = arrayOf(dir)
   }
 }

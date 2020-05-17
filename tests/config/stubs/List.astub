@@ -1,0 +1,17 @@
+import org.checkerframework.checker.mungo.lib.MungoState;
+
+package java.lang;
+
+public interface Iterable<E> {
+  @MungoState("HasNext") Iterator<E> iterator();
+}
+
+package java.util;
+
+public interface Collection<E> {
+  @MungoState("HasNext") Iterator<E> iterator();
+}
+
+public interface List<E> {
+  @MungoState("HasNext") Iterator<E> iterator();
+}

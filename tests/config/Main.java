@@ -8,7 +8,7 @@ public class Main {
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
       // :: warning: (it: JavaIterator{Next})
-      // :: error: (Returned object did not complete its protocol. Type: Object | Moved)
+      // :: error: (Returned object did not complete its protocol. Type: Object)
       it.next();
     }
   }
@@ -21,21 +21,15 @@ public class Main {
     while (!it.hasNext()) {
       // :: warning: (it: Ended)
       // :: error: (Cannot call next on ended protocol)
-      // :: error: (Returned object did not complete its protocol. Type: Object | Moved)
+      // :: error: (Returned object did not complete its protocol. Type: Object)
       it.next();
     }
   }
 
-  // TODO improve this: know that iterator() returns a new iterator in the initial state
-  // TODO improve this: generics
-  // TODO why the assignment.type.incompatible error?
-
   public static void standardIteratorOk(Object[] args) {
-    // :: error: (assignment.type.incompatible)
     Iterator<Object> it = Arrays.asList(args).iterator();
 
-    // :: warning: (it: JavaIterator{HasNext|Next} | Ended | Moved)
-    // :: error: (Cannot call hasNext on ended protocol, on moved value)
+    // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
       // :: warning: (it: JavaIterator{Next})
       // :: error: (Returned object did not complete its protocol. Type: Object | Moved)
@@ -44,12 +38,10 @@ public class Main {
   }
 
   public static void standardIteratorNotOk(Object[] args) {
-    // :: error: (assignment.type.incompatible)
     // :: error: (Object did not complete its protocol. Type: JavaIterator{Next})
     Iterator<Object> it = Arrays.asList(args).iterator();
 
-    // :: warning: (it: JavaIterator{HasNext|Next} | Ended | Moved)
-    // :: error: (Cannot call hasNext on ended protocol, on moved value)
+    // :: warning: (it: JavaIterator{HasNext})
     while (!it.hasNext()) {
       // :: warning: (it: Ended)
       // :: error: (Cannot call next on ended protocol)

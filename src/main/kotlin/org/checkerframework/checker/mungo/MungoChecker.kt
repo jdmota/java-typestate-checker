@@ -7,7 +7,6 @@ import org.checkerframework.common.basetype.BaseTypeChecker
 import org.checkerframework.common.basetype.BaseTypeVisitor
 import org.checkerframework.javacutil.BugInCF
 import java.nio.file.Path
-import java.util.*
 
 const val showTypeInfoOpt = "showTypeInfo"
 const val configFile = "configFile"

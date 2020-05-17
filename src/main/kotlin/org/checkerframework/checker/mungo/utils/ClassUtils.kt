@@ -6,6 +6,7 @@ import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.type.AnnotatedTypeMirror
+import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -47,11 +48,9 @@ class ClassUtils(private val utils: MungoUtils) {
   }
 
   private fun getMungoTypestateAnnotation(annotationMirrors: Collection<AnnotationMirror>): AnnotationMirror? {
-    val annotations = annotationMirrors.filter {
-      val elem = it.annotationType
-      elem is Type && MungoUtils.typestateAnnotations.contains(elem.tsym.qualifiedName.toString())
+    return annotationMirrors.firstOrNull {
+      MungoUtils.typestateAnnotations.contains(AnnotationUtils.annotationName(it))
     }
-    return annotations.firstOrNull()
   }
 
   fun visitClassOfElement(element: Element): Graph? {
@@ -69,6 +68,13 @@ class ClassUtils(private val utils: MungoUtils) {
       val qualifiedName = sym.qualifiedName.toString()
       val classFile = sym.sourcefile?.name?.let { Paths.get(it).toAbsolutePath() }
       val protocolFromConfig = utils.configUtils.getConfig().getProtocol(qualifiedName)
+
+      utils.factory.getTypeFromStub(sym)?.let {
+        if (getMungoTypestateAnnotation(it.annotations) != null) {
+          utils.err("@MungoTypestate's in stub files are not supported. Use mungo.config instead", sym)
+        }
+      }
+
       // Process
       val graph = classFile?.let { file -> // File where the class is
         getMungoTypestateAnnotation(sym.annotationMirrors)?.let {

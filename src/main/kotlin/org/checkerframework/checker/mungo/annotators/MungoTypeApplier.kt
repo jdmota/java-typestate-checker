@@ -2,17 +2,19 @@ package org.checkerframework.checker.mungo.annotators
 
 import com.sun.source.tree.Tree
 import org.checkerframework.checker.mungo.MungoChecker
-import org.checkerframework.checker.mungo.typecheck.*
+import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.type.AnnotatedTypeMirror.*
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
+import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 
-class MungoTypeApplier(private val c: MungoChecker) {
+class MungoTypeApplier(private val c: MungoChecker, private val f: MungoAnnotatedTypeFactory, private val topAnno: AnnotationMirror, private val bottomAnno: AnnotationMirror) {
 
-  private val typeVisitor = TypeVisitor(c, this)
+  private val typeVisitor = TypeVisitor(this)
 
   fun visit(tree: Tree, type: AnnotatedTypeMirror) {
     val element = TreeUtils.elementFromTree(tree)
@@ -27,9 +29,23 @@ class MungoTypeApplier(private val c: MungoChecker) {
     typeVisitor.visit(null, type)
   }
 
+  private var fixing = false
+
+  fun fix(type: AnnotatedTypeMirror) {
+    fixing = true
+    typeVisitor.visit(null, type)
+    fixing = false
+  }
+
   private fun apply(type: AnnotatedTypeMirror, refine: Boolean) {
+    if (type.getAnnotationInHierarchy(topAnno) != null) return
+
     val mungoType = if (refine) {
-      MungoTypecheck.typeDeclaration(c.utils, type.underlyingType)
+      if (fixing) {
+        MungoTypecheck.typeDeclaration(c.utils, type.underlyingType, type.annotations)
+      } else {
+        MungoTypecheck.typeDeclaration(c.utils, type.underlyingType)
+      }
     } else {
       MungoTypecheck.invalidate(c.utils, type.underlyingType)
     }
@@ -40,8 +56,12 @@ class MungoTypeApplier(private val c: MungoChecker) {
     return element?.kind == ElementKind.LOCAL_VARIABLE
   }
 
+  private fun shouldRefineReturnType(type: AnnotatedExecutableType): Boolean {
+    return type.returnType.annotations.find { MungoUtils.isMungoLibAnnotation(it) } != null || f.declarationFromElement(type.element) != null
+  }
+
   // Adapted from org.checkerframework.framework.type.visitor.AnnotatedTypeScanner
-  private class TypeVisitor(private val c: MungoChecker, private val typeApplier: MungoTypeApplier) {
+  private class TypeVisitor(private val typeApplier: MungoTypeApplier) {
     // To prevent infinite loops
     private val visitedNodes: MutableMap<AnnotatedTypeMirror, Void?> = IdentityHashMap()
 
@@ -83,9 +103,7 @@ class MungoTypeApplier(private val c: MungoChecker) {
           scan(type.alternatives)
         }
         is AnnotatedExecutableType -> {
-          val methodTree = c.treeUtils.getTree(type.element)
-
-          scan(type.returnType, methodTree != null)
+          scan(type.returnType, typeApplier.shouldRefineReturnType(type))
           if (type.receiverType != null) {
             scan(type.receiverType!!)
           }
@@ -102,7 +120,7 @@ class MungoTypeApplier(private val c: MungoChecker) {
           // Null type should not be the lower bound of type variables in generics
           // Avoiding type.argument.type.incompatible errors
           if (type.lowerBound is AnnotatedNullType) {
-            type.lowerBound.replaceAnnotation(MungoBottomType.SINGLETON.buildAnnotation(c.processingEnvironment))
+            type.lowerBound.replaceAnnotation(typeApplier.bottomAnno)
           }
         }
         is AnnotatedWildcardType -> {

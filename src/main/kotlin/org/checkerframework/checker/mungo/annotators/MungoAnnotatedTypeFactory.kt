@@ -18,29 +18,52 @@ import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFAbstractAnalysis
+import org.checkerframework.framework.stub.StubTypes
 import org.checkerframework.framework.type.*
 import org.checkerframework.framework.util.DefaultAnnotationFormatter
 import org.checkerframework.framework.util.GraphQualifierHierarchy
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
-import org.checkerframework.javacutil.Pair
-import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.javacutil.*
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
-import javax.lang.model.element.AnnotationMirror
-import javax.lang.model.element.Element
-import javax.lang.model.element.Modifier
-import javax.lang.model.element.VariableElement
+import javax.lang.model.element.*
 
 class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFactory<MungoValue, MungoStore, MungoTransfer, MungoAnalysis>(checker) {
 
   private val c = checker
-  private val typeApplier = MungoTypeApplier(c)
+
+  private val typesFromStubFilesField = StubTypes::class.java.getDeclaredField("typesFromStubFiles")
+  private val typesFromStubFiles = mutableMapOf<Element, AnnotatedTypeMirror>()
+
+  private val topAnnotation = MungoUnknownType.SINGLETON.buildAnnotation(checker.processingEnvironment)
+  private val bottomAnnotation = MungoBottomType.SINGLETON.buildAnnotation(checker.processingEnvironment)
+
+  private val typeApplier = MungoTypeApplier(c, this, topAnnotation, bottomAnnotation)
 
   init {
+    typesFromStubFilesField.isAccessible = true
     postInit()
   }
 
+  override fun postInit() {
+    super.postInit()
+    c.utils.setFactory(this)
+
+    // Transform the @MungoState annotations for the proper @MungoInternalInfo ones
+    val types = typesFromStubFilesField.get(stubTypes) as MutableMap<*, *>
+    for ((element, annotatedType) in types) {
+      typesFromStubFiles[element as Element] = annotatedType as AnnotatedTypeMirror
+    }
+    for ((_, annotatedType) in typesFromStubFiles) {
+      typeApplier.fix(annotatedType)
+    }
+  }
+
   fun getCurrentRoot(): CompilationUnitTree = visitorState.path.compilationUnit
+
+  // So that we get the original AnnotatedTypeMirror, with all the annotations
+  // See "isSupportedQualifier" for context
+  fun getTypeFromStub(elt: Element) = typesFromStubFiles[elt]
 
   override fun createAnnotatedTypeFormatter(): AnnotatedTypeFormatter {
     val printVerboseGenerics = checker.hasOption("printVerboseGenerics")
@@ -54,7 +77,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
 
   class MungoAnnotationFormatter : DefaultAnnotationFormatter() {
     override fun formatAnnotationMirror(am: AnnotationMirror, sb: StringBuilder) {
-      if (MungoUtils.isMungoAnnotation(am)) {
+      if (MungoUtils.isMungoInternalAnnotation(am)) {
         val type = MungoUtils.mungoTypeFromAnnotation(am)
         sb.append(type.format())
       } else {
@@ -67,19 +90,12 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     typeApplier.visit(type)
   }
 
-  override fun addComputedTypeAnnotations(elt: Element, type: AnnotatedTypeMirror) {
-    typeApplier.visit(elt, type)
-    if (dependentTypesHelper != null) {
-      dependentTypesHelper.standardizeVariable(type, elt)
-    }
+  override fun addComputedTypeAnnotations(element: Element, type: AnnotatedTypeMirror) {
+    typeApplier.visit(element, type)
   }
 
-  private val unknownAnno = MungoUnknownType.SINGLETON.buildAnnotation(c.processingEnvironment)
-
   override fun addComputedTypeAnnotations(tree: Tree, type: AnnotatedTypeMirror, iUseFlow: Boolean) {
-    if (type.getAnnotationInHierarchy(unknownAnno) == null) {
-      typeApplier.visit(tree, type)
-    }
+    typeApplier.visit(tree, type)
 
     if (iUseFlow) {
       val value = getInferredValueFor(tree)
@@ -117,8 +133,14 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     return setOf(MungoBottom::class.java, MungoInternalInfo::class.java, MungoUnknown::class.java)
   }
 
+  // Temporarily allow @MungoState annotations to be added to AnnotatedTypeMirror's
+  // After postInit(), we transform the @MungoState annotations in the proper @MungoInternalInfo ones
+  override fun isSupportedQualifier(a: AnnotationMirror?): Boolean {
+    return a != null && (MungoUtils.isMungoInternalAnnotation(a) || (stubTypes.isParsing && MungoUtils.isMungoLibAnnotation(a)))
+  }
+
   override fun createQualifierHierarchy(factory: MultiGraphQualifierHierarchy.MultiGraphFactory): QualifierHierarchy {
-    return MungoQualifierHierarchy(factory, MungoBottomType.SINGLETON.buildAnnotation(checker.processingEnvironment))
+    return MungoQualifierHierarchy(factory, bottomAnnotation)
   }
 
   override fun createTypeHierarchy(): TypeHierarchy {
@@ -130,6 +152,22 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   }
 
   private inner class MungoQualifierHierarchy(f: MultiGraphFactory, bottom: AnnotationMirror) : GraphQualifierHierarchy(f, bottom) {
+    override fun findTops(supertypes: MutableMap<AnnotationMirror, MutableSet<AnnotationMirror>>?): MutableSet<AnnotationMirror> {
+      return mutableSetOf(topAnnotation)
+    }
+
+    override fun findBottoms(supertypes: MutableMap<AnnotationMirror, MutableSet<AnnotationMirror>>?): MutableSet<AnnotationMirror> {
+      return mutableSetOf(bottomAnnotation)
+    }
+
+    override fun getTopAnnotation(start: AnnotationMirror?): AnnotationMirror = topAnnotation
+
+    override fun getBottomAnnotation(start: AnnotationMirror?): AnnotationMirror = bottomAnnotation
+
+    override fun findAnnotationInHierarchy(annos: MutableCollection<out AnnotationMirror>, top: AnnotationMirror?): AnnotationMirror? {
+      return annos.find { MungoUtils.isMungoInternalAnnotation(it) }
+    }
+
     override fun isSubtype(subAnno: AnnotationMirror, superAnno: AnnotationMirror): Boolean {
       val sub = MungoUtils.mungoTypeFromAnnotation(subAnno)
       val sup = MungoUtils.mungoTypeFromAnnotation(superAnno)
