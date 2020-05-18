@@ -153,6 +153,14 @@ object MungoTypecheck {
     }
   }
 
+  fun canDrop(type: MungoType): Boolean {
+    return type.isSubtype(acceptedFinalTypes) || when (type) {
+      is MungoUnionType -> type.types.any { type is MungoStateType && type.state.isDroppable }
+      is MungoStateType -> type.state.isDroppable
+      else -> false
+    }
+  }
+
   // Get the least upper bound of the possible type, assuming anything happened
   fun invalidate(utils: MungoUtils, type: TypeMirror): MungoType {
     when {
@@ -240,7 +248,7 @@ object MungoTypecheck {
     return MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
   }
 
-  val acceptedFinalTypes = MungoUnionType.create(listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON))
+  private val acceptedFinalTypes = MungoUnionType.create(listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON))
   val noProtocolTypes = MungoUnionType.create(listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON))
   val noProtocolOrMoved = MungoUnionType.create(listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON, MungoMovedType.SINGLETON))
 

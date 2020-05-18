@@ -41,12 +41,12 @@ typestate_body returns [List<TStateNode> states] :
 
 state_declaration returns [TStateNode node] :
   name=ID '=' state
-  {$node=new TStateNode(tokenToPos($name), $name.getText(), $state.node.getMethods());}
+  {$node=new TStateNode(tokenToPos($name), $name.getText(), $state.node.getMethods(), $state.node.isDroppable());}
 ;
 
-state returns [TStateNode node] :
-  t='{' ( m+=method ( ',' m+=method )* )? '}'
-  {$node=new TStateNode(tokenToPos($t), null, map($m, it -> it.node));}
+state returns [TStateNode node] locals [boolean isDroppable] :
+  t='{' ( m+=method ( ',' m+=method )* ( ',' DROP ':' END {$isDroppable=true;} )? )? '}'
+  {$node=new TStateNode(tokenToPos($t), null, map($m, it -> it.node), $isDroppable);}
 ;
 
 method returns [TMethodNode node] locals [TNode destination] :
@@ -71,9 +71,14 @@ decision returns [TDecisionNode node] :
 ;
 
 id returns [TIdNode node] :
-  ID
-  {$node=new TIdNode(tokenToPos($ID), $ID.getText());}
+  DROP {$node=new TIdNode(tokenToPos($DROP), $DROP.getText());} |
+  END {$node=new TIdNode(tokenToPos($END), $END.getText());} |
+  ID {$node=new TIdNode(tokenToPos($ID), $ID.getText());}
 ;
+
+// keywords
+DROP : 'drop' ;
+END : 'end' ;
 
 // match identifiers
 ID : [$_a-zA-Z]+[$_a-zA-Z0-9]* ;

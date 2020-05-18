@@ -116,6 +116,7 @@ test {
     testLogging.showStandardStreams = true
 
     inputs.files("tests/config")
+    inputs.files("tests/droppables")
     inputs.files("tests/mungo")
     inputs.files("tests/resolution")
 

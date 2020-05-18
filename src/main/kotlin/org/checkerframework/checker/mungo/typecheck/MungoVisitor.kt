@@ -123,7 +123,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       val parent = visitorState.path.parentPath.leaf
       if (parent !is VariableTree && parent !is AssignmentTree) {
         val type = typeFactory.getTypeFor(node)
-        if (!type.isSubtype(MungoTypecheck.acceptedFinalTypes)) {
+        if (!MungoTypecheck.canDrop(type)) {
           utils.err("Returned object did not complete its protocol. Type: ${type.format()}", node)
         }
       }
@@ -163,7 +163,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     // Even if there is a @MungoStateAfter in the enclosing method,
     // we should always check completion for example if there are assignments inside a loop,
     // which might create other references different from the one in the parameter.
-    if (!value.info.isSubtype(MungoTypecheck.acceptedFinalTypes)) {
+    if (!MungoTypecheck.canDrop(value.info)) {
       utils.err("$errorPrefix has not ended its protocol. Type: ${value.info.format()}", tree)
     }
 
@@ -307,7 +307,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
       val typeAfterCall = paramTypes[key.toString()]
 
       if (typeAfterCall == null) {
-        if (!value.info.isSubtype(MungoTypecheck.acceptedFinalTypes)) {
+        if (!MungoTypecheck.canDrop(value.info)) {
           utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.element)
         }
       } else {
@@ -331,7 +331,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   private fun ensureFieldsCompleteness(exitStore: MungoStore) {
     // Make sure protocols of fields complete
     for ((key, value) in exitStore.iterateOverFields()) {
-      if (!value.info.isSubtype(MungoTypecheck.acceptedFinalTypes)) {
+      if (!MungoTypecheck.canDrop(value.info)) {
         utils.err("Object did not complete its protocol. Type: ${value.info.format()}", key.field)
       }
     }
@@ -342,7 +342,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
     typeFactory.getStatesToStore(classTree)?.let {
       for ((state, store) in it) {
-        if (state.transitions.isEmpty()) {
+        if (state.canEndHere()) {
           ensureFieldsCompleteness(store)
         }
       }

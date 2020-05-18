@@ -10,14 +10,20 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
 
   constructor(node: TStateNode) : this(node.name ?: "unknown:${node.pos.lineCol}", node)
 
+  val isDroppable = node != null && node.isDroppable
+
   val transitions: MutableMap<TMethodNode, AbstractState<*>> = LinkedHashMap()
 
   open fun addTransition(transition: TMethodNode, destination: AbstractState<*>) {
     transitions[transition] = destination
   }
 
+  fun isEnd() = transitions.isEmpty()
+
+  fun canEndHere() = isDroppable || isEnd()
+
   override fun toString(): String {
-    return "State{name=$name}"
+    return if (isDroppable) "State{name=$name, droppable}" else "State{name=$name}"
   }
 }
 

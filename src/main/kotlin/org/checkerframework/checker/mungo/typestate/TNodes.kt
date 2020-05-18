@@ -30,7 +30,7 @@ class TMethodNode(pos: Position, val returnType: TRefNode, val name: String, val
 
 }
 
-class TStateNode(pos: Position, val name: String?, val methods: List<TMethodNode>) : TNode(pos)
+class TStateNode(pos: Position, val name: String?, val methods: List<TMethodNode>, val isDroppable: Boolean) : TNode(pos)
 
 class TPackageNode(pos: Position, val ref: TRefNode) : TNode(pos)
 

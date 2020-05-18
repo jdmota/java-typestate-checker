@@ -197,7 +197,7 @@ class MungoStateType private constructor(val graph: Graph, val state: State) : M
   }
 
   companion object {
-    fun create(graph: Graph, state: State) = if (state.transitions.isEmpty()) MungoEndedType.SINGLETON else MungoStateType(graph, state)
+    fun create(graph: Graph, state: State) = if (state.isEnd()) MungoEndedType.SINGLETON else MungoStateType(graph, state)
   }
 
   override fun equals(other: Any?) = when {
