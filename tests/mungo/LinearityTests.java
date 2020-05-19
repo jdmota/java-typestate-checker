@@ -1,5 +1,7 @@
 import org.checkerframework.checker.mungo.lib.MungoTypestate;
 import org.checkerframework.checker.mungo.lib.MungoRequires;
+import org.checkerframework.checker.mungo.lib.MungoEnsures;
+import org.checkerframework.checker.mungo.lib.MungoNullable;
 
 import java.util.*;
 import java.util.function.*;
@@ -150,6 +152,15 @@ class MoveToConstructor {
 
 }
 
+class MoveToConstructor2Args {
+
+  // :: error: (Object did not complete its protocol. Type: Linearity{State0|State1})
+  public MoveToConstructor2Args(Linearity obj, Linearity obj2) {
+
+  }
+
+}
+
 class MoveToConstructor2 extends MoveToConstructor {
 
   public MoveToConstructor2(Linearity obj) {
@@ -173,6 +184,14 @@ public class LinearityTests {
     obj.finish();
   }
 
+  public static void main1_2() {
+    @MungoNullable Linearity obj = null;
+    useNullable(null);
+    // :: warning: (obj: Null)
+    // :: error: (Cannot call finish on null)
+    obj.finish();
+  }
+
   public static void main2() {
     Linearity obj = new Linearity();
     // :: warning: (obj: Linearity{State0})
@@ -180,6 +199,28 @@ public class LinearityTests {
     // :: warning: (obj: Moved)
     // :: error: (argument.type.incompatible)
     use(obj);
+  }
+
+  public static void main2_2() {
+    Linearity obj = new Linearity();
+    // :: warning: (obj: Linearity{State0})
+    // :: warning: (obj: Moved)
+    // :: error: (argument.type.incompatible)
+    use2(obj, obj);
+    // :: warning: (obj: Moved)
+    // :: error: (Cannot call finish on moved value)
+    obj.finish();
+  }
+
+  public static void main2_3() {
+    Linearity obj = new Linearity();
+    // :: warning: (obj: Linearity{State0})
+    // :: warning: (obj: Moved)
+    // :: error: (argument.type.incompatible)
+    use2((Linearity) ((Linearity) obj), obj);
+    // :: warning: (obj: Moved)
+    // :: error: (Cannot call finish on moved value)
+    obj.finish();
   }
 
   public static void main3() {
@@ -271,9 +312,10 @@ public class LinearityTests {
     // :: warning: (obj: Moved)
     // :: error: (argument.type.incompatible)
     obj.useOther(obj);
-    // :: warning: (obj: Moved)
-    // :: error: (assignment.type.incompatible)
+    // :: warning: (obj: Linearity{State0})
     Linearity obj2 = obj;
+    // :: warning: (obj2: Linearity{State0})
+    obj2.finish();
   }
 
   // Overrides
@@ -312,6 +354,17 @@ public class LinearityTests {
     obj1.finish();
   }
 
+  public static void main15() {
+    Linearity obj1 = new Linearity();
+    // :: warning: (obj1: Linearity{State0})
+    // :: warning: (obj1: Moved)
+    // :: error: (argument.type.incompatible)
+    MoveToConstructor2Args obj2 = new MoveToConstructor2Args(obj1, obj1);
+    // :: warning: (obj1: Moved)
+    // :: error: (Cannot call finish on moved value)
+    obj1.finish();
+  }
+
   // Helpers
 
   public static void use(@MungoRequires("State0") Linearity obj) {
@@ -319,6 +372,31 @@ public class LinearityTests {
     obj.a();
     // :: warning: (obj: Linearity{State1})
     obj.b();
+  }
+
+  public static void useNullable(@MungoNullable @MungoRequires("State0") @MungoEnsures("State1") Linearity obj) {
+    // :: warning: (obj: Linearity{State0} | Null)
+    if (obj != null) {
+      // :: warning: (obj: Linearity{State0})
+      obj.a();
+    }
+  }
+
+  public static void useNullable2(@MungoNullable @MungoRequires("State0") @MungoEnsures("State1") Linearity obj) {
+    // :: warning: (obj: Linearity{State0} | Null)
+    if (obj != null) {
+      // :: warning: (obj: Linearity{State0|State1} | Ended | Moved | Null)
+      // :: error: (Cannot override because object is not in the state specified by @MungoEnsures. Type: Linearity{State0})
+      // :: error: (Cannot override because object has not ended its protocol. Type: Linearity{State0})
+      obj = null;
+    }
+  }
+
+  public static void use2(Linearity obj1, Linearity obj2) {
+    // :: warning: (obj1: Linearity{State0|State1})
+    obj1.finish();
+    // :: warning: (obj2: Linearity{State0|State1})
+    obj2.finish();
   }
 
   public static void useWrapper(PublicLinearityWrapper obj) {

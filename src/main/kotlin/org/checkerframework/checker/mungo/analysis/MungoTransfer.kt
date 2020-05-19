@@ -1,10 +1,9 @@
 package org.checkerframework.checker.mungo.analysis
 
-import com.sun.source.tree.IdentifierTree
+import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.MungoMovedType
-import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
 import org.checkerframework.checker.mungo.utils.MethodUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -15,6 +14,7 @@ import org.checkerframework.framework.flow.CFAbstractStore
 import org.checkerframework.framework.flow.CFAbstractTransfer
 import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.ExecutableElement
+import javax.lang.model.type.TypeMirror
 
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
 
@@ -84,8 +84,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val paramsIt = method.parameters.iterator()
     return arguments.map {
       val typeMirror = paramsIt.next().asType()
-      val type = MungoTypecheck.typeAfterMethodCall(utils, typeMirror) ?: MungoMovedType.SINGLETON
-      handlePostCondition(it, result, type)
+      handlePostCondition(it, result, typeMirror)
     }.any { it }
   }
 
@@ -127,11 +126,6 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
 
   // Returns true iff store changed
   private fun handleMove(initialNode: Node, result: TransferResult<MungoValue, MungoStore>): Boolean {
-    return handlePostCondition(initialNode, result, MungoMovedType.SINGLETON)
-  }
-
-  // Returns true iff store changed
-  private fun handlePostCondition(initialNode: Node, result: TransferResult<MungoValue, MungoStore>, newType: MungoType): Boolean {
     var node = initialNode
     while (node is TypeCastNode) {
       node = node.operand
@@ -141,7 +135,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val value = result.regularStore.getValue(r)
       val type = value.info
       if (!type.isSubtype(MungoTypecheck.noProtocolOrMoved)) {
-        val newValue = MungoValue(value, newType)
+        val newValue = MungoValue(value, MungoMovedType.SINGLETON)
         if (result.containsTwoStores()) {
           result.thenStore.replaceValue(r, newValue)
           result.elseStore.replaceValue(r, newValue)
@@ -154,12 +148,26 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return false
   }
 
-  private fun newResult(result: TransferResult<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
-    return if (result.containsTwoStores()) {
-      ConditionalTransferResult(result.resultValue, result.thenStore, result.elseStore, true)
-    } else {
-      RegularTransferResult(result.resultValue, result.regularStore, true)
+  // Returns true iff store changed
+  private fun handlePostCondition(initialNode: Node, result: TransferResult<MungoValue, MungoStore>, typeMirror: TypeMirror): Boolean {
+    val newType = MungoTypecheck.typeAfterMethodCall(utils, typeMirror) ?: return false
+
+    var node = initialNode
+    while (node is TypeCastNode) {
+      node = node.operand
     }
+    if (node is LocalVariableNode || node is FieldAccessNode) {
+      val r = FlowExpressions.internalReprOf(analysis.typeFactory, node)
+      val newValue = MungoValue(a, newType, typeMirror)
+      if (result.containsTwoStores()) {
+        result.thenStore.replaceValue(r, newValue)
+        result.elseStore.replaceValue(r, newValue)
+      } else {
+        result.regularStore.replaceValue(r, newValue)
+      }
+      return true
+    }
+    return false
   }
 
   private fun getBooleanValue(node: Node): Boolean? = when (node) {
@@ -284,23 +292,35 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
   override fun visitLocalVariable(n: LocalVariableNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val store = input.regularStore
     val value = store.getValue(n)
-    return if (wasMovedToClosure(n)) {
+    val result = if (wasMovedToClosure(n)) {
       // MungoVisitor will error when it detects a moved variable
       // So refine to bottom to avoid duplicate errors
       val newValue = value.toBottom()
       store.replaceValue(FlowExpressions.LocalVariable(n), newValue)
-      RegularTransferResult(finishValue(newValue, store), store)
+      RegularTransferResult(finishValue(newValue, store), store, true)
     } else {
       // Prefer the inferred type information instead of using "mostSpecific" with information in factory
       RegularTransferResult(finishValue(value, store), store)
     }
+
+    if (isParameter(n)) {
+      val changed = handleMove(n, result)
+      if (changed) return newResult(result)
+    }
+    return result
   }
 
   override fun visitFieldAccess(n: FieldAccessNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val store = input.regularStore
     val value = store.getValue(n)
     // Prefer the inferred type information instead of using "mostSpecific" with information in factory
-    return RegularTransferResult(finishValue(value, store), store)
+    val result = RegularTransferResult(finishValue(value, store), store)
+
+    if (isParameter(n)) {
+      val changed = handleMove(n, result)
+      if (changed) return newResult(result)
+    }
+    return result
   }
 
   override fun visitTypeCast(n: TypeCastNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
@@ -314,6 +334,29 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val ret = super.initialStore(underlyingAST, parameters)
     a.creatingInitialStore = false
     return ret
+  }
+
+  private fun isParameter(node: Node): Boolean {
+    var path = a.typeFactory.getPath(node.tree) ?: return false
+    var parent = path.parentPath
+    while (parent.leaf is TypeCastTree || parent.leaf is ParenthesizedTree) {
+      path = path.parentPath
+      parent = path.parentPath
+    }
+    val maybeArg = path.leaf
+    return when (val maybeCall = parent.leaf) {
+      is MethodInvocationTree -> maybeCall.arguments.contains(maybeArg)
+      is NewClassTree -> maybeCall.arguments.contains(maybeArg)
+      else -> false
+    }
+  }
+
+  private fun newResult(result: TransferResult<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
+    return if (result.containsTwoStores()) {
+      ConditionalTransferResult(result.resultValue, result.thenStore, result.elseStore, true)
+    } else {
+      RegularTransferResult(result.resultValue, result.regularStore, true)
+    }
   }
 
 }

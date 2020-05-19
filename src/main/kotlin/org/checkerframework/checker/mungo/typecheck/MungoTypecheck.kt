@@ -244,11 +244,15 @@ object MungoTypecheck {
 
     val graph = utils.classUtils.visitClassTypeMirror(type) ?: return null
 
+    val isNullable = type.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
     val stateAfterAnno = type.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoEnsures) }
     val stateNames = MungoUtils.getAnnotationValue(stateAfterAnno) ?: return null
 
     val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
-    return MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
+
+    val maybeNullableType = if (isNullable) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
+
+    return MungoUnionType.create(states.map { MungoStateType.create(graph, it) }.plus(maybeNullableType))
   }
 
   private val acceptedFinalTypes = MungoUnionType.create(listOf(MungoPrimitiveType.SINGLETON, MungoNullType.SINGLETON, MungoNoProtocolType.SINGLETON, MungoMovedType.SINGLETON, MungoEndedType.SINGLETON))

@@ -141,13 +141,13 @@ class JavaIteratorWrapper5 {
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: Moved)
-    // :: error: (Cannot call hasNext on moved value)
+    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Moved | Null)
+    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: Bottom)
+    // :: warning: (iterator: JavaIterator{Next})
     return iterator.next();
   }
 
