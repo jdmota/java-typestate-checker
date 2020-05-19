@@ -3,7 +3,9 @@ package org.checkerframework.checker.mungo.analysis
 import com.sun.source.tree.IdentifierTree
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
-import org.checkerframework.checker.mungo.typecheck.*
+import org.checkerframework.checker.mungo.typecheck.MungoMovedType
+import org.checkerframework.checker.mungo.typecheck.MungoType
+import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
 import org.checkerframework.checker.mungo.utils.MethodUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.analysis.*
@@ -12,7 +14,7 @@ import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFAbstractStore
 import org.checkerframework.framework.flow.CFAbstractTransfer
 import org.checkerframework.javacutil.TreeUtils
-import javax.lang.model.element.ElementKind
+import javax.lang.model.element.ExecutableElement
 
 class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstractTransfer<MungoValue, MungoStore, MungoTransfer>(analysis) {
 
@@ -42,14 +44,10 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return store.intersectValueIfDiff(receiver, MungoValue(prevValue, newInfo))
   }
 
-  private fun getMethodToRefine(n: MethodInvocationNode): Symbol.MethodSymbol? {
-    val method = n.target.method
-    return if (method is Symbol.MethodSymbol && method.getKind() == ElementKind.METHOD) method else null
-  }
-
   override fun visitMethodInvocation(n: MethodInvocationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitMethodInvocation(n, input)
-    val method = getMethodToRefine(n) ?: return result
+    val method = n.target.method as Symbol.MethodSymbol
+    val args = n.arguments
 
     // Apply type refinements
 
@@ -61,7 +59,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val didChangeThen = refineStore(n, method, receiver, thenStore, ifTrue)
       val didChangeElse = refineStore(n, method, receiver, elseStore, ifFalse)
       // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
-      val argsChange = processMethodArguments(n, method, result)
+      val argsChange = processMethodArguments(args, method, result)
       return if (argsChange || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     }
 
@@ -71,35 +69,37 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val didChangeThen = refineStore(n, method, receiver, thenStore, allLabels)
       val didChangeElse = refineStore(n, method, receiver, elseStore, allLabels)
       // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
-      val argsChange = processMethodArguments(n, method, result)
+      val argsChange = processMethodArguments(args, method, result)
       if (argsChange || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     } else {
       val store = result.regularStore
       val didChange = refineStore(n, method, receiver, store, allLabels)
       // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
-      val argsChange = processMethodArguments(n, method, result)
+      val argsChange = processMethodArguments(args, method, result)
       if (argsChange || didChange) RegularTransferResult(result.resultValue, store, true) else result
     }
   }
 
-  private fun processMethodArguments(n: MethodInvocationNode, method: Symbol.MethodSymbol, result: TransferResult<MungoValue, MungoStore>): Boolean {
-    val paramsIt = method.params().iterator()
-    return n.arguments.any {
+  private fun processMethodArguments(arguments: List<Node>, method: ExecutableElement, result: TransferResult<MungoValue, MungoStore>): Boolean {
+    val paramsIt = method.parameters.iterator()
+    return arguments.map {
       val typeMirror = paramsIt.next().asType()
       val type = MungoTypecheck.typeAfterMethodCall(utils, typeMirror) ?: MungoMovedType.SINGLETON
       handlePostCondition(it, result, type)
-    }
+    }.any { it }
   }
 
   override fun visitObjectCreation(node: ObjectCreationNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitObjectCreation(node, input)
-    val value = result.resultValue
-    if (value != null) {
-      // Refine resultValue to the initial state
-      val newValue = MungoValue(value, MungoTypecheck.objectCreation(utils, value.underlyingType))
-      return RegularTransferResult(newValue, result.regularStore, false)
-    }
-    return result
+
+    // Handle moves
+    val argsChange = processMethodArguments(node.arguments, TreeUtils.elementFromUse(node.tree)!!, result)
+
+    // Refine resultValue to the initial state
+    val value = result.resultValue!!
+    val newValue = MungoValue(value, MungoTypecheck.objectCreation(utils, value.underlyingType))
+
+    return RegularTransferResult(newValue, result.regularStore, argsChange)
   }
 
   // Handle move in assignment
@@ -204,7 +204,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     }
 
     if (expression is MethodInvocationNode) {
-      val method = getMethodToRefine(expression) ?: return res
+      val method = expression.target.method as Symbol.MethodSymbol
       val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, expression.target.receiver)
       val label = getLabel(firstNode)
 

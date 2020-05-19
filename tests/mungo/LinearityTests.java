@@ -141,6 +141,27 @@ class PrivateLinearityWrapperNoMoves {
   }
 }
 
+class MoveToConstructor {
+
+  // :: error: (Object did not complete its protocol. Type: Linearity{State0|State1})
+  public MoveToConstructor(Linearity obj) {
+
+  }
+
+}
+
+class MoveToConstructor2 extends MoveToConstructor {
+
+  public MoveToConstructor2(Linearity obj) {
+    // :: warning: (obj: Linearity{State0|State1})
+    super(obj);
+    // :: warning: (obj: Moved)
+    // :: error: (Cannot call finish on moved value)
+    obj.finish();
+  }
+
+}
+
 public class LinearityTests {
 
   public static void main1() {
@@ -280,6 +301,15 @@ public class LinearityTests {
     // :: warning: (obj: Linearity{State0})
     // :: error: (Cannot create reference for method of an object with protocol)
     Runnable method = obj::a;
+  }
+
+  public static void main14() {
+    Linearity obj1 = new Linearity();
+    // :: warning: (obj1: Linearity{State0})
+    MoveToConstructor obj2 = new MoveToConstructor(obj1);
+    // :: warning: (obj1: Moved)
+    // :: error: (Cannot call finish on moved value)
+    obj1.finish();
   }
 
   // Helpers
