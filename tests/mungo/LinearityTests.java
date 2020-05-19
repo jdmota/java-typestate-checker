@@ -1,5 +1,5 @@
 import org.checkerframework.checker.mungo.lib.MungoTypestate;
-import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.mungo.lib.MungoRequires;
 
 import java.util.*;
 import java.util.function.*;
@@ -16,7 +16,7 @@ class Linearity {
   public void finish() {
   }
 
-  public void useOther(@MungoState("State0") Linearity obj) {
+  public void useOther(@MungoRequires("State0") Linearity obj) {
     // :: warning: (obj: Linearity{State0})
     obj.a();
     // :: warning: (obj: Linearity{State1})
@@ -284,7 +284,7 @@ public class LinearityTests {
 
   // Helpers
 
-  public static void use(@MungoState("State0") Linearity obj) {
+  public static void use(@MungoRequires("State0") Linearity obj) {
     // :: warning: (obj: Linearity{State0})
     obj.a();
     // :: warning: (obj: Linearity{State1})

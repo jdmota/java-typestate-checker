@@ -19,6 +19,7 @@ import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.javacutil.TypesUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
+import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
 
@@ -32,38 +33,62 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     return MungoAnnotatedTypeFactory(checker as MungoChecker)
   }
 
+  private fun returnTypeAnnotation(node: AnnotationTree, annoMirror: AnnotationMirror, parent: Tree) {
+    if (parent is MethodTree && parent.modifiers.annotations.contains(node)) {
+      val typeMirror = TreeUtils.elementFromTree(parent.returnType)?.asType()
+      if (typeMirror != null) {
+        if (ClassUtils.isJavaLangObject(typeMirror)) {
+          utils.err("@MungoState has no meaning in Object type", node)
+        } else {
+          val graph = c.utils.classUtils.visitClassTypeMirror(typeMirror)
+          if (graph == null) {
+            utils.err("@MungoState has no meaning since this type has no protocol", node)
+          } else {
+            val stateNames = MungoUtils.getAnnotationValue(annoMirror)
+            utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
+          }
+        }
+      }
+    } else {
+      utils.err("@MungoState should only be used on return types", node)
+    }
+  }
+
+  private fun checkParameterAnnotation(node: AnnotationTree, annoMirror: AnnotationMirror, parent: Tree, parentParent: Tree, name: String) {
+    if (parent is VariableTree && parentParent is MethodTree && parentParent.parameters.contains(parent)) {
+      val typeMirror = TreeUtils.elementFromTree(parent)?.asType()
+      if (typeMirror != null) {
+        if (ClassUtils.isJavaLangObject(typeMirror)) {
+          utils.err("@$name has no meaning in Object type", node)
+        } else {
+          val graph = c.utils.classUtils.visitClassTypeMirror(typeMirror)
+          if (graph == null) {
+            utils.err("@$name has no meaning since this type has no protocol", node)
+          } else {
+            val stateNames = MungoUtils.getAnnotationValue(annoMirror)
+            utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
+          }
+        }
+      }
+    } else {
+      utils.err("@$name should only be used in method parameters", node)
+    }
+  }
+
   override fun visitAnnotation(node: AnnotationTree, p: Void?): Void? {
     super.visitAnnotation(node, p)
 
     val annoMirror = TreeUtils.annotationFromAnnotationTree(node)
     val parent = visitorState.path.parentPath.parentPath.leaf
+    val parentParent = visitorState.path.parentPath.parentPath.parentPath.leaf
 
-    if (AnnotationUtils.areSameByName(annoMirror, MungoUtils.mungoStateName)) {
-      if ((parent is VariableTree || parent is MethodTree)) {
-        val typeMirror = when (parent) {
-          is VariableTree -> TreeUtils.elementFromTree(parent)?.asType()
-          is MethodTree -> TreeUtils.elementFromTree(parent.returnType)?.asType()
-          else -> null
-        }
-        if (typeMirror != null) {
-          if (ClassUtils.isJavaLangObject(typeMirror)) {
-            utils.err("@MungoState has no meaning in Object type", node)
-          } else {
-            val graph = c.utils.classUtils.visitClassTypeMirror(typeMirror)
-            if (graph == null) {
-              utils.err("@MungoState has no meaning since this type has no protocol", node)
-            } else {
-              val stateNames = MungoUtils.getAnnotationValue(annoMirror)
-              utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
-            }
-          }
-        }
-      } else {
-        utils.err("@MungoState should only be used in declarations or return types", node)
-      }
+    when (AnnotationUtils.annotationName(annoMirror)) {
+      MungoUtils.mungoState -> returnTypeAnnotation(node, annoMirror, parent)
+      MungoUtils.mungoRequires -> checkParameterAnnotation(node, annoMirror, parent, parentParent, "MungoRequires")
+      MungoUtils.mungoEnsures -> checkParameterAnnotation(node, annoMirror, parent, parentParent, "MungoEnsures")
     }
+
     // TODO visit all annotations to make sure @MungoTypestate only appears in classes
-    // TODO validate @MungoStateAfter as well
 
     return null
   }
@@ -160,7 +185,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   private fun checkFinalType(name: String, value: MungoValue, tree: Tree) {
     val errorPrefix = if (tree is VariableTree) "Object" else "Cannot override because object"
 
-    // Even if there is a @MungoStateAfter in the enclosing method,
+    // Even if there is a @MungoEnsures in the enclosing method,
     // we should always check completion for example if there are assignments inside a loop,
     // which might create other references different from the one in the parameter.
     if (!MungoTypecheck.canDrop(value.info)) {
@@ -177,7 +202,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
     if (finalType != null) {
       if (!value.info.isSubtype(finalType)) {
-        utils.err("$errorPrefix is not in the state specified by @MungoStateAfter. Type: ${value.info.format()}", tree)
+        utils.err("$errorPrefix is not in the state specified by @MungoEnsures. Type: ${value.info.format()}", tree)
       }
     }
   }
@@ -312,7 +337,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
         }
       } else {
         if (!value.info.isSubtype(typeAfterCall)) {
-          utils.err("Final type does not match what was specified by @MungoStateAfter. Type: ${value.info.format()}", key.element)
+          utils.err("Final type does not match what was specified by @MungoEnsures. Type: ${value.info.format()}", key.element)
         }
       }
     }

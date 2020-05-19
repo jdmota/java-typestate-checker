@@ -1,4 +1,5 @@
 import org.checkerframework.checker.mungo.lib.MungoTypestate;
+import org.checkerframework.checker.mungo.lib.MungoRequires;
 import org.checkerframework.checker.mungo.lib.MungoState;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
 
@@ -155,7 +156,7 @@ public class JavaIterator {
     }
   }
 
-  public static @MungoState({"HasNext"}) JavaIterator correctReturn(@MungoState({"Next"}) JavaIterator it) {
+  public static @MungoState({"HasNext"}) JavaIterator correctReturn(@MungoRequires({"Next"}) JavaIterator it) {
     // :: warning: (it: JavaIterator{Next})
     it.next();
     // :: warning: (it: JavaIterator{HasNext})
@@ -225,40 +226,6 @@ public class JavaIterator {
     }
   }
 
-  public static void assigment1() {
-    JavaIterator it = new JavaIterator();
-    // :: warning: (it: JavaIterator{HasNext})
-    // :: error: (assignment.type.incompatible)
-    @MungoState({"Next"}) JavaIterator it2 = it;
-
-    // :: warning: (it2: JavaIterator{HasNext})
-    while (it2.hasNext()) {
-      // :: warning: (it2: JavaIterator{Next})
-      it2.next();
-    }
-  }
-
-  public static void assigment2() {
-    // :: error: (assignment.type.incompatible)
-    @MungoState({"Next"}) JavaIterator it = new JavaIterator();
-
-    // :: warning: (it: JavaIterator{HasNext})
-    while (it.hasNext()) {
-      // :: warning: (it: JavaIterator{Next})
-      it.next();
-    }
-  }
-
-  public static void assigment3() {
-    @MungoState({"HasNext", "Next"}) JavaIterator it = new JavaIterator();
-
-    // :: warning: (it: JavaIterator{HasNext})
-    while (it.hasNext()) {
-      // :: warning: (it: JavaIterator{Next})
-      it.next();
-    }
-  }
-
   public static void assigmentsAndMoves() {
     JavaIterator it = new JavaIterator();
 
@@ -279,9 +246,8 @@ public class JavaIterator {
 
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
-      // FIXME The code is safe, but should we error here? Or disallow @MungoState on variable declarations?
       // :: warning: (it: JavaIterator{Next})
-      @MungoState({"HasNext", "Next"}) JavaIterator alias = it;
+      JavaIterator alias = it;
       // :: warning: (alias: JavaIterator{Next})
       alias.next();
       // :: warning: (it: JavaIterator{HasNext|Next})
@@ -507,7 +473,7 @@ public class JavaIterator {
     }
   }
 
-  public static void use2(@MungoState({"Next"}) JavaIterator it) {
+  public static void use2(@MungoRequires({"Next"}) JavaIterator it) {
     // :: warning: (it: JavaIterator{Next})
     it.next();
     // :: warning: (it: JavaIterator{HasNext})
@@ -518,8 +484,8 @@ public class JavaIterator {
   }
 
   // :: error: (JavaIterator.protocol has no WrongName state)
-  // :: error: (State end is final. Will have no effect in @MungoState)
-  public static void use3(@MungoState({"Next", "WrongName", "end"}) JavaIterator it) {
+  // :: error: (State end is final. Will have no effect in @MungoRequires)
+  public static void use3(@MungoRequires({"Next", "WrongName", "end"}) JavaIterator it) {
     // :: warning: (it: JavaIterator{Next})
     it.next();
     // :: warning: (it: JavaIterator{HasNext})
@@ -529,9 +495,9 @@ public class JavaIterator {
     }
   }
 
-  // :: error: (@MungoState has no meaning in Object type)
+  // :: error: (@MungoRequires has no meaning in Object type)
   // :: error: (Object did not complete its protocol. Type: Object)
-  public static void use4(@MungoState({"state"}) Object it) {
+  public static void use4(@MungoRequires({"state"}) Object it) {
 
   }
 

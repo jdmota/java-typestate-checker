@@ -1,5 +1,5 @@
 import org.checkerframework.checker.mungo.lib.MungoTypestate;
-import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.mungo.lib.MungoRequires;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
 
 import java.util.function.Supplier;

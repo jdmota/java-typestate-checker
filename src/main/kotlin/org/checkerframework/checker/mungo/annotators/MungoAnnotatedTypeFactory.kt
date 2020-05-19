@@ -49,7 +49,7 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
     super.postInit()
     c.utils.setFactory(this)
 
-    // Transform the @MungoState annotations for the proper @MungoInternalInfo ones
+    // Transform the @MungoRequires annotations for the proper @MungoInternalInfo ones
     val types = typesFromStubFilesField.get(stubTypes) as MutableMap<*, *>
     for ((element, annotatedType) in types) {
       typesFromStubFiles[element as Element] = annotatedType as AnnotatedTypeMirror
@@ -129,12 +129,12 @@ class MungoAnnotatedTypeFactory(checker: MungoChecker) : GenericAnnotatedTypeFac
   }
 
   override fun createSupportedTypeQualifiers(): Set<Class<out Annotation>> {
-    // Do NOT include @MungoTypestate or @MungoState or @MungoNullable here
+    // Do NOT include @MungoTypestate or @MungoRequires or @MungoEnsures or @MungoNullable here
     return setOf(MungoBottom::class.java, MungoInternalInfo::class.java, MungoUnknown::class.java)
   }
 
-  // Temporarily allow @MungoState annotations to be added to AnnotatedTypeMirror's
-  // After postInit(), we transform the @MungoState annotations in the proper @MungoInternalInfo ones
+  // Temporarily allow @MungoRequires annotations to be added to AnnotatedTypeMirror's
+  // After postInit(), we transform the @MungoRequires annotations in the proper @MungoInternalInfo ones
   override fun isSupportedQualifier(a: AnnotationMirror?): Boolean {
     return a != null && (MungoUtils.isMungoInternalAnnotation(a) || (stubTypes.isParsing && MungoUtils.isMungoLibAnnotation(a)))
   }

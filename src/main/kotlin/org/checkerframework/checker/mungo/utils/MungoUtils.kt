@@ -11,13 +11,8 @@ import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Log
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
-import org.checkerframework.checker.mungo.lib.MungoNullable
-import org.checkerframework.checker.mungo.lib.MungoState
-import org.checkerframework.checker.mungo.lib.MungoStateAfter
-import org.checkerframework.checker.mungo.lib.MungoTypestate
-import org.checkerframework.checker.mungo.qualifiers.MungoBottom
-import org.checkerframework.checker.mungo.qualifiers.MungoInternalInfo
-import org.checkerframework.checker.mungo.qualifiers.MungoUnknown
+import org.checkerframework.checker.mungo.lib.*
+import org.checkerframework.checker.mungo.qualifiers.*
 import org.checkerframework.checker.mungo.typecheck.MungoBottomType
 import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
@@ -82,12 +77,12 @@ class MungoUtils(val checker: MungoChecker) {
 
   fun checkStates(graph: Graph, states: List<String>?): List<String> {
     if (states == null || states.isEmpty()) {
-      return listOf("@MungoState should specify one or more states")
+      return listOf("@MungoRequires should specify one or more states")
     }
     val basename = graph.resolvedFile.fileName
     return states.mapNotNull {
       if (graph.isFinalState(it)) {
-        "State $it is final. Will have no effect in @MungoState"
+        "State $it is final. Will have no effect in @MungoRequires"
       } else if (!graph.hasStateByName(it)) {
         "$basename has no $it state"
       } else null
@@ -155,8 +150,9 @@ class MungoUtils(val checker: MungoChecker) {
   }
 
   companion object {
-    val mungoStateName: String = MungoState::class.java.canonicalName
-    val mungoStateAfterName: String = MungoStateAfter::class.java.canonicalName
+    val mungoState: String = MungoState::class.java.canonicalName
+    val mungoRequires: String = MungoRequires::class.java.canonicalName
+    val mungoEnsures: String = MungoEnsures::class.java.canonicalName
     val typestateAnnotations = setOf(MungoTypestate::class.java.canonicalName, "mungo.lib.Typestate")
     val nullableAnnotations = setOf(
       MungoNullable::class.java.canonicalName,
@@ -183,8 +179,9 @@ class MungoUtils(val checker: MungoChecker) {
 
     fun isMungoLibAnnotation(annotation: AnnotationMirror): Boolean {
       val name = AnnotationUtils.annotationName(annotation)
-      return name == mungoStateName ||
-        name == mungoStateAfterName ||
+      return name == mungoState ||
+        name == mungoRequires ||
+        name == mungoEnsures ||
         typestateAnnotations.contains(name) ||
         nullableAnnotations.contains(name)
     }

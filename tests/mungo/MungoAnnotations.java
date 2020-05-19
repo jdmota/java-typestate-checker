@@ -1,8 +1,8 @@
 import org.checkerframework.checker.mungo.lib.MungoTypestate;
-import org.checkerframework.checker.mungo.lib.MungoState;
-import org.checkerframework.checker.mungo.lib.MungoStateAfter;
+import org.checkerframework.checker.mungo.lib.MungoRequires;
+import org.checkerframework.checker.mungo.lib.MungoEnsures;
 
-public class MungoStateAnno {
+public class MungoAnnotations {
 
   public static void main1() {
     JavaIterator it = new JavaIterator();
@@ -15,7 +15,7 @@ public class MungoStateAnno {
   }
 
   // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
-  public static void use1(@MungoState("Next") JavaIterator it) {
+  public static void use1(@MungoRequires("Next") JavaIterator it) {
     // :: warning: (it: JavaIterator{Next})
     it.next();
   }
@@ -29,7 +29,7 @@ public class MungoStateAnno {
     }
   }
 
-  public static void use2(@MungoState("Next") @MungoStateAfter("HasNext") JavaIterator it) {
+  public static void use2(@MungoRequires("Next") @MungoEnsures("HasNext") JavaIterator it) {
     // :: warning: (it: JavaIterator{Next})
     it.next();
   }
@@ -43,8 +43,8 @@ public class MungoStateAnno {
     }
   }
 
-  // :: error: (Final type does not match what was specified by @MungoStateAfter. Type: JavaIterator{Next})
-  public static void use3(@MungoState("Next") @MungoStateAfter("HasNext") JavaIterator it) {
+  // :: error: (Final type does not match what was specified by @MungoEnsures. Type: JavaIterator{Next})
+  public static void use3(@MungoRequires("Next") @MungoEnsures("HasNext") JavaIterator it) {
 
   }
 
@@ -57,14 +57,14 @@ public class MungoStateAnno {
     }
   }
 
-  public static void use4(@MungoState("Next") @MungoStateAfter("HasNext") JavaIterator it) {
+  public static void use4(@MungoRequires("Next") @MungoEnsures("HasNext") JavaIterator it) {
     // :: warning: (it: JavaIterator{Next})
     if (it.hasNext()) {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     } else {
       // :: warning: (it: JavaIterator{HasNext|Next} | Ended | Moved)
-      // :: error: (Cannot override because object is not in the state specified by @MungoStateAfter. Type: Ended)
+      // :: error: (Cannot override because object is not in the state specified by @MungoEnsures. Type: Ended)
       it = new JavaIterator();
     }
   }
@@ -78,8 +78,8 @@ public class MungoStateAnno {
     }
   }
 
-  // :: error: (Final type does not match what was specified by @MungoStateAfter. Type: JavaIterator{HasNext} | Ended)
-  public static void use5(@MungoState("Next") @MungoStateAfter("HasNext") JavaIterator it) {
+  // :: error: (Final type does not match what was specified by @MungoEnsures. Type: JavaIterator{HasNext} | Ended)
+  public static void use5(@MungoRequires("Next") @MungoEnsures("HasNext") JavaIterator it) {
     // :: warning: (it: JavaIterator{Next})
     if (it.hasNext()) {
       // :: warning: (it: JavaIterator{Next})
@@ -89,7 +89,7 @@ public class MungoStateAnno {
       while (i-- > 0) {
         // :: warning: (it: JavaIterator{HasNext|Next} | Ended | Moved)
         // :: error: (Cannot override because object has not ended its protocol. Type: JavaIterator{HasNext} | Ended)
-        // :: error: (Cannot override because object is not in the state specified by @MungoStateAfter. Type: JavaIterator{HasNext} | Ended)
+        // :: error: (Cannot override because object is not in the state specified by @MungoEnsures. Type: JavaIterator{HasNext} | Ended)
         it = new JavaIterator();
       }
     }

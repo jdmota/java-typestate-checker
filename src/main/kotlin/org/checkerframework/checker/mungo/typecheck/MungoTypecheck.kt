@@ -197,8 +197,11 @@ object MungoTypecheck {
       type.kind == TypeKind.ARRAY -> return MungoNoProtocolType.SINGLETON
     }
 
-    val stateAnno = annotations.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateName) }
     val isNullable = annotations.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
+    val stateAnno = annotations.find {
+      val name = AnnotationUtils.annotationName(it)
+      name == MungoUtils.mungoState || name == MungoUtils.mungoRequires
+    }
 
     val mungoType = if (ClassUtils.isJavaLangObject(type)) {
       MungoObjectType.SINGLETON
@@ -241,7 +244,7 @@ object MungoTypecheck {
 
     val graph = utils.classUtils.visitClassTypeMirror(type) ?: return null
 
-    val stateAfterAnno = type.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoStateAfterName) }
+    val stateAfterAnno = type.annotationMirrors.find { AnnotationUtils.areSameByName(it, MungoUtils.mungoEnsures) }
     val stateNames = MungoUtils.getAnnotationValue(stateAfterAnno) ?: return null
 
     val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
