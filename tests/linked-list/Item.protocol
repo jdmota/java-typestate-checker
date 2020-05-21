@@ -1,0 +1,11 @@
+typestate Item {
+
+  State0 = {
+    void a(): State1
+  }
+
+  State1 = {
+    void b(): end
+  }
+
+}

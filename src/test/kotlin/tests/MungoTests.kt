@@ -55,3 +55,16 @@ class MungoTest(testFiles: List<File>) : MungoPerDirectoryTest(
     val testDirs = arrayOf(dir4)
   }
 }
+
+private const val dir5 = "linked-list"
+
+class MungoLinkedListTest(testFiles: List<File>) : MungoPerDirectoryTest(
+  dir5,
+  testFiles
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir5)
+  }
+}

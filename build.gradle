@@ -117,6 +117,7 @@ test {
 
     inputs.files("tests/config")
     inputs.files("tests/droppables")
+    inputs.files("tests/linked-list")
     inputs.files("tests/mungo")
     inputs.files("tests/resolution")
 
