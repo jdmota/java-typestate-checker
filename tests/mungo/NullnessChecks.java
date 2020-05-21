@@ -7,7 +7,7 @@ public class NullnessChecks {
   public static void main1() {
     @MungoNullable NullnessChecks n = null;
     // :: warning: (n: Null)
-    // :: error: (dereference.of.nullable)
+    // :: error: (Cannot access obj on null)
     System.out.println(n.obj);
   }
 

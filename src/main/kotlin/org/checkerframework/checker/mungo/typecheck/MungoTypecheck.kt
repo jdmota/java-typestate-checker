@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.typecheck
 
+import com.sun.source.tree.MemberSelectTree
 import com.sun.source.tree.MethodInvocationTree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
@@ -101,6 +102,77 @@ object MungoTypecheck {
     if (isMoved) items.add("on moved value")
     if (unexpectedStates.isNotEmpty()) items.add("on state${if (unexpectedStates.size > 1) "s" else ""} ${unexpectedStates.joinToString(", ")} (got: ${currentStates.joinToString(", ")})")
     return "Cannot call $m ${items.joinToString(", ")}"
+  }
+
+  fun checkFieldAccess(
+    utils: MungoUtils,
+    info: MungoType,
+    node: MemberSelectTree
+  ): Boolean {
+    val error = when (info) {
+      is MungoUnknownType -> createErrorMsg(node, isUnknown = true)
+      is MungoObjectType -> createErrorMsg(node, isObject = true)
+      is MungoBottomType -> null // Allow operations on the BottomType to avoid propagating errors
+      is MungoNoProtocolType -> null // Any access allowed on NoProtocol
+      is MungoPrimitiveType -> null // Accesses on primitive values are not possible, so just ignore
+      is MungoNullType -> createErrorMsg(node, isNull = true)
+      is MungoEndedType -> createErrorMsg(node, isEnded = true)
+      is MungoMovedType -> createErrorMsg(node, isMoved = true)
+      is MungoStateType -> null
+      is MungoUnionType -> {
+        var isObject = false
+        var isNull = false
+        var isEnded = false
+        var isMoved = false
+        for (type in info.types) {
+          when (type) {
+            is MungoObjectType -> isObject = true
+            is MungoNullType -> isNull = true
+            is MungoEndedType -> isEnded = true
+            is MungoMovedType -> isMoved = true
+            is MungoPrimitiveType -> {
+              // Accesses on primitive values are not possible, so just ignore
+            }
+            is MungoNoProtocolType -> {
+              // Any access allowed on NoProtocol
+            }
+            is MungoStateType -> {
+              // Allowed
+            }
+            else -> throw AssertionError("union has ${type.javaClass}")
+          }
+        }
+        if (isNull || isEnded || isMoved) {
+          createErrorMsg(node, isObject = isObject, isNull = isNull, isEnded = isEnded, isMoved = isMoved)
+        } else {
+          null
+        }
+      }
+    }
+    return if (error == null) {
+      true
+    } else {
+      utils.err(error, node)
+      false
+    }
+  }
+
+  private fun createErrorMsg(
+    node: MemberSelectTree,
+    isUnknown: Boolean = false,
+    isObject: Boolean = false,
+    isNull: Boolean = false,
+    isEnded: Boolean = false,
+    isMoved: Boolean = false
+  ): String {
+    val fieldName = node.identifier.toString()
+    val items = mutableListOf<String>()
+    if (isUnknown) items.add("on unknown")
+    if (isObject) items.add("on object")
+    if (isNull) items.add("on null")
+    if (isEnded) items.add("on ended protocol")
+    if (isMoved) items.add("on moved value")
+    return "Cannot access $fieldName ${items.joinToString(", ")}"
   }
 
   fun refine(utils: MungoUtils, tree: TreePath, type: MungoType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): MungoType {

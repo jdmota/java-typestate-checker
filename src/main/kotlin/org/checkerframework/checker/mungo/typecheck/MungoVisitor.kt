@@ -268,10 +268,21 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
     aType.isSubtype(MungoPrimitiveType.SINGLETON) && bType.isSubtype(MungoNoProtocolType.SINGLETON) && TypesUtils.isBoxedPrimitive(bMirror.underlyingType)
 
   override fun visitMemberSelect(node: MemberSelectTree, p: Void?): Void? {
-    nullnessVisitMemberSelect(node)
     super.visitMemberSelect(node, p)
 
     val element = TreeUtils.elementFromTree(node) ?: return p
+
+    // Check this field access if this is not a self access, or static access, or method call
+    if (!(TreeUtils.isExplicitThisDereference(node)
+        || TreeUtils.isSelfAccess(node)
+        || node.expression.kind == Tree.Kind.PARAMETERIZED_TYPE
+        || ElementUtils.isStatic(element))) {
+      val parent = atypeFactory.getPath(node).parentPath.leaf
+      if (!(parent is MethodInvocationTree && parent.methodSelect === node)) {
+        val typeInfo = typeFactory.getTypeFor(node.expression)
+        MungoTypecheck.checkFieldAccess(utils, typeInfo, node)
+      }
+    }
 
     // See if it has protocol
     utils.classUtils.visitClassOfElement(element) ?: return p
@@ -382,22 +393,6 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
   // Adapted from https://github.com/typetools/checker-framework/blob/master/checker/src/main/java/org/checkerframework/checker/nullness/NullnessVisitor.java
   // TODO check redundant tests
   // TODO check arrays of non-null items are initialized
-
-  /** Case 1: Check for null dereferencing.  */
-  private fun nullnessVisitMemberSelect(node: MemberSelectTree) {
-    val parent = visitorState.path.parentPath.leaf
-    if (parent is MethodInvocationTree && parent.methodSelect === node) {
-      // No need to check nullness if we are in a method invocation
-      return
-    }
-
-    val e = TreeUtils.elementFromTree(node)
-    if (!(TreeUtils.isSelfAccess(node)
-        || node.expression.kind == Tree.Kind.PARAMETERIZED_TYPE // case 8. static member access
-        || ElementUtils.isStatic(e))) {
-      checkForNullability(node.expression, DEREFERENCE_OF_NULLABLE)
-    }
-  }
 
   /** Case 2: Check for implicit `.iterator` call.  */
   override fun visitEnhancedForLoop(node: EnhancedForLoopTree, p: Void?): Void? {

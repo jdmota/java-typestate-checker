@@ -1,0 +1,6 @@
+typestate CircularWithGetter {
+  State0 = {
+    void setF(CircularObjWithGetter): State0,
+    void finish(): end
+  }
+}

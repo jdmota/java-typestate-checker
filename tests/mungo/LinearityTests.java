@@ -37,6 +37,38 @@ class Linearity {
 
 }
 
+@MungoTypestate("Circular")
+class CircularObj {
+
+  // :: error: (Object did not complete its protocol. Type: Circular{State0} | Ended | Moved | Null)
+  public @MungoNullable CircularObj f = null;
+
+  public void finish() {
+
+  }
+
+}
+
+@MungoTypestate("CircularWithGetter")
+class CircularObjWithGetter {
+
+  private @MungoNullable CircularObjWithGetter f = null;
+
+  public void setF(CircularObjWithGetter f) {
+    // :: warning: (f: CircularWithGetter{State0})
+    this.f = f;
+  }
+
+  public void finish() {
+    // :: warning: (f: CircularWithGetter{State0} | Null)
+    if (f != null) {
+      // :: warning: (f: CircularWithGetter{State0})
+      f.finish();
+    }
+  }
+
+}
+
 // Enforce protocol completeness for objects inside other objects
 class PublicLinearityWrapper {
   // :: error: (Object did not complete its protocol. Type: Linearity{State0|State1} | Ended | Moved)
@@ -363,6 +395,56 @@ public class LinearityTests {
     // :: warning: (obj1: Moved)
     // :: error: (Cannot call finish on moved value)
     obj1.finish();
+  }
+
+  public static void main16() {
+    CircularObj o1 = new CircularObj();
+    CircularObj o2 = new CircularObj();
+    // :: warning: (o1: Circular{State0})
+    // :: warning: (o2: Circular{State0})
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    o2.f = o1;
+    // :: warning: (o1: Moved)
+    // :: warning: (o2: Circular{State0})
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    // :: error: (Cannot access f on moved value)
+    o1.f = o2;
+  }
+
+  public static void main17() {
+    CircularObjWithGetter o1 = new CircularObjWithGetter();
+    CircularObjWithGetter o2 = new CircularObjWithGetter();
+    // :: warning: (o1: CircularWithGetter{State0})
+    // :: warning: (o2: CircularWithGetter{State0})
+    o2.setF(o1);
+    // :: warning: (o1: Moved)
+    // :: warning: (o2: CircularWithGetter{State0})
+    // :: error: (Cannot call setF on moved value)
+    o1.setF(o2);
+  }
+
+  public static void main18() {
+    CircularObj o1 = new CircularObj();
+    CircularObj o2 = new CircularObj();
+    CircularObj o3 = new CircularObj();
+    CircularObj o4 = new CircularObj();
+    // :: warning: (o3: Circular{State0})
+    // :: warning: (o4: Circular{State0})
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    o3.f = o4;
+    // :: warning: (o2: Circular{State0})
+    // :: warning: (o3: Circular{State0})
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    o2.f = o3;
+    // :: warning: (o1: Circular{State0})
+    // :: warning: (o2: Circular{State0})
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    o1.f = o2;
+    // :: warning: (o4: Moved)
+    // :: error: (Cannot call finish on moved value)
+    o4.finish();
+    // :: warning: (o1: Circular{State0})
+    o1.finish();
   }
 
   // Helpers

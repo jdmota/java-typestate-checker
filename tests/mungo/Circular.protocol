@@ -1,0 +1,5 @@
+typestate Circular {
+  State0 = {
+    void finish(): end
+  }
+}

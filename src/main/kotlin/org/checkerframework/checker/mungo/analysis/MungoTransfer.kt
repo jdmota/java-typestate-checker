@@ -58,7 +58,7 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(n, method, receiver, thenStore, ifTrue)
       val didChangeElse = refineStore(n, method, receiver, elseStore, ifFalse)
-      // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
+      // Handle moves/post-conditions
       val argsChange = processMethodArguments(args, method, result)
       return if (argsChange || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     }
@@ -68,13 +68,13 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       val elseStore = result.elseStore
       val didChangeThen = refineStore(n, method, receiver, thenStore, allLabels)
       val didChangeElse = refineStore(n, method, receiver, elseStore, allLabels)
-      // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
+      // Handle moves/post-conditions
       val argsChange = processMethodArguments(args, method, result)
       if (argsChange || didChangeThen || didChangeElse) ConditionalTransferResult(result.resultValue, thenStore, elseStore, true) else result
     } else {
       val store = result.regularStore
       val didChange = refineStore(n, method, receiver, store, allLabels)
-      // Handle moves/post-conditions after refinement (in case receiver is in the arguments)
+      // Handle moves/post-conditions
       val argsChange = processMethodArguments(args, method, result)
       if (argsChange || didChange) RegularTransferResult(result.resultValue, store, true) else result
     }
