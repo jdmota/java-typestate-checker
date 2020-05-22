@@ -447,6 +447,16 @@ public class LinearityTests {
     o1.finish();
   }
 
+  // Making sure that the first access marks the object as moved
+  // as if it were something like o.setF(o) or Obj#setF(o, o)
+  public static void main19() {
+    CircularObj o = new CircularObj();
+    // :: warning: (o: Circular{State0})
+    // :: warning: (o: Moved)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    o.f = o;
+  }
+
   // Helpers
 
   public static void use(@MungoRequires("State0") Linearity obj) {

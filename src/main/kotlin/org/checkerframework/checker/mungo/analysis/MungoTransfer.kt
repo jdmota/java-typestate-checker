@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.analysis
 
 import com.sun.source.tree.*
+import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.MungoMovedType
@@ -101,11 +102,21 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return RegularTransferResult(newValue, result.regularStore, argsChange)
   }
 
-  // Handle move in assignment
   override fun visitAssignment(n: AssignmentNode, input: TransferInput<MungoValue, MungoStore>): TransferResult<MungoValue, MungoStore> {
     val result = super.visitAssignment(n, input)
+
+    // Restore the type of the receiver
+    val target = n.target
+    val changed = if (target is FieldAccessNode) {
+      val value = a.getValue(target.receiver)
+      val receiver = FlowExpressions.internalReprOf(analysis.typeFactory, target.receiver)
+      setValue(result, receiver, value)
+    } else false
+
+    // Handle move in assignment
     val moved = handleMove(n.expression, result)
-    return if (moved) newResult(result) else result
+
+    return if (changed || moved) newResult(result) else result
   }
 
   // Handle move in return
@@ -303,6 +314,11 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
       RegularTransferResult(finishValue(value, store), store)
     }
 
+    if (isAssignmentReceiver(n)) {
+      val changed = handleMove(n, result)
+      if (changed) return newResult(result)
+    }
+
     if (isParameter(n)) {
       val changed = handleMove(n, result)
       if (changed) return newResult(result)
@@ -315,6 +331,11 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     val value = store.getValue(n)
     // Prefer the inferred type information instead of using "mostSpecific" with information in factory
     val result = RegularTransferResult(finishValue(value, store), store)
+
+    if (isAssignmentReceiver(n)) {
+      val changed = handleMove(n, result)
+      if (changed) return newResult(result)
+    }
 
     if (isParameter(n)) {
       val changed = handleMove(n, result)
@@ -336,18 +357,45 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
     return ret
   }
 
-  private fun isParameter(node: Node): Boolean {
-    var path = a.typeFactory.getPath(node.tree) ?: return false
+  private fun unwrap(node: Node): Pair<TreePath, TreePath>? {
+    var path = a.typeFactory.getPath(node.tree) ?: return null
     var parent = path.parentPath
     while (parent.leaf is TypeCastTree || parent.leaf is ParenthesizedTree) {
       path = path.parentPath
       parent = path.parentPath
     }
+    return Pair(path, parent)
+  }
+
+  private fun isParameter(node: Node): Boolean {
+    val (path, parent) = unwrap(node) ?: return false
     val maybeArg = path.leaf
     return when (val maybeCall = parent.leaf) {
       is MethodInvocationTree -> maybeCall.arguments.contains(maybeArg)
       is NewClassTree -> maybeCall.arguments.contains(maybeArg)
       else -> false
+    }
+  }
+
+  private fun isAssignmentReceiver(node: Node): Boolean {
+    val (path, parent) = unwrap(node) ?: return false
+    val maybeReceiver = path.leaf
+    val maybeField = parent.leaf
+    val maybeLeft = parent.parentPath.leaf
+    return maybeField is MemberSelectTree && maybeField.expression === maybeReceiver &&
+      maybeLeft is AssignmentTree && maybeLeft.variable === maybeField
+  }
+
+  private fun setValue(result: TransferResult<MungoValue, MungoStore>, receiver: FlowExpressions.Receiver, value: MungoValue?): Boolean {
+    if (value == null) {
+      return false
+    }
+    return if (result.containsTwoStores()) {
+      val thenChanged = result.thenStore.replaceValueIfDiff(receiver, value)
+      val elseChanged = result.elseStore.replaceValueIfDiff(receiver, value)
+      thenChanged || elseChanged
+    } else {
+      result.regularStore.replaceValueIfDiff(receiver, value)
     }
   }
 
