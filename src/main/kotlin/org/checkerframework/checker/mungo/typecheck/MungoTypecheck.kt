@@ -225,6 +225,10 @@ object MungoTypecheck {
     }
   }
 
+  fun refineToNull(type: MungoType): MungoType {
+    return if (MungoNullType.SINGLETON.isSubtype(type)) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
+  }
+
   fun canDrop(type: MungoType): Boolean {
     return type.isSubtype(acceptedFinalTypes) || when (type) {
       is MungoUnionType -> type.types.any { type is MungoStateType && type.state.isDroppable }

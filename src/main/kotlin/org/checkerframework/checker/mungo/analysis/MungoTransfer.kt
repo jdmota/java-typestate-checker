@@ -5,6 +5,7 @@ import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typecheck.MungoMovedType
+import org.checkerframework.checker.mungo.typecheck.MungoNullType
 import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
 import org.checkerframework.checker.mungo.utils.MethodUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -204,6 +205,8 @@ class MungoTransfer(checker: MungoChecker, analysis: MungoAnalysis) : CFAbstract
         elseStore = elseStore ?: res.elseStore
         val storeToUpdate = if (equalTo) elseStore else thenStore
         storeToUpdate.insertValue(secondInternal, MungoValue(secondValue, MungoTypecheck.refineToNonNull(secondValue.info)))
+        val otherStoreToUpdate = if (equalTo) thenStore else elseStore
+        otherStoreToUpdate.insertValue(secondInternal, MungoValue(secondValue, MungoTypecheck.refineToNull(secondValue.info)))
       }
     }
     return if (thenStore == null) {

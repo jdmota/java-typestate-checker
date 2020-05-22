@@ -24,6 +24,14 @@ public class NullnessChecks {
     NullnessChecks n = null;
   }
 
+  public static void main4() {
+    NullnessChecks n = new NullnessChecks();
+    if (n == null) {
+      // :: warning: (n: Bottom)
+      System.out.println(n.obj);
+    }
+  }
+
   // https://github.com/typetools/checker-framework/issues/3267
 
   public static void foo(@MungoNullable String obj) {
