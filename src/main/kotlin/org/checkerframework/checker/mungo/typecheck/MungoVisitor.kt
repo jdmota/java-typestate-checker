@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.typecheck
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
+import com.sun.tools.javac.tree.TreeInfo
 import org.checkerframework.checker.compilermsgs.qual.CompilerMessageKey
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.MungoStore
@@ -155,8 +156,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
 
     }
 
-    val methodTree = c.treeUtils.getTree(element)
-    if (methodTree == null) {
+    if (ElementUtils.isElementFromByteCode(element)) {
       for (arg in node.arguments) {
         val type = typeFactory.getTypeFor(arg)
         if (!type.isSubtype(MungoTypecheck.noProtocolTypes)) {
@@ -223,8 +223,7 @@ class MungoVisitor(checker: MungoChecker) : BaseTypeVisitor<MungoAnnotatedTypeFa
         checkFinalType(receiver.toString(), leftValue, left)
 
         if (left is JCTree.JCFieldAccess) {
-          val classTree = c.treeUtils.getTree(left.selected.type.asElement())
-          if (classTree == null) {
+          if (ElementUtils.isElementFromByteCode(left.selected.type.asElement())) {
             val type = typeFactory.getTypeFor(right)
             if (!type.isSubtype(MungoTypecheck.noProtocolTypes)) {
               utils.err("Assigning an object with protocol to a field that cannot be analyzed", left)

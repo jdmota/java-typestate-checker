@@ -6,6 +6,7 @@ import org.checkerframework.checker.mungo.typecheck.MungoTypecheck
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.type.AnnotatedTypeMirror.*
+import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
 import javax.lang.model.element.AnnotationMirror
@@ -57,7 +58,7 @@ class MungoTypeApplier(private val c: MungoChecker, private val f: MungoAnnotate
   }
 
   private fun shouldRefineReturnType(type: AnnotatedExecutableType): Boolean {
-    return type.returnType.annotations.find { MungoUtils.isMungoLibAnnotation(it) } != null || f.declarationFromElement(type.element) != null
+    return type.returnType.annotations.find { MungoUtils.isMungoLibAnnotation(it) } != null || !ElementUtils.isElementFromByteCode(type.element)
   }
 
   // Adapted from org.checkerframework.framework.type.visitor.AnnotatedTypeScanner
