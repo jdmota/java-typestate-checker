@@ -115,11 +115,7 @@ publishing {
 test {
     testLogging.showStandardStreams = true
 
-    inputs.files("tests/config")
-    inputs.files("tests/droppables")
-    inputs.files("tests/linked-list")
-    inputs.files("tests/mungo")
-    inputs.files("tests/resolution")
+    inputs.files("tests")
 
     if (!JavaVersion.current().java9Compatible) {
         jvmArgs "-Xbootclasspath/p:${configurations.errorproneJavac.asPath}"
