@@ -3,17 +3,19 @@ package tests
 import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
-private const val dir = "config"
+private val defaultOpts = arrayOf("-Anomsgtext", "-AshowTypeInfo")
+
+private const val dir1 = "config"
 
 class MungoConfigTest(testFiles: List<File>) : MungoPerDirectoryTest(
-  dir,
+  dir1,
   testFiles,
-  arrayOf("-Astubs=tests/$dir/stubs", "-AstubWarnIfNotFound", "-Aignorejdkastub")
+  defaultOpts.plus(arrayOf("-AconfigFile=tests/$dir1/mungo.config", "-Astubs=tests/$dir1/stubs", "-AstubWarnIfNotFound", "-Aignorejdkastub"))
 ) {
   companion object {
     @JvmStatic
     @get:Parameters
-    val testDirs = arrayOf(dir)
+    val testDirs = arrayOf(dir1)
   }
 }
 
@@ -21,7 +23,8 @@ private const val dir2 = "droppables"
 
 class MungoDroppablesTest(testFiles: List<File>) : MungoPerDirectoryTest(
   dir2,
-  testFiles
+  testFiles,
+  defaultOpts
 ) {
   companion object {
     @JvmStatic
@@ -34,7 +37,8 @@ private const val dir3 = "resolution"
 
 class MungoResolutionTest(testFiles: List<File>) : MungoPerDirectoryTest(
   dir3,
-  testFiles
+  testFiles,
+  defaultOpts
 ) {
   companion object {
     @JvmStatic
@@ -47,7 +51,8 @@ private const val dir4 = "mungo"
 
 class MungoTest(testFiles: List<File>) : MungoPerDirectoryTest(
   dir4,
-  testFiles
+  testFiles,
+  defaultOpts
 ) {
   companion object {
     @JvmStatic
@@ -60,7 +65,8 @@ private const val dir5 = "linked-list"
 
 class MungoLinkedListTest(testFiles: List<File>) : MungoPerDirectoryTest(
   dir5,
-  testFiles
+  testFiles,
+  defaultOpts
 ) {
   companion object {
     @JvmStatic
