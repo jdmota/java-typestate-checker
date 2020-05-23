@@ -56,6 +56,7 @@ class CircularObjWithGetter {
 
   public void setF(CircularObjWithGetter f) {
     // :: warning: (f: CircularWithGetter{State0})
+    // :: error: (Cannot override because object has not ended its protocol. Type: CircularWithGetter{State0} | Null)
     this.f = f;
   }
 

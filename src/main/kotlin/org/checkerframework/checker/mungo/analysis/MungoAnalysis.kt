@@ -2,6 +2,7 @@ package org.checkerframework.checker.mungo.analysis
 
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.annotators.MungoAnnotatedTypeFactory
+import org.checkerframework.dataflow.analysis.AnalysisResult
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.analysis.Store.FlowRule
 import org.checkerframework.dataflow.analysis.TransferInput
@@ -16,6 +17,7 @@ import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFAbstractAnalysis
 import org.checkerframework.framework.flow.CFAbstractValue
 import org.checkerframework.javacutil.Pair
+import java.util.*
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.VariableElement
 import javax.lang.model.type.TypeMirror
@@ -42,6 +44,15 @@ class MungoAnalysis(checker: MungoChecker, factory: MungoAnnotatedTypeFactory, f
     return if (!CFAbstractValue.validateSet(annotations, underlyingType, qualifierHierarchy)) {
       null
     } else MungoValue(this, annotations, underlyingType)
+  }
+
+  fun getResultCopy(): AnalysisResult<MungoValue, MungoStore> {
+    return AnalysisResult(
+      nodeValues,
+      IdentityHashMap(inputs), // Important!
+      cfg.treeLookup,
+      cfg.unaryAssignNodeLookup,
+      finalLocalValues)
   }
 
   fun nextIsConditional(node: Node): Boolean {

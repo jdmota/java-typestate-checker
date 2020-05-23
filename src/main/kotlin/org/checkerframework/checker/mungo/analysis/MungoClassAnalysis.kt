@@ -31,7 +31,7 @@ class MungoClassAnalysis(
 ) {
 
   // The results for each method to be merged later.
-  private val results = mutableMapOf<MethodTree, AnalysisResult<MungoValue, MungoStore>>()
+  private val results = IdentityHashMap<MethodTree, AnalysisResult<MungoValue, MungoStore>>()
 
   // Method to CFG
   private val methodToCFG = mutableMapOf<MethodTree, ControlFlowGraph>()
@@ -238,7 +238,7 @@ class MungoClassAnalysis(
     val regularExitStore = exitResult.regularStore
 
     // Store/override result
-    results[method] = a.result
+    results[method] = a.getResultCopy() // Important!
 
     // Store/override exit and return statement stores
     val returnStores = a.returnStatementStores
