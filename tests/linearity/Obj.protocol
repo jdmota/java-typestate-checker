@@ -1,0 +1,5 @@
+typestate Obj {
+  Start = {
+    void finish(): end
+  }
+}

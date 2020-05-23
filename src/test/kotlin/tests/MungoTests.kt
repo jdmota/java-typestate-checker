@@ -74,3 +74,17 @@ class MungoLinkedListTest(testFiles: List<File>) : MungoPerDirectoryTest(
     val testDirs = arrayOf(dir5)
   }
 }
+
+private const val dir6 = "linearity"
+
+class MungoLinearityTest(testFiles: List<File>) : MungoPerDirectoryTest(
+  dir6,
+  testFiles,
+  arrayOf("-Anomsgtext")
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir6)
+  }
+}

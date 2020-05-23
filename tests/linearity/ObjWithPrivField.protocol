@@ -1,0 +1,5 @@
+typestate ObjWithPrivField {
+  Start = {
+    void finish(): end
+  }
+}

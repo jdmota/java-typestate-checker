@@ -1,0 +1,9 @@
+typestate ObjWithSetter {
+  Start = {
+    void setF(ObjWithSetter): Set,
+    void finish(): end
+  }
+  Set = {
+    void finish(): end
+  }
+}
