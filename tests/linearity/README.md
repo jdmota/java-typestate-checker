@@ -122,6 +122,44 @@ o2.setF(o3);
 o1.setF(o2);
 ```
 
+The final examples in this section presents two recursive methods that attempt to create a "chain" of objects. The first method is correctly implemented so the checker reports no errors. The "chain" is created from the last object to the first. The object passed as argument is the current "head" of the "chain". If `len` is not zero, a new "head" is created, and the previous one is assigned to it, and the method is called again with `len` decreased by one. When the `len` variable reaches zero, the `finish` method of the "head" of the object in the chain is called, terminating all the protocols of the objects in the chain.
+
+```java
+public static void main(String[] args) {
+  createChainOk(new ObjWithSetter(), 10);
+}
+
+public static void createChainOk(ObjWithSetter o2, int len) {
+  if (len > 0) {
+    ObjWithSetter o1 = new ObjWithSetter();
+    o1.setF(o2);
+    createChainOk(o1, len - 1);
+  } else {
+    o2.finish();
+  }
+}
+```
+
+The second recursive method is not correctly implemented. Notice how instead of passing the new object created to the next recursive call, the previous object received as parameter is passed instead. Not only this will not create the intended "chain", new objects created will not have their protocol reach completion, thus the `Object did not complete its protocol` error. Additionally, since `o2` was moved to `o1`, it cannot be used in the new recursive call, thus the `argument.type.incompatible` error.
+
+```java
+public static void main(String[] args) {
+  createChainNotOk(new ObjWithSetter(), 10);
+}
+
+public static void createChainNotOk(ObjWithSetter o2, int len) {
+  if (len > 0) {
+    // :: error: (Object did not complete its protocol. Type: ObjWithSetter{Set})
+    ObjWithSetter o1 = new ObjWithSetter();
+    o1.setF(o2);
+    // :: error: (argument.type.incompatible)
+    createChainNotOk(o2, len - 1);
+  } else {
+    o2.finish();
+  }
+}
+```
+
 ####  ObjWithPrivField
 
 [Top](#contents)

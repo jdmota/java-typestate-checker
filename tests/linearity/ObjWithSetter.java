@@ -89,4 +89,33 @@ public class ObjWithSetter {
     o1.setF(o2);
   }
 
+  // Complex examples
+
+  public static void main(String[] args) {
+    createChainOk(new ObjWithSetter(), 10);
+    createChainNotOk(new ObjWithSetter(), 10);
+  }
+  
+  public static void createChainOk(ObjWithSetter o2, int len) {
+    if (len > 0) {
+      ObjWithSetter o1 = new ObjWithSetter();
+      o1.setF(o2);
+      createChainOk(o1, len - 1);
+    } else {
+      o2.finish();
+    }
+  }
+  
+  public static void createChainNotOk(ObjWithSetter o2, int len) {
+    if (len > 0) {
+      // :: error: (Object did not complete its protocol. Type: ObjWithSetter{Set})
+      ObjWithSetter o1 = new ObjWithSetter();
+      o1.setF(o2);
+      // :: error: (argument.type.incompatible)
+      createChainNotOk(o2, len - 1);
+    } else {
+      o2.finish();
+    }
+  }
+
 }
