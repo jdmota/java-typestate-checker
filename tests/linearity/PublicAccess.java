@@ -1,7 +1,7 @@
 import mungo.lib.Typestate;
 import org.checkerframework.checker.mungo.lib.MungoNullable;
 
-@Typestate("Obj")
+@Typestate("ObjProtocol")
 public class PublicAccess {
   
   // :: error: (Object did not complete its protocol. Type: Obj{Start} | Ended | Moved)

@@ -1,4 +1,4 @@
-typestate Obj {
+typestate ObjProtocol {
   Start = {
     void finish(): end
   }

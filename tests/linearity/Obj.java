@@ -1,6 +1,6 @@
 import mungo.lib.Typestate;
 
-@Typestate("Obj")
+@Typestate("ObjProtocol")
 public class Obj {
 
   public void finish() {
