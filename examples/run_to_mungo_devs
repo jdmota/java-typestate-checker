@@ -17,9 +17,13 @@ tests=(
   "crash-1"
   "crash-2"
   "crash-3"
+  "crash-4"
+  "crash-5"
   "crash-1-adapted"
   "crash-2-adapted"
   "crash-3-adapted"
+  "crash-4-adapted"
+  "crash-5-adapted"
 )
 
 for testName in "${tests[@]}"

@@ -87,3 +87,22 @@ Removing the following line of code from the `Main.java` file avoids the crash, 
 File f1 = list.get(0);
 ```
 
+## `crash-4`
+
+An example that crashes with `NullPointerException`. 
+
+Removing the following line of code from the `Wrapper.java` file avoids the crash, like one can see in the `crash-4-adapted` example.
+
+```java
+w.o.finish();
+```
+
+## `crash-5`
+
+An example that crashes with `NullPointerException`. 
+
+Removing the following line of code from the `Obj.java` file avoids the crash, like one can see in the `crash-5-adapted` example.
+
+```java
+private Obj f = null;
+```
