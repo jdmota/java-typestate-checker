@@ -14,6 +14,10 @@ out
 
 mungo-checker-lib/src
 
+# Dist
+
+dist/**/*.class
+
 # Examples
 
 examples/**/*.class

@@ -2,17 +2,17 @@
 
 ## How it works
 
-This version of Mungo is implemented as a plugin for the Checker Framework. Adding a `@MungoTypestate("ProtocolFile")` annotation to the top of a class enforces that instances of that class follow the protocol defined by the protocol file. Every time a method call on a object is encountered, we make sure that object is in a state that allows that invocation. The type of the object then changes to conform to the new state reached after that method call. We also make sure protocols are completed and that objects are used in a linear way.
+This version of Mungo is implemented as a plugin for the Checker Framework. Adding a `@mungo.lib.Typestate("ProtocolFile")` annotation to the top of a class enforces that instances of that class follow the protocol defined by the protocol file. Every time a method call on a object is encountered, we make sure that object is in a state that allows that invocation. The type of the object then changes to conform to the new state reached after that method call. We also make sure protocols are completed and that objects are used in a linear way.
 
 ### Type system
 
-<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmJyfAJIxXWb0G8R_y4jUybDGK5464249PG55-INvoFfg9VgKvQ281HPcvcIMPPQcemhxvPK0ZORP1n9poIqhoSxamHH2seGgNvg0AmEr24GLRXIBYa9gN0WmC0000 -->
+<!-- http://www.plantuml.com/plantuml/uml/NSqn2i9048NXVayHKgcG6rW4mT8O40yGirEixix0-YOs7bx8Wc6sUl0Lx-_Vc38qHNVd5yk7c-EtwvhhuqapN9b2xGqJQ7VOjuRFxCaR6MJC0fcb-XmqLZBca0B2GfOlif1tMw_eIG19RkqPsNgMDLhuruokCICziTSKVm00 -->
 
 ![Type system](./type_system.svg)
 
 - `Unknown` is the top type. It includes all possible values.
 - `Object` contains all objects except `null`.
-- `NotEnded` is the set of all objects with protocols that have not completed.
+- `State` represents objects which are in a specific state.
 - `Ended` is the set of all objects with completed protocols.
 - `NoProtocol` is the set of all objects without protocol.
 - `Null` is the set with only the `null` value.
@@ -20,13 +20,13 @@ This version of Mungo is implemented as a plugin for the Checker Framework. Addi
 - `Moved` is a type applied to variables that point to an object that was moved. Like in Rust, where if something takes ownership of some data, that data is considered to have been moved. Variables with the `Moved` type cannot be used, because they no longer own the data.
 - `Bottom` is the bottom type. Used for computations that do not finish or error. Empty set. Like `Nothing` in many languages or like `never` in TypeScript.
 
-Subtypes of `NotEnded` are for example, the type of files that are in the `Open` or `Read` states, or the type of files that are only in the `Open` state.
+Subtypes of `State(*)` are for example, the type of files that are in the `Open` or `Read` states, or the type of files that are only in the `Open` state.
 
 The type of files that are only in the `Open` state is also a subtype of the type of files that are in the `Open` or `Read` states, since the set `{Open}` is contained in `{Open, Read}`.
 
 The type of files that are in the `Open` state and the type of files that are in the `Read` state are not subtypes of each other, since one is not contained in the other and vice-versa.
 
-<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyr15yalSSrBIKtXWZ4WmafkcJcfrVu5gNaw2a6fYIcrIboOGkXA2Ig2cWHo1KJOAR-a93-N2za850c4DZG9XzIy5A3l0000 -->
+<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyr14r4ABaaiITNGqbJYGZ2XKcwPEQdL_WMfUJeAGQc9ARLAN1X264e9AeAQ1789HDWflwGaFvSBsGWK2OGsD0c7rBmKe0y1 -->
 
 ![Type system example](./type_system_example.svg)
 
@@ -64,6 +64,12 @@ Our plugin is composed by:
 Since annotations are only able to store some types of values, not arbitrary objects, we store a `long` id value in each annotation that is then mapped to an object which stores the concrete type information.
 
 More details: [Manual - How to create a Checker plugin](https://checkerframework.org/manual/#creating-a-checker)
+
+## Run version 1
+
+Run the following command from the `dist` folder:
+
+`java -jar checker-3.3.0/checker.jar -classpath mungo-checker-v1.jar -processor org.checkerframework.checker.mungo.MungoChecker *.java`
 
 ## Build and test
 
