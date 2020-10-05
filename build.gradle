@@ -70,6 +70,8 @@ dependencies {
 
     compileOnly "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
 
+    compile files("z3/bin/com.microsoft.z3.jar")
+
     // Testing
     testImplementation "junit:junit:${versions.junit}"
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit:${versions.kotlin}"

@@ -70,6 +70,11 @@ Run the following command from the `dist` folder:
 
 `java -jar checker-3.3.0/checker.jar -classpath mungo-checker-v1.jar -processor org.checkerframework.checker.mungo.MungoChecker *.java`
 
+## Preparation
+
+- Download and extract the Checker Framework to `examples` such that `examples/checker-framework-VERSION/checker/dist/checker.jar` exists.
+- Download and extract Z3 such that `z3/bin/com.microsoft.z3.jar` exists.
+
 ## Build and test
 
 - Unix: `./gradlew build`
