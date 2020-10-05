@@ -1,4 +1,4 @@
-import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.mungo.lib.MungoRequires;
 
 public class Ok {
 
@@ -14,7 +14,7 @@ public class Ok {
     }
   }
 
-  public static void use(@MungoState("Read") File f) {
+  public static void use(@MungoRequires("Read") File f) {
     f.read();
     f.close();
   }

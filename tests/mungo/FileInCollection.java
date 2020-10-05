@@ -26,7 +26,6 @@ class FileInCollection {
   }
 
   public static void main1(String[] args) {
-
     List<FileInCollection> list = new LinkedList<>();
     // :: error: (Passing an object with protocol to a method that cannot be analyzed)
     list.add(new FileInCollection());
@@ -54,7 +53,7 @@ class FileInCollection {
           break;
         case OPEN:
         case READ:
-          // :: warning: (f: FileInCollection{Read|Open})
+          // :: warning: (f: FileInCollection{Open|Read})
           while (f.hasNext()) {
             // :: warning: (f: FileInCollection{Read})
             f.read();
@@ -68,7 +67,49 @@ class FileInCollection {
           break;
       }
     }
-
   }
+
+  // TODO
+  /*public static void main2(String[] args) {
+    FileInCollection[] list = new FileInCollection[] { new FileInCollection() };
+
+    :: error: (enhancedfor.type.incompatible)
+    for (FileInCollection f : list) {
+      :: warning: (f: FileInCollection{Init|Open|Read|Close} | Ended | Moved)
+      :: error: (Cannot call state on ended protocol, on moved value)
+      switch (f.state()) {
+        case INIT:
+          :: warning: (f: FileInCollection{Init})
+          switch (f.open()) {
+            case OK:
+              :: warning: (f: FileInCollection{Open})
+              while (f.hasNext()) {
+                :: warning: (f: FileInCollection{Read})
+                f.read();
+              }
+              :: warning: (f: FileInCollection{Close})
+              f.close();
+              break;
+            case ERROR:
+              break;
+          }
+          break;
+        case OPEN:
+        case READ:
+          :: warning: (f: FileInCollection{Open|Read})
+          while (f.hasNext()) {
+            :: warning: (f: FileInCollection{Read})
+            f.read();
+          }
+          :: warning: (f: FileInCollection{Close})
+          f.close();
+          break;
+        case CLOSE:
+          :: warning: (f: FileInCollection{Close})
+          f.close();
+          break;
+      }
+    }
+  }*/
 
 }

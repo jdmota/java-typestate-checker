@@ -1,5 +1,5 @@
 import org.checkerframework.checker.mungo.lib.MungoNullable;
-import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.mungo.lib.MungoRequires;
 
 public class Ok {
   public static void main(String args[]) {
@@ -9,8 +9,8 @@ public class Ok {
       use(f);
     }
   }
-  
-  public static void use(@MungoState("Init") File f) {
+
+  public static void use(@MungoRequires("Init") File f) {
     switch (f.open()) {
       case OK:
         System.out.println(f.read());

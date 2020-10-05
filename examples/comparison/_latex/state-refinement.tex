@@ -44,7 +44,7 @@ public enum FileStatus {
 
 \lstset{language=Java,caption=\textit{NotOk.java}}
 \begin{code}
-import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.mungo.lib.MungoRequires;
 
 public class NotOk {
 
@@ -60,7 +60,7 @@ public class NotOk {
     }
   }
 
-  public static void use(@MungoState("Close") File f) {
+  public static void use(@MungoRequires("Close") File f) {
     f.read();
     f.close();
   }
@@ -69,7 +69,7 @@ public class NotOk {
 
 \lstset{language=Java,caption=\textit{Ok.java}}
 \begin{code}
-import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.mungo.lib.MungoRequires;
 
 public class Ok {
 
@@ -85,7 +85,7 @@ public class Ok {
     }
   }
 
-  public static void use(@MungoState("Read") File f) {
+  public static void use(@MungoRequires("Read") File f) {
     f.read();
     f.close();
   }

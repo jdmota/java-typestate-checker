@@ -88,3 +88,31 @@ class MungoLinearityTest(testFiles: List<File>) : MungoPerDirectoryTest(
     val testDirs = arrayOf(dir6)
   }
 }
+
+private const val dir7 = "exceptions"
+
+class MungoExceptions(testFiles: List<File>) : MungoPerDirectoryTest(
+  dir7,
+  testFiles,
+  defaultOpts
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir7)
+  }
+}
+
+private const val dir8 = "generics"
+
+class MungoGenerics(testFiles: List<File>) : MungoPerDirectoryTest(
+  dir8,
+  testFiles,
+  defaultOpts
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir8)
+  }
+}

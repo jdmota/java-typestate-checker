@@ -54,8 +54,8 @@ class ClassUtils(private val utils: MungoUtils) {
   }
 
   fun visitClassOfElement(element: Element): Graph? {
-    val type = utils.factory.fromElement(element) as? AnnotatedTypeMirror.AnnotatedDeclaredType ?: return null
-    return visitClassTypeMirror(type.underlyingType)
+    // val type = utils.factory.fromElement(element) as? AnnotatedTypeMirror.AnnotatedDeclaredType ?: return null
+    return visitClassTypeMirror(element.asType())
   }
 
   fun visitClassTypeMirror(type: TypeMirror): Graph? {
@@ -69,7 +69,7 @@ class ClassUtils(private val utils: MungoUtils) {
       val classFile = sym.sourcefile?.name?.let { Paths.get(it).toAbsolutePath() }
       val protocolFromConfig = utils.configUtils.getConfig().getProtocol(qualifiedName)
 
-      utils.factory.getTypeFromStub(sym)?.let {
+      utils.getTypeFromStub(sym)?.let {
         if (getMungoTypestateAnnotation(it.annotations) != null) {
           utils.err("@MungoTypestate's in stub files are not supported. Use mungo.config instead", sym)
         }

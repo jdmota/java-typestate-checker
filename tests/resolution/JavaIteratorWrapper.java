@@ -12,7 +12,7 @@ class JavaIteratorWrapper1 {
   private @MungoNullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
-    // :: warning: (iterator: JavaIterator{HasNext|Next} | Ended | Moved | Null)
+    // :: warning: (iterator: Null)
     // :: warning: (it: JavaIterator{HasNext|Next})
     iterator = it;
   }

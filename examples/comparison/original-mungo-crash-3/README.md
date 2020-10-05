@@ -22,7 +22,15 @@ Exception in thread "main" java.lang.NullPointerException
 ## Mungo Checker's output
 
 ```
-Main.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+Main.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved] (Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved)
     File f1 = list.get(0);
          ^
-1 error```
+Main.java:6: error: [Passing an object with protocol to a method that cannot be analyzed] (Passing an object with protocol to a method that cannot be analyzed)
+    list.add(new File());
+             ^
+Main.java:7: error: [assignment.type.incompatible] incompatible types in assignment.
+    File f1 = list.get(0);
+                      ^
+  found   : FileProtocol{Read} | Ended | Moved File
+  required: FileProtocol{Read} File
+3 errors```

@@ -18,4 +18,7 @@ Exception in thread "main" java.lang.NullPointerException
 ## Mungo Checker's output
 
 ```
-```
+FileWrapper.java:2: error: [Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved] (Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved)
+  public File file = new File();
+              ^
+1 error```

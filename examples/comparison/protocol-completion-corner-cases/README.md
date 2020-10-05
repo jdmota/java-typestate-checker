@@ -21,4 +21,10 @@ Exception in thread "main" java.lang.NullPointerException
 ## Mungo Checker's output
 
 ```
-```
+NotOk.java:6: error: [Passing an object with protocol to a method that cannot be analyzed] (Passing an object with protocol to a method that cannot be analyzed)
+    list.add(new File());
+             ^
+NotOk.java:10: error: [Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved] (Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved)
+    public File file = new File();
+                ^
+2 errors```

@@ -15,7 +15,7 @@ class MethodUtils(private val utils: MungoUtils) {
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (other !is MethodSymbolWrapper) return false
-      // TODO use sameMethod instead of sameErasedMethod
+      // TODO use sameMethod instead of sameErasedMethod when we support generics
       return sameErasedMethod(sym, other.sym)
     }
 
@@ -70,12 +70,10 @@ class MethodUtils(private val utils: MungoUtils) {
   }
 
   fun sameErasedMethod(a: Symbol.MethodSymbol, b: Symbol.MethodSymbol): Boolean {
-    // TODO deal with thrownTypes?
     return a.name.toString() == b.name.toString() && utils.isSameType(erasure(a), erasure(b))
   }
 
   fun sameMethod(a: Symbol.MethodSymbol, b: Symbol.MethodSymbol): Boolean {
-    // TODO deal with thrownTypes?
     return a.name.toString() == b.name.toString() && utils.isSameType(a.type, b.type)
   }
 
@@ -84,8 +82,9 @@ class MethodUtils(private val utils: MungoUtils) {
     // TODO deal with thrownTypes and typeArguments
     return name == node.name &&
       utils.isSameType(type.returnType, resolver.resolve(env, node.returnType.stringName())) &&
-      utils.isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it.stringName()) }) &&
-      utils.isSameTypes(type.thrownTypes, listOf())
+      utils.isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it.stringName()) }) // &&
+      // TODO ignore exceptions while we do not support them in typestates
+      // utils.isSameTypes(type.thrownTypes, listOf())
   }
 
   fun sameMethod(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {

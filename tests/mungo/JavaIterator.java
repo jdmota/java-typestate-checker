@@ -50,7 +50,7 @@ public class JavaIterator {
 
   public static void nullUse() {
     @MungoNullable JavaIterator it = new JavaIterator();
-    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: JavaIterator{HasNext})
     // :: error: (Cannot override because object has not ended its protocol. Type: JavaIterator{HasNext})
     it = null;
 
@@ -70,7 +70,7 @@ public class JavaIterator {
     while (it.hasNext()) {
       // :: warning: (it: JavaIterator{Next})
       it.next();
-      // :: warning: (it: JavaIterator{HasNext|Next} | Null)
+      // :: warning: (it: JavaIterator{HasNext})
       // :: error: (Cannot override because object has not ended its protocol. Type: JavaIterator{HasNext})
       it = null;
     }
@@ -83,14 +83,14 @@ public class JavaIterator {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     }
-    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: Ended)
     it = null;
   }
 
   public static void initializedNull() {
     // :: error: (assignment.type.incompatible)
     JavaIterator it = null;
-    // :: warning: (it: JavaIterator{HasNext|Next})
+    // :: warning: (it: Null)
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
@@ -101,7 +101,7 @@ public class JavaIterator {
 
   public static void initializedNullOk() {
     @MungoNullable JavaIterator it = null;
-    // :: warning: (it: JavaIterator{HasNext|Next} | Null)
+    // :: warning: (it: Null)
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
@@ -170,7 +170,7 @@ public class JavaIterator {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     }
-    // :: warning: (it: JavaIterator{HasNext|Next})
+    // :: warning: (it: JavaIterator{HasNext} | Ended)
     // :: error: (Cannot override because object has not ended its protocol. Type: JavaIterator{HasNext} | Ended)
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
@@ -187,7 +187,7 @@ public class JavaIterator {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     }
-    // :: warning: (it: JavaIterator{HasNext|Next})
+    // :: warning: (it: Ended)
     it = new JavaIterator();
     // :: warning: (it: JavaIterator{HasNext})
     while (it.hasNext()) {
@@ -235,7 +235,7 @@ public class JavaIterator {
       JavaIterator alias = it;
       // :: warning: (alias: JavaIterator{Next})
       alias.next();
-      // :: warning: (it: JavaIterator{HasNext|Next})
+      // :: warning: (it: Moved)
       // :: warning: (alias: JavaIterator{HasNext})
       it = alias;
     }
@@ -250,7 +250,7 @@ public class JavaIterator {
       JavaIterator alias = it;
       // :: warning: (alias: JavaIterator{Next})
       alias.next();
-      // :: warning: (it: JavaIterator{HasNext|Next})
+      // :: warning: (it: Moved)
       // :: warning: (alias: JavaIterator{HasNext})
       it = alias;
     }
@@ -377,7 +377,7 @@ public class JavaIterator {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     }
-    // :: warning: (it: JavaIterator{HasNext|Next})
+    // :: warning: (it: Ended)
     it = willBeCompleted();
     // :: warning: (it: JavaIterator{HasNext|Next})
     while (it.hasNext()) {

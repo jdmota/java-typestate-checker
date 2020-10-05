@@ -63,7 +63,7 @@ public class MungoAnnotations {
       // :: warning: (it: JavaIterator{Next})
       it.next();
     } else {
-      // :: warning: (it: JavaIterator{HasNext|Next} | Ended | Moved)
+      // :: warning: (it: Ended)
       // :: error: (Cannot override because object is not in the state specified by @MungoEnsures. Type: Ended)
       it = new JavaIterator();
     }
@@ -87,7 +87,7 @@ public class MungoAnnotations {
     } else {
       int i = 3;
       while (i-- > 0) {
-        // :: warning: (it: JavaIterator{HasNext|Next} | Ended | Moved)
+        // :: warning: (it: JavaIterator{HasNext} | Ended)
         // :: error: (Cannot override because object has not ended its protocol. Type: JavaIterator{HasNext} | Ended)
         // :: error: (Cannot override because object is not in the state specified by @MungoEnsures. Type: JavaIterator{HasNext} | Ended)
         it = new JavaIterator();

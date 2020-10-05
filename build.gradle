@@ -1,6 +1,6 @@
 plugins {
     id "java"
-    id "org.jetbrains.kotlin.jvm" version "1.3.70"
+    id "org.jetbrains.kotlin.jvm" version "1.4.0"
     id "antlr"
     id "maven-publish"
     id "idea"
@@ -22,13 +22,12 @@ configurations {
 }
 
 sourceCompatibility = 1.8
-def checkerframework_local = false
 
 ext {
     versions = [
-        kotlin: "1.3.72",
+        kotlin: "1.4.0",
         antlr4: "4.8",
-        checkerFramework: "3.3.0",
+        checkerFramework: "3.6.1",
         errorproneJavacVersion: "9+181-r4173-1",
         junit: "4.13",
     ]
@@ -51,6 +50,9 @@ sourceSets {
         kotlin {
             srcDirs = ["src/main/java", "src/main/kotlin"]
         }
+        resources {
+            srcDirs = ["src/main/resources"]
+        }
     }
 }
 
@@ -64,14 +66,7 @@ dependencies {
     antlr "org.antlr:antlr4:${versions.antlr4}"
     compile "org.antlr:antlr4-runtime:${versions.antlr4}"
 
-    if (checkerframework_local) {
-        implementation files("checker-framework-${versions.checkerFramework}/checker/dist/checker-qual.jar")
-        implementation files("checker-framework-${versions.checkerFramework}/checker/dist/checker.jar")
-        implementation files("checker-framework-${versions.checkerFramework}/checker/dist/jdk8.jar")
-    }
-    else {
-        implementation "org.checkerframework:checker:${versions.checkerFramework}"
-    }
+    implementation "org.checkerframework:checker:${versions.checkerFramework}"
 
     compileOnly "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
 

@@ -121,7 +121,7 @@ Obj.java:24: error: [Cannot call finish on moved value] (Cannot call finish on m
 Obj.java:30: error: [argument.type.incompatible] incompatible types in argument.
     use(obj, obj);
              ^
-  found   : Moved Obj
+  found   : Moved Obj.Obj
   required: ObjProtocol{Start} Obj
 Obj.java:32: error: [Cannot call finish on moved value] (Cannot call finish on moved value)
     obj.finish();
@@ -186,6 +186,9 @@ ObjWithPrivField.java:99: error: [Cannot override because object has not ended i
 ObjWithPrivField.java:99: error: [Cannot access f on moved value] (Cannot access f on moved value)
     o1.f = o2;
       ^
+ObjWithPubField.java:8: error: [Object did not complete its protocol. Type: ObjWithPubField{Start} | Ended | Moved | Null] (Object did not complete its protocol. Type: ObjWithPubField{Start} | Ended | Moved | Null)
+  public @MungoNullable ObjWithPubField f = null;
+                                        ^
 ObjWithPubField.java:13: error: [Cannot call finish on ended protocol, on moved value] (Cannot call finish on ended protocol, on moved value)
       f.finish();
               ^
@@ -249,16 +252,13 @@ ObjWithPubField.java:101: error: [Cannot override because object has not ended i
 ObjWithPubField.java:101: error: [Cannot access f on moved value] (Cannot access f on moved value)
     o1.f = o2;
       ^
-ObjWithPubField.java:8: error: [Object did not complete its protocol. Type: ObjWithPubField{Start} | Ended | Moved | Null] (Object did not complete its protocol. Type: ObjWithPubField{Start} | Ended | Moved | Null)
-  public @MungoNullable ObjWithPubField f = null;
-                                        ^
 ObjWithSetter.java:36: error: [Cannot call setF on moved value] (Cannot call setF on moved value)
     o2.setF(o3);
            ^
 ObjWithSetter.java:56: error: [argument.type.incompatible] incompatible types in argument.
     o1.setF(o1);
             ^
-  found   : Moved ObjWithSetter
+  found   : Moved ObjWithSetter.ObjWithSetter
   required: ObjWithSetter{Start|Set} ObjWithSetter
 ObjWithSetter.java:66: error: [Cannot call setF on moved value] (Cannot call setF on moved value)
     o2.setF(o1);
@@ -283,13 +283,13 @@ ObjWithSetter.java:115: error: [argument.type.incompatible] incompatible types i
 PrivateAccess.java:18: error: [Cannot call finish on ended protocol, on moved value] (Cannot call finish on ended protocol, on moved value)
     w.o.finish();
               ^
+PublicAccess.java:8: error: [Object did not complete its protocol. Type: ObjProtocol{Start} | Ended | Moved] (Object did not complete its protocol. Type: ObjProtocol{Start} | Ended | Moved)
+  public Obj o = new Obj();
+             ^
 PublicAccess.java:12: error: [Cannot call finish on ended protocol, on moved value] (Cannot call finish on ended protocol, on moved value)
     o.finish();
             ^
 PublicAccess.java:18: error: [Cannot call finish on ended protocol, on moved value] (Cannot call finish on ended protocol, on moved value)
     w.o.finish();
               ^
-PublicAccess.java:8: error: [Object did not complete its protocol. Type: ObjProtocol{Start} | Ended | Moved] (Object did not complete its protocol. Type: ObjProtocol{Start} | Ended | Moved)
-  public Obj o = new Obj();
-             ^
 59 errors```

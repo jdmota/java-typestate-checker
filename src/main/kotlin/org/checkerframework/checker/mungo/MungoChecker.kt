@@ -1,58 +1,55 @@
 package org.checkerframework.checker.mungo
 
-import com.sun.tools.javac.util.JCDiagnostic
-import org.checkerframework.checker.mungo.typecheck.MungoVisitor
+import org.checkerframework.checker.mungo.typecheck.Typechecker
 import org.checkerframework.checker.mungo.utils.MungoUtils
-import org.checkerframework.common.basetype.BaseTypeChecker
-import org.checkerframework.common.basetype.BaseTypeVisitor
-import org.checkerframework.javacutil.BugInCF
-import java.nio.file.Path
+import org.checkerframework.framework.source.SourceChecker
+import org.checkerframework.framework.source.SourceVisitor
+import java.io.IOException
+import java.util.*
+import javax.tools.Diagnostic
 
 const val showTypeInfoOpt = "showTypeInfo"
-const val configFile = "configFile"
+const val configFileOpt = "configFile"
+const val messagesFile = "/messages.properties"
 
-/**
- * This is the entry point for pluggable type-checking.
- */
-class MungoChecker : BaseTypeChecker() {
+class MungoChecker : SourceChecker() {
 
-  private val _utils = MungoUtils.LazyField { MungoUtils(this) }
-  val utils get() = _utils.get()
+  lateinit var utils: MungoUtils
 
-  override fun createSourceVisitor(): BaseTypeVisitor<*> {
-    return MungoVisitor(this)
-  }
-
-  override fun getSupportedOptions() = super.getSupportedOptions().plus(showTypeInfoOpt).plus(configFile)
+  override fun getSupportedOptions() = super.getSupportedOptions().plus(showTypeInfoOpt).plus(configFileOpt)
 
   fun shouldReportTypeInfo() = hasOption(showTypeInfoOpt)
 
-  fun getConfigFile(): String? = getOption(configFile, null)
+  override fun createSourceVisitor(): SourceVisitor<*, *> {
+    return Typechecker(this)
+  }
 
-  // Adapted from SourceChecker#report and JavacTrees#printMessage
-  fun reportError(file: Path, pos: Int, messageKey: String, vararg args: Any?) {
-    val defaultFormat = "($messageKey)"
-    val fmtString = if (processingEnv.options != null && processingEnv.options.containsKey("nomsgtext")) {
-      defaultFormat
-    } else if (processingEnv.options != null && processingEnv.options.containsKey("detailedmsgtext")) {
-      // TODO detailedMsgTextPrefix(source, defaultFormat, args) + fullMessageOf(messageKey, defaultFormat)
-      defaultFormat
-    } else {
-      // TODO "[" + suppressionKey(messageKey) + "] " + fullMessageOf(messageKey, defaultFormat)
-      defaultFormat
-    }
-    val messageText = try {
-      String.format(fmtString, *args)
-    } catch (e: Exception) {
-      throw BugInCF("Invalid format string: \"$fmtString\" args: " + args.contentToString(), e)
-    }
+  override fun initChecker() {
+    super.initChecker()
+    val utils = MungoUtils(this)
+    utils.initFactory()
+    this.utils = utils
+  }
 
-    val newSource = utils.fileManager.getJavaFileObject(MungoUtils.getUserPath(file))
-    val oldSource = utils.log.useSource(newSource)
+  private fun getProperties(): Properties {
+    val prop = Properties()
     try {
-      utils.log.error(JCDiagnostic.DiagnosticFlag.MULTIPLE, JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
-    } finally {
-      utils.log.useSource(oldSource)
+      val stream = javaClass.getResourceAsStream(messagesFile)
+      prop.load(stream)
+    } catch (e: IOException) {
+      message(Diagnostic.Kind.WARNING, "Couldn't parse properties file: $messagesFile")
+    }
+    return prop
+  }
+
+  override fun getMessagesProperties(): Properties {
+    return if (messagesProperties != null) {
+      messagesProperties
+    } else {
+      messagesProperties = Properties()
+      messagesProperties.putAll(getProperties())
+      messagesProperties
     }
   }
+
 }

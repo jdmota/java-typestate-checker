@@ -14,17 +14,17 @@ import com.sun.tools.javac.tree.TreeMaker
 import com.sun.tools.javac.util.List
 import com.sun.tools.javac.util.Name
 import com.sun.tools.javac.util.Names
-import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.typestate.TIdNode
 import org.checkerframework.checker.mungo.typestate.TMemberNode
 import org.checkerframework.checker.mungo.typestate.TRefNode
 import org.checkerframework.checker.mungo.typestate.TTypestateNode
+import org.checkerframework.framework.source.SourceChecker
 import java.lang.reflect.Method
 import java.nio.file.Path
 import javax.tools.JavaFileManager
 
 // Adapted from org.checkerframework.javacutil.Resolver
-class Resolver(checker: MungoChecker) {
+class Resolver(checker: SourceChecker) {
 
   private val ctx = (checker.processingEnvironment as JavacProcessingEnvironment).context
   private val trees = Trees.instance(checker.processingEnvironment)

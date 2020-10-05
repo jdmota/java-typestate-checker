@@ -1,0 +1,7 @@
+typestate CProtocol {
+	State0 = {
+		void send(String): State0,
+		int receive(): State0,
+		void close(): end
+	}
+}

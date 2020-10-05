@@ -40,7 +40,7 @@ class Linearity {
 @MungoTypestate("Circular")
 class CircularObj {
 
-  // :: error: (Object did not complete its protocol. Type: Circular{State0} | Ended | Moved | Null)
+  // :: error: (Object did not complete its protocol. Type: Circular{State0} | Ended | Null | Moved)
   public @MungoNullable CircularObj f = null;
 
   public void finish() {
@@ -116,17 +116,17 @@ class PublicLinearityWrapper {
 }
 
 class PrivateLinearityWrapper {
-  // :: error: (Object did not complete its protocol. Type: Linearity{State0|State1} | Moved | Ended)
+  // :: error: (Object did not complete its protocol. Type: Linearity{State0|State1} | Ended | Moved)
   private Linearity obj = new Linearity();
 
   public void a() {
     // :: error: (Cannot call a on ended protocol, on moved value, on state State1 (got: State0, State1))
-    // :: warning: (obj: Linearity{State0|State1} | Moved | Ended)
+    // :: warning: (obj: Linearity{State0|State1} | Ended | Moved)
     obj.a();
   }
 
   public void b() {
-    // :: warning: (obj: Linearity{State0|State1} | Moved | Ended)
+    // :: warning: (obj: Linearity{State0|State1} | Ended | Moved)
     // :: error: (Cannot call b on ended protocol, on moved value, on state State0 (got: State0, State1))
     obj.b();
   }
@@ -403,11 +403,11 @@ public class LinearityTests {
     CircularObj o2 = new CircularObj();
     // :: warning: (o1: Circular{State0})
     // :: warning: (o2: Circular{State0})
-    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Null | Moved)
     o2.f = o1;
     // :: warning: (o1: Moved)
     // :: warning: (o2: Circular{State0})
-    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Null | Moved)
     // :: error: (Cannot access f on moved value)
     o1.f = o2;
   }
@@ -431,15 +431,15 @@ public class LinearityTests {
     CircularObj o4 = new CircularObj();
     // :: warning: (o3: Circular{State0})
     // :: warning: (o4: Circular{State0})
-    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Null | Moved)
     o3.f = o4;
     // :: warning: (o2: Circular{State0})
     // :: warning: (o3: Circular{State0})
-    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Null | Moved)
     o2.f = o3;
     // :: warning: (o1: Circular{State0})
     // :: warning: (o2: Circular{State0})
-    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Null | Moved)
     o1.f = o2;
     // :: warning: (o4: Moved)
     // :: error: (Cannot call finish on moved value)
@@ -454,7 +454,7 @@ public class LinearityTests {
     CircularObj o = new CircularObj();
     // :: warning: (o: Circular{State0})
     // :: warning: (o: Moved)
-    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Circular{State0} | Ended | Null | Moved)
     o.f = o;
   }
 
@@ -478,7 +478,7 @@ public class LinearityTests {
   public static void useNullable2(@MungoNullable @MungoRequires("State0") @MungoEnsures("State1") Linearity obj) {
     // :: warning: (obj: Linearity{State0} | Null)
     if (obj != null) {
-      // :: warning: (obj: Linearity{State0|State1} | Ended | Moved | Null)
+      // :: warning: (obj: Linearity{State0})
       // :: error: (Cannot override because object is not in the state specified by @MungoEnsures. Type: Linearity{State0})
       // :: error: (Cannot override because object has not ended its protocol. Type: Linearity{State0})
       obj = null;

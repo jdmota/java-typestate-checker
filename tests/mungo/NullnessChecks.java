@@ -55,7 +55,7 @@ public class NullnessChecks {
   public static void baz(@MungoNullable String obj) {
     // :: warning: (obj: NoProtocol | Null)
     if ((obj == null) == true) {
-      // :: warning: (obj: Null | NoProtocol)
+      // :: warning: (obj: NoProtocol | Null)
       // :: error: (Cannot call toString on null)
       obj.toString();
     }

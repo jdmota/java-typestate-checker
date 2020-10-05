@@ -20,13 +20,13 @@ NotOkFileWrapper1.java:16: error: [Cannot call close on null] (Cannot call close
 NotOkFileWrapper2.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
   private @MungoNullable File file = null;
                               ^
+NotOkFileWrapper3.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+  private @MungoNullable File file = null;
+                              ^
 NotOkFileWrapper3.java:14: error: [Cannot call close on ended protocol] (Cannot call close on ended protocol)
     file.close();
               ^
 NotOkFileWrapper3.java:19: error: [Cannot call read on ended protocol] (Cannot call read on ended protocol)
     file.read();
              ^
-NotOkFileWrapper3.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
-  private @MungoNullable File file = null;
-                              ^
 7 errors```

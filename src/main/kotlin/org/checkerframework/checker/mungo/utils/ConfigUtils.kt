@@ -1,13 +1,16 @@
 package org.checkerframework.checker.mungo.utils
 
+import org.checkerframework.checker.mungo.configFileOpt
+import org.checkerframework.framework.source.SourceChecker
 import java.io.FileInputStream
 import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 
-class ConfigUtils(sourcePath: String?) {
+class ConfigUtils(checker: SourceChecker) {
 
+  private val sourcePath: String? = checker.getOption(configFileOpt, null)
   private val configName = "mungo.config"
   private val rootConfigFile: Path = if (sourcePath == null) MungoUtils.cwd.resolve(configName) else Paths.get(sourcePath).toAbsolutePath()
 

@@ -18,7 +18,7 @@ public class ObjWithPrivField {
     // o1 -> o2
     ObjWithPrivField o1 = new ObjWithPrivField();
     ObjWithPrivField o2 = new ObjWithPrivField();
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o1.f = o2;
     o1.finish();
   }
@@ -28,10 +28,10 @@ public class ObjWithPrivField {
     ObjWithPrivField o1 = new ObjWithPrivField();
     ObjWithPrivField o2 = new ObjWithPrivField();
     ObjWithPrivField o3 = new ObjWithPrivField();
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o1.f = o2;
     // :: error: (Cannot access f on moved value)
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o2.f = o3;
     o1.finish();
   }
@@ -41,9 +41,9 @@ public class ObjWithPrivField {
     ObjWithPrivField o1 = new ObjWithPrivField();
     ObjWithPrivField o2 = new ObjWithPrivField();
     ObjWithPrivField o3 = new ObjWithPrivField();
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o2.f = o3;
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o1.f = o2;
     o1.finish();
   }
@@ -53,7 +53,7 @@ public class ObjWithPrivField {
   public static void circular1() {
     // o1 -> o1
     ObjWithPrivField o1 = new ObjWithPrivField();
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o1.f = o1;
     // :: error: (Cannot call finish on moved value)
     o1.finish();
@@ -63,9 +63,9 @@ public class ObjWithPrivField {
     // o1 -> o2 -> o1
     ObjWithPrivField o1 = new ObjWithPrivField();
     ObjWithPrivField o2 = new ObjWithPrivField();
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o1.f = o2;
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     // :: error: (Cannot access f on moved value)
     o2.f = o1;
   }
@@ -75,12 +75,12 @@ public class ObjWithPrivField {
     ObjWithPrivField o1 = new ObjWithPrivField();
     ObjWithPrivField o2 = new ObjWithPrivField();
     ObjWithPrivField o3 = new ObjWithPrivField();
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o1.f = o2;
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     // :: error: (Cannot access f on moved value)
     o2.f = o3;
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     // :: error: (Cannot access f on moved value)
     o3.f = o1;
   }
@@ -90,11 +90,11 @@ public class ObjWithPrivField {
     ObjWithPrivField o1 = new ObjWithPrivField();
     ObjWithPrivField o2 = new ObjWithPrivField();
     ObjWithPrivField o3 = new ObjWithPrivField();
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o3.f = o1;
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     o2.f = o3;
-    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+    // :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Null | Moved)
     // :: error: (Cannot access f on moved value)
     o1.f = o2;
   }

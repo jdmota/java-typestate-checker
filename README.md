@@ -1,8 +1,10 @@
-# Mungo plugin for Checker Framework
+# Java Typestate Checker plugin for Checker Framework
+
+*Work in progress...*
 
 ## How it works
 
-This version of Mungo is implemented as a plugin for the Checker Framework. Adding a `@mungo.lib.Typestate("ProtocolFile")` annotation to the top of a class enforces that instances of that class follow the protocol defined by the protocol file. Every time a method call on a object is encountered, we make sure that object is in a state that allows that invocation. The type of the object then changes to conform to the new state reached after that method call. We also make sure protocols are completed and that objects are used in a linear way.
+Adding a `@mungo.lib.Typestate("ProtocolFile")` annotation to the top of a class enforces that instances of that class follow the protocol defined by the protocol file. Every time a method call on a object is encountered, we make sure that object is in a state that allows that invocation. The type of the object then changes to conform to the new state reached after that method call. We also make sure protocols are completed.
 
 ### Type system
 
@@ -30,11 +32,6 @@ The type of files that are in the `Open` state and the type of files that are in
 
 ![Type system example](./type_system_example.svg)
 
-#### Notes
-
-1. `null` should NOT have the bottom type, otherwise its type would be the subtype of all types, allowing `null` assignments going unchecked. Which is what Java already (wrongly) does.
-1. `Ended` and `Null` could be joined in an `Unusable` type. The reason to split both is to provide more information to error messages as to why an operation is not allowed.
-
 ### Checking
 
 - The type checker tracks all the possible states that an object might be in.
@@ -42,6 +39,7 @@ The type of files that are in the `Open` state and the type of files that are in
 - If a variable declaration is encountered, for example in a method argument, it is assumed that the object might be in any of its states. That can be refined with the use of `@MungoState({"Open"})`.
 - When a method invocation is encountered, considering all possible states, the type checker creates a set with all the possible destination states via that method invocation. If that method invocation happened on the condition of a `if/while` statement or in the expression of a `switch` statement, the possible states are properly refined: if the transition leads to a decision state, only the destination state associated with the relevant label is added to the set of possible states.
 
+<!--
 ### Architecture
 
 Plugins for the Checker Framework usually extend the `BaseTypeChecker` and then override some aspects of it if necessary. To understand how plugins work it is important to understand how information is stored:
@@ -64,6 +62,7 @@ Our plugin is composed by:
 Since annotations are only able to store some types of values, not arbitrary objects, we store a `long` id value in each annotation that is then mapped to an object which stores the concrete type information.
 
 More details: [Manual - How to create a Checker plugin](https://checkerframework.org/manual/#creating-a-checker)
+-->
 
 ## Run version 1
 

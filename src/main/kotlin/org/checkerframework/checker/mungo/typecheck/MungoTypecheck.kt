@@ -4,10 +4,12 @@ import com.sun.source.tree.MemberSelectTree
 import com.sun.source.tree.MethodInvocationTree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.AnnotationMirror
@@ -235,70 +237,6 @@ object MungoTypecheck {
       is MungoStateType -> type.state.isDroppable
       else -> false
     }
-  }
-
-  // Get the least upper bound of the possible type, assuming anything happened
-  fun invalidate(utils: MungoUtils, type: TypeMirror): MungoType {
-    when {
-      type.kind.isPrimitive -> return MungoPrimitiveType.SINGLETON
-      type.kind == TypeKind.VOID -> return MungoPrimitiveType.SINGLETON
-      type.kind == TypeKind.NULL -> return MungoNullType.SINGLETON
-      type.kind == TypeKind.ARRAY -> return MungoNoProtocolType.SINGLETON
-    }
-
-    val isNullable = type.annotationMirrors.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
-
-    val mungoType = if (ClassUtils.isJavaLangObject(type)) {
-      MungoUnionType.create(setOf(MungoObjectType.SINGLETON, MungoMovedType.SINGLETON))
-    } else {
-      val graph = utils.classUtils.visitClassTypeMirror(type)
-      if (graph == null) {
-        MungoNoProtocolType.SINGLETON
-      } else {
-        val states = graph.getAllConcreteStates()
-        MungoUnionType.create(states.map { MungoStateType.create(graph, it) }.plus(MungoEndedType.SINGLETON).plus(MungoMovedType.SINGLETON))
-      }
-    }
-
-    val maybeNullableType = if (isNullable) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
-
-    return MungoUnionType.create(listOf(mungoType, maybeNullableType))
-  }
-
-  fun typeDeclaration(utils: MungoUtils, type: TypeMirror, annotations: Collection<AnnotationMirror> = type.annotationMirrors): MungoType {
-    when {
-      type.kind.isPrimitive -> return MungoPrimitiveType.SINGLETON
-      type.kind == TypeKind.VOID -> return MungoPrimitiveType.SINGLETON
-      type.kind == TypeKind.NULL -> return MungoNullType.SINGLETON
-      type.kind == TypeKind.ARRAY -> return MungoNoProtocolType.SINGLETON
-    }
-
-    val isNullable = annotations.any { MungoUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
-    val stateAnno = annotations.find {
-      val name = AnnotationUtils.annotationName(it)
-      name == MungoUtils.mungoState || name == MungoUtils.mungoRequires
-    }
-
-    val mungoType = if (ClassUtils.isJavaLangObject(type)) {
-      MungoObjectType.SINGLETON
-    } else {
-      val graph = utils.classUtils.visitClassTypeMirror(type)
-      if (graph == null) {
-        MungoNoProtocolType.SINGLETON
-      } else {
-        val stateNames = MungoUtils.getAnnotationValue(stateAnno)
-        val states = if (stateNames == null) {
-          graph.getAllConcreteStates()
-        } else {
-          graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
-        }
-        MungoUnionType.create(states.map { MungoStateType.create(graph, it) })
-      }
-    }
-
-    val maybeNullableType = if (isNullable) MungoNullType.SINGLETON else MungoBottomType.SINGLETON
-
-    return MungoUnionType.create(listOf(mungoType, maybeNullableType))
   }
 
   fun objectCreation(utils: MungoUtils, type: TypeMirror): MungoType {

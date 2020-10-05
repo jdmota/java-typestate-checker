@@ -17,10 +17,13 @@ Exception in thread "main" java.lang.NullPointerException
 ## Mungo Checker's output
 
 ```
-NotOkFileWrapper4.java:8: error: [Cannot override because object has not ended its protocol] (Cannot override because object has not ended its protocol)
+NotOkFileWrapper4.java:5: error: [Object did not complete its protocol. Type: FileProtocol{Read} | Null] (Object did not complete its protocol. Type: FileProtocol{Read} | Null)
+  private @MungoNullable File file = null;
+                              ^
+NotOkFileWrapper4.java:8: error: [Cannot override because object has not ended its protocol. Type: FileProtocol{Read} | Null] (Cannot override because object has not ended its protocol. Type: FileProtocol{Read} | Null)
     this.file = file;
         ^
-NotOkFileWrapper4.java:12: error: [Cannot call read on null, on ended protocol, on moved value] (Cannot call read on null, on ended protocol, on moved value)
+NotOkFileWrapper4.java:12: error: [Cannot call read on null] (Cannot call read on null)
     return file.read();
                     ^
-2 errors```
+3 errors```

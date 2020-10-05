@@ -12,7 +12,7 @@ mungoChecker="$CD/mungo-checker.jar"
 mungoCheckerLib="$CD/mungo-checker-lib.jar"
 mungoCheckerClass="org.checkerframework.checker.mungo.MungoChecker"
 
-checkerVersion="3.3.0"
+checkerVersion="3.6.1"
 checker="$CD/checker-framework-$checkerVersion/checker/dist/checker.jar"
 
 latexFolder="$CD/comparison/_latex"
