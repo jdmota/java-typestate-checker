@@ -33,7 +33,7 @@ class Z3Context : Context() {
       return new FuncDecl(this, MkSymbol(name), domain, range, true);
   }
   */
-  fun mkRecFuncDecl(symbol: Symbol, domain: Array<Sort>, range: Sort): FuncDecl {
+  private fun mkRecFuncDecl(symbol: Symbol, domain: Array<Sort>, range: Sort): FuncDecl {
     return createFuncDecl(this, Native.mkRecFuncDecl(
       this.nCtx(),
       getNative(symbol),
@@ -59,8 +59,21 @@ class Z3Context : Context() {
 	    Native.Z3_add_rec_def(nCtx, f.NativeObject, (uint)args.Length, argsNative, body.NativeObject);
 	}
   */
-  fun addRecDef(f: FuncDecl, args: Array<Expr>, body: Expr) {
+  private fun addRecDef(f: FuncDecl, args: Array<Expr>, body: Expr) {
     Native.addRecDef(nCtx(), getNative(f), AST.arrayLength(args), AST.arrayToNative(args), getNative(body))
+  }
+
+  fun mkRecFuncDecl(symbol: Symbol, domain: Array<Sort>, range: Sort, fn: (FuncDecl, Array<Expr>) -> Expr): FuncDecl {
+    val f = mkRecFuncDecl(symbol, domain, range)
+    val size = domain.size
+    val xs = arrayOfNulls<Expr>(size)
+    val types = arrayOfNulls<Sort>(size)
+    for (j in 0 until size) {
+      types[j] = domain[j]
+      xs[j] = mkBound(j, types[j])
+    }
+    addRecDef(f, xs as Array<Expr>, fn(f, xs as Array<Expr>))
+    return f
   }
 
   fun mkForall(domain: Array<Sort>, fn: (Array<Expr>) -> Expr): Quantifier {
