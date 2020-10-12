@@ -165,6 +165,6 @@ class Inference {
 
 }
 
-fun main(args: Array<String>) {
+/*fun main(args: Array<String>) {
   Inference().start()
-}
+}*/

@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo
 
+import org.checkerframework.checker.mungo.assertions.InferenceVisitor
 import org.checkerframework.checker.mungo.typecheck.Typechecker
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.source.SourceChecker
@@ -10,17 +11,23 @@ import javax.tools.Diagnostic
 
 const val showTypeInfoOpt = "showTypeInfo"
 const val configFileOpt = "configFile"
+const val inferenceOpt = "performInference"
 const val messagesFile = "/messages.properties"
 
 class MungoChecker : SourceChecker() {
 
   lateinit var utils: MungoUtils
 
-  override fun getSupportedOptions() = super.getSupportedOptions().plus(showTypeInfoOpt).plus(configFileOpt)
+  override fun getSupportedOptions() = super.getSupportedOptions().plus(arrayOf(showTypeInfoOpt, inferenceOpt, configFileOpt))
 
   fun shouldReportTypeInfo() = hasOption(showTypeInfoOpt)
 
+  private fun performInference() = hasOption(inferenceOpt)
+
   override fun createSourceVisitor(): SourceVisitor<*, *> {
+    if (performInference()) {
+      return InferenceVisitor(this)
+    }
     return Typechecker(this)
   }
 
@@ -29,6 +36,13 @@ class MungoChecker : SourceChecker() {
     val utils = MungoUtils(this)
     utils.initFactory()
     this.utils = utils
+  }
+
+  override fun typeProcessingOver() {
+    val visitor = this.visitor
+    if (visitor is InferenceVisitor) {
+      visitor.inferrer.print()
+    }
   }
 
   private fun getProperties(): Properties {

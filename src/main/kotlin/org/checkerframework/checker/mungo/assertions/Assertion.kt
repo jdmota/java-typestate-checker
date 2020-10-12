@@ -20,11 +20,29 @@ class AccessLocation(val ref: Reference, val isZero: Boolean) {
   }
 }
 
+private var uuid = 1L
+
 class Assertion {
 
-  val accesses = mutableMapOf<AccessLocation, Fraction>()
-  val typeofs = mutableMapOf<Reference, MungoType>()
-  val packed = mutableMapOf<Reference, Boolean>()
-  val equalities = MutableEqualityTracker()
+  val id = uuid++
+
+  //val accesses = mutableMapOf<AccessLocation, Fraction>()
+  //val typeofs = mutableMapOf<Reference, MungoType>()
+  //val packed = mutableMapOf<Reference, Boolean>()
+  //val equalities = MutableEqualityTracker()
+
+  private val constraints = mutableListOf<String>()
+
+  fun implies(assertion: Assertion) {
+    constraints.add("$id ==> ${assertion.id}")
+  }
+
+  fun addConstraint(constraint: String) {
+    constraints.add(constraint)
+  }
+
+  override fun toString(): String {
+    return "$id : ${constraints.joinToString(" ; ")}"
+  }
 
 }

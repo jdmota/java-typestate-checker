@@ -2,97 +2,99 @@ package org.checkerframework.checker.mungo.assertions
 
 import org.checkerframework.dataflow.cfg.node.*
 
-class ConstraintsInference : AbstractNodeVisitor<Void?, Void?>() {
+class ConstraintsInference : AbstractNodeVisitor<Assertion, Assertion>() {
 
-  override fun visitNode(n: Node?, p: Void?): Void? {
-    return null
+  //private val Assertion() = InferenceResult(Assertion(), Assertion())
+
+  override fun visitNode(n: Node?, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitThisLiteral(n: ThisLiteralNode, res: Void?): Void? {
-    return null
+  override fun visitThisLiteral(n: ThisLiteralNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitTernaryExpression(n: TernaryExpressionNode, res: Void?): Void? {
-    return null
+  override fun visitTernaryExpression(n: TernaryExpressionNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitConditionalNot(n: ConditionalNotNode, res: Void?): Void? {
-    return null
+  override fun visitConditionalNot(n: ConditionalNotNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitBooleanLiteral(n: BooleanLiteralNode, res: Void?): Void? {
-    return null
+  override fun visitBooleanLiteral(n: BooleanLiteralNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitEqualTo(n: EqualToNode, res: Void?): Void? {
-    return null
+  override fun visitEqualTo(n: EqualToNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitNotEqual(n: NotEqualNode, res: Void?): Void? {
-    return null
+  override fun visitNotEqual(n: NotEqualNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitAssignment(n: AssignmentNode, result: Void?): Void? {
-    return null
+  override fun visitAssignment(n: AssignmentNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitReturn(n: ReturnNode, result: Void?): Void? {
-    return null
+  override fun visitReturn(n: ReturnNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitMethodAccess(n: MethodAccessNode, result: Void?): Void? {
-    return null
+  override fun visitMethodAccess(n: MethodAccessNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitLambdaResultExpression(n: LambdaResultExpressionNode, input: Void?): Void? {
-    return null
+  override fun visitLambdaResultExpression(n: LambdaResultExpressionNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitStringConcatenateAssignment(n: StringConcatenateAssignmentNode, res: Void?): Void? {
-    return null
+  override fun visitStringConcatenateAssignment(n: StringConcatenateAssignmentNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitObjectCreation(node: ObjectCreationNode, result: Void?): Void? {
-    return null
+  override fun visitObjectCreation(node: ObjectCreationNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitMethodInvocation(n: MethodInvocationNode, result: Void?): Void? {
-    return null
+  override fun visitMethodInvocation(n: MethodInvocationNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitCase(n: CaseNode, result: Void?): Void? {
-    return null
+  override fun visitCase(n: CaseNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitInstanceOf(n: InstanceOfNode, result: Void?): Void? {
-    return null
+  override fun visitInstanceOf(n: InstanceOfNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitVariableDeclaration(n: VariableDeclarationNode, result: Void?): Void? {
-    return null
+  override fun visitVariableDeclaration(n: VariableDeclarationNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitNarrowingConversion(n: NarrowingConversionNode, result: Void?): Void? {
-    return null
+  override fun visitNarrowingConversion(n: NarrowingConversionNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitWideningConversion(n: WideningConversionNode, result: Void?): Void? {
-    return null
+  override fun visitWideningConversion(n: WideningConversionNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitStringConversion(n: StringConversionNode, result: Void?): Void? {
-    return null
+  override fun visitStringConversion(n: StringConversionNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitLocalVariable(n: LocalVariableNode, result: Void?): Void? {
-    return null
+  override fun visitLocalVariable(n: LocalVariableNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitFieldAccess(n: FieldAccessNode, result: Void?): Void? {
-    return null
+  override fun visitFieldAccess(n: FieldAccessNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 
-  override fun visitTypeCast(n: TypeCastNode, result: Void?): Void? {
-    return null
+  override fun visitTypeCast(n: TypeCastNode, preCondition: Assertion): Assertion {
+    return Assertion()
   }
 }

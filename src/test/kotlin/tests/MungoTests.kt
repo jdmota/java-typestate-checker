@@ -116,3 +116,17 @@ class MungoGenerics(testFiles: List<File>) : MungoPerDirectoryTest(
     val testDirs = arrayOf(dir8)
   }
 }
+
+private const val dir9 = "inference"
+
+class MungoInference(testFiles: List<File>) : MungoPerDirectoryTest(
+  dir9,
+  testFiles,
+  arrayOf("-Anomsgtext", "-AshowTypeInfo", "-AperformInference")
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir9)
+  }
+}
