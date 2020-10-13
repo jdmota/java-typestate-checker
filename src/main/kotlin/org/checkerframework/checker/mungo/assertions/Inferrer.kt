@@ -4,6 +4,8 @@ import com.sun.source.tree.*
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
+import org.checkerframework.checker.mungo.utils.treeToElement
+import org.checkerframework.checker.mungo.utils.treeToType
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.block.*
@@ -11,8 +13,11 @@ import org.checkerframework.dataflow.cfg.node.LocalVariableNode
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.javacutil.TypesUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
+import javax.lang.model.element.Element
+import javax.lang.model.type.TypeMirror
 
 class Inferrer(private val checker: MungoChecker) {
 
@@ -32,12 +37,12 @@ class Inferrer(private val checker: MungoChecker) {
     while (!classQueue.isEmpty()) {
       val ct = classQueue.remove() as JCTree.JCClassDecl
       val info = prepareClass(ct)
-      run(classQueue, ct, info.static)
-      run(classQueue, ct, info.nonStatic)
+      run(classQueue, ct, info.static, true)
+      run(classQueue, ct, info.nonStatic, false)
     }
   }
 
-  private fun run(classQueue: Queue<ClassTree>, classTree: JCTree.JCClassDecl, info: ClassInfo) {
+  private fun run(classQueue: Queue<ClassTree>, classTree: JCTree.JCClassDecl, info: ClassInfo, isStatic: Boolean) {
     val lambdaQueue: Queue<LambdaExpressionTree> = ArrayDeque()
 
     // Analyze fields
@@ -48,7 +53,8 @@ class Inferrer(private val checker: MungoChecker) {
         run(
           classQueue,
           lambdaQueue,
-          UnderlyingAST.CFGStatement(field, classTree)
+          UnderlyingAST.CFGStatement(field, classTree),
+          isStatic
         )
       }
     }
@@ -59,7 +65,8 @@ class Inferrer(private val checker: MungoChecker) {
       run(
         classQueue,
         lambdaQueue,
-        UnderlyingAST.CFGStatement(block, classTree)
+        UnderlyingAST.CFGStatement(block, classTree),
+        isStatic
       )
     }
 
@@ -68,7 +75,8 @@ class Inferrer(private val checker: MungoChecker) {
       run(
         classQueue,
         lambdaQueue,
-        UnderlyingAST.CFGMethod(method, classTree)
+        UnderlyingAST.CFGMethod(method, classTree),
+        isStatic
       )
     }
 
@@ -79,7 +87,8 @@ class Inferrer(private val checker: MungoChecker) {
       run(
         classQueue,
         lambdaQueue,
-        UnderlyingAST.CFGLambda(lambda, classTree, mt)
+        UnderlyingAST.CFGLambda(lambda, classTree, mt),
+        isStatic
       )
     }
   }
@@ -91,6 +100,7 @@ class Inferrer(private val checker: MungoChecker) {
     else -> throw RuntimeException("unknown ast")
   }
 
+  private val locationsGatherer = LocationsGatherer(this)
   private val cfgCache = WeakIdentityHashMap<Tree, ControlFlowGraph>()
   private val constraintsInference = ConstraintsInference()
   val preConditions = mutableMapOf<Node, Assertion>()
@@ -100,7 +110,8 @@ class Inferrer(private val checker: MungoChecker) {
   private fun run(
     classQueue: Queue<ClassTree>,
     lambdaQueue: Queue<LambdaExpressionTree>,
-    ast: UnderlyingAST
+    ast: UnderlyingAST,
+    isStatic: Boolean
   ) {
     val tree = astToTree(ast)
     val cfg = cfgCache[tree] ?: run {
@@ -116,8 +127,8 @@ class Inferrer(private val checker: MungoChecker) {
       else -> null
     }
 
-    parameters?.forEach {
-      // TODO
+    when (ast) {
+      is UnderlyingAST.CFGMethod -> println("${ast.method.name} ${locationsGatherer.getLocations(ast, isStatic)}")
     }
 
     // Run
@@ -137,6 +148,7 @@ class Inferrer(private val checker: MungoChecker) {
   private fun traverse(pre: Assertion, block: Block) {
     val seen = mutableSetOf<Block>()
     if (seen.contains(block)) {
+      // TODO also connect here
       return
     }
     seen.add(block)
