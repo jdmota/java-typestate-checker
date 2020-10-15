@@ -12,9 +12,13 @@ abstract class AbstractStore<Store: AbstractStore<Store, MutableStore>, MutableS
   abstract fun toImmutable(): Store
 }
 
-abstract class AbstractMutableStore<Store: AbstractStore<Store, MutableStore>, MutableStore: AbstractMutableStore<Store, MutableStore>> : AbstractStore<Store, MutableStore>() {
-  abstract fun merge(other: Store): MutableStore
-  abstract fun mergeFields(other: Store): MutableStore
+abstract class AbstractMutableStore<Store: AbstractStore<Store, MutableStore>, MutableStore: AbstractMutableStore<Store, MutableStore>> {
+  abstract fun toMutable(): MutableStore
+  abstract fun toImmutable(): Store
+  abstract fun merge(other: Store)
+  abstract fun mergeFields(other: Store)
+  abstract fun merge(other: MutableStore)
+  abstract fun mergeFields(other: MutableStore)
   abstract fun toBottom(): MutableStore
   abstract fun invalidate(analyzer: AbstractAnalyzerBase): MutableStore
   abstract fun invalidateFields(analyzer: AbstractAnalyzerBase): MutableStore

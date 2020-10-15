@@ -12,93 +12,116 @@ import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.node.Node
 
-class AnalyzerResult : AbstractAnalyzerResult<Store, MutableStore>() {
-  override fun getThen(): Store {
-    TODO("Not yet implemented")
-  }
+val storeUtils = StoreUtils()
+val storeInfoUtils = StoreInfoUtils()
+val analyzerResultsUtils = AnalyzerResultsUtils()
 
-  override fun getElse(): Store {
-    TODO("Not yet implemented")
-  }
+class AnalyzerResult(
+  private val thenStore: Store,
+  private val elseStore: Store
+) : AbstractAnalyzerResult<Store, MutableStore>() {
 
-  override fun getRegular(): Store {
-    TODO("Not yet implemented")
-  }
+  private val regularStore = storeUtils.merge(thenStore, elseStore)
 
-  override fun isRegular(): Boolean {
-    TODO("Not yet implemented")
-  }
+  constructor(thenStore: MutableStore, elseStore: MutableStore) : this(thenStore.toImmutable(), elseStore.toImmutable())
+  constructor(result: MutableAnalyzerResult) : this(result.getThen().toImmutable(), result.getElse().toImmutable())
+
+  override fun getThen(): Store = thenStore
+  override fun getElse(): Store = elseStore
+  override fun getRegular(): Store = regularStore
+  override fun isRegular(): Boolean = thenStore === elseStore
 
   override fun getExceptionalStore(cause: Any): Store? {
-    TODO("Not yet implemented")
+    return null // TODO
+  }
+
+  override fun toString(): String {
+    if (isRegular()) {
+      return "Result{store=$thenStore}"
+    }
+    return "Result{\nthen=$thenStore,\nelse=$elseStore\n}"
   }
 }
 
-class MutableAnalyzerResult : AbstractMutableAnalyzerResult<Store, MutableStore, AnalyzerResult>() {
+class MutableAnalyzerResult(
+  private var thenStore: MutableStore,
+  private var elseStore: MutableStore
+) : AbstractMutableAnalyzerResult<Store, MutableStore, AnalyzerResult>() {
   override fun merge(result: AnalyzerResult) {
-    TODO("Not yet implemented")
+    thenStore.merge(result.getThen())
+    if (!isRegular() || !result.isRegular()) {
+      elseStore.merge(result.getElse())
+    }
   }
 
   override fun mergeThenAndElse() {
-    TODO("Not yet implemented")
+    thenStore.merge(elseStore)
+    elseStore = thenStore
   }
 
-  override fun getThen(): Store {
-    TODO("Not yet implemented")
+  override fun getThen(): MutableStore = thenStore
+  override fun getElse(): MutableStore = elseStore
+  override fun isRegular(): Boolean = thenStore === elseStore
+
+  override fun getExceptionalStore(cause: Any): MutableStore? {
+    return null // TODO
   }
 
-  override fun getElse(): Store {
-    TODO("Not yet implemented")
-  }
-
-  override fun isRegular(): Boolean {
-    TODO("Not yet implemented")
-  }
-
-  override fun getExceptionalStore(cause: Any): Store? {
-    TODO("Not yet implemented")
+  override fun toString(): String {
+    if (isRegular()) {
+      return "Result{store=$thenStore}"
+    }
+    return "Result{\nthen=$thenStore,\nelse=$elseStore\n}"
   }
 }
 
-class MutableAnalyzerResultWithValue : AbstractMutableAnalyzerResultWithValue<StoreInfo, Store, MutableStore, AnalyzerResult>() {
+class MutableAnalyzerResultWithValue(
+  private var value: StoreInfo,
+  private var thenStore: MutableStore,
+  private var elseStore: MutableStore
+) : AbstractMutableAnalyzerResultWithValue<StoreInfo, Store, MutableStore, AnalyzerResult>() {
   override fun merge(result: AnalyzerResult) {
-    TODO("Not yet implemented")
+    thenStore.merge(result.getThen())
+    if (!isRegular() || !result.isRegular()) {
+      elseStore.merge(result.getElse())
+    }
   }
 
   override fun mergeThenAndElse() {
-    TODO("Not yet implemented")
+    thenStore.merge(elseStore)
+    elseStore = thenStore
   }
 
-  override fun getThen(): Store {
-    TODO("Not yet implemented")
+  override fun getThen(): MutableStore = thenStore
+  override fun getElse(): MutableStore = elseStore
+  override fun isRegular(): Boolean = thenStore === elseStore
+
+  override fun getExceptionalStore(cause: Any): MutableStore? {
+    return null // TODO
   }
 
-  override fun getElse(): Store {
-    TODO("Not yet implemented")
+  override fun toString(): String {
+    if (isRegular()) {
+      return "Result{value=$value, store=$thenStore}"
+    }
+    return "Result{value=$value,\nthen=$thenStore,\nelse=$elseStore\n}"
   }
 
-  override fun isRegular(): Boolean {
-    TODO("Not yet implemented")
-  }
-
-  override fun getExceptionalStore(cause: Any): Store? {
-    TODO("Not yet implemented")
-  }
-
-  override fun getValue(): StoreInfo {
-    TODO("Not yet implemented")
+  override fun getValue() = value
+  override fun setValue(v: StoreInfo) {
+    value = v
   }
 }
 
 class StoreInfo : AbstractStoreInfo()
 
-class Store : AbstractStore<Store, MutableStore>() {
+open class Store : AbstractStore<Store, MutableStore>() {
   override fun toMutable(): MutableStore {
     TODO("Not yet implemented")
   }
 
   override fun toImmutable(): Store {
-    TODO("Not yet implemented")
+    return this
   }
 }
 
@@ -111,11 +134,19 @@ class MutableStore : AbstractMutableStore<Store, MutableStore>() {
     TODO("Not yet implemented")
   }
 
-  override fun merge(other: Store): MutableStore {
+  override fun merge(other: Store) {
     TODO("Not yet implemented")
   }
 
-  override fun mergeFields(other: Store): MutableStore {
+  override fun mergeFields(other: Store) {
+    TODO("Not yet implemented")
+  }
+
+  override fun merge(other: MutableStore) {
+    TODO("Not yet implemented")
+  }
+
+  override fun mergeFields(other: MutableStore) {
     TODO("Not yet implemented")
   }
 
@@ -166,27 +197,31 @@ class StoreInfoUtils : AbstractStoreInfoUtils<StoreInfo>() {
 
 class AnalyzerResultsUtils : AbstractAnalyzerResultUtils<StoreInfo, Store, MutableStore, AnalyzerResult, MutableAnalyzerResult, MutableAnalyzerResultWithValue>() {
   override fun createAnalyzerResult(thenStore: Store, elseStore: Store): AnalyzerResult {
-    TODO("Not yet implemented")
+    return AnalyzerResult(thenStore, elseStore)
+  }
+
+  override fun createAnalyzerResult(thenStore: MutableStore, elseStore: MutableStore): AnalyzerResult {
+    return AnalyzerResult(thenStore, elseStore)
   }
 
   override fun createAnalyzerResult(result: MutableAnalyzerResult): AnalyzerResult {
-    TODO("Not yet implemented")
+    return createAnalyzerResult(result.getThen(), result.getElse())
   }
 
   override fun createAnalyzerResult(): AnalyzerResult {
-    TODO("Not yet implemented")
+    return createAnalyzerResult(storeUtils.emptyStore(), storeUtils.emptyStore())
   }
 
   override fun createMutableAnalyzerResult(thenStore: MutableStore, elseStore: MutableStore): MutableAnalyzerResult {
-    TODO("Not yet implemented")
+    return MutableAnalyzerResult(thenStore, elseStore)
   }
 
   override fun createMutableAnalyzerResult(): MutableAnalyzerResult {
-    TODO("Not yet implemented")
+    return createMutableAnalyzerResult(storeUtils.mutableEmptyStore(), storeUtils.mutableEmptyStore())
   }
 
   override fun createMutableAnalyzerResultWithValue(value: StoreInfo, result: AnalyzerResult): MutableAnalyzerResultWithValue {
-    TODO("Not yet implemented")
+    return MutableAnalyzerResultWithValue(value, result.getThen().toMutable(), result.getElse().toMutable())
   }
 }
 
