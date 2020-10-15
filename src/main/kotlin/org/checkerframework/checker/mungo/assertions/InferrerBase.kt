@@ -1,7 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.*
-import org.checkerframework.dataflow.cfg.node.Node
 
 // Z3 Tutorial: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.225.8231&rep=rep1&type=pdf
 // Z3 Guide and Playground: https://rise4fun.com/z3/tutorial/guide
@@ -11,9 +10,8 @@ import org.checkerframework.dataflow.cfg.node.Node
 // - Sort: it is like a type
 // - Model: gives an interpretation that makes all the formulas true
 
-class Inference {
+open class InferrerBase {
 
-  private val constraintsInference = ConstraintsInference()
   private val ctx = Z3Context()
   private val symbols = object {
     val Type0 = ctx.mkSymbol("Type0")
@@ -157,10 +155,6 @@ class Inference {
 
     println(result)
     println(model)
-  }
-
-  fun visit(node: Node) {
-    node.accept(constraintsInference, null)
   }
 
 }

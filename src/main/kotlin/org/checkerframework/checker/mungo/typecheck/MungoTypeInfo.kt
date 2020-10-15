@@ -127,6 +127,8 @@ class MungoUnionType private constructor(val types: Set<MungoType>) : MungoType(
       // Create union type
       return MungoUnionType(flatTypes)
     }
+
+    fun join(a: MungoType, b: MungoType) = intersect(a, b)
   }
 
   override fun equals(other: Any?) = when {

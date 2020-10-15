@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.sun.source.tree.ClassTree
+import com.sun.source.tree.Tree
 import com.sun.source.tree.VariableTree
 import com.sun.source.util.TreePathScanner
 import com.sun.tools.javac.code.Symbol
@@ -8,15 +9,12 @@ import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.analysis.prepareClass
 import org.checkerframework.checker.mungo.utils.treeToElement
 import org.checkerframework.dataflow.cfg.UnderlyingAST
+import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import javax.lang.model.element.Element
 import javax.lang.model.type.TypeMirror
 
 // TODO fix infinite recursion with recursive data types like Node.next.next.next
 class LocationsGatherer(private val inferrer: Inferrer) : TreePathScanner<Void?, Void?>() {
-
-  fun getMethodCode(sym: Symbol.MethodSymbol) {
-    val tree = inferrer.utils.treeUtils.getTree(sym)
-  }
 
   private fun getFields(classTree: ClassTree): List<VariableTree> {
     return prepareClass(classTree).nonStatic.fields
@@ -40,25 +38,38 @@ class LocationsGatherer(private val inferrer: Inferrer) : TreePathScanner<Void?,
     return getLocations(name, element)
   }
 
-  fun getLocations(method: JCTree.JCMethodDecl): List<Pair<String, TypeMirror>> {
-    val sym = method.sym
-    val list = if (sym.isConstructor || sym.isStatic) {
-      mutableListOf()
-    } else {
-      getLocations("this", sym.enclosingElement)
+  private fun getLocations(method: JCTree.JCLambda): List<Pair<String, TypeMirror>> {
+    return cache.computeIfAbsent(method) {
+      val list = mutableListOf<Pair<String, TypeMirror>>()
+      method.parameters.forEach { list.addAll(getLocations("", it)) }
+      list
     }
-    method.parameters.forEach { list.addAll(getLocations("", it)) }
-    return list
   }
 
-  fun getLocations(ast: UnderlyingAST, isStatic: Boolean): List<Pair<String, TypeMirror>>? {
+  private val cache = WeakIdentityHashMap<Tree, List<Pair<String, TypeMirror>>>()
+
+  private fun getLocations(method: JCTree.JCMethodDecl): List<Pair<String, TypeMirror>> {
+    return cache.computeIfAbsent(method) {
+      val sym = method.sym
+      val list = if (sym.isConstructor || sym.isStatic) {
+        mutableListOf()
+      } else {
+        getLocations("this", sym.enclosingElement)
+      }
+      method.parameters.forEach { list.addAll(getLocations("", it)) }
+      list
+    }
+  }
+
+  fun getLocations(sym: Symbol.MethodSymbol): List<Pair<String, TypeMirror>>? {
+    val tree = inferrer.utils.treeUtils.getTree(sym) ?: return null
+    return getLocations(tree as JCTree.JCMethodDecl)
+  }
+
+  fun getLocations(ast: UnderlyingAST): List<Pair<String, TypeMirror>>? {
     return when (ast) {
       is UnderlyingAST.CFGMethod -> getLocations(ast.method as JCTree.JCMethodDecl)
-      is UnderlyingAST.CFGLambda -> {
-        val list = mutableListOf<Pair<String, TypeMirror>>()
-        ast.lambdaTree.parameters.forEach { list.addAll(getLocations("", it)) }
-        list
-      }
+      is UnderlyingAST.CFGLambda -> getLocations(ast.lambdaTree as JCTree.JCLambda)
       else -> null
     }
   }

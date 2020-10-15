@@ -67,4 +67,11 @@ class MutableEqualityTracker : EqualityTracker() {
     numToRefs[num]!!.remove(ref)
   }
 
+  fun clone(): MutableEqualityTracker {
+    val tracker = MutableEqualityTracker()
+    tracker.refToNum.putAll(refToNum)
+    tracker.numToRefs.putAll(numToRefs)
+    return tracker
+  }
+
 }
