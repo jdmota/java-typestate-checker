@@ -7,6 +7,7 @@ import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.ClassInfo
 import org.checkerframework.checker.mungo.analysis.Worklist
 import org.checkerframework.checker.mungo.analysis.prepareClass
+import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typestate.graph.AbstractState
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.Graph
@@ -22,9 +23,14 @@ import org.checkerframework.javacutil.Pair
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
+import javax.lang.model.type.TypeMirror
 import org.checkerframework.dataflow.analysis.Store.Kind as StoreKind
 
-abstract class AbstractAnalyzerBase
+abstract class AbstractAnalyzerBase(val checker: MungoChecker) {
+  val utils get() = checker.utils
+
+  abstract fun getInvalidated(type: TypeMirror): MungoType
+}
 
 abstract class AbstractAnalyzer<
   AnalyzerResult : AbstractAnalyzerResult<Store, MutableStore>,
@@ -37,13 +43,12 @@ abstract class AbstractAnalyzer<
   StoreInfoUtils : AbstractStoreInfoUtils<StoreInfo>,
   AnalyzerResultsUtils : AbstractAnalyzerResultUtils<StoreInfo, Store, MutableStore, AnalyzerResult, MutableAnalyzerResult, MutableAnalyzerResultWithValue>
   >(
-  val checker: MungoChecker,
+  checker: MungoChecker,
   val storeUtils: StoreUtils,
   val storeInfoUtils: StoreInfoUtils,
   val analyzerResultsUtils: AnalyzerResultsUtils
-) : AbstractAnalyzerBase() {
+) : AbstractAnalyzerBase(checker) {
 
-  val utils get() = checker.utils
   lateinit var unknown: StoreInfo
 
   protected val processingEnv = checker.processingEnvironment
