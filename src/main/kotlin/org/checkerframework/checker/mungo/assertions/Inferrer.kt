@@ -143,26 +143,27 @@ class StoreInfo(val analyzer: AbstractAnalyzerBase, val mungoType: MungoType, va
   }
 }
 
-class Store(private val map: Map<Reference, StoreInfo>) : AbstractStore<Store, MutableStore>() {
-  operator fun contains(ref: Reference) = map.contains(ref)
-  operator fun get(ref: Reference): StoreInfo? = map[ref]
-  operator fun iterator(): Iterator<Map.Entry<Reference, StoreInfo>> = map.iterator()
+class Store(
+  private val accesses: Map<AccessLocation, SymbolicFraction> = emptyMap(),
+  private val typeofs: Map<Reference, SymbolicType> = emptyMap(),
+  private val equalities: EqualityTracker = EqualityTracker()
+) : AbstractStore<Store, MutableStore>() {
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
-    return other is Store && this.map == other.map
+    return other is Store && accesses == other.accesses && typeofs == other.typeofs && equalities == other.equalities
   }
 
   override fun hashCode(): Int {
-    return map.hashCode()
+    return accesses.hashCode()
   }
 
   override fun toString(): String {
-    return map.toString()
+    return "Store" // TODO
   }
 
   override fun toMutable(): MutableStore {
-    return MutableStore(map.toMutableMap())
+    return MutableStore(accesses.toMutableMap(), typeofs.toMutableMap(), equalities.toMutable())
   }
 
   override fun toImmutable(): Store {
@@ -170,36 +171,55 @@ class Store(private val map: Map<Reference, StoreInfo>) : AbstractStore<Store, M
   }
 }
 
-class MutableStore(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) : AbstractMutableStore<Store, MutableStore>() {
+class MutableStore(
+  private val accesses: MutableMap<AccessLocation, SymbolicFraction> = mutableMapOf(),
+  private val typeofs: MutableMap<Reference, SymbolicType> = mutableMapOf(),
+  private val equalities: MutableEqualityTracker = MutableEqualityTracker()
+) : AbstractMutableStore<Store, MutableStore>() {
 
-  operator fun contains(ref: Reference) = map.contains(ref)
-  operator fun get(ref: Reference): StoreInfo? = map[ref]
-  operator fun iterator(): Iterator<Map.Entry<Reference, StoreInfo>> = map.iterator()
-
+  constructor(locations: Collection<Reference>) : this() {
+    for (loc in locations) {
+      accesses[AccessLocation(loc, false)] = SymbolicFraction()
+      typeofs[loc] = SymbolicType()
+    }
+  }
+  
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
-    return other is MutableStore && this.map == other.map
+    return other is MutableStore && accesses == other.accesses && typeofs == other.typeofs && equalities == other.equalities
   }
 
   override fun hashCode(): Int {
-    return map.hashCode()
+    return accesses.hashCode()
   }
 
   override fun toString(): String {
-    return map.toString()
+    return "Store" // TODO
   }
 
   override fun toMutable(): MutableStore {
-    return MutableStore(map.toMutableMap())
+    return MutableStore(accesses.toMutableMap(), typeofs.toMutableMap(), equalities.toMutable())
   }
 
   override fun toImmutable(): Store {
-    return Store(map.toMap())
+    return Store(accesses.toMap(), typeofs.toMap(), equalities.toImmutable())
   }
 
-  operator fun set(ref: Reference, info: StoreInfo) {
-    map[ref] = info
+  fun addAccess(loc: AccessLocation, fraction: SymbolicFraction) {
+    accesses[loc] = fraction
   }
+
+  fun addTypeof(loc: Reference, type: SymbolicType) {
+    typeofs[loc] = type
+  }
+
+  fun addEq(x: Reference, y: Reference) {
+    equalities.setEquality(x, y)
+  }
+
+  fun getAccess(loc: AccessLocation) = accesses[loc]
+
+  fun getTypeof(loc: Reference) = typeofs[loc]
 
   fun merge(ref: Reference, info: StoreInfo) {
     map.compute(ref) { _, curr -> if (curr == null) info else storeInfoUtils.merge(curr, info) }

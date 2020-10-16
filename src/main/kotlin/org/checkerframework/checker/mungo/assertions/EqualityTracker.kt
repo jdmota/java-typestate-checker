@@ -2,24 +2,46 @@ package org.checkerframework.checker.mungo.assertions
 
 import org.checkerframework.checker.mungo.analysis.Reference
 
-sealed class EqualityTracker {
+class EqualityTracker(
+  private val refToNum: Map<Reference, Int> = emptyMap(),
+  private val numToRefs: Map<Int, MutableSet<Reference>> = emptyMap()
+) {
+  operator fun get(ref: Reference): Set<Reference> {
+    val num = refToNum[ref] ?: return setOf(ref)
+    return numToRefs[num]!!
+  }
 
-  // If two references are associated with the same integer,
-  // that means they are known to point to the same value.
+  override fun equals(other: Any?): Boolean {
+    return TODO()
+  }
 
-  protected val refToNum = mutableMapOf<Reference, Int>()
-  protected val numToRefs = mutableMapOf<Int, MutableSet<Reference>>()
+  fun toMutable(): MutableEqualityTracker {
+    return MutableEqualityTracker(refToNum.toMutableMap(), numToRefs.toMutableMap())
+  }
+
+  fun toImmutable(): EqualityTracker {
+    return this
+  }
+}
+
+// If two references are associated with the same integer,
+// that means they are known to point to the same value.
+
+class MutableEqualityTracker(
+  private val refToNum: MutableMap<Reference, Int> = mutableMapOf(),
+  private val numToRefs: MutableMap<Int, MutableSet<Reference>> = mutableMapOf()
+) {
+
+  private var nextNum = 0
 
   operator fun get(ref: Reference): Set<Reference> {
     val num = refToNum[ref] ?: return setOf(ref)
     return numToRefs[num]!!
   }
 
-}
-
-class MutableEqualityTracker : EqualityTracker() {
-
-  private var nextNum = 0
+  override fun equals(other: Any?): Boolean {
+    return TODO()
+  }
 
   fun setEquality(a: Reference, b: Reference) {
     if (a == b) {
@@ -67,11 +89,12 @@ class MutableEqualityTracker : EqualityTracker() {
     numToRefs[num]!!.remove(ref)
   }
 
-  fun clone(): MutableEqualityTracker {
-    val tracker = MutableEqualityTracker()
-    tracker.refToNum.putAll(refToNum)
-    tracker.numToRefs.putAll(numToRefs)
-    return tracker
+  fun toMutable(): MutableEqualityTracker {
+    return MutableEqualityTracker(refToNum.toMutableMap(), numToRefs.toMutableMap())
+  }
+
+  fun toImmutable(): EqualityTracker {
+    return EqualityTracker(refToNum.toMap(), numToRefs.toMap())
   }
 
 }
