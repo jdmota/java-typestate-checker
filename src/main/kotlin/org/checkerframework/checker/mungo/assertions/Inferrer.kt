@@ -2,22 +2,37 @@ package org.checkerframework.checker.mungo.assertions
 
 import com.sun.source.tree.ClassTree
 import com.sun.source.tree.CompilationUnitTree
+import com.sun.source.tree.Tree
 import com.sun.source.tree.VariableTree
-import com.sun.tools.javac.code.Type
-import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.abstract_analysis.*
-import org.checkerframework.checker.mungo.analysis.Analyzer
 import org.checkerframework.checker.mungo.analysis.FieldAccess
 import org.checkerframework.checker.mungo.analysis.Reference
-import org.checkerframework.checker.mungo.analysis.TypeIntroducer
 import org.checkerframework.checker.mungo.typecheck.MungoBottomType
 import org.checkerframework.checker.mungo.typecheck.MungoType
+import org.checkerframework.checker.mungo.typecheck.MungoUnionType
 import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import javax.lang.model.type.TypeMirror
+
+/*class AccessLocation(val ref: Reference, val isZero: Boolean) {
+  override fun equals(other: Any?): Boolean {
+    if (other !is AccessLocation) return false
+    return other.ref == ref && other.isZero == isZero
+  }
+
+  override fun hashCode(): Int {
+    var result = ref.hashCode()
+    result = 31 * result + isZero.hashCode()
+    return result
+  }
+
+  override fun toString(): String {
+    return if (isZero) "$ref.0" else "$ref"
+  }
+}*/
 
 private val storeUtils = StoreUtils()
 private val storeInfoUtils = StoreInfoUtils()
@@ -120,50 +135,85 @@ class MutableAnalyzerResultWithValue(
   }
 }
 
-class StoreInfo(val analyzer: AbstractAnalyzerBase, val mungoType: MungoType, val type: AnnotatedTypeMirror) : AbstractStoreInfo() {
+class SymbolicFraction {
+  fun intersect(other: SymbolicFraction): SymbolicFraction {
+    return TODO()
+  }
 
-  constructor(prevInfo: StoreInfo, newType: MungoType) : this(prevInfo.analyzer, newType, prevInfo.type)
+  fun leastUpperBound(other: SymbolicFraction): SymbolicFraction {
+    return TODO()
+  }
+}
+
+class SymbolicType {
+  fun intersect(other: SymbolicType): SymbolicType {
+    return TODO()
+  }
+
+  fun leastUpperBound(other: SymbolicType): SymbolicType {
+    return TODO()
+  }
+}
+
+class StoreInfo(
+  val analyzer: AbstractAnalyzerBase,
+  val fraction: SymbolicFraction,
+  val mungoType: SymbolicType,
+  val type: AnnotatedTypeMirror,
+  // val packed: Boolean = false,
+  // val packingFraction: SymbolicFraction,
+) : AbstractStoreInfo() {
+
+  constructor(prevInfo: StoreInfo, newFraction: SymbolicFraction, newType: SymbolicType) : this(prevInfo.analyzer, newFraction, newType, prevInfo.type)
 
   val underlyingType: TypeMirror = type.underlyingType
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is StoreInfo) return false
+    if (fraction != other.fraction) return false
     if (mungoType != other.mungoType) return false
     return analyzer.utils.isSameType(underlyingType, other.underlyingType)
     // TODO infinite loop? return EQUALITY_COMPARER.visit(type, other.type, analyzer)
   }
 
   override fun hashCode(): Int {
-    return mungoType.hashCode()
+    var result = fraction.hashCode()
+    result = 31 * result + mungoType.hashCode()
+    return result
   }
 
   override fun toString(): String {
-    return "StoreInfo{$mungoType, $type}"
+    return "StoreInfo{$fraction, $mungoType, $type}"
   }
 }
 
 class Store(
-  private val accesses: Map<AccessLocation, SymbolicFraction> = emptyMap(),
-  private val typeofs: Map<Reference, SymbolicType> = emptyMap(),
+  private val map: Map<Reference, StoreInfo> = emptyMap(),
   private val equalities: EqualityTracker = EqualityTracker()
 ) : AbstractStore<Store, MutableStore>() {
 
+  operator fun contains(ref: Reference) = map.contains(ref)
+  operator fun get(ref: Reference): StoreInfo? = map[ref]
+  operator fun iterator(): Iterator<Map.Entry<Reference, StoreInfo>> = map.iterator()
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
-    return other is Store && accesses == other.accesses && typeofs == other.typeofs && equalities == other.equalities
+    return other is Store && map == other.map && equalities == other.equalities
   }
 
   override fun hashCode(): Int {
-    return accesses.hashCode()
+    return map.hashCode()
   }
 
   override fun toString(): String {
-    return "Store" // TODO
+    val accessesStr = map.map { (l, i) -> "acc($l,${i.fraction})" }.joinToString(" && ")
+    val typeofsStr = map.map { (l, i) -> "typeof($l,${i.type})" }.joinToString(" && ")
+    return "$accessesStr && $typeofsStr"
   }
 
   override fun toMutable(): MutableStore {
-    return MutableStore(accesses.toMutableMap(), typeofs.toMutableMap(), equalities.toMutable())
+    return MutableStore(map.toMutableMap(), equalities.toMutable())
   }
 
   override fun toImmutable(): Store {
@@ -172,54 +222,40 @@ class Store(
 }
 
 class MutableStore(
-  private val accesses: MutableMap<AccessLocation, SymbolicFraction> = mutableMapOf(),
-  private val typeofs: MutableMap<Reference, SymbolicType> = mutableMapOf(),
+  private val map: MutableMap<Reference, StoreInfo> = mutableMapOf(),
   private val equalities: MutableEqualityTracker = MutableEqualityTracker()
 ) : AbstractMutableStore<Store, MutableStore>() {
 
-  constructor(locations: Collection<Reference>) : this() {
-    for (loc in locations) {
-      accesses[AccessLocation(loc, false)] = SymbolicFraction()
-      typeofs[loc] = SymbolicType()
-    }
+  operator fun contains(ref: Reference) = map.contains(ref)
+  operator fun get(ref: Reference): StoreInfo? = map[ref]
+  operator fun iterator(): Iterator<Map.Entry<Reference, StoreInfo>> = map.iterator()
+
+  operator fun set(ref: Reference, info: StoreInfo) {
+    map[ref] = info
   }
-  
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
-    return other is MutableStore && accesses == other.accesses && typeofs == other.typeofs && equalities == other.equalities
+    return other is MutableStore && map == other.map // TODO && equalities == other.equalities
   }
 
   override fun hashCode(): Int {
-    return accesses.hashCode()
+    return map.hashCode()
   }
 
   override fun toString(): String {
-    return "Store" // TODO
+    val accessesStr = map.map { (l, i) -> "acc($l,${i.fraction})" }.joinToString(" && ")
+    val typeofsStr = map.map { (l, i) -> "typeof($l,${i.type})" }.joinToString(" && ")
+    return "$accessesStr && $typeofsStr"
   }
 
   override fun toMutable(): MutableStore {
-    return MutableStore(accesses.toMutableMap(), typeofs.toMutableMap(), equalities.toMutable())
+    return MutableStore(map.toMutableMap(), equalities.toMutable())
   }
 
   override fun toImmutable(): Store {
-    return Store(accesses.toMap(), typeofs.toMap(), equalities.toImmutable())
+    return Store(map.toMap(), equalities.toImmutable())
   }
-
-  fun addAccess(loc: AccessLocation, fraction: SymbolicFraction) {
-    accesses[loc] = fraction
-  }
-
-  fun addTypeof(loc: Reference, type: SymbolicType) {
-    typeofs[loc] = type
-  }
-
-  fun addEq(x: Reference, y: Reference) {
-    equalities.setEquality(x, y)
-  }
-
-  fun getAccess(loc: AccessLocation) = accesses[loc]
-
-  fun getTypeof(loc: Reference) = typeofs[loc]
 
   fun merge(ref: Reference, info: StoreInfo) {
     map.compute(ref) { _, curr -> if (curr == null) info else storeInfoUtils.merge(curr, info) }
@@ -263,14 +299,17 @@ class MutableStore(
 
   override fun toBottom(): MutableStore {
     for ((key, value) in map) {
-      map[key] = StoreInfo(value, MungoBottomType.SINGLETON)
+      val newInfo = StoreInfo(value, SymbolicFraction(), SymbolicType())
+      map[key] = newInfo
+      // TODO newInfo.fraction == 1
+      // TODO newInfo.mungoType <: Bottom
     }
     return this
   }
 
   override fun invalidate(analyzer: AbstractAnalyzerBase): MutableStore {
     for ((key, value) in map) {
-      map[key] = StoreInfo(value, analyzer.getInvalidated(key.type))
+      map[key] = StoreInfo(value, SymbolicFraction(), SymbolicType())
     }
     return this
   }
@@ -278,7 +317,7 @@ class MutableStore(
   override fun invalidateFields(analyzer: AbstractAnalyzerBase): MutableStore {
     for ((key, value) in map) {
       if (key.isThisField()) {
-        map[key] = StoreInfo(value, analyzer.getInvalidated(key.type))
+        map[key] = StoreInfo(value, SymbolicFraction(), SymbolicType())
       }
     }
     return this
@@ -287,7 +326,7 @@ class MutableStore(
   override fun invalidatePublicFields(analyzer: AbstractAnalyzerBase): MutableStore {
     for ((key, value) in map) {
       if (key.isThisField() && key is FieldAccess && key.isNonPrivate) {
-        map[key] = StoreInfo(value, analyzer.getInvalidated(key.type))
+        map[key] = StoreInfo(value, SymbolicFraction(), SymbolicType())
       }
     }
     return this
@@ -336,6 +375,7 @@ class StoreInfoUtils : AbstractStoreInfoUtils<StoreInfo>() {
     val mostSpecific = analyzer.utils.mostSpecific(a.underlyingType, b.underlyingType)
     return StoreInfo(
       analyzer,
+      a.fraction.leastUpperBound(b.fraction),
       a.mungoType.leastUpperBound(b.mungoType),
       if (mostSpecific === a.underlyingType) b.type else a.type
       // TODO this breaks the tests: analyzer.utils.createType(type, a.type.isDeclaration)
@@ -347,6 +387,7 @@ class StoreInfoUtils : AbstractStoreInfoUtils<StoreInfo>() {
     val mostSpecific = analyzer.utils.mostSpecific(a.underlyingType, b.underlyingType)
     return StoreInfo(
       analyzer,
+      a.fraction.intersect(b.fraction),
       a.mungoType.intersect(b.mungoType),
       if (mostSpecific === a.underlyingType) a.type else b.type
     )
@@ -399,10 +440,6 @@ class Inferrer(checker: MungoChecker) : AbstractAnalyzer<
   }
 
   override fun getInitialInfo(node: Node): StoreInfo {
-    TODO("Not yet implemented")
-  }
-
-  override fun getInvalidated(type: TypeMirror): MungoType {
     TODO("Not yet implemented")
   }
 

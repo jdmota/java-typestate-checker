@@ -5,6 +5,7 @@ import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.ClassInfo
+import org.checkerframework.checker.mungo.analysis.StoreInfo
 import org.checkerframework.checker.mungo.analysis.Worklist
 import org.checkerframework.checker.mungo.analysis.prepareClass
 import org.checkerframework.checker.mungo.typecheck.MungoType
@@ -19,18 +20,13 @@ import org.checkerframework.dataflow.cfg.UnderlyingAST.*
 import org.checkerframework.dataflow.cfg.block.*
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFCFGBuilder
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.Pair
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
 import javax.lang.model.type.TypeMirror
 import org.checkerframework.dataflow.analysis.Store.Kind as StoreKind
-
-abstract class AbstractAnalyzerBase(val checker: MungoChecker) {
-  val utils get() = checker.utils
-
-  abstract fun getInvalidated(type: TypeMirror): MungoType
-}
 
 abstract class AbstractAnalyzer<
   AnalyzerResult : AbstractAnalyzerResult<Store, MutableStore>,
@@ -51,7 +47,6 @@ abstract class AbstractAnalyzer<
 
   lateinit var unknown: StoreInfo
 
-  protected val processingEnv = checker.processingEnvironment
   protected val worklist = Worklist()
 
   protected val treeLookup = IdentityHashMap<Tree, MutableSet<Node>>()
@@ -65,13 +60,27 @@ abstract class AbstractAnalyzer<
   protected val storesAtReturnStatements = IdentityHashMap<ReturnNode, AnalyzerResult>()
   protected var returnStatementStores = IdentityHashMap<Tree, List<Pair<ReturnNode, AnalyzerResult?>>>()
 
-  protected lateinit var root: JCTree.JCCompilationUnit
+  abstract fun getInitialInfo(node: Node): StoreInfo
 
-  open fun setRoot(root: CompilationUnitTree) {
-    this.root = root as JCTree.JCCompilationUnit
+  fun getInferredInfoOptional(tree: Tree): StoreInfo? {
+    val nodes = treeLookup[tree] ?: emptySet()
+    var info: StoreInfo? = null
+    for (node in nodes) {
+      if (info == null) {
+        info = nodeValues[node]
+      } else {
+        val other = nodeValues[node]
+        if (other != null) {
+          info = storeInfoUtils.merge(info, other)
+        }
+      }
+    }
+    return info
   }
 
-  abstract fun getInitialInfo(node: Node): StoreInfo
+  fun getInferredInfo(tree: Tree): StoreInfo {
+    return getInferredInfoOptional(tree) ?: unknown
+  }
 
   // Some inference results depend on nodeValues, which might have changed.
   // We track these dependencies so that we can rerun blocks even if the stores did not change.
