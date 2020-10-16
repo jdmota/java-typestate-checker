@@ -2,19 +2,18 @@ package org.checkerframework.checker.mungo.assertions
 
 import com.sun.source.tree.ClassTree
 import com.sun.source.tree.CompilationUnitTree
-import com.sun.source.tree.Tree
 import com.sun.source.tree.VariableTree
+import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.abstract_analysis.*
 import org.checkerframework.checker.mungo.analysis.FieldAccess
 import org.checkerframework.checker.mungo.analysis.Reference
-import org.checkerframework.checker.mungo.typecheck.MungoBottomType
-import org.checkerframework.checker.mungo.typecheck.MungoType
-import org.checkerframework.checker.mungo.typecheck.MungoUnionType
-import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
+import org.checkerframework.dataflow.cfg.node.ImplicitThisLiteralNode
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.framework.type.AnnotatedTypeMirror
+import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import javax.lang.model.type.TypeMirror
 
 /*class AccessLocation(val ref: Reference, val isZero: Boolean) {
@@ -439,8 +438,27 @@ class Inferrer(checker: MungoChecker) : AbstractAnalyzer<
     super.setRoot(root)
   }
 
+  private val nodeToInfo = WeakIdentityHashMap<Node, StoreInfo>()
+
   override fun getInitialInfo(node: Node): StoreInfo {
-    TODO("Not yet implemented")
+    return nodeToInfo.computeIfAbsent(node) {
+      if (node is ImplicitThisLiteralNode) {
+        val annotatedType = utils.factory.createType(node.type, false)
+        StoreInfo(
+          this,
+          SymbolicFraction(),
+          SymbolicType(),
+          annotatedType
+        )
+      } else {
+        val tree = node.tree
+        if (tree != null && TreeUtils.canHaveTypeAnnotation(tree)) {
+          StoreInfo(this, SymbolicFraction(), SymbolicType(), utils.factory.getAnnotatedType(tree))
+        } else {
+          StoreInfo(this, SymbolicFraction(), SymbolicType(), utils.factory.createType(Type.noType, false))
+        }
+      }
+    }
   }
 
   override fun handleUninitializedField(store: MutableStore, field: VariableTree, ct: ClassTree) {

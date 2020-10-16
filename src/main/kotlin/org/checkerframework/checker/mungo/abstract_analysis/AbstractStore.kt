@@ -2,17 +2,17 @@ package org.checkerframework.checker.mungo.abstract_analysis
 
 abstract class AbstractStoreInfo
 
-abstract class AbstractStoreInfoUtils<StoreInfo: AbstractStoreInfo> {
+abstract class AbstractStoreInfoUtils<StoreInfo : AbstractStoreInfo> {
   abstract fun merge(a: StoreInfo, b: StoreInfo): StoreInfo
   abstract fun intersect(a: StoreInfo, b: StoreInfo): StoreInfo
 }
 
-abstract class AbstractStore<Store: AbstractStore<Store, MutableStore>, MutableStore: AbstractMutableStore<Store, MutableStore>> {
+abstract class AbstractStore<Store : AbstractStore<Store, MutableStore>, MutableStore : AbstractMutableStore<Store, MutableStore>> {
   abstract fun toMutable(): MutableStore
   abstract fun toImmutable(): Store
 }
 
-abstract class AbstractMutableStore<Store: AbstractStore<Store, MutableStore>, MutableStore: AbstractMutableStore<Store, MutableStore>> {
+abstract class AbstractMutableStore<Store : AbstractStore<Store, MutableStore>, MutableStore : AbstractMutableStore<Store, MutableStore>> {
   abstract fun toMutable(): MutableStore
   abstract fun toImmutable(): Store
   abstract fun merge(other: Store)
@@ -25,10 +25,15 @@ abstract class AbstractMutableStore<Store: AbstractStore<Store, MutableStore>, M
   abstract fun invalidatePublicFields(analyzer: AbstractAnalyzerBase): MutableStore
 }
 
-abstract class AbstractStoreUtils<Store: AbstractStore<Store, MutableStore>, MutableStore: AbstractMutableStore<Store, MutableStore>> {
+abstract class AbstractStoreUtils<Store : AbstractStore<Store, MutableStore>, MutableStore : AbstractMutableStore<Store, MutableStore>> {
   abstract fun emptyStore(): Store
   abstract fun mutableEmptyStore(): MutableStore
   abstract fun merge(a: Store, b: Store): Store
   abstract fun mutableMergeFields(a: Store, b: Store): MutableStore
+
+  fun optionalMerge(a: Store?, b: Store): Store {
+    if (a == null) return b
+    return merge(a, b)
+  }
 }
 

@@ -45,8 +45,6 @@ abstract class AbstractAnalyzer<
   val analyzerResultsUtils: AnalyzerResultsUtils
 ) : AbstractAnalyzerBase(checker) {
 
-  lateinit var unknown: StoreInfo
-
   protected val worklist = Worklist()
 
   protected val treeLookup = IdentityHashMap<Tree, MutableSet<Node>>()
@@ -76,10 +74,6 @@ abstract class AbstractAnalyzer<
       }
     }
     return info
-  }
-
-  fun getInferredInfo(tree: Tree): StoreInfo {
-    return getInferredInfoOptional(tree) ?: unknown
   }
 
   // Some inference results depend on nodeValues, which might have changed.
@@ -534,15 +528,16 @@ abstract class AbstractAnalyzer<
     s: Store,
     kind: StoreKind
   ) {
+    val empty = storeUtils.emptyStore()
     val input = inputs[b]
-    val thenStore = input?.getThen() ?: storeUtils.emptyStore()
-    val elseStore = input?.getElse() ?: storeUtils.emptyStore()
+    val thenStore = input?.getThen()
+    val elseStore = input?.getElse()
     when (kind) {
       StoreKind.THEN -> {
         // Update the then store
-        val newThenStore = storeUtils.merge(s, thenStore)
+        val newThenStore = storeUtils.optionalMerge(thenStore, s)
         if (input == null || newThenStore != thenStore) {
-          inputs[b] = analyzerResultsUtils.createAnalyzerResult(newThenStore, elseStore)
+          inputs[b] = analyzerResultsUtils.createAnalyzerResult(newThenStore, elseStore ?: empty)
           addToWorklist(b)
         } else if (didNodeValuesChange(b)) {
           addToWorklist(b)
@@ -550,9 +545,9 @@ abstract class AbstractAnalyzer<
       }
       StoreKind.ELSE -> {
         // Update the else store
-        val newElseStore = storeUtils.merge(s, elseStore)
+        val newElseStore = storeUtils.optionalMerge(elseStore, s)
         if (input == null || newElseStore != elseStore) {
-          inputs[b] = analyzerResultsUtils.createAnalyzerResult(thenStore, newElseStore)
+          inputs[b] = analyzerResultsUtils.createAnalyzerResult(thenStore ?: empty, newElseStore)
           addToWorklist(b)
         } else if (didNodeValuesChange(b)) {
           addToWorklist(b)
@@ -562,7 +557,7 @@ abstract class AbstractAnalyzer<
         val sameStore = thenStore === elseStore
         if (sameStore) {
           // Currently there is only one regular store
-          val newStore = storeUtils.merge(s, thenStore)
+          val newStore = storeUtils.optionalMerge(thenStore, s)
           if (input == null || newStore != thenStore) {
             inputs[b] = analyzerResultsUtils.createAnalyzerResult(newStore, newStore)
             addToWorklist(b)
@@ -570,8 +565,8 @@ abstract class AbstractAnalyzer<
             addToWorklist(b)
           }
         } else {
-          val newThenStore = storeUtils.merge(s, thenStore)
-          val newElseStore = storeUtils.merge(s, elseStore)
+          val newThenStore = storeUtils.optionalMerge(thenStore, s)
+          val newElseStore = storeUtils.optionalMerge(elseStore, s)
           if (input == null || newThenStore != thenStore || newElseStore != elseStore) {
             inputs[b] = analyzerResultsUtils.createAnalyzerResult(newThenStore, newElseStore)
             addToWorklist(b)
