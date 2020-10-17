@@ -2,6 +2,19 @@ package org.checkerframework.checker.mungo.assertions
 
 class Constraints {
 
+  private val debug = mutableListOf<String>()
+
+  fun print() {
+    for (str in debug) {
+      println(str)
+    }
+  }
+
+  fun implies(a: SymbolicAssertion, b: SymbolicAssertion) {
+    // TODO
+    debug.add("${a.id} ==> ${b.id}")
+  }
+
   fun implies(a: SymbolicFraction, b: SymbolicFraction) {
     // access(x, a) ==> access(x, b)
     // a >= b
