@@ -8,6 +8,7 @@ import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.abstract_analysis.*
 import org.checkerframework.checker.mungo.analysis.FieldAccess
 import org.checkerframework.checker.mungo.analysis.Reference
+import org.checkerframework.checker.mungo.analysis.getReference
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.node.ImplicitThisLiteralNode
 import org.checkerframework.dataflow.cfg.node.Node
@@ -434,16 +435,22 @@ class Inferrer(checker: MungoChecker) : AbstractAnalyzer<
     }
   }
 
-  override fun handleUninitializedField(store: MutableStore, field: VariableTree, ct: ClassTree) {
-    TODO("Not yet implemented")
-  }
+  private val locations = LocationsGatherer(this)
 
   override fun initialStore(capturedStore: Store, cfg: ControlFlowGraph): Store {
-    TODO("Not yet implemented")
+    val locs = locations.getLocations(cfg.underlyingAST)
+    val store = storeUtils.mutableEmptyStore()
+    for ((ref, typeMirror) in locs) {
+      store[ref] = StoreInfo(this, SymbolicFraction(this), SymbolicType(this), utils.factory.createType(typeMirror, false))
+    }
+    // TODO join captured
+    return store.toImmutable()
   }
 
+  private val visitor = ConstraintsInference()
+
   override fun visit(node: Node, mutableResult: MutableAnalyzerResultWithValue) {
-    TODO("Not yet implemented")
+    node.accept(visitor, mutableResult)
   }
 
   val constraints = Constraints()

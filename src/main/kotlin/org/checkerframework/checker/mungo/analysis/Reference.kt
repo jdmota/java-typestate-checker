@@ -105,6 +105,16 @@ fun createFieldAccess(tree: VariableTree, classTree: ClassTree): FieldAccess {
   return FieldAccess(ThisReference(receiverType), type, element)
 }
 
+fun createFieldAccess(receiver: Reference, tree: VariableTree): FieldAccess {
+  val type = TreeUtils.elementFromDeclaration(tree).asType()
+  val element = TreeUtils.elementFromTree(tree) as VariableElement
+  return FieldAccess(receiver, type, element)
+}
+
+fun createLocalVariable(tree: VariableTree): LocalVariable {
+  return LocalVariable(LocalVariableNode(tree))
+}
+
 class FieldAccess(val receiver: Reference, type: TypeMirror, val field: VariableElement) : Reference(type) {
   val isFinal get() = ElementUtils.isFinal(field)
   val isStatic get() = ElementUtils.isStatic(field)

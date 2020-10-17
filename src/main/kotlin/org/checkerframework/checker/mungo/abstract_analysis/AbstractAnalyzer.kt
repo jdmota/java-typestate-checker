@@ -2,13 +2,12 @@ package org.checkerframework.checker.mungo.abstract_analysis
 
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.ClassInfo
-import org.checkerframework.checker.mungo.analysis.StoreInfo
 import org.checkerframework.checker.mungo.analysis.Worklist
 import org.checkerframework.checker.mungo.analysis.prepareClass
-import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typestate.graph.AbstractState
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.Graph
@@ -18,14 +17,15 @@ import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.UnderlyingAST.*
 import org.checkerframework.dataflow.cfg.block.*
-import org.checkerframework.dataflow.cfg.node.*
+import org.checkerframework.dataflow.cfg.node.BooleanLiteralNode
+import org.checkerframework.dataflow.cfg.node.ConditionalNotNode
+import org.checkerframework.dataflow.cfg.node.Node
+import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFCFGBuilder
-import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.Pair
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
-import javax.lang.model.type.TypeMirror
 import org.checkerframework.dataflow.analysis.Store.Kind as StoreKind
 
 abstract class AbstractAnalyzer<
@@ -145,8 +145,6 @@ abstract class AbstractAnalyzer<
     }
   }
 
-  abstract fun handleUninitializedField(store: MutableStore, field: VariableTree, ct: ClassTree)
-
   private fun run(classQueue: Queue<Pair<ClassTree, Store>>, classTree: JCTree.JCClassDecl, info: ClassInfo, graph: Graph?) {
     val lambdaQueue: Queue<Pair<LambdaExpressionTree, Store>> = ArrayDeque()
 
@@ -159,19 +157,17 @@ abstract class AbstractAnalyzer<
 
     // Analyze fields
     for (field in info.fields) {
-      val initializer = field.initializer
-      if (initializer != null) {
-        currentStore = run(
-          classQueue,
-          lambdaQueue,
-          CFGStatement(field, classTree),
-          currentStore
-        ).getRegular()
-      } else {
-        val store = currentStore.toMutable()
-        handleUninitializedField(store, field, classTree)
-        currentStore = store.toImmutable()
+      if ((field as JCTree.JCVariableDecl).initializer == null) {
+        val nullTree = utils.maker.Literal(TypeTag.BOT, null)
+        nullTree.pos = field.pos
+        field.init = nullTree
       }
+      currentStore = run(
+        classQueue,
+        lambdaQueue,
+        CFGStatement(field, classTree),
+        currentStore
+      ).getRegular()
     }
 
     // Analyze blocks

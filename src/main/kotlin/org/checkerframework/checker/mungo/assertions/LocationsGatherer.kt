@@ -6,7 +6,7 @@ import com.sun.source.tree.VariableTree
 import com.sun.source.util.TreePathScanner
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
-import org.checkerframework.checker.mungo.analysis.prepareClass
+import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.utils.treeToElement
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
@@ -26,51 +26,51 @@ class LocationsGatherer(private val inferrer: Inferrer) : TreePathScanner<Void?,
     return emptyList()
   }
 
-  private fun getLocations(name: String, element: Element): MutableList<Pair<String, TypeMirror>> {
+  private fun getLocations(name: Reference, element: Element): MutableList<Pair<Reference, TypeMirror>> {
     val list = mutableListOf(Pair(name, element.asType()))
     getFields(element).forEach { list.addAll(getLocations(name, it)) }
     return list
   }
 
-  private fun getLocations(prefix: String, tree: VariableTree): MutableList<Pair<String, TypeMirror>> {
-    val name = if (prefix.isEmpty()) tree.name.toString() else "$prefix.${tree.name}"
+  private fun getLocations(prefix: Reference?, tree: VariableTree): MutableList<Pair<Reference, TypeMirror>> {
+    val name = if (prefix == null) createLocalVariable(tree) else createFieldAccess(prefix, tree)
     val element = treeToElement(tree)
     return getLocations(name, element)
   }
 
-  private fun getLocations(method: JCTree.JCLambda): List<Pair<String, TypeMirror>> {
+  private fun getLocations(method: JCTree.JCLambda): List<Pair<Reference, TypeMirror>> {
     return cache.computeIfAbsent(method) {
-      val list = mutableListOf<Pair<String, TypeMirror>>()
-      method.parameters.forEach { list.addAll(getLocations("", it)) }
+      val list = mutableListOf<Pair<Reference, TypeMirror>>()
+      method.parameters.forEach { list.addAll(getLocations(null, it)) }
       list
     }
   }
 
-  private val cache = WeakIdentityHashMap<Tree, List<Pair<String, TypeMirror>>>()
+  private val cache = WeakIdentityHashMap<Tree, List<Pair<Reference, TypeMirror>>>()
 
-  private fun getLocations(method: JCTree.JCMethodDecl): List<Pair<String, TypeMirror>> {
+  private fun getLocations(method: JCTree.JCMethodDecl): List<Pair<Reference, TypeMirror>> {
     return cache.computeIfAbsent(method) {
       val sym = method.sym
-      val list = if (sym.isConstructor || sym.isStatic) {
+      val list = if (sym.isStatic) {
         mutableListOf()
       } else {
-        getLocations("this", sym.enclosingElement)
+        getLocations(ThisReference(sym.enclosingElement.asType()), sym.enclosingElement)
       }
-      method.parameters.forEach { list.addAll(getLocations("", it)) }
+      method.parameters.forEach { list.addAll(getLocations(null, it)) }
       list
     }
   }
 
-  fun getLocations(sym: Symbol.MethodSymbol): List<Pair<String, TypeMirror>>? {
-    val tree = inferrer.utils.treeUtils.getTree(sym) ?: return null
+  fun getLocations(sym: Symbol.MethodSymbol): List<Pair<Reference, TypeMirror>> {
+    val tree = inferrer.utils.treeUtils.getTree(sym) ?: return emptyList()
     return getLocations(tree as JCTree.JCMethodDecl)
   }
 
-  fun getLocations(ast: UnderlyingAST): List<Pair<String, TypeMirror>>? {
+  fun getLocations(ast: UnderlyingAST): List<Pair<Reference, TypeMirror>> {
     return when (ast) {
       is UnderlyingAST.CFGMethod -> getLocations(ast.method as JCTree.JCMethodDecl)
       is UnderlyingAST.CFGLambda -> getLocations(ast.lambdaTree as JCTree.JCLambda)
-      else -> null
+      else -> emptyList() // TODO
     }
   }
 

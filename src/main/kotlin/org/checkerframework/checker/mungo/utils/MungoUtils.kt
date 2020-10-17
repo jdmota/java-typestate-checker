@@ -10,6 +10,7 @@ import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.file.JavacFileManager
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
+import com.sun.tools.javac.tree.TreeMaker
 import com.sun.tools.javac.util.JCDiagnostic
 import com.sun.tools.javac.util.Log
 import org.checkerframework.checker.mungo.analysis.TypeFactory
@@ -34,6 +35,7 @@ class MungoUtils(val checker: SourceChecker) {
   val ctx = env.context
   val symtab = Symtab.instance(ctx)
   val log = Log.instance(ctx)
+  val maker = TreeMaker.instance(ctx)
   val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
 
   val treeUtils = checker.treeUtils
