@@ -28,12 +28,20 @@ abstract class AbstractMutableStore<Store : AbstractStore<Store, MutableStore>, 
 abstract class AbstractStoreUtils<Store : AbstractStore<Store, MutableStore>, MutableStore : AbstractMutableStore<Store, MutableStore>> {
   abstract fun emptyStore(): Store
   abstract fun mutableEmptyStore(): MutableStore
-  abstract fun merge(a: Store, b: Store): Store
-  abstract fun mutableMergeFields(a: Store, b: Store): MutableStore
 
-  fun optionalMerge(a: Store?, b: Store): Store {
+  fun merge(a: Store?, b: Store): Store {
     if (a == null) return b
-    return merge(a, b)
+    if (a === b) return a
+    val newStore = a.toMutable()
+    newStore.merge(b)
+    return newStore.toImmutable()
+  }
+
+  fun mutableMergeFields(a: Store, b: Store): MutableStore {
+    val newStore = mutableEmptyStore()
+    newStore.mergeFields(a)
+    newStore.mergeFields(b)
+    return newStore
   }
 }
 

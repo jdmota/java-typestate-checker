@@ -29,12 +29,21 @@ abstract class AbstractAnalyzerResultUtils<
   AnalyzerResult : AbstractAnalyzerResult<Store, MutableStore>,
   MutableAnalyzerResult : AbstractMutableAnalyzerResult<Store, MutableStore, AnalyzerResult>,
   MutableAnalyzerResultWithValue : AbstractMutableAnalyzerResultWithValue<StoreInfo, Store, MutableStore, AnalyzerResult>
-  > {
+  >(private val storeUtils: AbstractStoreUtils<Store, MutableStore>) {
   abstract fun createAnalyzerResult(thenStore: MutableStore, elseStore: MutableStore): AnalyzerResult
   abstract fun createAnalyzerResult(thenStore: Store, elseStore: Store): AnalyzerResult
-  abstract fun createAnalyzerResult(result: MutableAnalyzerResult): AnalyzerResult
-  abstract fun createAnalyzerResult(): AnalyzerResult
   abstract fun createMutableAnalyzerResult(thenStore: MutableStore, elseStore: MutableStore): MutableAnalyzerResult
-  abstract fun createMutableAnalyzerResult(): MutableAnalyzerResult
   abstract fun createMutableAnalyzerResultWithValue(value: StoreInfo, result: AnalyzerResult): MutableAnalyzerResultWithValue
+
+  fun createAnalyzerResult(result: MutableAnalyzerResult): AnalyzerResult {
+    return createAnalyzerResult(result.getThen(), result.getElse())
+  }
+
+  fun createAnalyzerResult(): AnalyzerResult {
+    return createAnalyzerResult(storeUtils.emptyStore(), storeUtils.emptyStore())
+  }
+
+  fun createMutableAnalyzerResult(): MutableAnalyzerResult {
+    return createMutableAnalyzerResult(storeUtils.mutableEmptyStore(), storeUtils.mutableEmptyStore())
+  }
 }

@@ -38,12 +38,11 @@ abstract class AbstractAnalyzer<
   StoreUtils : AbstractStoreUtils<Store, MutableStore>,
   StoreInfoUtils : AbstractStoreInfoUtils<StoreInfo>,
   AnalyzerResultsUtils : AbstractAnalyzerResultUtils<StoreInfo, Store, MutableStore, AnalyzerResult, MutableAnalyzerResult, MutableAnalyzerResultWithValue>
-  >(
-  checker: MungoChecker,
-  val storeUtils: StoreUtils,
-  val storeInfoUtils: StoreInfoUtils,
-  val analyzerResultsUtils: AnalyzerResultsUtils
-) : AbstractAnalyzerBase(checker) {
+  >(checker: MungoChecker) : AbstractAnalyzerBase(checker) {
+
+  lateinit var storeUtils: StoreUtils
+  lateinit var storeInfoUtils: StoreInfoUtils
+  lateinit var analyzerResultsUtils: AnalyzerResultsUtils
 
   protected val worklist = Worklist()
 
@@ -59,22 +58,6 @@ abstract class AbstractAnalyzer<
   protected var returnStatementStores = IdentityHashMap<Tree, List<Pair<ReturnNode, AnalyzerResult?>>>()
 
   abstract fun getInitialInfo(node: Node): StoreInfo
-
-  fun getInferredInfoOptional(tree: Tree): StoreInfo? {
-    val nodes = treeLookup[tree] ?: emptySet()
-    var info: StoreInfo? = null
-    for (node in nodes) {
-      if (info == null) {
-        info = nodeValues[node]
-      } else {
-        val other = nodeValues[node]
-        if (other != null) {
-          info = storeInfoUtils.merge(info, other)
-        }
-      }
-    }
-    return info
-  }
 
   // Some inference results depend on nodeValues, which might have changed.
   // We track these dependencies so that we can rerun blocks even if the stores did not change.
@@ -103,18 +86,7 @@ abstract class AbstractAnalyzer<
     return resultsExit[tree]?.getRegular()
   }
 
-  fun getResultBefore(tree: Tree): AnalyzerResult {
-    val nodes = treeLookup[tree] ?: emptySet()
-    val result = analyzerResultsUtils.createMutableAnalyzerResult()
-    for (node in nodes) {
-      resultsBefore[node]?.let { result.merge(it) }
-    }
-    return analyzerResultsUtils.createAnalyzerResult(result)
-  }
-
   fun getResultBefore(node: Node) = resultsBefore[node] ?: analyzerResultsUtils.createAnalyzerResult()
-
-  fun getStoreBefore(tree: Tree) = getResultBefore(tree).getRegular()
 
   fun getStoreBefore(node: Node) = getResultBefore(node).getRegular()
 
@@ -535,7 +507,7 @@ abstract class AbstractAnalyzer<
     when (kind) {
       StoreKind.THEN -> {
         // Update the then store
-        val newThenStore = storeUtils.optionalMerge(thenStore, s)
+        val newThenStore = storeUtils.merge(thenStore, s)
         if (input == null || newThenStore != thenStore) {
           inputs[b] = analyzerResultsUtils.createAnalyzerResult(newThenStore, elseStore ?: empty)
           addToWorklist(b)
@@ -545,7 +517,7 @@ abstract class AbstractAnalyzer<
       }
       StoreKind.ELSE -> {
         // Update the else store
-        val newElseStore = storeUtils.optionalMerge(elseStore, s)
+        val newElseStore = storeUtils.merge(elseStore, s)
         if (input == null || newElseStore != elseStore) {
           inputs[b] = analyzerResultsUtils.createAnalyzerResult(thenStore ?: empty, newElseStore)
           addToWorklist(b)
@@ -557,7 +529,7 @@ abstract class AbstractAnalyzer<
         val sameStore = thenStore === elseStore
         if (sameStore) {
           // Currently there is only one regular store
-          val newStore = storeUtils.optionalMerge(thenStore, s)
+          val newStore = storeUtils.merge(thenStore, s)
           if (input == null || newStore != thenStore) {
             inputs[b] = analyzerResultsUtils.createAnalyzerResult(newStore, newStore)
             addToWorklist(b)
@@ -565,8 +537,8 @@ abstract class AbstractAnalyzer<
             addToWorklist(b)
           }
         } else {
-          val newThenStore = storeUtils.optionalMerge(thenStore, s)
-          val newElseStore = storeUtils.optionalMerge(elseStore, s)
+          val newThenStore = storeUtils.merge(thenStore, s)
+          val newElseStore = storeUtils.merge(elseStore, s)
           if (input == null || newThenStore != thenStore || newElseStore != elseStore) {
             inputs[b] = analyzerResultsUtils.createAnalyzerResult(newThenStore, newElseStore)
             addToWorklist(b)

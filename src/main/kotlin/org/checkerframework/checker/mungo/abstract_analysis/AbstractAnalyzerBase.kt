@@ -24,9 +24,12 @@ abstract class AbstractAnalyzerBase(val checker: MungoChecker) {
   protected lateinit var root: JCTree.JCCompilationUnit
   protected lateinit var typeIntroducer: TypeIntroducer
 
+  open fun setup() {
+    this.typeIntroducer = TypeIntroducer(utils)
+  }
+
   open fun setRoot(root: CompilationUnitTree) {
     this.root = root as JCTree.JCCompilationUnit
-    this.typeIntroducer = TypeIntroducer(utils)
   }
 
   protected fun getInitialType(tree: Tree, type: AnnotatedTypeMirror): MungoType {
