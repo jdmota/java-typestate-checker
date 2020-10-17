@@ -1,12 +1,10 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.sun.source.tree.CompilationUnitTree
-import com.sun.source.tree.LambdaExpressionTree
+import com.sun.source.tree.*
+import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
-import org.checkerframework.checker.mungo.analysis.Reference
-import org.checkerframework.checker.mungo.analysis.ReturnSpecialVar
-import org.checkerframework.checker.mungo.analysis.getReference
+import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.utils.treeToType
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -15,7 +13,11 @@ import org.checkerframework.dataflow.cfg.block.*
 import org.checkerframework.dataflow.cfg.node.ConditionalNotNode
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.dataflow.cfg.node.ReturnNode
+import org.checkerframework.framework.flow.CFCFGBuilder
+import org.checkerframework.javacutil.Pair
+import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
+import java.util.*
 
 class Inferrer(val checker: MungoChecker) {
 
@@ -32,6 +34,128 @@ class Inferrer(val checker: MungoChecker) {
   private val assertions = WeakIdentityHashMap<Node, NodeAssertions>()
   private val specialAssertions = WeakIdentityHashMap<SpecialBlock, NodeAssertions>()
   private val constraints = Constraints()
+
+  fun debug() {
+    for ((node, assertions) in assertions) {
+      if (assertions.preThen !== assertions.preElse) {
+        println("then: ${assertions.preThen}; else: ${assertions.preElse}")
+      } else {
+        println(assertions.preThen)
+      }
+      println(node)
+      if (assertions.postThen !== assertions.postElse) {
+        println("then: ${assertions.postThen}; else: ${assertions.postElse}")
+      } else {
+        println(assertions.postThen)
+      }
+    }
+    println("----")
+    constraints.debug()
+  }
+
+  fun run(classTree: ClassTree) {
+    val classQueue: Queue<Pair<ClassTree, Set<Reference>>> = ArrayDeque()
+    classQueue.add(Pair.of(classTree, emptySet()))
+
+    while (!classQueue.isEmpty()) {
+      val qel = classQueue.remove()
+      val ct = qel.first as JCTree.JCClassDecl
+      val outerLocations = qel.second
+
+      val info = prepareClass(ct)
+      run(classQueue, ct, info.static, outerLocations)
+      run(classQueue, ct, info.nonStatic, outerLocations)
+    }
+  }
+
+  private fun run(
+    classQueue: Queue<Pair<ClassTree, Set<Reference>>>,
+    classTree: JCTree.JCClassDecl,
+    info: ClassInfo,
+    outerLocations: Set<Reference>
+  ) {
+    val lambdaQueue: Queue<Pair<LambdaExpressionTree, Set<Reference>>> = ArrayDeque()
+
+    // Analyze fields
+    for (field in info.fields) {
+      if ((field as JCTree.JCVariableDecl).initializer == null) {
+        val nullTree = utils.maker.Literal(TypeTag.BOT, null)
+        nullTree.pos = field.pos
+        field.init = nullTree
+      }
+      run(
+        classQueue,
+        lambdaQueue,
+        UnderlyingAST.CFGStatement(field, classTree),
+        outerLocations
+      )
+    }
+
+    // Analyze blocks
+    for (block in info.blocks) {
+      run(
+        classQueue,
+        lambdaQueue,
+        UnderlyingAST.CFGStatement(block, classTree),
+        outerLocations
+      )
+    }
+
+    // Analyze methods
+    for (method in info.methods) {
+      run(
+        classQueue,
+        lambdaQueue,
+        UnderlyingAST.CFGMethod(method, classTree),
+        outerLocations
+      )
+    }
+
+    // Analyze lambdas
+    while (!lambdaQueue.isEmpty()) {
+      val lambdaPair = lambdaQueue.poll()
+      val mt = TreeUtils.enclosingOfKind(utils.getPath(lambdaPair.first, root), Tree.Kind.METHOD) as MethodTree
+      run(
+        classQueue,
+        lambdaQueue,
+        UnderlyingAST.CFGLambda(lambdaPair.first, classTree, mt),
+        lambdaPair.second
+      )
+    }
+  }
+
+  private fun astToTree(ast: UnderlyingAST) = when (ast) {
+    is UnderlyingAST.CFGMethod -> ast.method
+    is UnderlyingAST.CFGLambda -> ast.code
+    is UnderlyingAST.CFGStatement -> ast.code
+    else -> throw RuntimeException("unknown ast")
+  }
+
+  private val cfgCache = WeakIdentityHashMap<Tree, ControlFlowGraph>()
+
+  private fun run(
+    classQueue: Queue<Pair<ClassTree, Set<Reference>>>,
+    lambdaQueue: Queue<Pair<LambdaExpressionTree, Set<Reference>>>,
+    ast: UnderlyingAST,
+    otherLocations: Set<Reference>
+  ) {
+    val tree = astToTree(ast)
+    val cfg = CFCFGBuilder.build(root, ast, processingEnv)
+    cfgCache[tree] = cfg
+
+    val locations = phase1(cfg).plus(otherLocations)
+    phase2(cfg)
+
+    // Queue classes
+    for (cls in cfg.declaredClasses) {
+      classQueue.add(Pair.of(cls, locations))
+    }
+
+    // Queue lambdas
+    for (lambda in cfg.declaredLambdas) {
+      lambdaQueue.add(Pair.of(lambda, locations))
+    }
+  }
 
   fun phase1(cfg: ControlFlowGraph): Set<Reference> {
     val ast = cfg.underlyingAST

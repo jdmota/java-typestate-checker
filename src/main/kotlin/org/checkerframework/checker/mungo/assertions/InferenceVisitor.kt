@@ -18,6 +18,7 @@ class InferenceVisitor(val checker: MungoChecker) : SourceVisitor<Void?, Void?>(
     utils.factory.setRoot(root)
     inferrer.setRoot(root)
     inferrer.run(classTree)
+    inferrer.debug()
     return null
   }
 

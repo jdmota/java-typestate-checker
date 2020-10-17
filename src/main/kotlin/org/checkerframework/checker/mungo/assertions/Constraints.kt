@@ -4,7 +4,7 @@ class Constraints {
 
   private val debug = mutableListOf<String>()
 
-  fun print() {
+  fun debug() {
     for (str in debug) {
       println(str)
     }
