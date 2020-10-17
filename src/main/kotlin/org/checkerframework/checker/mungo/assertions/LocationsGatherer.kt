@@ -29,7 +29,9 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
   fun getLocations(ref: Reference): MutableList<Reference> {
     val element = checker.utils.typeUtils.asElement(ref.type)
     val list = mutableListOf(ref)
-    getFields(element).forEach { list.addAll(getLocations(ref, it)) }
+    if (element != null) {
+      getFields(element).forEach { list.addAll(getLocations(ref, it)) }
+    }
     return list
   }
 

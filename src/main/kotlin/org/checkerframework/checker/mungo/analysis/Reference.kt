@@ -2,6 +2,7 @@ package org.checkerframework.checker.mungo.analysis
 
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol.VarSymbol
+import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
@@ -44,7 +45,7 @@ fun getReference(node: Node): Reference? {
     is ClassNameNode -> ClassName(node.type)
     is ReturnNode -> ReturnSpecialVar(node.type)
     is VariableDeclarationNode -> getReference(LocalVariableNode(node.tree))
-    is AssignmentNode -> OldSpecialVar(getReference(node.target)!!)
+    is AssignmentNode -> OldSpecialVar(getReference(node.target)!!, (node.tree as JCTree).pos)
     else -> null
   }
 }
@@ -178,7 +179,7 @@ class ClassName(type: TypeMirror) : Reference(type) {
   }
 
   override fun toString(): String {
-    return "ClassName{$typeString}"
+    return "$typeString.class"
   }
 }
 
@@ -231,20 +232,23 @@ class ReturnSpecialVar(type: TypeMirror) : Reference(type) {
   }
 }
 
-class OldSpecialVar(val reference: Reference) : Reference(reference.type) {
+// The "pos" distinguishes between different assignments
+class OldSpecialVar(val reference: Reference, val pos: Int) : Reference(reference.type) {
   override fun isThisField(): Boolean {
     return false
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is OldSpecialVar && reference == other.reference
+    return other is OldSpecialVar && reference == other.reference && pos == other.pos
   }
 
   override fun hashCode(): Int {
-    return reference.hashCode()
+    var result = reference.hashCode()
+    result = 31 * result + pos
+    return result
   }
 
   override fun toString(): String {
-    return "old($reference)"
+    return "old($reference)[$pos]"
   }
 }

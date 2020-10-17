@@ -41,7 +41,7 @@ class MungoChecker : SourceChecker() {
   override fun typeProcessingOver() {
     val visitor = this.visitor
     if (visitor is InferenceVisitor) {
-      visitor.inferrer.print()
+      visitor.inferrer.debug()
     }
   }
 

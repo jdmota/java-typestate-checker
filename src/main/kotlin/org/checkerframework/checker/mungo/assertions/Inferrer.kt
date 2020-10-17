@@ -1,7 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.sun.source.tree.*
-import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
@@ -36,19 +35,6 @@ class Inferrer(val checker: MungoChecker) {
   private val constraints = Constraints()
 
   fun debug() {
-    for ((node, assertions) in assertions) {
-      if (assertions.preThen !== assertions.preElse) {
-        println("then: ${assertions.preThen}; else: ${assertions.preElse}")
-      } else {
-        println(assertions.preThen)
-      }
-      println(node)
-      if (assertions.postThen !== assertions.postElse) {
-        println("then: ${assertions.postThen}; else: ${assertions.postElse}")
-      } else {
-        println(assertions.postThen)
-      }
-    }
     println("----")
     constraints.debug()
   }
@@ -78,17 +64,19 @@ class Inferrer(val checker: MungoChecker) {
 
     // Analyze fields
     for (field in info.fields) {
-      if ((field as JCTree.JCVariableDecl).initializer == null) {
+      /*if ((field as JCTree.JCVariableDecl).initializer == null) {
         val nullTree = utils.maker.Literal(TypeTag.BOT, null)
         nullTree.pos = field.pos
         field.init = nullTree
+      }*/
+      if (field.initializer != null) {
+        run(
+          classQueue,
+          lambdaQueue,
+          UnderlyingAST.CFGStatement(field, classTree),
+          outerLocations
+        )
       }
-      run(
-        classQueue,
-        lambdaQueue,
-        UnderlyingAST.CFGStatement(field, classTree),
-        outerLocations
-      )
     }
 
     // Analyze blocks
@@ -132,18 +120,24 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   private val cfgCache = WeakIdentityHashMap<Tree, ControlFlowGraph>()
+  private var currentLocations = emptySet<Reference>()
 
   private fun run(
     classQueue: Queue<Pair<ClassTree, Set<Reference>>>,
     lambdaQueue: Queue<Pair<LambdaExpressionTree, Set<Reference>>>,
     ast: UnderlyingAST,
-    otherLocations: Set<Reference>
+    outerLocations: Set<Reference>
   ) {
+    // Generate the CFG
     val tree = astToTree(ast)
     val cfg = CFCFGBuilder.build(root, ast, processingEnv)
     cfgCache[tree] = cfg
 
-    val locations = phase1(cfg).plus(otherLocations)
+    // Phase 1: gather locations
+    val locations = phase1(cfg).plus(outerLocations)
+    currentLocations = locations
+
+    // Phase 2: associate assertions before and after each node, and connect implications
     phase2(cfg)
 
     // Queue classes
@@ -155,15 +149,32 @@ class Inferrer(val checker: MungoChecker) {
     for (lambda in cfg.declaredLambdas) {
       lambdaQueue.add(Pair.of(lambda, locations))
     }
+
+    // Debug
+    for (node in cfg.allNodes) {
+      val a = assertions[node]!!
+      if (a.preThen !== a.preElse) {
+        println("then: ${a.preThen}; else: ${a.preElse}")
+      } else {
+        println(a.preThen)
+      }
+      println(node)
+      if (a.postThen !== a.postElse) {
+        println("then: ${a.postThen}; else: ${a.postElse}")
+      } else {
+        println(a.postThen)
+      }
+    }
   }
 
-  fun phase1(cfg: ControlFlowGraph): Set<Reference> {
+  private fun phase1(cfg: ControlFlowGraph): Set<Reference> {
     val ast = cfg.underlyingAST
     val locations = locationsGatherer.getParameterLocations(ast).toMutableSet()
     for (node in cfg.allNodes) {
       getReference(node)?.let { locations.addAll(locationsGatherer.getLocations(it)) }
     }
     // Lambdas with only one expression, do not have explicit return nodes
+    // So add a location representing the return value
     if (ast is UnderlyingAST.CFGLambda) {
       val lambda = ast.lambdaTree
       if (lambda.bodyKind == LambdaExpressionTree.BodyKind.EXPRESSION) {
@@ -173,19 +184,19 @@ class Inferrer(val checker: MungoChecker) {
     return locations
   }
 
-  fun phase2(cfg: ControlFlowGraph) {
+  private fun phase2(cfg: ControlFlowGraph) {
     // Entry
-    val pre = SymbolicAssertion()
-    val entry = NodeAssertions(pre, pre, pre, pre)
+    val preAndPost = SymbolicAssertion(currentLocations)
+    val entry = NodeAssertions(preAndPost, preAndPost, preAndPost, preAndPost)
     specialAssertions[cfg.entryBlock] = entry
 
     // Exits
-    val preThen = SymbolicAssertion()
-    val preElse = SymbolicAssertion()
+    val preThen = SymbolicAssertion(currentLocations)
+    val preElse = SymbolicAssertion(currentLocations)
     specialAssertions[cfg.regularExitBlock] = NodeAssertions(preThen, preElse, preThen, preElse)
 
     // Traverse
-    traverse(entry, cfg.entryBlock, cfg.entryBlock.flowRule)
+    traverse(entry, cfg.entryBlock, Store.FlowRule.EACH_TO_EACH)
   }
 
   private fun traverse(prev: NodeAssertions, block: Block, flowRule: Store.FlowRule) {
@@ -237,22 +248,21 @@ class Inferrer(val checker: MungoChecker) {
     if (!assertions.containsKey(node)) {
       val preThen: SymbolicAssertion
       val preElse: SymbolicAssertion
-      val postThen: SymbolicAssertion
-      val postElse: SymbolicAssertion
-
       if (prev.postThen !== prev.postElse) {
-        preThen = SymbolicAssertion()
-        preElse = SymbolicAssertion()
+        preThen = SymbolicAssertion(currentLocations)
+        preElse = SymbolicAssertion(currentLocations)
       } else {
-        preThen = SymbolicAssertion()
+        preThen = SymbolicAssertion(currentLocations)
         preElse = preThen
       }
 
+      val postThen: SymbolicAssertion
+      val postElse: SymbolicAssertion
       if (shouldEachToEach(node)) {
-        postThen = SymbolicAssertion()
-        postElse = SymbolicAssertion()
+        postThen = SymbolicAssertion(currentLocations)
+        postElse = SymbolicAssertion(currentLocations)
       } else {
-        postThen = SymbolicAssertion()
+        postThen = SymbolicAssertion(currentLocations)
         postElse = postThen
       }
 
