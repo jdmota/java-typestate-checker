@@ -44,6 +44,7 @@ fun getReference(node: Node): Reference? {
     is ClassNameNode -> ClassName(node.type)
     is ReturnNode -> ReturnSpecialVar(node.type)
     is VariableDeclarationNode -> getReference(LocalVariableNode(node.tree))
+    is AssignmentNode -> OldSpecialVar(getReference(node.target)!!)
     else -> null
   }
 }
@@ -222,10 +223,28 @@ class ReturnSpecialVar(type: TypeMirror) : Reference(type) {
   }
 
   override fun hashCode(): Int {
-    return 0
+    return 1
   }
 
   override fun toString(): String {
-    return "ReturnSpecialVar{$type}"
+    return "#ret"
+  }
+}
+
+class OldSpecialVar(val reference: Reference) : Reference(reference.type) {
+  override fun isThisField(): Boolean {
+    return false
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return other is OldSpecialVar && reference == other.reference
+  }
+
+  override fun hashCode(): Int {
+    return reference.hashCode()
+  }
+
+  override fun toString(): String {
+    return "old($reference)"
   }
 }

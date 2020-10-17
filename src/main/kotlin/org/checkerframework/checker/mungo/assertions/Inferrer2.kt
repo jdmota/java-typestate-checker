@@ -1,10 +1,13 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.sun.source.tree.CompilationUnitTree
+import com.sun.source.tree.LambdaExpressionTree
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.Reference
+import org.checkerframework.checker.mungo.analysis.ReturnSpecialVar
 import org.checkerframework.checker.mungo.analysis.getReference
+import org.checkerframework.checker.mungo.utils.treeToType
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
@@ -34,6 +37,13 @@ class Inferrer2(val checker: MungoChecker) {
     val locations = locationsGatherer.getParameterLocations(ast).toMutableSet()
     for (node in cfg.allNodes) {
       getReference(node)?.let { locations.addAll(locationsGatherer.getLocations(it)) }
+    }
+    // Lambdas with only one expression, do not have explicit return nodes
+    if (ast is UnderlyingAST.CFGLambda) {
+      val lambda = ast.lambdaTree
+      if (lambda.bodyKind == LambdaExpressionTree.BodyKind.EXPRESSION) {
+        locations.add(ReturnSpecialVar(treeToType(lambda.body)))
+      }
     }
     return locations
   }
