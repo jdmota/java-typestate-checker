@@ -1,14 +1,11 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.sun.source.tree.ClassTree
 import com.sun.source.tree.CompilationUnitTree
-import com.sun.source.tree.VariableTree
 import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.abstract_analysis.*
 import org.checkerframework.checker.mungo.analysis.FieldAccess
 import org.checkerframework.checker.mungo.analysis.Reference
-import org.checkerframework.checker.mungo.analysis.getReference
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.node.ImplicitThisLiteralNode
 import org.checkerframework.dataflow.cfg.node.Node
