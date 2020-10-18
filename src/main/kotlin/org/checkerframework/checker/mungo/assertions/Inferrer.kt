@@ -205,19 +205,14 @@ class Inferrer(val checker: MungoChecker) {
         var last = prev
         var lastFlow = flowRule
         for (n in block.nodes) {
-          if (!traverse(last, n, lastFlow)) {
-            return
-          }
-          last = assertions[n]!!
+          last = traverse(last, n, lastFlow) ?: return
           lastFlow = Store.FlowRule.EACH_TO_EACH
         }
         block.successor?.let { traverse(last, it, block.flowRule) }
       }
       is ExceptionBlock -> {
-        if (!traverse(prev, block.node, flowRule)) {
-          return
-        }
-        block.successor?.let { traverse(assertions[block.node]!!, it, block.flowRule) }
+        val last = traverse(prev, block.node, flowRule) ?: return
+        block.successor?.let { traverse(last, it, block.flowRule) }
         // TODO handle possible exceptions
       }
       is ConditionalBlock -> {
@@ -241,11 +236,8 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
-  private fun traverse(prev: NodeAssertions, node: Node, flowRule: Store.FlowRule): Boolean {
-    var keepGoing = false
-    val nodeAssertions: NodeAssertions
-
-    if (!assertions.containsKey(node)) {
+  private fun traverse(prev: NodeAssertions, node: Node, flowRule: Store.FlowRule): NodeAssertions? {
+    return if (!assertions.containsKey(node)) {
       val preThen: SymbolicAssertion
       val preElse: SymbolicAssertion
       if (prev.postThen !== prev.postElse) {
@@ -266,16 +258,15 @@ class Inferrer(val checker: MungoChecker) {
         postElse = postThen
       }
 
-      nodeAssertions = NodeAssertions(preThen, preElse, postThen, postElse)
+      val nodeAssertions = NodeAssertions(preThen, preElse, postThen, postElse)
       assertions[node] = nodeAssertions
 
-      keepGoing = true
+      implies(prev, nodeAssertions, flowRule)
+      nodeAssertions
     } else {
-      nodeAssertions = assertions[node]!!
+      implies(prev, assertions[node]!!, flowRule)
+      null
     }
-
-    implies(prev, nodeAssertions, flowRule)
-    return keepGoing
   }
 
   private fun implies(prev: NodeAssertions, next: NodeAssertions, flowRule: Store.FlowRule) {

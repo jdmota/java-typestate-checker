@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.assertions
+package org.checkerframework.checker.mungo.abstract_analysis
 
 // https://en.wikipedia.org/wiki/Greatest_common_divisor#Euclid's_algorithm
 private fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)

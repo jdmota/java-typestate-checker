@@ -10,7 +10,7 @@ import com.microsoft.z3.*
 // - Sort: it is like a type
 // - Model: gives an interpretation that makes all the formulas true
 
-open class InferrerBase {
+open class ConstraintsSetup {
 
   private val ctx = Z3Context()
   private val symbols = object {
@@ -160,5 +160,5 @@ open class InferrerBase {
 }
 
 /*fun main(args: Array<String>) {
-  Inference().start()
+  ConstraintsSetup().start()
 }*/

@@ -2,7 +2,7 @@ package org.checkerframework.checker.mungo.assertions
 
 import org.checkerframework.dataflow.cfg.node.*
 
-class ConstraintsInference : AbstractNodeVisitor<Void?, NodeAssertions>() {
+class ConstraintsInference(private val inferrer: Inferrer) : AbstractNodeVisitor<Void?, NodeAssertions>() {
 
   override fun visitNode(n: Node?, result: NodeAssertions): Void? {
     return null
