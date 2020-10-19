@@ -42,6 +42,7 @@ class MungoChecker : SourceChecker() {
     val visitor = this.visitor
     if (visitor is InferenceVisitor) {
       visitor.inferrer.debug()
+      visitor.inferrer.phase2()
     }
   }
 

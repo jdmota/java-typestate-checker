@@ -4,6 +4,7 @@ import com.sun.source.tree.*
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
+import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.checker.mungo.utils.treeToType
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -30,8 +31,8 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   private val locationsGatherer = LocationsGatherer(checker)
-  private val assertions = WeakIdentityHashMap<Node, NodeAssertions>()
-  private val specialAssertions = WeakIdentityHashMap<SpecialBlock, NodeAssertions>()
+  private val assertions = IdentityHashMap<Node, NodeAssertions>()
+  private val specialAssertions = IdentityHashMap<SpecialBlock, NodeAssertions>()
   private val constraints = Constraints()
 
   fun debug() {
@@ -39,7 +40,7 @@ class Inferrer(val checker: MungoChecker) {
     constraints.debug()
   }
 
-  fun run(classTree: ClassTree) {
+  fun phase1(classTree: ClassTree) {
     val classQueue: Queue<Pair<ClassTree, Set<Reference>>> = ArrayDeque()
     classQueue.add(Pair.of(classTree, emptySet()))
 
@@ -48,13 +49,19 @@ class Inferrer(val checker: MungoChecker) {
       val ct = qel.first as JCTree.JCClassDecl
       val outerLocations = qel.second
 
+      utils.classUtils.visitClassSymbol(ct.sym)?.let { graph ->
+        graph.getAllConcreteStates().forEach {
+          constraints.addSingletonType(MungoStateType.create(graph, it))
+        }
+      }
+
       val info = prepareClass(ct)
-      run(classQueue, ct, info.static, outerLocations)
-      run(classQueue, ct, info.nonStatic, outerLocations)
+      phase1(classQueue, ct, info.static, outerLocations)
+      phase1(classQueue, ct, info.nonStatic, outerLocations)
     }
   }
 
-  private fun run(
+  private fun phase1(
     classQueue: Queue<Pair<ClassTree, Set<Reference>>>,
     classTree: JCTree.JCClassDecl,
     info: ClassInfo,
@@ -70,7 +77,7 @@ class Inferrer(val checker: MungoChecker) {
         field.init = nullTree
       }*/
       if (field.initializer != null) {
-        run(
+        phase1(
           classQueue,
           lambdaQueue,
           UnderlyingAST.CFGStatement(field, classTree),
@@ -81,7 +88,7 @@ class Inferrer(val checker: MungoChecker) {
 
     // Analyze blocks
     for (block in info.blocks) {
-      run(
+      phase1(
         classQueue,
         lambdaQueue,
         UnderlyingAST.CFGStatement(block, classTree),
@@ -91,7 +98,7 @@ class Inferrer(val checker: MungoChecker) {
 
     // Analyze methods
     for (method in info.methods) {
-      run(
+      phase1(
         classQueue,
         lambdaQueue,
         UnderlyingAST.CFGMethod(method, classTree),
@@ -103,7 +110,7 @@ class Inferrer(val checker: MungoChecker) {
     while (!lambdaQueue.isEmpty()) {
       val lambdaPair = lambdaQueue.poll()
       val mt = TreeUtils.enclosingOfKind(utils.getPath(lambdaPair.first, root), Tree.Kind.METHOD) as MethodTree
-      run(
+      phase1(
         classQueue,
         lambdaQueue,
         UnderlyingAST.CFGLambda(lambdaPair.first, classTree, mt),
@@ -122,7 +129,7 @@ class Inferrer(val checker: MungoChecker) {
   private val cfgCache = WeakIdentityHashMap<Tree, ControlFlowGraph>()
   private var currentLocations = emptySet<Reference>()
 
-  private fun run(
+  private fun phase1(
     classQueue: Queue<Pair<ClassTree, Set<Reference>>>,
     lambdaQueue: Queue<Pair<LambdaExpressionTree, Set<Reference>>>,
     ast: UnderlyingAST,
@@ -133,12 +140,12 @@ class Inferrer(val checker: MungoChecker) {
     val cfg = CFCFGBuilder.build(root, ast, processingEnv)
     cfgCache[tree] = cfg
 
-    // Phase 1: gather locations
-    val locations = phase1(cfg).plus(outerLocations)
+    // Gather locations
+    val locations = gatherLocations(cfg).plus(outerLocations)
     currentLocations = locations
 
-    // Phase 2: associate assertions before and after each node, and connect implications
-    phase2(cfg)
+    // Associate assertions before and after each node, and connect implications
+    phase1(cfg)
 
     // Queue classes
     for (cls in cfg.declaredClasses) {
@@ -167,7 +174,7 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
-  private fun phase1(cfg: ControlFlowGraph): Set<Reference> {
+  private fun gatherLocations(cfg: ControlFlowGraph): Set<Reference> {
     val ast = cfg.underlyingAST
     val locations = locationsGatherer.getParameterLocations(ast).toMutableSet()
     for (node in cfg.allNodes) {
@@ -184,7 +191,7 @@ class Inferrer(val checker: MungoChecker) {
     return locations
   }
 
-  private fun phase2(cfg: ControlFlowGraph) {
+  private fun phase1(cfg: ControlFlowGraph) {
     // Entry
     val preAndPost = SymbolicAssertion(currentLocations)
     val entry = NodeAssertions(preAndPost, preAndPost, preAndPost, preAndPost)
@@ -322,6 +329,18 @@ class Inferrer(val checker: MungoChecker) {
       is ConditionalNotNode -> after.operand === node
       else -> false
     }
+  }
+
+  fun phase2() {
+    constraints.start()
+
+    // TODO
+    val visitor = ConstraintsInference(this)
+    for ((node, assertions) in assertions) {
+      node.accept(visitor, assertions)
+    }
+
+    constraints.end()
   }
 
 }

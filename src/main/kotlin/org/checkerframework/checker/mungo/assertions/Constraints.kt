@@ -1,8 +1,9 @@
 package org.checkerframework.checker.mungo.assertions
 
-import org.checkerframework.checker.mungo.typecheck.MungoType
+import org.checkerframework.checker.mungo.typecheck.*
+import java.lang.RuntimeException
 
-class Constraints : ConstraintsSetup() {
+class Constraints {
 
   private val debug = mutableListOf<String>()
 
@@ -12,25 +13,50 @@ class Constraints : ConstraintsSetup() {
     }
   }
 
+  private var _setup: ConstraintsSetup? = null
+  private val setup get() = _setup ?: throw RuntimeException("Constraints inference did not start")
+
+  private val singletonTypes = mutableSetOf<MungoType>(
+    MungoNoProtocolType.SINGLETON,
+    MungoEndedType.SINGLETON,
+    MungoNullType.SINGLETON,
+    MungoPrimitiveType.SINGLETON,
+    MungoMovedType.SINGLETON
+  )
+
+  fun addSingletonType(type: MungoType) {
+    if (_setup != null) {
+      throw RuntimeException("Constraints inference already started")
+    }
+    singletonTypes.add(type)
+  }
+
+  fun start() {
+    if (_setup != null) {
+      throw RuntimeException("Constraints inference already started")
+    }
+    _setup = ConstraintsSetup(singletonTypes)
+  }
+
+  fun end() {
+    // TODO
+  }
+
   // TODO symbols that are not constrained, should default to 0 fraction and Unknown type??
 
   /*
-  TODO to compute the constraints on the implications, given the known equalities, instead of f1 >= f3, define f1 + f2 >= f3 + f4
+  TODO
   void main() {
-
     Cell c1 = new Cell();
     Cell c2 = c1;
     // access(c1.item, f1) && access(c2.item, f2) && eq(c1,c2)
     // f1 + f2 = 1
 
-    // f1 + f2 == f3 + f4
-
     // access(c1.item, f3) && access(c2.item, f4) && eq(c1,c2)
     // f3 = 1
     c1.setItem(new Item());
     // access(c1.item, f5) && access(c2.item, f6) && eq(c1,c2)
-
-    // f5 + f6 == f7 + f8
+    // f3 + f4 == f5 + f6
 
     // access(c2.item, f7) && access(c1.item, f8) && eq(c1,c2)
     // f7 = 1
