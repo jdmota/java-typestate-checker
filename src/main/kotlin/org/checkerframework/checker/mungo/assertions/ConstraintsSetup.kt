@@ -42,6 +42,8 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
     val False = ctx.mkFalse()
     val True = ctx.mkTrue()
 
+    val Real = ctx.realSort
+
     // (declare-datatypes () ((Type0 Ended NoProtocol Null Primitive Moved)))
     val Type0 = ctx.mkEnumSort(symbols.Type0, *symbols.type0SymbolsArray)
     val Type0Exprs = symbols.type0Symbols.map { (type, sym) ->
@@ -90,6 +92,12 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
     solver.add(ctx.mkEq(setup.Unknown, ctx.mkConstArray(setup.Type0, setup.True)))
     return this
   }
+
+  private val fractionToExpr = mutableMapOf<SymbolicFraction, Expr>()
+  fun fractionToExpr(f: SymbolicFraction) = fractionToExpr.computeIfAbsent(f) { ctx.mkConst("f${f.id}", setup.Real) }
+
+  private val typeToExpr = mutableMapOf<SymbolicType, Expr>()
+  fun typeToExpr(t: SymbolicType) = typeToExpr.computeIfAbsent(t) { ctx.mkConst("t${t.id}", setup.Type) }
 
   fun addAssert(expr: BoolExpr) {
     solver.add(expr)

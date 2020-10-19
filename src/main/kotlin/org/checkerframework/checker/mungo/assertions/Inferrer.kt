@@ -159,18 +159,7 @@ class Inferrer(val checker: MungoChecker) {
 
     // Debug
     for (node in cfg.allNodes) {
-      val a = assertions[node]!!
-      if (a.preThen !== a.preElse) {
-        println("then: ${a.preThen}; else: ${a.preElse}")
-      } else {
-        println(a.preThen)
-      }
-      println(node)
-      if (a.postThen !== a.postElse) {
-        println("then: ${a.postThen}; else: ${a.postElse}")
-      } else {
-        println(a.postThen)
-      }
+      assertions[node]!!.debug(node.toString())
     }
   }
 
