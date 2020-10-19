@@ -78,13 +78,39 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
 
   fun typeToExpr(t: MungoType) = setup.TypeExprs[t] ?: error("No expression for $t")
 
-  private lateinit var solver: Solver
+  private lateinit var solver: Optimize
+
+  fun start(): ConstraintsSetup {
+    solver = ctx.mkOptimize() // ctx.mkSolver()
+    spec()
+    return this
+  }
+
+  fun addAssert(expr: BoolExpr) {
+    solver.Add(expr)
+  }
+
+  fun addMinimizeObjective(expr: Expr) {
+    solver.MkMinimize(expr)
+  }
+
+  fun addMaximizeObjective(expr: Expr) {
+    solver.MkMaximize(expr)
+  }
+
+  fun end(): Solution? {
+    val result = solver.Check()
+    val hasModel = result == Status.SATISFIABLE
+    if (hasModel) {
+      return Solution(this, solver.model)
+    }
+    return null
+  }
+
   private val proveBasicProperties = false
   private val proveTransitiveProperty = false // This one is slow to prove
 
-  fun start(): ConstraintsSetup {
-    solver = ctx.mkSolver()
-
+  private fun spec() {
     if (proveBasicProperties) {
       // Reflexive
       // (assert (forall ((x Type)) (subtype x x)))
@@ -152,27 +178,11 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
         )
       })
 
-      val result = solver.check()
+      val result = solver.Check()
       if (result != Status.SATISFIABLE) {
         throw RuntimeException("Could not prove basic properties: $result")
       }
     }
-
-    return this
-  }
-
-  fun addAssert(expr: BoolExpr) {
-    // println(expr)
-    solver.add(expr)
-  }
-
-  fun end(): Solution? {
-    val result = solver.check()
-    val hasModel = result == Status.SATISFIABLE
-    if (hasModel) {
-      return Solution(this, solver.model)
-    }
-    return null
   }
 
 }

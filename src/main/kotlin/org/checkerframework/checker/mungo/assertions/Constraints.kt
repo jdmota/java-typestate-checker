@@ -1,16 +1,54 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.BoolExpr
-import com.microsoft.z3.Model
 import org.checkerframework.checker.mungo.typecheck.*
 
 sealed class Constraint {
   abstract fun toZ3(setup: ConstraintsSetup): BoolExpr
 }
 
+class AssertionImpliesAssertion(val a: SymbolicAssertion, val b: SymbolicAssertion) : Constraint() {
+
+  init {
+    b.impliedBy(a)
+  }
+
+  private fun implies(setup: ConstraintsSetup): BoolExpr {
+    val exprs = mutableListOf<BoolExpr>()
+    for ((ref, f) in a.getAccesses()) {
+      exprs.add(SymFractionImpliesSymFraction(f, b.getAccess(ref)).toZ3(setup))
+    }
+    for ((ref, t) in a.getTypeofs()) {
+      exprs.add(SymTypeImpliesSymType(t, b.getType(ref)).toZ3(setup))
+    }
+    return setup.ctx.mkAnd(*exprs.toTypedArray())
+  }
+
+  private fun eq(setup: ConstraintsSetup): BoolExpr {
+    val exprs = mutableListOf<BoolExpr>()
+    for ((ref, f) in a.getAccesses()) {
+      exprs.add(SymFractionEqSymFraction(f, b.getAccess(ref)).toZ3(setup))
+    }
+    for ((ref, t) in a.getTypeofs()) {
+      exprs.add(SymTypeEqSymType(t, b.getType(ref)).toZ3(setup))
+    }
+    return setup.ctx.mkAnd(*exprs.toTypedArray())
+  }
+
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return if (b.getImpliedBy().size == 1) eq(setup) else implies(setup)
+  }
+}
+
+// access(x, a) ==> access(x, b)
+// a >= b
 class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: SymbolicFraction) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return setup.ctx.mkGe(setup.fractionToExpr(a), setup.fractionToExpr(b))
+    val expr1 = setup.fractionToExpr(a)
+    val expr2 = setup.fractionToExpr(b)
+    // setup.addMinimizeObjective(setup.ctx.mkSub(expr1, expr2))
+    setup.addMaximizeObjective(expr2)
+    return setup.ctx.mkGe(expr1, expr2)
   }
 }
 
@@ -20,6 +58,9 @@ class SymFractionEqSymFraction(val a: SymbolicFraction, val b: SymbolicFraction)
   }
 }
 
+// typeof(x, a) ==> typeof(x, b)
+// a <: b
+// t1 <: t2
 class SymTypeImpliesSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.typeToExpr(a)
@@ -54,7 +95,7 @@ class SymTypeImpliesType(val a: SymbolicType, val b: MungoType) : Constraint() {
 
 class SymFractionGt(val a: SymbolicFraction, val b: Int) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return setup.ctx.mkGt(setup.fractionToExpr(a), setup.ctx.mkReal(0))
+    return setup.ctx.mkGt(setup.fractionToExpr(a), setup.ctx.mkReal(b))
   }
 }
 
@@ -119,42 +160,9 @@ class Constraints {
 
   private val constraints = mutableListOf<Constraint>()
 
-  fun eq(a: SymbolicAssertion, b: SymbolicAssertion) {
-    for ((ref, f) in a.getAccesses()) {
-      eq(f, b.getAccess(ref))
-    }
-    for ((ref, t) in a.getTypeofs()) {
-      eq(t, b.getType(ref))
-    }
-  }
-
   fun implies(a: SymbolicAssertion, b: SymbolicAssertion) {
     // a ==> b
-    for ((ref, f) in a.getAccesses()) {
-      implies(f, b.getAccess(ref))
-    }
-    for ((ref, t) in a.getTypeofs()) {
-      implies(t, b.getType(ref))
-    }
-  }
-
-  // Greater than instead of equals is important because a node might have multiple ancestors (e.g. loops)
-  fun implies(a: SymbolicFraction, b: SymbolicFraction) {
-    // access(x, a) ==> access(x, b)
-    // a >= b
-    constraints.add(SymFractionImpliesSymFraction(a, b))
-  }
-
-  fun implies(a: SymbolicType, b: SymbolicType) {
-    // typeof(x, a) ==> typeof(x, b)
-    // a <: b
-    // t1 <: t2
-    constraints.add(SymTypeImpliesSymType(a, b))
-  }
-
-  fun eq(a: SymbolicFraction, b: SymbolicFraction) {
-    // a == b
-    constraints.add(SymFractionEqSymFraction(a, b))
+    constraints.add(AssertionImpliesAssertion(a, b))
   }
 
   fun one(a: SymbolicFraction) {
@@ -177,11 +185,6 @@ class Constraints {
     // t1 <: t2
     addType(t1)
     constraints.add(TypeImpliesSymType(t1, t2))
-  }
-
-  fun eq(a: SymbolicType, b: SymbolicType) {
-    // a == b
-    constraints.add(SymTypeEqSymType(a, b))
   }
 
 }

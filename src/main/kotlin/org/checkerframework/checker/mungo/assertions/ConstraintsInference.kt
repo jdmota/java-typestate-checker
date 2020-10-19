@@ -23,9 +23,9 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   private fun noSideEffects(result: NodeAssertions) {
-    constraints.eq(result.preThen, result.postThen)
+    constraints.implies(result.preThen, result.postThen)
     if (result.preThen !== result.preElse || result.postThen !== result.postElse) {
-      constraints.eq(result.preElse, result.postElse)
+      constraints.implies(result.preElse, result.postElse)
     }
   }
 
@@ -59,6 +59,12 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return null
   }
 
+  override fun visitMethodAccess(n: MethodAccessNode, result: NodeAssertions): Void? {
+    read(n.receiver, result)
+    noSideEffects(result)
+    return null
+  }
+
   override fun visitVariableDeclaration(n: VariableDeclarationNode, result: NodeAssertions): Void? {
     return null
   }
@@ -73,11 +79,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return null
   }
 
-  override fun visitMethodAccess(n: MethodAccessNode, result: NodeAssertions): Void? {
-    return null
-  }
-
   override fun visitMethodInvocation(n: MethodInvocationNode, result: NodeAssertions): Void? {
+    read(n.target.receiver, result)
     return null
   }
 
@@ -90,10 +93,6 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitConditionalNot(n: ConditionalNotNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitBooleanLiteral(n: BooleanLiteralNode, result: NodeAssertions): Void? {
     return null
   }
 
@@ -137,7 +136,14 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return null
   }
 
+  override fun visitBooleanLiteral(n: BooleanLiteralNode, result: NodeAssertions): Void? {
+    return super.visitBooleanLiteral(n, result)
+  }
+
   override fun visitNode(n: Node?, result: NodeAssertions): Void? {
+    if (n is ValueLiteralNode) {
+      noSideEffects(result)
+    }
     return null
   }
 }

@@ -14,7 +14,6 @@ import org.checkerframework.dataflow.cfg.node.ConditionalNotNode
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFCFGBuilder
-import org.checkerframework.javacutil.Pair
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
@@ -32,12 +31,13 @@ class Inferrer(val checker: MungoChecker) {
 
   private val locationsGatherer = LocationsGatherer(checker)
   private val assertions = IdentityHashMap<Node, NodeAssertions>()
+  private val assertionsList = mutableListOf<Pair<Node, NodeAssertions>>()
   private val specialAssertions = IdentityHashMap<SpecialBlock, NodeAssertions>()
   private val constraints = Constraints()
 
   fun phase1(classTree: ClassTree) {
     val classQueue: Queue<Pair<ClassTree, Set<Reference>>> = ArrayDeque()
-    classQueue.add(Pair.of(classTree, emptySet()))
+    classQueue.add(Pair(classTree, emptySet()))
 
     while (!classQueue.isEmpty()) {
       val qel = classQueue.remove()
@@ -144,12 +144,12 @@ class Inferrer(val checker: MungoChecker) {
 
     // Queue classes
     for (cls in cfg.declaredClasses) {
-      classQueue.add(Pair.of(cls, locations))
+      classQueue.add(Pair(cls, locations))
     }
 
     // Queue lambdas
     for (lambda in cfg.declaredLambdas) {
-      lambdaQueue.add(Pair.of(lambda, locations))
+      lambdaQueue.add(Pair(lambda, locations))
     }
 
     // Debug
@@ -251,6 +251,7 @@ class Inferrer(val checker: MungoChecker) {
 
       val nodeAssertions = NodeAssertions(preThen, preElse, postThen, postElse)
       assertions[node] = nodeAssertions
+      assertionsList.add(Pair(node, nodeAssertions))
 
       implies(prev, nodeAssertions, flowRule)
       nodeAssertions
@@ -323,7 +324,7 @@ class Inferrer(val checker: MungoChecker) {
     println("Inferring constraints...")
 
     val visitor = ConstraintsInference(this, constraints)
-    for ((node, assertions) in assertions) {
+    for ((node, assertions) in assertionsList) {
       node.accept(visitor, assertions)
     }
 
@@ -334,7 +335,7 @@ class Inferrer(val checker: MungoChecker) {
     } else {
       println("Correct!\n")
 
-      for ((node, assertions) in assertions) {
+      for ((node, assertions) in assertionsList) {
         assertions.debug(solution, node.toString())
       }
     }

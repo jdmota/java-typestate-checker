@@ -38,6 +38,14 @@ class SymbolicAssertion(val locations: Set<Reference>) {
     private var uuid = 1L
   }
 
+  private val impliedBy = mutableSetOf<SymbolicAssertion>()
+
+  fun impliedBy(other: SymbolicAssertion) {
+    if (this !== other) impliedBy.add(other)
+  }
+
+  fun getImpliedBy(): Set<SymbolicAssertion> = impliedBy
+
   private val accesses = mutableMapOf<Reference, SymbolicFraction>()
   private val typeofs = mutableMapOf<Reference, SymbolicType>()
 
