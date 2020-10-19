@@ -2,90 +2,67 @@ package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.typecheck.*
+import org.checkerframework.com.github.javaparser.ast.expr.TypeExpr
 
 // Z3 Tutorial: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.225.8231&rep=rep1&type=pdf
 // Z3 Guide and Playground: https://rise4fun.com/z3/tutorial/guide
 // Z3 Java Api: https://z3prover.github.io/api/html/namespacecom_1_1microsoft_1_1z3.html
 
-class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
+class ConstraintsSetup(private val types: Set<MungoType>) {
 
   val ctx = Z3Context()
 
   private val symbols = object {
     val subtype = ctx.mkSymbol("subtype")
-
-    val Bottom = ctx.mkSymbol("Bottom")
-    val Unknown = ctx.mkSymbol("Unknown")
-    // val Object = ctx.mkSymbol("Object")
-
-    val Type0 = ctx.mkSymbol("Type0")
-    val type0Symbols = singletonTypes.map { Pair(it, typeToSymbol(it)) }.toMap()
-    val type0SymbolsArray = type0Symbols.values.toTypedArray()
+    val Type = ctx.mkSymbol("Type")
+    val typeSymbols = types.map { Pair(it, typeToSymbol(it)) }.toMap()
+    val typeSymbolsArray = typeSymbols.values.toTypedArray()
   }
 
   private fun typeToSymbol(type: MungoType): Symbol {
     return ctx.mkSymbol(when (type) {
-      is MungoUnionType -> throw RuntimeException("Unexpected $type")
-      is MungoStateType -> "State_${type.state.id}"
-      is MungoMovedType -> "Moved"
-      is MungoPrimitiveType -> "Primitive"
-      is MungoNullType -> "Null"
-      is MungoEndedType -> "Ended"
-      is MungoNoProtocolType -> "NoProtocol"
-      is MungoObjectType -> throw RuntimeException("Unexpected $type")
-      is MungoUnknownType -> throw RuntimeException("Unexpected $type")
-      is MungoBottomType -> throw RuntimeException("Unexpected $type")
+      is MungoUnionType -> "TU_${type.types.joinToString("_")}"
+      is MungoStateType -> "TS${type.state.id}"
+      is MungoMovedType -> "TMoved"
+      is MungoPrimitiveType -> "TPrim"
+      is MungoNullType -> "TNull"
+      is MungoEndedType -> "TEnded"
+      is MungoNoProtocolType -> "TNo"
+      is MungoObjectType -> "TObj"
+      is MungoUnknownType -> "TUnknown"
+      is MungoBottomType -> "TBottom"
     })
   }
 
   private val setup = object {
     val Bool = ctx.boolSort
-    val False = ctx.mkFalse()
-    val True = ctx.mkTrue()
-
     val Real = ctx.realSort
 
-    // (declare-datatypes () ((Type0 Ended NoProtocol Null Primitive Moved)))
-    val Type0 = ctx.mkEnumSort(symbols.Type0, *symbols.type0SymbolsArray)
-    val Type0Exprs = symbols.type0Symbols.map { (type, sym) ->
-      Pair(type, ctx.mkApp(Type0.getConstDecl(symbols.type0SymbolsArray.indexOf(sym))))
+    val Type = ctx.mkEnumSort(symbols.Type, *symbols.typeSymbolsArray)
+    val TypeExprs = symbols.typeSymbols.map { (type, sym) ->
+      Pair(type, ctx.mkApp(Type.getConstDecl(symbols.typeSymbolsArray.indexOf(sym))))
     }.toMap()
 
-    // (define-sort Type () (Array Type0 Bool))
-    val Type = ctx.mkArraySort(Type0, Bool)
-
-    val Bottom = ctx.mkConst(symbols.Bottom, Type)
-    val Unknown = ctx.mkConst(symbols.Unknown, Type)
-    // val Object = ctx.mkConst(symbols.Object, Type)
-
-    val bottomArray = ctx.mkConstArray(Type0, False)
-    val unknownArray = ctx.mkConstArray(Type0, True)
-
-    /*
-    (define-fun subtype ((a Type) (b Type)) Bool
-      (forall ((t Type0)) (=> (select a t) (select b t)))
-    )
-    */
-    /*val subtype = ctx.mkRecFuncDecl(symbols.subtype, arrayOf(Type, Type), Bool) { _, args ->
-      ctx.mkForall(arrayOf(Type0)) { forAllArgs ->
+    val subtype = ctx.mkRecFuncDecl(symbols.subtype, arrayOf(Type, Type), Bool) { _, args ->
+      val a = args[0]
+      val b = args[1]
+      val code = ctx.mkAnd(*TypeExprs.map { (typeA, exprA) ->
         ctx.mkImplies(
-          ctx.mkSelect(args[0] as ArrayExpr, forAllArgs[0]) as BoolExpr,
-          ctx.mkSelect(args[1] as ArrayExpr, forAllArgs[0]) as BoolExpr
+          ctx.mkEq(a, exprA),
+          ctx.mkAnd(*TypeExprs.map { (typeB, exprB) ->
+            ctx.mkImplies(
+              ctx.mkEq(b, exprB),
+              ctx.mkBool(typeA.isSubtype(typeB))
+            )
+          }.toTypedArray())
         )
-      }
-    }*/
-
-    val subtypeOptimized = ctx.mkRecFuncDecl(symbols.subtype, arrayOf(Type, Type), Bool) { _, args ->
-      ctx.mkAnd(*Type0Exprs.map { (_, expr) ->
-        ctx.mkImplies(
-          ctx.mkSelect(args[0] as ArrayExpr, expr) as BoolExpr,
-          ctx.mkSelect(args[1] as ArrayExpr, expr) as BoolExpr
-        )
-      }.toTypedArray())
+      }.toTypedArray())//.simplify()
+      println(code)
+      code
     }
   }
 
-  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtypeOptimized, a, b) as BoolExpr
+  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
 
   private val symbolicFractionToExpr = mutableMapOf<SymbolicFraction, ArithExpr>()
   fun fractionToExpr(f: SymbolicFraction) = symbolicFractionToExpr.computeIfAbsent(f) {
@@ -100,34 +77,85 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
     ctx.mkConst("t${t.id}", setup.Type)
   }
 
-  private val typeToExpr = mutableMapOf<MungoType, Expr>()
-  fun typeToExpr(type: MungoType): Expr = typeToExpr.computeIfAbsent(type) {
-    when (it) {
-      is MungoUnionType -> {
-        var arr = setup.bottomArray
-        for (t in it.types) {
-          arr = ctx.mkStore(arr, typeToExpr(t), setup.True)
-        }
-        arr
-      }
-      is MungoStateType -> setup.Type0Exprs[it]
-      is MungoMovedType -> setup.Type0Exprs[it]
-      is MungoPrimitiveType -> setup.Type0Exprs[it]
-      is MungoNullType -> setup.Type0Exprs[it]
-      is MungoEndedType -> setup.Type0Exprs[it]
-      is MungoNoProtocolType -> setup.Type0Exprs[it]
-      is MungoObjectType -> null // TODO
-      is MungoUnknownType -> setup.unknownArray
-      is MungoBottomType -> setup.bottomArray
-    } ?: error("Failed to convert $it in a Z3 expression")
-  }
+  fun typeToExpr(t: MungoType) = setup.TypeExprs[t] ?: error("No expression for $t")
 
   private lateinit var solver: Solver
+  private val proveBasicProperties = true
 
   fun start(): ConstraintsSetup {
     solver = ctx.mkSolver()
-    solver.add(ctx.mkEq(setup.Bottom, setup.bottomArray))
-    solver.add(ctx.mkEq(setup.Unknown, setup.unknownArray))
+
+    if (proveBasicProperties) {
+      // Reflexive
+      // (assert (forall ((x Type)) (subtype x x)))
+      addAssert(ctx.mkForall(arrayOf(setup.Type)) { args ->
+        mkSubtype(args[0], args[0])
+      })
+
+      // Antisymmetric
+      // (assert (forall ((x Type) (y Type)) (= (and (subtype x y) (subtype y x)) (= x y))))
+      addAssert(ctx.mkForall(arrayOf(setup.Type, setup.Type)) { args ->
+        ctx.mkEq(
+          ctx.mkAnd(
+            mkSubtype(args[0], args[1]),
+            mkSubtype(args[1], args[0])
+          ),
+          ctx.mkEq(args[0], args[1])
+        )
+      })
+
+      // Transitive
+      // (assert (forall ((x Type) (y Type) (z Type)) (=> (and (subtype x y) (subtype y z)) (subtype x z))))
+      /*addAssert(ctx.mkForall(arrayOf(setup.Type, setup.Type, setup.Type)) { args ->
+        ctx.mkImplies(
+          ctx.mkAnd(
+            mkSubtype(args[0], args[1]),
+            mkSubtype(args[1], args[2])
+          ),
+          mkSubtype(args[0], args[2])
+        )
+      })*/
+
+      // All subtypes of Unknown
+      // (assert (forall ((t Type)) (subtype t Unknown)))
+      addAssert(ctx.mkForall(arrayOf(setup.Type)) { args ->
+        mkSubtype(args[0], typeToExpr(MungoUnknownType.SINGLETON))
+      })
+
+      // Single top
+      // (assert (exists ((t Type)) (and (= t Unknown) (forall ((x Type)) (subtype x t)))))
+      addAssert(ctx.mkExists(arrayOf(setup.Type)) { args ->
+        ctx.mkAnd(
+          ctx.mkEq(args[0], typeToExpr(MungoUnknownType.SINGLETON)),
+          ctx.mkForall(arrayOf(setup.Type)) { innerArgs ->
+            mkSubtype(innerArgs[0], args[0])
+          }
+        )
+      })
+
+      // Bottom subtype of all
+      // (assert (forall ((t Type)) (subtype Bottom t)))
+      addAssert(ctx.mkForall(arrayOf(setup.Type)) { args ->
+        mkSubtype(typeToExpr(MungoBottomType.SINGLETON), args[0])
+      })
+
+      // Single bottom
+      // (assert (exists ((t Type)) (and (= t Bottom) (forall ((x Type)) (subtype t x)))))
+      addAssert(ctx.mkExists(arrayOf(setup.Type)) { args ->
+        ctx.mkAnd(
+          ctx.mkEq(args[0], typeToExpr(MungoBottomType.SINGLETON)),
+          ctx.mkForall(arrayOf(setup.Type)) { innerArgs ->
+            mkSubtype(args[0], innerArgs[0])
+          }
+        )
+      })
+
+      val result = solver.check()
+      if (result != Status.SATISFIABLE) {
+        throw RuntimeException("Could not prove basic properties: $result")
+      }
+    }
+
     return this
   }
 

@@ -89,4 +89,17 @@ class Z3Context : Context() {
     return mkForall(types, names, fn(xs as Array<Expr>), 0, null, null, null, null)
   }
 
+  fun mkExists(domain: Array<Sort>, fn: (Array<Expr>) -> Expr): Quantifier {
+    val size = domain.size
+    val xs = arrayOfNulls<Expr>(size)
+    val names = arrayOfNulls<Symbol>(size)
+    val types = arrayOfNulls<Sort>(size)
+    for (j in 0 until size) {
+      types[j] = domain[j]
+      names[j] = mkSymbol("x_$j")
+      xs[j] = mkBound(j, types[j])
+    }
+    return mkExists(types, names, fn(xs as Array<Expr>), 0, null, null, null, null)
+  }
+
 }

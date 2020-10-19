@@ -1,8 +1,53 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.microsoft.z3.ArithExpr
 import com.microsoft.z3.BoolExpr
 import org.checkerframework.checker.mungo.typecheck.*
+
+sealed class Constraint {
+  abstract fun toZ3(setup: ConstraintsSetup): BoolExpr
+}
+
+class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: SymbolicFraction) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return setup.ctx.mkGe(setup.fractionToExpr(a), setup.fractionToExpr(b))
+  }
+}
+
+class SymTypeImpliesSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    val expr1 = setup.typeToExpr(a)
+    val expr2 = setup.typeToExpr(b)
+    return setup.mkSubtype(expr1, expr2)
+  }
+}
+
+class TypeImpliesSymType(val a: MungoType, val b: SymbolicType) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    val expr1 = setup.typeToExpr(a)
+    val expr2 = setup.typeToExpr(b)
+    return setup.mkSubtype(expr1, expr2)
+  }
+}
+
+class SymTypeImpliesType(val a: SymbolicType, val b: MungoType) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    val expr1 = setup.typeToExpr(a)
+    val expr2 = setup.typeToExpr(b)
+    return setup.mkSubtype(expr1, expr2)
+  }
+}
+
+class SymFractionGt(val a: SymbolicFraction, val b: Int) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return setup.ctx.mkGt(setup.fractionToExpr(a), setup.ctx.mkReal(0))
+  }
+}
+
+class SymFractionEq(val a: SymbolicFraction, val b: Int) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return setup.ctx.mkEq(setup.fractionToExpr(a), setup.ctx.mkReal(b))
+  }
+}
 
 class Constraints {
 
@@ -17,27 +62,34 @@ class Constraints {
 
   private lateinit var setup: ConstraintsSetup
 
-  private val singletonTypes = mutableSetOf<MungoType>(
+  private val types = mutableSetOf(
+    MungoUnknownType.SINGLETON,
+    MungoObjectType.SINGLETON,
     MungoNoProtocolType.SINGLETON,
     MungoEndedType.SINGLETON,
     MungoNullType.SINGLETON,
     MungoPrimitiveType.SINGLETON,
-    MungoMovedType.SINGLETON
+    MungoMovedType.SINGLETON,
+    MungoBottomType.SINGLETON
   )
 
-  fun addSingletonType(type: MungoType) {
-    singletonTypes.add(type)
+  fun addType(type: MungoType) {
+    types.add(type)
   }
 
   fun start(): Constraints {
-    setup = ConstraintsSetup(singletonTypes).start()
-    applyAllImplications()
+    setup = ConstraintsSetup(types).start()
     return this
   }
 
-  fun end() = setup.end()
+  fun end() {
+    for (constraint in constraints) {
+      setup.addAssert(constraint.toZ3(setup))
+    }
 
-  // TODO symbols that are not constrained, should default to 0 fraction and Unknown type??
+    println("Solving...")
+    setup.end()
+  }
 
   /*
   TODO
@@ -59,76 +111,54 @@ class Constraints {
   }
   */
 
-  private val implications = mutableListOf<Pair<SymbolicAssertion, SymbolicAssertion>>()
+  private val constraints = mutableListOf<Constraint>()
 
   fun implies(a: SymbolicAssertion, b: SymbolicAssertion) {
     debug.add("${a.id} ==> ${b.id}")
-    // a ==> b
-    implications.add(Pair(a, b))
-  }
 
-  private fun applyAllImplications() {
-    for ((a, b) in implications) {
-      for ((ref, f) in a.getAccesses()) {
-        implies(f, b.getAccess(ref))
-      }
-      for ((ref, t) in a.getTypeofs()) {
-        // TODO implies(t, b.getType(ref))
-      }
+    // a ==> b
+    for ((ref, f) in a.getAccesses()) {
+      implies(f, b.getAccess(ref))
     }
-    implications.clear()
+    for ((ref, t) in a.getTypeofs()) {
+      implies(t, b.getType(ref))
+    }
   }
 
   // Greater than instead of equals is important because a node might have multiple ancestors (e.g. loops)
   fun implies(a: SymbolicFraction, b: SymbolicFraction) {
     // access(x, a) ==> access(x, b)
     // a >= b
-    setup.addAssert(
-      setup.ctx.mkGe(setup.fractionToExpr(a), setup.fractionToExpr(b))
-    )
+    constraints.add(SymFractionImpliesSymFraction(a, b))
   }
 
   fun implies(a: SymbolicType, b: SymbolicType) {
     // typeof(x, a) ==> typeof(x, b)
     // a <: b
     // t1 <: t2
-    val expr1 = setup.typeToExpr(a)
-    val expr2 = setup.typeToExpr(b)
-    setup.addAssert(
-      setup.mkSubtype(expr1, expr2)
-    )
+    constraints.add(SymTypeImpliesSymType(a, b))
   }
 
   fun one(a: SymbolicFraction) {
     // a == 1
-    setup.addAssert(
-      setup.ctx.mkEq(setup.fractionToExpr(a), setup.ctx.mkReal(1))
-    )
+    constraints.add(SymFractionEq(a, 1))
   }
 
   fun notZero(a: SymbolicFraction) {
     // a > 0
-    setup.addAssert(
-      setup.ctx.mkGt(setup.fractionToExpr(a), setup.ctx.mkReal(0))
-    )
+    constraints.add(SymFractionGt(a, 0))
   }
 
   fun subtype(t1: SymbolicType, t2: MungoType) {
     // t1 <: t2
-    val expr1 = setup.typeToExpr(t1)
-    val expr2 = setup.typeToExpr(t2)
-    setup.addAssert(
-      setup.mkSubtype(expr1, expr2)
-    )
+    addType(t2)
+    constraints.add(SymTypeImpliesType(t1, t2))
   }
 
   fun subtype(t1: MungoType, t2: SymbolicType) {
     // t1 <: t2
-    val expr1 = setup.typeToExpr(t1)
-    val expr2 = setup.typeToExpr(t2)
-    setup.addAssert(
-      setup.mkSubtype(expr1, expr2)
-    )
+    addType(t1)
+    constraints.add(TypeImpliesSymType(t1, t2))
   }
 
 }

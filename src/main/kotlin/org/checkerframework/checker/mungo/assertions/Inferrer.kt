@@ -51,7 +51,7 @@ class Inferrer(val checker: MungoChecker) {
 
       utils.classUtils.visitClassSymbol(ct.sym)?.let { graph ->
         graph.getAllConcreteStates().forEach {
-          constraints.addSingletonType(MungoStateType.create(graph, it))
+          constraints.addType(MungoStateType.create(graph, it))
         }
       }
 
@@ -332,8 +332,6 @@ class Inferrer(val checker: MungoChecker) {
     for ((node, assertions) in assertions) {
       node.accept(visitor, assertions)
     }
-
-    println("Solving...")
 
     constraints.end()
   }
