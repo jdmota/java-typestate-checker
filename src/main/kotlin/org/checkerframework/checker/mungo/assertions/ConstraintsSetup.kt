@@ -66,23 +66,32 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
       (forall ((t Type0)) (=> (select a t) (select b t)))
     )
     */
-    val subtype = ctx.mkRecFuncDecl(symbols.subtype, arrayOf(Type, Type), Bool) { _, args ->
+    /*val subtype = ctx.mkRecFuncDecl(symbols.subtype, arrayOf(Type, Type), Bool) { _, args ->
       ctx.mkForall(arrayOf(Type0)) { forAllArgs ->
         ctx.mkImplies(
           ctx.mkSelect(args[0] as ArrayExpr, forAllArgs[0]) as BoolExpr,
           ctx.mkSelect(args[1] as ArrayExpr, forAllArgs[0]) as BoolExpr
         )
       }
+    }*/
+
+    val subtypeOptimized = ctx.mkRecFuncDecl(symbols.subtype, arrayOf(Type, Type), Bool) { _, args ->
+      ctx.mkAnd(*Type0Exprs.map { (_, expr) ->
+        ctx.mkImplies(
+          ctx.mkSelect(args[0] as ArrayExpr, expr) as BoolExpr,
+          ctx.mkSelect(args[1] as ArrayExpr, expr) as BoolExpr
+        )
+      }.toTypedArray())
     }
   }
 
-  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
+  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtypeOptimized, a, b) as BoolExpr
 
   private val symbolicFractionToExpr = mutableMapOf<SymbolicFraction, ArithExpr>()
   fun fractionToExpr(f: SymbolicFraction) = symbolicFractionToExpr.computeIfAbsent(f) {
     val c = ctx.mkConst("f${f.id}", setup.Real) as ArithExpr
     // 0 <= c <= 1
-    solver.add(ctx.mkAnd(ctx.mkGe(c, ctx.mkReal(0)), ctx.mkLe(c, ctx.mkReal(1))))
+    addAssert(ctx.mkAnd(ctx.mkGe(c, ctx.mkReal(0)), ctx.mkLe(c, ctx.mkReal(1))))
     c
   }
 
@@ -123,6 +132,7 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
   }
 
   fun addAssert(expr: BoolExpr) {
+    println(expr)
     solver.add(expr)
   }
 
