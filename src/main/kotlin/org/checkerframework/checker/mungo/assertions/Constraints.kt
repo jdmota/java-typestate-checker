@@ -13,11 +13,25 @@ class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: SymbolicFrac
   }
 }
 
+class SymFractionEqSymFraction(val a: SymbolicFraction, val b: SymbolicFraction) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return setup.ctx.mkEq(setup.fractionToExpr(a), setup.fractionToExpr(b))
+  }
+}
+
 class SymTypeImpliesSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
     return setup.mkSubtype(expr1, expr2)
+  }
+}
+
+class SymTypeEqSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    val expr1 = setup.typeToExpr(a)
+    val expr2 = setup.typeToExpr(b)
+    return setup.ctx.mkEq(expr1, expr2)
   }
 }
 
@@ -113,6 +127,15 @@ class Constraints {
 
   private val constraints = mutableListOf<Constraint>()
 
+  fun eq(a: SymbolicAssertion, b: SymbolicAssertion) {
+    for ((ref, f) in a.getAccesses()) {
+      eq(f, b.getAccess(ref))
+    }
+    for ((ref, t) in a.getTypeofs()) {
+      eq(t, b.getType(ref))
+    }
+  }
+
   fun implies(a: SymbolicAssertion, b: SymbolicAssertion) {
     debug.add("${a.id} ==> ${b.id}")
 
@@ -139,6 +162,11 @@ class Constraints {
     constraints.add(SymTypeImpliesSymType(a, b))
   }
 
+  fun eq(a: SymbolicFraction, b: SymbolicFraction) {
+    // a == b
+    constraints.add(SymFractionEqSymFraction(a, b))
+  }
+
   fun one(a: SymbolicFraction) {
     // a == 1
     constraints.add(SymFractionEq(a, 1))
@@ -159,6 +187,11 @@ class Constraints {
     // t1 <: t2
     addType(t1)
     constraints.add(TypeImpliesSymType(t1, t2))
+  }
+
+  fun eq(a: SymbolicType, b: SymbolicType) {
+    // a == b
+    constraints.add(SymTypeEqSymType(a, b))
   }
 
 }

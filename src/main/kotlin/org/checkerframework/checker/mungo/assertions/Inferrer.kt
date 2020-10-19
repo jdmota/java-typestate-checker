@@ -328,7 +328,7 @@ class Inferrer(val checker: MungoChecker) {
     println("Inferring constraints...")
 
     // TODO
-    val visitor = ConstraintsInference(this)
+    val visitor = ConstraintsInference(this, constraints)
     for ((node, assertions) in assertions) {
       node.accept(visitor, assertions)
     }

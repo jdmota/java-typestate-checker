@@ -79,7 +79,8 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
   fun typeToExpr(t: MungoType) = setup.TypeExprs[t] ?: error("No expression for $t")
 
   private lateinit var solver: Solver
-  private val proveBasicProperties = true
+  private val proveBasicProperties = false
+  private val proveTransitiveProperty = false // This one is slow to prove
 
   fun start(): ConstraintsSetup {
     solver = ctx.mkSolver()
@@ -105,15 +106,17 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
 
       // Transitive
       // (assert (forall ((x Type) (y Type) (z Type)) (=> (and (subtype x y) (subtype y z)) (subtype x z))))
-      /*addAssert(ctx.mkForall(arrayOf(setup.Type, setup.Type, setup.Type)) { args ->
-        ctx.mkImplies(
-          ctx.mkAnd(
-            mkSubtype(args[0], args[1]),
-            mkSubtype(args[1], args[2])
-          ),
-          mkSubtype(args[0], args[2])
-        )
-      })*/
+      if (proveTransitiveProperty) {
+        addAssert(ctx.mkForall(arrayOf(setup.Type, setup.Type, setup.Type)) { args ->
+          ctx.mkImplies(
+            ctx.mkAnd(
+              mkSubtype(args[0], args[1]),
+              mkSubtype(args[1], args[2])
+            ),
+            mkSubtype(args[0], args[2])
+          )
+        })
+      }
 
       // All subtypes of Unknown
       // (assert (forall ((t Type)) (subtype t Unknown)))
