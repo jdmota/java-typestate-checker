@@ -82,17 +82,20 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
     return arr
   }
 
-  fun start() {
-    val solver = ctx.mkSolver()
+  private lateinit var solver: Solver
+
+  fun start(): ConstraintsSetup {
+    solver = ctx.mkSolver()
     solver.add(ctx.mkEq(setup.Bottom, setup.bottomArray))
     solver.add(ctx.mkEq(setup.Unknown, ctx.mkConstArray(setup.Type0, setup.True)))
-    // solver.add(ctx.mkEq(setup.Object, setup.makeUnion(arrayOf(symbols.NoProtocol0, symbols.Ended0))))
+    return this
+  }
 
-    val asserts = mutableListOf<BoolExpr>()
-    for (assert in asserts) {
-      solver.add(assert)
-    }
+  fun addAssert(expr: BoolExpr) {
+    solver.add(expr)
+  }
 
+  fun end() {
     val result = solver.check()
 
     val check = when (result) {
@@ -104,8 +107,15 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
 
     val model = solver.model
 
-    println(result)
-    println(model)
+    debugText += result.toString()
+    debugText += "\n"
+    debugText += model.toString()
+  }
+
+  private var debugText = ""
+
+  fun debug() {
+    println(debugText)
   }
 
 }

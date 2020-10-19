@@ -11,10 +11,10 @@ class Constraints {
     for (str in debug) {
       println(str)
     }
+    setup.debug()
   }
 
-  private var _setup: ConstraintsSetup? = null
-  private val setup get() = _setup ?: throw RuntimeException("Constraints inference did not start")
+  private lateinit var setup: ConstraintsSetup
 
   private val singletonTypes = mutableSetOf<MungoType>(
     MungoNoProtocolType.SINGLETON,
@@ -25,22 +25,15 @@ class Constraints {
   )
 
   fun addSingletonType(type: MungoType) {
-    if (_setup != null) {
-      throw RuntimeException("Constraints inference already started")
-    }
     singletonTypes.add(type)
   }
 
-  fun start() {
-    if (_setup != null) {
-      throw RuntimeException("Constraints inference already started")
-    }
-    _setup = ConstraintsSetup(singletonTypes)
+  fun start(): Constraints {
+    setup = ConstraintsSetup(singletonTypes).start()
+    return this
   }
 
-  fun end() {
-    // TODO
-  }
+  fun end() = setup.end()
 
   // TODO symbols that are not constrained, should default to 0 fraction and Unknown type??
 
