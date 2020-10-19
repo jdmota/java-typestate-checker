@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
+import com.microsoft.z3.Model
 import org.checkerframework.checker.mungo.analysis.Reference
 import java.lang.StringBuilder
 
@@ -55,8 +56,20 @@ class SymbolicAssertion(val locations: Set<Reference>) {
 
   fun getType(ref: Reference) = typeofs[ref] ?: error("No type for $ref")
 
+  fun toString(solution: Solution): String {
+    val str = StringBuilder()
+    for ((loc, f) in accesses) {
+      str.append("acc($loc,${solution.get(f)}) && ")
+    }
+    str.append('\n')
+    for ((loc, t) in typeofs) {
+      str.append("typeof($loc,${solution.get(t)}) && ")
+    }
+    return str.toString()
+  }
+
   override fun toString(): String {
-    val str = StringBuilder("($id) ")
+    val str = StringBuilder()
     for ((loc, f) in accesses) {
       str.append("acc($loc,$f) && ")
     }
@@ -76,17 +89,43 @@ class NodeAssertions(
 ) {
 
   fun debug(middle: String) {
-    if (preThen !== preElse) {
-      println("then: $preThen; else: $preElse")
+    println("----")
+    val preThenStr = preThen.toString()
+    val preElseStr = preElse.toString()
+    if (preThenStr != preElseStr) {
+      println("then: $preThenStr;\nelse: $preElseStr")
     } else {
-      println(preThen)
+      println(preThenStr)
     }
-    println(middle)
-    if (postThen !== postElse) {
-      println("then: $postThen; else: $postElse")
+    println("\n$middle\n")
+    val postThenStr = postThen.toString()
+    val postElseStr = postElse.toString()
+    if (postThenStr != postElseStr) {
+      println("then: $postThenStr;\nelse: $postElseStr")
     } else {
-      println(postThen)
+      println(postThenStr)
     }
+    println("----")
+  }
+
+  fun debug(solution: Solution, middle: String) {
+    println("----")
+    val preThenStr = preThen.toString(solution)
+    val preElseStr = preElse.toString(solution)
+    if (preThenStr != preElseStr) {
+      println("then: $preThenStr;\nelse: $preElseStr")
+    } else {
+      println(preThenStr)
+    }
+    println("\n$middle\n")
+    val postThenStr = postThen.toString(solution)
+    val postElseStr = postElse.toString(solution)
+    if (postThenStr != postElseStr) {
+      println("then: $postThenStr;\nelse: $postElseStr")
+    } else {
+      println(postThenStr)
+    }
+    println("----")
   }
 
 }

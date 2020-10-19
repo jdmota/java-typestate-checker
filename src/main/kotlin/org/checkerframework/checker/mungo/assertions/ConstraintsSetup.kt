@@ -162,33 +162,17 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
   }
 
   fun addAssert(expr: BoolExpr) {
-    println(expr)
+    // println(expr)
     solver.add(expr)
   }
 
-  fun end() {
+  fun end(): Solution? {
     val result = solver.check()
-
-    val check = when (result) {
-      Status.SATISFIABLE -> true
-      Status.UNKNOWN -> false
-      Status.UNSATISFIABLE -> false
-      else -> false
+    val hasModel = result == Status.SATISFIABLE
+    if (hasModel) {
+      return Solution(this, solver.model)
     }
-
-    println("Solved: $result")
-
-    val model = solver.model
-
-    // debugText += result.toString()
-    // debugText += "\n"
-    debugText += model.toString()
-  }
-
-  private var debugText = ""
-
-  fun debug() {
-    println(debugText)
+    return null
   }
 
 }

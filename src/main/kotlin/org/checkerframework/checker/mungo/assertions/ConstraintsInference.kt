@@ -29,20 +29,32 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
   }
 
+  private fun read(n: Node, result: NodeAssertions) {
+    var curr: Node = n
+    while (true) {
+      read(getRef(curr), result)
+      if (curr is FieldAccessNode) {
+        curr = curr.receiver
+      } else {
+        break
+      }
+    }
+  }
+
   override fun visitThisLiteral(n: ThisLiteralNode, result: NodeAssertions): Void? {
-    read(getRef(n), result)
+    read(n, result)
     noSideEffects(result)
     return null
   }
 
   override fun visitLocalVariable(n: LocalVariableNode, result: NodeAssertions): Void? {
-    read(getRef(n), result)
+    read(n, result)
     noSideEffects(result)
     return null
   }
 
   override fun visitFieldAccess(n: FieldAccessNode, result: NodeAssertions): Void? {
-    read(getRef(n), result)
+    read(n, result)
     noSideEffects(result)
     return null
   }
@@ -52,6 +64,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {
+    read(n.target, result)
     write(getRef(n.target), result)
     return null
   }

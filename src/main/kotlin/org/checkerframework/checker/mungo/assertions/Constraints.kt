@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.BoolExpr
+import com.microsoft.z3.Model
 import org.checkerframework.checker.mungo.typecheck.*
 
 sealed class Constraint {
@@ -65,15 +66,6 @@ class SymFractionEq(val a: SymbolicFraction, val b: Int) : Constraint() {
 
 class Constraints {
 
-  private val debug = mutableListOf<String>()
-
-  fun debug() {
-    for (str in debug) {
-      println(str)
-    }
-    setup.debug()
-  }
-
   private lateinit var setup: ConstraintsSetup
 
   private val types = mutableSetOf(
@@ -96,13 +88,13 @@ class Constraints {
     return this
   }
 
-  fun end() {
+  fun end(): Solution? {
     for (constraint in constraints) {
       setup.addAssert(constraint.toZ3(setup))
     }
 
     println("Solving...")
-    setup.end()
+    return setup.end()
   }
 
   /*
@@ -137,8 +129,6 @@ class Constraints {
   }
 
   fun implies(a: SymbolicAssertion, b: SymbolicAssertion) {
-    debug.add("${a.id} ==> ${b.id}")
-
     // a ==> b
     for ((ref, f) in a.getAccesses()) {
       implies(f, b.getAccess(ref))

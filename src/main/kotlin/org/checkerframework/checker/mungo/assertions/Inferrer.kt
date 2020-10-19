@@ -35,11 +35,6 @@ class Inferrer(val checker: MungoChecker) {
   private val specialAssertions = IdentityHashMap<SpecialBlock, NodeAssertions>()
   private val constraints = Constraints()
 
-  fun debug() {
-    println("----")
-    constraints.debug()
-  }
-
   fun phase1(classTree: ClassTree) {
     val classQueue: Queue<Pair<ClassTree, Set<Reference>>> = ArrayDeque()
     classQueue.add(Pair.of(classTree, emptySet()))
@@ -158,9 +153,9 @@ class Inferrer(val checker: MungoChecker) {
     }
 
     // Debug
-    for (node in cfg.allNodes) {
+    /*for (node in cfg.allNodes) {
       assertions[node]!!.debug(node.toString())
-    }
+    }*/
   }
 
   private fun gatherLocations(cfg: ControlFlowGraph): Set<Reference> {
@@ -327,13 +322,22 @@ class Inferrer(val checker: MungoChecker) {
 
     println("Inferring constraints...")
 
-    // TODO
     val visitor = ConstraintsInference(this, constraints)
     for ((node, assertions) in assertions) {
       node.accept(visitor, assertions)
     }
 
-    constraints.end()
+    val solution = constraints.end()
+
+    if (solution == null) {
+      println("Error!\n")
+    } else {
+      println("Correct!\n")
+
+      for ((node, assertions) in assertions) {
+        assertions.debug(solution, node.toString())
+      }
+    }
   }
 
 }
