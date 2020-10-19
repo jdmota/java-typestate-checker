@@ -9,7 +9,8 @@ import org.checkerframework.checker.mungo.typecheck.*
 
 class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
 
-  private val ctx = Z3Context()
+  val ctx = Z3Context()
+
   private val symbols = object {
     val subtype = ctx.mkSymbol("subtype")
 
@@ -58,6 +59,7 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
     // val Object = ctx.mkConst(symbols.Object, Type)
 
     val bottomArray = ctx.mkConstArray(Type0, False)
+    val unknownArray = ctx.mkConstArray(Type0, True)
 
     /*
     (define-fun subtype ((a Type) (b Type)) Bool
@@ -74,14 +76,41 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
     }
   }
 
-  fun typeToExpr(type: MungoType) = setup.Type0Exprs[type] ?: error("Missing $type")
+  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
 
-  fun makeUnion(types: Set<MungoType>): ArrayExpr {
-    var arr = setup.bottomArray
-    for (type in types) {
-      arr = ctx.mkStore(arr, typeToExpr(type), setup.True)
-    }
-    return arr
+  private val symbolicFractionToExpr = mutableMapOf<SymbolicFraction, ArithExpr>()
+  fun fractionToExpr(f: SymbolicFraction) = symbolicFractionToExpr.computeIfAbsent(f) {
+    val c = ctx.mkConst("f${f.id}", setup.Real) as ArithExpr
+    // 0 <= c <= 1
+    solver.add(ctx.mkAnd(ctx.mkGe(c, ctx.mkReal(0)), ctx.mkLe(c, ctx.mkReal(1))))
+    c
+  }
+
+  private val symbolicTypeToExpr = mutableMapOf<SymbolicType, Expr>()
+  fun typeToExpr(t: SymbolicType) = symbolicTypeToExpr.computeIfAbsent(t) {
+    ctx.mkConst("t${t.id}", setup.Type)
+  }
+
+  private val typeToExpr = mutableMapOf<MungoType, Expr>()
+  fun typeToExpr(type: MungoType): Expr = typeToExpr.computeIfAbsent(type) {
+    when (it) {
+      is MungoUnionType -> {
+        var arr = setup.bottomArray
+        for (t in it.types) {
+          arr = ctx.mkStore(arr, typeToExpr(t), setup.True)
+        }
+        arr
+      }
+      is MungoStateType -> setup.Type0Exprs[it]
+      is MungoMovedType -> setup.Type0Exprs[it]
+      is MungoPrimitiveType -> setup.Type0Exprs[it]
+      is MungoNullType -> setup.Type0Exprs[it]
+      is MungoEndedType -> setup.Type0Exprs[it]
+      is MungoNoProtocolType -> setup.Type0Exprs[it]
+      is MungoObjectType -> null // TODO
+      is MungoUnknownType -> setup.unknownArray
+      is MungoBottomType -> setup.bottomArray
+    } ?: error("Failed to convert $it in a Z3 expression")
   }
 
   private lateinit var solver: Solver
@@ -89,15 +118,9 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
   fun start(): ConstraintsSetup {
     solver = ctx.mkSolver()
     solver.add(ctx.mkEq(setup.Bottom, setup.bottomArray))
-    solver.add(ctx.mkEq(setup.Unknown, ctx.mkConstArray(setup.Type0, setup.True)))
+    solver.add(ctx.mkEq(setup.Unknown, setup.unknownArray))
     return this
   }
-
-  private val fractionToExpr = mutableMapOf<SymbolicFraction, Expr>()
-  fun fractionToExpr(f: SymbolicFraction) = fractionToExpr.computeIfAbsent(f) { ctx.mkConst("f${f.id}", setup.Real) }
-
-  private val typeToExpr = mutableMapOf<SymbolicType, Expr>()
-  fun typeToExpr(t: SymbolicType) = typeToExpr.computeIfAbsent(t) { ctx.mkConst("t${t.id}", setup.Type) }
 
   fun addAssert(expr: BoolExpr) {
     solver.add(expr)
@@ -113,10 +136,12 @@ class ConstraintsSetup(private val singletonTypes: Set<MungoType>) {
       else -> false
     }
 
+    println("Solved: $result")
+
     val model = solver.model
 
-    debugText += result.toString()
-    debugText += "\n"
+    // debugText += result.toString()
+    // debugText += "\n"
     debugText += model.toString()
   }
 

@@ -47,6 +47,10 @@ class SymbolicAssertion(val locations: Set<Reference>) {
     }
   }
 
+  fun getAccesses(): Map<Reference, SymbolicFraction> = accesses
+
+  fun getTypeofs(): Map<Reference, SymbolicType> = typeofs
+
   fun getAccess(ref: Reference) = accesses[ref] ?: error("No fraction for $ref")
 
   fun getType(ref: Reference) = typeofs[ref] ?: error("No type for $ref")

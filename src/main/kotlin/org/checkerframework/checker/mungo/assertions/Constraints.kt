@@ -1,7 +1,8 @@
 package org.checkerframework.checker.mungo.assertions
 
+import com.microsoft.z3.ArithExpr
+import com.microsoft.z3.BoolExpr
 import org.checkerframework.checker.mungo.typecheck.*
-import java.lang.RuntimeException
 
 class Constraints {
 
@@ -30,6 +31,7 @@ class Constraints {
 
   fun start(): Constraints {
     setup = ConstraintsSetup(singletonTypes).start()
+    applyAllImplications()
     return this
   }
 
@@ -57,42 +59,76 @@ class Constraints {
   }
   */
 
+  private val implications = mutableListOf<Pair<SymbolicAssertion, SymbolicAssertion>>()
+
   fun implies(a: SymbolicAssertion, b: SymbolicAssertion) {
-    // TODO
     debug.add("${a.id} ==> ${b.id}")
+    // a ==> b
+    implications.add(Pair(a, b))
+  }
+
+  private fun applyAllImplications() {
+    for ((a, b) in implications) {
+      for ((ref, f) in a.getAccesses()) {
+        implies(f, b.getAccess(ref))
+      }
+      for ((ref, t) in a.getTypeofs()) {
+        // TODO implies(t, b.getType(ref))
+      }
+    }
+    implications.clear()
   }
 
   // Greater than instead of equals is important because a node might have multiple ancestors (e.g. loops)
   fun implies(a: SymbolicFraction, b: SymbolicFraction) {
     // access(x, a) ==> access(x, b)
     // a >= b
-    // TODO
+    setup.addAssert(
+      setup.ctx.mkGe(setup.fractionToExpr(a), setup.fractionToExpr(b))
+    )
   }
 
   fun implies(a: SymbolicType, b: SymbolicType) {
     // typeof(x, a) ==> typeof(x, b)
     // a <: b
-    // TODO
+    // t1 <: t2
+    val expr1 = setup.typeToExpr(a)
+    val expr2 = setup.typeToExpr(b)
+    setup.addAssert(
+      setup.mkSubtype(expr1, expr2)
+    )
   }
 
   fun one(a: SymbolicFraction) {
     // a == 1
-    // TODO
+    setup.addAssert(
+      setup.ctx.mkEq(setup.fractionToExpr(a), setup.ctx.mkReal(1))
+    )
   }
 
   fun notZero(a: SymbolicFraction) {
     // a > 0
-    // TODO
+    setup.addAssert(
+      setup.ctx.mkGt(setup.fractionToExpr(a), setup.ctx.mkReal(0))
+    )
   }
 
   fun subtype(t1: SymbolicType, t2: MungoType) {
     // t1 <: t2
-    // TODO
+    val expr1 = setup.typeToExpr(t1)
+    val expr2 = setup.typeToExpr(t2)
+    setup.addAssert(
+      setup.mkSubtype(expr1, expr2)
+    )
   }
 
   fun subtype(t1: MungoType, t2: SymbolicType) {
     // t1 <: t2
-    // TODO
+    val expr1 = setup.typeToExpr(t1)
+    val expr2 = setup.typeToExpr(t2)
+    setup.addAssert(
+      setup.mkSubtype(expr1, expr2)
+    )
   }
 
 }

@@ -321,13 +321,19 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   fun phase2() {
+    println("Starting phase 2...")
+
     constraints.start()
+
+    println("Inferring constraints...")
 
     // TODO
     val visitor = ConstraintsInference(this)
     for ((node, assertions) in assertions) {
       node.accept(visitor, assertions)
     }
+
+    println("Solving...")
 
     constraints.end()
   }
