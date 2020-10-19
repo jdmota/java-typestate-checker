@@ -2,7 +2,6 @@ package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.typecheck.*
-import org.checkerframework.com.github.javaparser.ast.expr.TypeExpr
 
 // Z3 Tutorial: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.225.8231&rep=rep1&type=pdf
 // Z3 Guide and Playground: https://rise4fun.com/z3/tutorial/guide
@@ -191,7 +190,7 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
 
 }
 
-fun main(args: Array<String>) {
+/*fun main(args: Array<String>) {
   ConstraintsSetup(setOf(
     MungoNoProtocolType.SINGLETON,
     MungoEndedType.SINGLETON,
@@ -199,4 +198,4 @@ fun main(args: Array<String>) {
     MungoPrimitiveType.SINGLETON,
     MungoMovedType.SINGLETON
   )).start()
-}
+}*/
