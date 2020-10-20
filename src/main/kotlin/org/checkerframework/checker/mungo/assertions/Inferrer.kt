@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.sun.source.tree.*
+import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
@@ -29,7 +30,8 @@ class Inferrer(val checker: MungoChecker) {
     this.root = root as JCTree.JCCompilationUnit
   }
 
-  private val locationsGatherer = LocationsGatherer(checker)
+  val locationsGatherer = LocationsGatherer(checker)
+
   private val assertions = IdentityHashMap<Node, NodeAssertions>()
   private val assertionsList = mutableListOf<Pair<Node, NodeAssertions>>()
   private val specialAssertions = IdentityHashMap<SpecialBlock, NodeAssertions>()
@@ -121,7 +123,19 @@ class Inferrer(val checker: MungoChecker) {
     else -> throw RuntimeException("unknown ast")
   }
 
-  private val cfgCache = WeakIdentityHashMap<Tree, ControlFlowGraph>()
+  private val cfgCache = IdentityHashMap<Tree, ControlFlowGraph>()
+
+  private fun getCFG(ast: UnderlyingAST): ControlFlowGraph {
+    val tree = astToTree(ast)
+    return cfgCache.computeIfAbsent(tree) {
+      CFCFGBuilder.build(root, ast, processingEnv)
+    }
+  }
+
+  private fun getCFG(tree: Tree): ControlFlowGraph {
+    return cfgCache[tree] ?: error("No CFG found")
+  }
+
   private var currentLocations = emptySet<Reference>()
 
   private fun phase1(
@@ -131,9 +145,7 @@ class Inferrer(val checker: MungoChecker) {
     outerLocations: Set<Reference>
   ) {
     // Generate the CFG
-    val tree = astToTree(ast)
-    val cfg = CFCFGBuilder.build(root, ast, processingEnv)
-    cfgCache[tree] = cfg
+    val cfg = getCFG(ast)
 
     // Gather locations
     val locations = gatherLocations(cfg).plus(outerLocations)
@@ -314,6 +326,28 @@ class Inferrer(val checker: MungoChecker) {
       is ConditionalNotNode -> after.operand === node
       else -> false
     }
+  }
+
+  fun getMethodPre(sym: Symbol.MethodSymbol): SymbolicAssertion? {
+    val tree = checker.utils.treeUtils.getTree(sym) ?: return null
+    return getMethodPre(tree)
+  }
+
+  fun getMethodPre(tree: MethodTree): SymbolicAssertion {
+    val cfg = getCFG(tree)
+    val assertions = specialAssertions[cfg.entryBlock] ?: error("No assertion for method ${tree.name}")
+    return assertions.preThen
+  }
+
+  fun getMethodPost(sym: Symbol.MethodSymbol): Pair<SymbolicAssertion?, SymbolicAssertion?> {
+    val tree = checker.utils.treeUtils.getTree(sym) ?: return Pair(null, null)
+    return getMethodPost(tree)
+  }
+
+  fun getMethodPost(tree: MethodTree): Pair<SymbolicAssertion, SymbolicAssertion> {
+    val cfg = getCFG(tree)
+    val assertions = specialAssertions[cfg.entryBlock] ?: error("No assertion for method ${tree.name}")
+    return Pair(assertions.postThen, assertions.postElse)
   }
 
   fun phase2() {

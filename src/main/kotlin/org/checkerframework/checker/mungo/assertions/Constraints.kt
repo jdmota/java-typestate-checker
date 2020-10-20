@@ -1,42 +1,47 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.BoolExpr
+import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.*
 
 sealed class Constraint {
   abstract fun toZ3(setup: ConstraintsSetup): BoolExpr
 }
 
-class AssertionImpliesAssertion(val a: SymbolicAssertion, val b: SymbolicAssertion) : Constraint() {
+class AssertionImpliesAssertion(
+  val a: SymbolicAssertion,
+  val b: SymbolicAssertion,
+  val except: Set<Reference>
+) : Constraint() {
 
   init {
-    b.impliedBy(a)
+    a.implies(b)
   }
 
   private fun implies(setup: ConstraintsSetup): BoolExpr {
     val exprs = mutableListOf<BoolExpr>()
-    for ((ref, f) in a.getAccesses()) {
-      exprs.add(SymFractionImpliesSymFraction(f, b.getAccess(ref)).toZ3(setup))
-    }
-    for ((ref, t) in a.getTypeofs()) {
-      exprs.add(SymTypeImpliesSymType(t, b.getType(ref)).toZ3(setup))
+    a.forEach { ref, info ->
+      if (!except.contains(ref)) {
+        exprs.add(SymFractionImpliesSymFraction(info.fraction, b.getAccess(ref)).toZ3(setup))
+        exprs.add(SymTypeImpliesSymType(info.type, b.getType(ref)).toZ3(setup))
+      }
     }
     return setup.ctx.mkAnd(*exprs.toTypedArray())
   }
 
   private fun eq(setup: ConstraintsSetup): BoolExpr {
     val exprs = mutableListOf<BoolExpr>()
-    for ((ref, f) in a.getAccesses()) {
-      exprs.add(SymFractionEqSymFraction(f, b.getAccess(ref)).toZ3(setup))
-    }
-    for ((ref, t) in a.getTypeofs()) {
-      exprs.add(SymTypeEqSymType(t, b.getType(ref)).toZ3(setup))
+    a.forEach { ref, info ->
+      if (!except.contains(ref)) {
+        exprs.add(SymFractionEqSymFraction(info.fraction, b.getAccess(ref)).toZ3(setup))
+        exprs.add(SymTypeEqSymType(info.type, b.getType(ref)).toZ3(setup))
+      }
     }
     return setup.ctx.mkAnd(*exprs.toTypedArray())
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return if (b.getImpliedBy().size == 1) eq(setup) else implies(setup)
+    return if (b.impliedByCount() == 1) eq(setup) else implies(setup)
   }
 }
 
@@ -160,9 +165,13 @@ class Constraints {
 
   private val constraints = mutableListOf<Constraint>()
 
-  fun implies(a: SymbolicAssertion, b: SymbolicAssertion) {
+  fun implies(
+    a: SymbolicAssertion,
+    b: SymbolicAssertion,
+    except: Set<Reference> = emptySet()
+  ) {
     // a ==> b
-    constraints.add(AssertionImpliesAssertion(a, b))
+    constraints.add(AssertionImpliesAssertion(a, b, except))
   }
 
   fun one(a: SymbolicFraction) {

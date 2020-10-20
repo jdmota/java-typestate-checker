@@ -11,10 +11,6 @@ class EqualityTracker(
     return numToRefs[num]!!
   }
 
-  override fun equals(other: Any?): Boolean {
-    return TODO()
-  }
-
   fun toMutable(): MutableEqualityTracker {
     return MutableEqualityTracker(refToNum.toMutableMap(), numToRefs.toMutableMap())
   }
@@ -37,10 +33,6 @@ class MutableEqualityTracker(
   operator fun get(ref: Reference): Set<Reference> {
     val num = refToNum[ref] ?: return setOf(ref)
     return numToRefs[num]!!
-  }
-
-  override fun equals(other: Any?): Boolean {
-    return TODO()
   }
 
   fun setEquality(a: Reference, b: Reference) {

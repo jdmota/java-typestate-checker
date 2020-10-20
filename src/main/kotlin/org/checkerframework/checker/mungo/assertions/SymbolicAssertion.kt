@@ -1,7 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.microsoft.z3.Model
-import org.checkerframework.checker.mungo.analysis.Reference
+import org.checkerframework.checker.mungo.analysis.*
 import java.lang.StringBuilder
 
 class SymbolicFraction {
@@ -30,6 +29,30 @@ class SymbolicType {
   }
 }
 
+class SymbolicPacked {}
+
+class SymbolicInfo {
+  val fraction = SymbolicFraction() // access(x, f1)
+  val type = SymbolicType() // typeof(x, t1)
+  val packed = SymbolicPacked() // packed(x) or unpacked(x)
+  val packFraction = SymbolicFraction() // access(x.0, f2)
+  val children = mutableMapOf<Reference, SymbolicInfo>()
+
+  fun forEach(fn: (Reference, SymbolicInfo) -> Unit) {
+    for ((ref, info) in children) {
+      fn(ref, info)
+      info.forEach(fn)
+    }
+  }
+
+  fun toString(str: StringBuilder, ref: Reference, solution: Solution) {
+    str.appendLine("acc($ref,${solution.get(fraction)}) && typeof($ref,${solution.get(type)})")
+    for ((child, info) in children) {
+      info.toString(str, child, solution)
+    }
+  }
+}
+
 class SymbolicAssertion(val locations: Set<Reference>) {
 
   val id = uuid++
@@ -39,53 +62,79 @@ class SymbolicAssertion(val locations: Set<Reference>) {
   }
 
   private val impliedBy = mutableSetOf<SymbolicAssertion>()
+  private val implies = mutableSetOf<SymbolicAssertion>()
 
-  fun impliedBy(other: SymbolicAssertion) {
-    if (this !== other) impliedBy.add(other)
+  fun implies(other: SymbolicAssertion) {
+    if (this !== other) {
+      // this ==> other
+      implies.add(other)
+      other.impliedBy.add(this)
+    }
   }
 
-  fun getImpliedBy(): Set<SymbolicAssertion> = impliedBy
+  fun impliedByCount() = impliedBy.size
 
-  private val accesses = mutableMapOf<Reference, SymbolicFraction>()
-  private val typeofs = mutableMapOf<Reference, SymbolicType>()
+  val roots = mutableMapOf<Reference, SymbolicInfo>()
 
   init {
     for (loc in locations) {
-      accesses[loc] = SymbolicFraction()
-      typeofs[loc] = SymbolicType()
+      prepare(loc)
     }
   }
 
-  fun getAccesses(): Map<Reference, SymbolicFraction> = accesses
+  fun prepare(ref: Reference): SymbolicInfo {
+    return when (ref) {
+      is LocalVariable,
+      is ThisReference,
+      is ClassName,
+      is ReturnSpecialVar,
+      is OldSpecialVar -> {
+        roots.computeIfAbsent(ref) { SymbolicInfo() }
+      }
+      is FieldAccess -> {
+        val parent = prepare(ref.receiver)
+        parent.children.computeIfAbsent(ref) { SymbolicInfo() }
+      }
+    }
+  }
 
-  fun getTypeofs(): Map<Reference, SymbolicType> = typeofs
+  fun get(ref: Reference): SymbolicInfo {
+    return when (ref) {
+      is LocalVariable,
+      is ThisReference,
+      is ClassName,
+      is ReturnSpecialVar,
+      is OldSpecialVar -> {
+        roots[ref] ?: error("No info for $ref")
+      }
+      is FieldAccess -> {
+        val parent = get(ref.receiver)
+        parent.children[ref] ?: error("No info for $ref")
+      }
+    }
+  }
 
-  fun getAccess(ref: Reference) = accesses[ref] ?: error("No fraction for $ref")
+  fun getAccess(ref: Reference) = get(ref).fraction
 
-  fun getType(ref: Reference) = typeofs[ref] ?: error("No type for $ref")
+  fun getType(ref: Reference) = get(ref).type
+
+  fun forEach(fn: (Reference, SymbolicInfo) -> Unit) {
+    for ((ref, info) in roots) {
+      fn(ref, info)
+      info.forEach(fn)
+    }
+  }
 
   fun toString(solution: Solution): String {
     val str = StringBuilder()
-    for ((loc, f) in accesses) {
-      str.append("acc($loc,${solution.get(f)}) && ")
-    }
-    str.append('\n')
-    for ((loc, t) in typeofs) {
-      str.append("typeof($loc,${solution.get(t)}) && ")
+    for ((ref, info) in roots) {
+      info.toString(str, ref, solution)
     }
     return str.toString()
   }
 
   override fun toString(): String {
-    val str = StringBuilder()
-    for ((loc, f) in accesses) {
-      str.append("acc($loc,$f) && ")
-    }
-    str.append('\n')
-    for ((loc, t) in typeofs) {
-      str.append("typeof($loc,$t) && ")
-    }
-    return str.toString()
+    return "SymbolicAssertion"
   }
 }
 
@@ -121,17 +170,17 @@ class NodeAssertions(
     val preThenStr = preThen.toString(solution)
     val preElseStr = preElse.toString(solution)
     if (preThenStr != preElseStr) {
-      println("then: $preThenStr;\nelse: $preElseStr")
+      print("then: $preThenStr;\nelse: $preElseStr")
     } else {
-      println(preThenStr)
+      print(preThenStr)
     }
     println("\n$middle\n")
     val postThenStr = postThen.toString(solution)
     val postElseStr = postElse.toString(solution)
     if (postThenStr != postElseStr) {
-      println("then: $postThenStr;\nelse: $postElseStr")
+      print("then: $postThenStr;\nelse: $postElseStr")
     } else {
-      println(postThenStr)
+      print(postThenStr)
     }
     println("----")
   }

@@ -120,6 +120,9 @@ fun createLocalVariable(tree: VariableTree): LocalVariable {
 }
 
 class FieldAccess(val receiver: Reference, type: TypeMirror, val field: VariableElement) : Reference(type) {
+
+  constructor(receiver: Reference, field: VariableElement) : this(receiver, ElementUtils.getType(field), field)
+
   val isFinal get() = ElementUtils.isFinal(field)
   val isStatic get() = ElementUtils.isStatic(field)
   val isNonPrivate = !field.modifiers.contains(Modifier.PRIVATE)
