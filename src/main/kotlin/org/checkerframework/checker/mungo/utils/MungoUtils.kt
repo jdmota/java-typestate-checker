@@ -40,6 +40,7 @@ class MungoUtils(val checker: SourceChecker) {
 
   val treeUtils = checker.treeUtils
   val typeUtils = checker.typeUtils
+  val elementUtils = checker.elementUtils
 
   val resolver = Resolver(checker)
   val classUtils = ClassUtils(this)

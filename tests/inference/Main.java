@@ -1,3 +1,5 @@
+import org.checkerframework.checker.mungo.MungoUtils;
+
 public class Main {
 
   public static void main(String args[]) {
@@ -10,7 +12,10 @@ public class Main {
 
     }
 
-    System.out.println(cell);
+    MungoUtils.unpack(cell);
+    String item = cell.getItem();
+
+    System.out.println(item);
   }
 
 }

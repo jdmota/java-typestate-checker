@@ -99,10 +99,21 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return null
   }
 
+  /*
+  Think of method calls like:
+
+  d = method(a, b, c)
+
+  as:
+
+  #arg0 = a
+  #arg1 = b
+  #arg2 = c
+  method()
+  d = #ret
+  */
   override fun visitMethodInvocation(n: MethodInvocationNode, result: NodeAssertions): Void? {
     require.read(n.target.receiver, result)
-
-    // TODO handle varargs
 
     val method = n.target.method as Symbol.MethodSymbol
     val argExprs = n.arguments
@@ -110,6 +121,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     val parameters = inferrer.locationsGatherer.getParameterLocations(method)
 
     println(method)
+    println(argExprs)
     println(parameters)
     println()
 

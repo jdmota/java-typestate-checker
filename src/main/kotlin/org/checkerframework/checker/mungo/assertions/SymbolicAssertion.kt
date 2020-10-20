@@ -11,9 +11,9 @@ class SymbolicFraction {
     private var uuid = 1L
   }
 
-  override fun toString(): String {
-    return "f$id"
-  }
+  fun z3Symbol() = "f$id"
+
+  override fun toString() = z3Symbol()
 }
 
 class SymbolicType {
@@ -24,9 +24,22 @@ class SymbolicType {
     private var uuid = 1L
   }
 
-  override fun toString(): String {
-    return "t$id"
+  fun z3Symbol() = "t$id"
+
+  override fun toString() = z3Symbol()
+}
+
+class SymbolicEquality {
+
+  val id = uuid++
+
+  companion object {
+    private var uuid = 1L
   }
+
+  fun z3Symbol() = "eq$id"
+
+  override fun toString() = z3Symbol()
 }
 
 class SymbolicPacked {}
@@ -53,7 +66,17 @@ class SymbolicInfo {
   }
 }
 
-class SymbolicAssertion(val locations: Set<Reference>) {
+class SymbolicAssertionSkeleton(
+  val locations: Set<Reference>
+) {
+  companion object {
+    val empty = SymbolicAssertionSkeleton(emptySet())
+  }
+
+  fun create() = SymbolicAssertion(this)
+}
+
+class SymbolicAssertion(skeleton: SymbolicAssertionSkeleton) {
 
   val id = uuid++
 
@@ -77,7 +100,7 @@ class SymbolicAssertion(val locations: Set<Reference>) {
   val roots = mutableMapOf<Reference, SymbolicInfo>()
 
   init {
-    for (loc in locations) {
+    for (loc in skeleton.locations) {
       prepare(loc)
     }
   }

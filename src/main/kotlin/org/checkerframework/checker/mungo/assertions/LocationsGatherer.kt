@@ -1,7 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.sun.source.tree.Tree
-import com.sun.source.tree.VariableTree
 import com.sun.source.util.TreePathScanner
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
@@ -13,6 +12,8 @@ import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 // TODO fix infinite recursion with recursive data types like Node.next.next.next
 class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Void?, Void?>() {
 
+  val utils get() = checker.utils
+
   /*private fun getFields(classTree: ClassTree): List<VariableTree> {
     return prepareClass(classTree).nonStatic.fields
   }
@@ -23,15 +24,22 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
     return emptyList()
   }*/
 
-  fun getLocations(ref: Reference): MutableList<Reference> {
-    val element = checker.utils.typeUtils.asElement(ref.type)
-    val list = mutableListOf(ref)
+  fun getLocations(ref: Reference): List<Reference> {
+    val list = mutableListOf<Reference>()
+    getLocationsHelper(list, ref)
+    return list
+  }
+
+  private fun getLocationsHelper(list: MutableList<Reference>, ref: Reference): MutableList<Reference> {
+    list.add(ref)
+
+    val element = utils.typeUtils.asElement(ref.type)
     if (element is Symbol.ClassSymbol) {
-      val pkg = element.packge().fullname.toString()
+      val pkg = utils.elementUtils.getPackageOf(element).qualifiedName.toString()
       // Avoid recursion...
       if (!pkg.startsWith("java.")) {
-        element.members_field?.symbols?.filterIsInstance(Symbol.VarSymbol::class.java)?.map {
-          list.addAll(getLocations(ref, it))
+        element.members_field?.symbols?.filterIsInstance(Symbol.VarSymbol::class.java)?.forEach {
+          getLocationsHelper(list, FieldAccess(ref, it))
         }
       }
       // getFields(element).forEach { list.addAll(getLocations(ref, it)) }
@@ -39,31 +47,23 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
     return list
   }
 
-  private fun getLocations(prefix: Reference?, sym: Symbol.VarSymbol): MutableList<Reference> {
-    return getLocations(if (prefix == null) LocalVariable(sym) else FieldAccess(prefix, sym))
-  }
-
   private val cache1 = WeakIdentityHashMap<Tree, List<Reference>>()
   private val cache2 = WeakIdentityHashMap<Symbol, List<Reference>>()
 
   private fun getParameterLocations(method: JCTree.JCLambda): List<Reference> {
     return cache1.computeIfAbsent(method) {
-      val list = mutableListOf<Reference>()
-      method.parameters.forEach { list.addAll(getLocations(createLocalVariable(it))) }
-      list
+      method.parameters.fold(mutableListOf()) { l, param -> getLocationsHelper(l, createLocalVariable(param)) }
     }
   }
 
   fun getParameterLocations(method: JCTree.JCMethodDecl): List<Reference> {
     return cache1.computeIfAbsent(method) {
       val sym = method.sym
-      val list = if (sym.isStatic) {
-        mutableListOf()
-      } else {
-        getLocations(ThisReference(sym.enclosingElement.asType()))
+      val list = mutableListOf<Reference>()
+      if (!sym.isStatic) {
+        getLocationsHelper(list, ThisReference(sym.enclosingElement.asType()))
       }
-      method.parameters.forEach { list.addAll(getLocations(createLocalVariable(it))) }
-      list
+      method.parameters.fold(list) { l, param -> getLocationsHelper(l, createLocalVariable(param)) }
     }
   }
 
@@ -71,13 +71,11 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
     /*val tree = checker.utils.treeUtils.getTree(sym)
     return getParameterLocations(tree as JCTree.JCMethodDecl)*/
     return cache2.computeIfAbsent(sym) {
-      val list = if (sym.isStatic) {
-        mutableListOf()
-      } else {
-        getLocations(ThisReference(sym.enclosingElement.asType()))
+      val list = mutableListOf<Reference>()
+      if (!sym.isStatic) {
+        getLocationsHelper(list, ThisReference(sym.enclosingElement.asType()))
       }
-      sym.parameters.forEach { list.addAll(getLocations(LocalVariable(it))) }
-      list
+      sym.parameters.fold(list) { l, param -> getLocationsHelper(l, LocalVariable(param)) }
     }
   }
 

@@ -16,7 +16,6 @@ import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
-import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
 
 class Inferrer(val checker: MungoChecker) {
@@ -38,13 +37,13 @@ class Inferrer(val checker: MungoChecker) {
   private val constraints = Constraints()
 
   fun phase1(classTree: ClassTree) {
-    val classQueue: Queue<Pair<ClassTree, Set<Reference>>> = ArrayDeque()
-    classQueue.add(Pair(classTree, emptySet()))
+    val classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>> = ArrayDeque()
+    classQueue.add(Pair(classTree, SymbolicAssertionSkeleton.empty))
 
     while (!classQueue.isEmpty()) {
       val qel = classQueue.remove()
       val ct = qel.first as JCTree.JCClassDecl
-      val outerLocations = qel.second
+      val outerSkeleton = qel.second
 
       utils.classUtils.visitClassSymbol(ct.sym)?.let { graph ->
         graph.getAllConcreteStates().forEach {
@@ -53,18 +52,18 @@ class Inferrer(val checker: MungoChecker) {
       }
 
       val info = prepareClass(ct)
-      phase1(classQueue, ct, info.static, outerLocations)
-      phase1(classQueue, ct, info.nonStatic, outerLocations)
+      phase1(classQueue, ct, info.static, outerSkeleton)
+      phase1(classQueue, ct, info.nonStatic, outerSkeleton)
     }
   }
 
   private fun phase1(
-    classQueue: Queue<Pair<ClassTree, Set<Reference>>>,
+    classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>>,
     classTree: JCTree.JCClassDecl,
     info: ClassInfo,
-    outerLocations: Set<Reference>
+    outerSkeleton: SymbolicAssertionSkeleton
   ) {
-    val lambdaQueue: Queue<Pair<LambdaExpressionTree, Set<Reference>>> = ArrayDeque()
+    val lambdaQueue: Queue<Pair<LambdaExpressionTree, SymbolicAssertionSkeleton>> = ArrayDeque()
 
     // Analyze fields
     for (field in info.fields) {
@@ -78,7 +77,7 @@ class Inferrer(val checker: MungoChecker) {
           classQueue,
           lambdaQueue,
           UnderlyingAST.CFGStatement(field, classTree),
-          outerLocations
+          outerSkeleton
         )
       }
     }
@@ -89,7 +88,7 @@ class Inferrer(val checker: MungoChecker) {
         classQueue,
         lambdaQueue,
         UnderlyingAST.CFGStatement(block, classTree),
-        outerLocations
+        outerSkeleton
       )
     }
 
@@ -99,7 +98,7 @@ class Inferrer(val checker: MungoChecker) {
         classQueue,
         lambdaQueue,
         UnderlyingAST.CFGMethod(method, classTree),
-        outerLocations
+        outerSkeleton
       )
     }
 
@@ -136,38 +135,34 @@ class Inferrer(val checker: MungoChecker) {
     return cfgCache[tree] ?: error("No CFG found")
   }
 
-  private var currentLocations = emptySet<Reference>()
+  private lateinit var currentSkeleton: SymbolicAssertionSkeleton
 
   private fun phase1(
-    classQueue: Queue<Pair<ClassTree, Set<Reference>>>,
-    lambdaQueue: Queue<Pair<LambdaExpressionTree, Set<Reference>>>,
+    classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>>,
+    lambdaQueue: Queue<Pair<LambdaExpressionTree, SymbolicAssertionSkeleton>>,
     ast: UnderlyingAST,
-    outerLocations: Set<Reference>
+    outerSkeleton: SymbolicAssertionSkeleton
   ) {
     // Generate the CFG
     val cfg = getCFG(ast)
 
     // Gather locations
-    val locations = gatherLocations(cfg).plus(outerLocations)
-    currentLocations = locations
+    val locations = gatherLocations(cfg).plus(outerSkeleton.locations)
+    val skeleton = SymbolicAssertionSkeleton(locations)
+    currentSkeleton = skeleton
 
     // Associate assertions before and after each node, and connect implications
     phase1(cfg)
 
     // Queue classes
     for (cls in cfg.declaredClasses) {
-      classQueue.add(Pair(cls, locations))
+      classQueue.add(Pair(cls, skeleton))
     }
 
     // Queue lambdas
     for (lambda in cfg.declaredLambdas) {
-      lambdaQueue.add(Pair(lambda, locations))
+      lambdaQueue.add(Pair(lambda, skeleton))
     }
-
-    // Debug
-    /*for (node in cfg.allNodes) {
-      assertions[node]!!.debug(node.toString())
-    }*/
   }
 
   private fun gatherLocations(cfg: ControlFlowGraph): Set<Reference> {
@@ -189,13 +184,13 @@ class Inferrer(val checker: MungoChecker) {
 
   private fun phase1(cfg: ControlFlowGraph) {
     // Entry
-    val preAndPost = SymbolicAssertion(currentLocations)
+    val preAndPost = currentSkeleton.create()
     val entry = NodeAssertions(preAndPost, preAndPost, preAndPost, preAndPost)
     specialAssertions[cfg.entryBlock] = entry
 
     // Exits
-    val preThen = SymbolicAssertion(currentLocations)
-    val preElse = SymbolicAssertion(currentLocations)
+    val preThen = currentSkeleton.create()
+    val preElse = currentSkeleton.create()
     specialAssertions[cfg.regularExitBlock] = NodeAssertions(preThen, preElse, preThen, preElse)
 
     // Traverse
@@ -244,20 +239,20 @@ class Inferrer(val checker: MungoChecker) {
       val preThen: SymbolicAssertion
       val preElse: SymbolicAssertion
       if (prev.postThen !== prev.postElse) {
-        preThen = SymbolicAssertion(currentLocations)
-        preElse = SymbolicAssertion(currentLocations)
+        preThen = currentSkeleton.create()
+        preElse = currentSkeleton.create()
       } else {
-        preThen = SymbolicAssertion(currentLocations)
+        preThen = currentSkeleton.create()
         preElse = preThen
       }
 
       val postThen: SymbolicAssertion
       val postElse: SymbolicAssertion
       if (shouldEachToEach(node)) {
-        postThen = SymbolicAssertion(currentLocations)
-        postElse = SymbolicAssertion(currentLocations)
+        postThen = currentSkeleton.create()
+        postElse = currentSkeleton.create()
       } else {
-        postThen = SymbolicAssertion(currentLocations)
+        postThen = currentSkeleton.create()
         postElse = postThen
       }
 

@@ -65,7 +65,7 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
 
   private val symbolicFractionToExpr = mutableMapOf<SymbolicFraction, ArithExpr>()
   fun fractionToExpr(f: SymbolicFraction) = symbolicFractionToExpr.computeIfAbsent(f) {
-    val c = ctx.mkConst("f${f.id}", setup.Real) as ArithExpr
+    val c = ctx.mkConst(f.z3Symbol(), setup.Real) as ArithExpr
     // 0 <= c <= 1
     addAssert(ctx.mkAnd(ctx.mkGe(c, ctx.mkReal(0)), ctx.mkLe(c, ctx.mkReal(1))))
     c
@@ -73,7 +73,7 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
 
   private val symbolicTypeToExpr = mutableMapOf<SymbolicType, Expr>()
   fun typeToExpr(t: SymbolicType) = symbolicTypeToExpr.computeIfAbsent(t) {
-    ctx.mkConst("t${t.id}", setup.Type)
+    ctx.mkConst(t.z3Symbol(), setup.Type)
   }
 
   fun typeToExpr(t: MungoType) = setup.TypeExprs[t] ?: error("No expression for $t")
