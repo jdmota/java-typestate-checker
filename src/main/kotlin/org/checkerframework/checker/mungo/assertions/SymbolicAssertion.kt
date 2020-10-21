@@ -59,7 +59,7 @@ class SymbolicInfo {
   }
 
   fun toString(str: StringBuilder, ref: Reference, solution: Solution) {
-    str.appendLine("acc($ref,${solution.get(fraction)}) && typeof($ref,${solution.get(type)})")
+    str.appendLine("acc($ref,${solution.get(fraction)}) && acc($ref.0,${solution.get(packFraction)}) && typeof($ref,${solution.get(type)})")
     for ((child, info) in children) {
       info.toString(str, child, solution)
     }
@@ -67,16 +67,27 @@ class SymbolicInfo {
 }
 
 class SymbolicAssertionSkeleton(
-  val locations: Set<Reference>
+  val locations: Set<Reference>,
+  val equalities: Set<Pair<Reference, Reference>>
 ) {
   companion object {
-    val empty = SymbolicAssertionSkeleton(emptySet())
+    val empty = SymbolicAssertionSkeleton(emptySet(), emptySet())
   }
+
+  private val eqTracker = MutableEqualityTracker()
+
+  init {
+    for ((a, b) in equalities) {
+      eqTracker.setEquality(a, b)
+    }
+  }
+
+  fun getPossibleEq(ref: Reference) = eqTracker[ref]
 
   fun create() = SymbolicAssertion(this)
 }
 
-class SymbolicAssertion(skeleton: SymbolicAssertionSkeleton) {
+class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
 
   val id = uuid++
 
@@ -138,6 +149,8 @@ class SymbolicAssertion(skeleton: SymbolicAssertionSkeleton) {
   }
 
   fun getAccess(ref: Reference) = get(ref).fraction
+
+  fun getAccessDotZero(ref: Reference) = get(ref).packFraction
 
   fun getType(ref: Reference) = get(ref).type
 

@@ -23,7 +23,10 @@ class AssertionImpliesAssertion(
     a.forEach { ref, info ->
       if (!except.contains(ref)) {
         exprs.add(SymFractionImpliesSymFraction(info.fraction, b.getAccess(ref)).toZ3(setup))
+        // exprs.add(SymFractionImpliesSymFraction(info.packFraction, b.getAccessDotZero(ref)).toZ3(setup))
+        exprs.add(setup.fractionsAccumulation(ref, a.skeleton.getPossibleEq(ref), a, b, false))
         exprs.add(SymTypeImpliesSymType(info.type, b.getType(ref)).toZ3(setup))
+        // TODO make so that equalities in A imply equalities in B (if read access still exists)
       }
     }
     return setup.ctx.mkAnd(*exprs.toTypedArray())
@@ -34,7 +37,10 @@ class AssertionImpliesAssertion(
     a.forEach { ref, info ->
       if (!except.contains(ref)) {
         exprs.add(SymFractionEqSymFraction(info.fraction, b.getAccess(ref)).toZ3(setup))
+        // exprs.add(SymFractionEqSymFraction(info.packFraction, b.getAccessDotZero(ref)).toZ3(setup))
+        exprs.add(setup.fractionsAccumulation(ref, a.skeleton.getPossibleEq(ref), a, b, true))
         exprs.add(SymTypeEqSymType(info.type, b.getType(ref)).toZ3(setup))
+        // TODO make so that equalities in A imply equalities in B (if read access still exists)
       }
     }
     return setup.ctx.mkAnd(*exprs.toTypedArray())
@@ -51,8 +57,7 @@ class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: SymbolicFrac
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.fractionToExpr(a)
     val expr2 = setup.fractionToExpr(b)
-    // setup.addMinimizeObjective(setup.ctx.mkSub(expr1, expr2))
-    setup.addMaximizeObjective(expr2)
+    // setup.addMaximizeObjective(expr2)
     return setup.ctx.mkGe(expr1, expr2)
   }
 }

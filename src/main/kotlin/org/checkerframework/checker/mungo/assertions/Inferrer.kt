@@ -11,12 +11,14 @@ import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.block.*
+import org.checkerframework.dataflow.cfg.node.AssignmentNode
 import org.checkerframework.dataflow.cfg.node.ConditionalNotNode
 import org.checkerframework.dataflow.cfg.node.Node
 import org.checkerframework.dataflow.cfg.node.ReturnNode
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
+import kotlin.math.exp
 
 class Inferrer(val checker: MungoChecker) {
 
@@ -146,9 +148,18 @@ class Inferrer(val checker: MungoChecker) {
     // Generate the CFG
     val cfg = getCFG(ast)
 
-    // Gather locations
+    // Gather locations and possible equalities
     val locations = gatherLocations(cfg).plus(outerSkeleton.locations)
-    val skeleton = SymbolicAssertionSkeleton(locations)
+    val equalities = gatherEqualities(cfg).plus(outerSkeleton.equalities)
+
+    // Debug
+    println("---")
+    println("Locations $locations")
+    println("Equalities $equalities")
+    println("---")
+
+    // Save skeleton for the creation of new assertions
+    val skeleton = SymbolicAssertionSkeleton(locations, equalities)
     currentSkeleton = skeleton
 
     // Associate assertions before and after each node, and connect implications
@@ -180,6 +191,27 @@ class Inferrer(val checker: MungoChecker) {
       }
     }
     return locations
+  }
+
+  private fun gatherEqualities(cfg: ControlFlowGraph): Set<Pair<Reference, Reference>> {
+    val equalities = mutableSetOf<Pair<Reference, Reference>>()
+    for (node in cfg.allNodes) {
+      when (node) {
+        is AssignmentNode -> {
+          val target = getReference(node.target) ?: continue
+          val expression = getReference(node.expression) ?: continue
+          equalities.add(Pair(target, expression))
+        }
+        is ReturnNode -> {
+          val result = node.result ?: continue
+          val target = getReference(node) ?: continue
+          val expression = getReference(result) ?: continue
+          equalities.add(Pair(target, expression))
+        }
+        // TODO more...
+      }
+    }
+    return equalities
   }
 
   private fun phase1(cfg: ControlFlowGraph) {

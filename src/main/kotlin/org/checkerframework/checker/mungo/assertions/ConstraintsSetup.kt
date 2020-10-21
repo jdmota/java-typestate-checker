@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.*
+import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.*
 
 // Z3 Tutorial: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.225.8231&rep=rep1&type=pdf
@@ -37,6 +38,8 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
     val Bool = ctx.boolSort
     val Real = ctx.realSort
 
+    val Location = ctx.mkUninterpretedSort("Location")
+
     val Type = ctx.mkEnumSort(symbols.Type, *symbols.typeSymbolsArray)
     val TypeExprs = symbols.typeSymbols.map { (type, sym) ->
       Pair(type, ctx.mkApp(Type.getConstDecl(symbols.typeSymbolsArray.indexOf(sym))))
@@ -61,9 +64,45 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
     }
   }
 
-  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
+  fun mkSubtype(a: Expr, b: Expr) = mkApp(setup.subtype, a, b)
+
+  fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr) = mkApp(assertionToEq(assertion), a, b)
+
+  private fun mkApp(fn: FuncDecl, a: Expr, b: Expr) = ctx.mkApp(fn, a, b) as BoolExpr
+
+  private var eqUuid = 1L
+  private val assertionToEq = mutableMapOf<SymbolicAssertion, FuncDecl>()
+
+  // Get "eq" function for a certain assertion
+  fun assertionToEq(a: SymbolicAssertion): FuncDecl {
+    return assertionToEq.computeIfAbsent(a) {
+      val fn = ctx.mkFuncDecl("eq${eqUuid++}", arrayOf(setup.Location, setup.Location), setup.Bool)
+
+      // Reflexive
+      // (assert (forall ((x Loc)) (eq x x)))
+      addAssert(ctx.mkForall(arrayOf(setup.Location)) { args ->
+        mkApp(fn, args[0], args[0])
+      })
+
+      // Transitive
+      // (assert (forall ((x Loc) (y Loc) (z Loc)) (=> (and (eq x y) (eq y z)) (eq x z))))
+      addAssert(ctx.mkForall(arrayOf(setup.Location, setup.Location, setup.Location)) { args ->
+        ctx.mkImplies(
+          ctx.mkAnd(
+            mkApp(fn, args[0], args[1]),
+            mkApp(fn, args[1], args[2])
+          ),
+          mkApp(fn, args[0], args[2])
+        )
+      })
+
+      fn
+    }
+  }
 
   private val symbolicFractionToExpr = mutableMapOf<SymbolicFraction, ArithExpr>()
+
+  // Get an Z3 expression for a symbolic fraction
   fun fractionToExpr(f: SymbolicFraction) = symbolicFractionToExpr.computeIfAbsent(f) {
     val c = ctx.mkConst(f.z3Symbol(), setup.Real) as ArithExpr
     // 0 <= c <= 1
@@ -72,34 +111,61 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
   }
 
   private val symbolicTypeToExpr = mutableMapOf<SymbolicType, Expr>()
+
+  // Get an Z3 expression for a symbolic type
   fun typeToExpr(t: SymbolicType) = symbolicTypeToExpr.computeIfAbsent(t) {
     ctx.mkConst(t.z3Symbol(), setup.Type)
   }
 
+  // Get an Z3 expression for a type
   fun typeToExpr(t: MungoType) = setup.TypeExprs[t] ?: error("No expression for $t")
 
-  private lateinit var solver: Optimize
+  private var refUuid = 1L
+  private val refToExpr = mutableMapOf<Reference, Expr>()
+
+  // Get an Z3 expression for a location
+  fun refToExpr(ref: Reference): Expr {
+    return refToExpr.computeIfAbsent(ref) {
+      ctx.mkConst("ref${refUuid++}", setup.Location)
+    }
+  }
+
+  // @pre: "ref" is also in "others"
+  fun fractionsAccumulation(ref: Reference, others: Set<Reference>, pre: SymbolicAssertion, post: SymbolicAssertion, equals: Boolean): BoolExpr {
+    // Example:
+    // x y z
+    // f1 + f2 + f3 >= f4 + f5 + f6
+    // f1 - f4 + f2 - f5 + f3 - f6 >= 0
+    val thisRefExpr = refToExpr(ref)
+    val addition = ctx.mkAdd(
+      *others.map {
+        ctx.mkITE(
+          mkEquals(pre, thisRefExpr, refToExpr(it)),
+          ctx.mkSub(
+            fractionToExpr(pre.getAccessDotZero(it)),
+            fractionToExpr(post.getAccessDotZero(it))
+          ),
+          ctx.mkReal(0)
+        ) as ArithExpr
+      }.toTypedArray()
+    )
+    return if (equals) ctx.mkEq(addition, ctx.mkReal(0)) else ctx.mkGe(addition, ctx.mkReal(0))
+  }
+
+  private lateinit var solver: Solver
 
   fun start(): ConstraintsSetup {
-    solver = ctx.mkOptimize() // ctx.mkSolver()
+    solver = ctx.mkSolver()
     spec()
     return this
   }
 
   fun addAssert(expr: BoolExpr) {
-    solver.Add(expr)
-  }
-
-  fun addMinimizeObjective(expr: Expr) {
-    solver.MkMinimize(expr)
-  }
-
-  fun addMaximizeObjective(expr: Expr) {
-    solver.MkMaximize(expr)
+    solver.add(expr)
   }
 
   fun end(): Solution? {
-    val result = solver.Check()
+    val result = solver.check()
     val hasModel = result == Status.SATISFIABLE
     if (hasModel) {
       return Solution(this, solver.model)
@@ -178,7 +244,7 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
         )
       })
 
-      val result = solver.Check()
+      val result = solver.check()
       if (result != Status.SATISFIABLE) {
         throw RuntimeException("Could not prove basic properties: $result")
       }
