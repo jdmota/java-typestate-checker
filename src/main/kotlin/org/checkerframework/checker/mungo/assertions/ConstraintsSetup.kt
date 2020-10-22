@@ -36,6 +36,9 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
 
   private val setup = object {
     val Bool = ctx.boolSort
+    val True = ctx.mkTrue()
+    val False = ctx.mkFalse()
+
     val Real = ctx.realSort
 
     val Location = ctx.mkUninterpretedSort("Location")
@@ -58,17 +61,40 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
             )
           }.toTypedArray())
         )
-      }.toTypedArray())//.simplify()
+      }.toTypedArray())
       println(code)
       code
     }
+
+    val min = ctx.mkRecFuncDecl(ctx.mkSymbol("fMin"), arrayOf(Real, Real), Real) { _, args ->
+      val a = args[0] as ArithExpr
+      val b = args[1] as ArithExpr
+      ctx.mkITE(ctx.mkLe(a, b), a, b)
+    }
   }
 
-  fun mkSubtype(a: Expr, b: Expr) = mkApp(setup.subtype, a, b)
+  fun <T : Expr> mkITE(condition: BoolExpr, a: T, b: T): T = when (condition) {
+    setup.True -> a
+    setup.False -> b
+    else -> ctx.mkITE(condition, a, b) as T
+  }
 
-  fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr) = mkApp(assertionToEq(assertion), a, b)
+  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
+  fun mkSubtype(a: SymbolicType, b: SymbolicType) = mkSubtype(typeToExpr(a), typeToExpr(b))
 
-  private fun mkApp(fn: FuncDecl, a: Expr, b: Expr) = ctx.mkApp(fn, a, b) as BoolExpr
+  fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr) = if (a === b) {
+    setup.True
+  } else {
+    ctx.mkApp(assertionToEq(assertion), a, b) as BoolExpr
+  }
+
+  fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference) = mkEquals(assertion, refToExpr(a), refToExpr(b))
+
+  fun mkMin(a: ArithExpr, b: ArithExpr) = if (a === b) {
+    a
+  } else {
+    ctx.mkApp(setup.min, a, b) as ArithExpr
+  }
 
   private var eqUuid = 1L
   private val assertionToEq = mutableMapOf<SymbolicAssertion, FuncDecl>()
@@ -81,7 +107,7 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
       // Reflexive
       // (assert (forall ((x Loc)) (eq x x)))
       addAssert(ctx.mkForall(arrayOf(setup.Location)) { args ->
-        mkApp(fn, args[0], args[0])
+        ctx.mkApp(fn, args[0], args[0]) as BoolExpr
       })
 
       // Transitive
@@ -89,10 +115,10 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
       addAssert(ctx.mkForall(arrayOf(setup.Location, setup.Location, setup.Location)) { args ->
         ctx.mkImplies(
           ctx.mkAnd(
-            mkApp(fn, args[0], args[1]),
-            mkApp(fn, args[1], args[2])
+            ctx.mkApp(fn, args[0], args[1]) as BoolExpr,
+            ctx.mkApp(fn, args[1], args[2]) as BoolExpr
           ),
-          mkApp(fn, args[0], args[2])
+          ctx.mkApp(fn, args[0], args[2]) as BoolExpr
         )
       })
 
@@ -130,26 +156,37 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
     }
   }
 
-  // @pre: "ref" is also in "others"
-  fun fractionsAccumulation(ref: Reference, others: Set<Reference>, pre: SymbolicAssertion, post: SymbolicAssertion, equals: Boolean): BoolExpr {
+  fun min(fraction: Collection<SymbolicFraction>): ArithExpr {
+    val iterator = fraction.iterator()
+    var expr = fractionToExpr(iterator.next())
+    while (iterator.hasNext()) {
+      expr = mkMin(expr, fractionToExpr(iterator.next()))
+    }
+    return expr
+  }
+
+  fun fractionsAccumulation(thisRef: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
+    val others = post.skeleton.getPossibleEq(thisRef)
     // Example:
     // x y z
-    // f1 + f2 + f3 >= f4 + f5 + f6
-    // f1 - f4 + f2 - f5 + f3 - f6 >= 0
-    val thisRefExpr = refToExpr(ref)
+    // f1 + f2 + f3 = f4 + f5 + f6
+    // (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
+    val thisRefExpr = refToExpr(thisRef)
     val addition = ctx.mkAdd(
-      *others.map {
-        ctx.mkITE(
-          mkEquals(pre, thisRefExpr, refToExpr(it)),
-          ctx.mkSub(
-            fractionToExpr(pre.getAccessDotZero(it)),
-            fractionToExpr(post.getAccessDotZero(it))
-          ),
+      *others.map { ref ->
+        val otherRef = refToExpr(ref)
+        val sub = ctx.mkSub(
+          min(pres.map { it.getAccessDotZero(ref) }),
+          fractionToExpr(post.getAccessDotZero(ref))
+        )
+        mkITE(
+          mkEquals(post, thisRefExpr, otherRef),
+          sub,
           ctx.mkReal(0)
-        ) as ArithExpr
+        )
       }.toTypedArray()
     )
-    return if (equals) ctx.mkEq(addition, ctx.mkReal(0)) else ctx.mkGe(addition, ctx.mkReal(0))
+    return ctx.mkEq(addition, ctx.mkReal(0))
   }
 
   private lateinit var solver: Solver
@@ -162,6 +199,7 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
 
   fun addAssert(expr: BoolExpr) {
     solver.add(expr)
+    println(expr)
   }
 
   fun end(): Solution? {

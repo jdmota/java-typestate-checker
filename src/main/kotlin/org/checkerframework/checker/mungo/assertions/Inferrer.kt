@@ -35,7 +35,8 @@ class Inferrer(val checker: MungoChecker) {
 
   private val assertions = IdentityHashMap<Node, NodeAssertions>()
   private val assertionsList = mutableListOf<Pair<Node, NodeAssertions>>()
-  private val specialAssertions = IdentityHashMap<SpecialBlock, NodeAssertions>()
+  private val preAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
+  private val postAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val constraints = Constraints()
 
   fun phase1(classTree: ClassTree) {
@@ -215,21 +216,23 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   private fun phase1(cfg: ControlFlowGraph) {
+    val ast = cfg.underlyingAST
+
     // Entry
     val preAndPost = currentSkeleton.create()
     val entry = NodeAssertions(preAndPost, preAndPost, preAndPost, preAndPost)
-    specialAssertions[cfg.entryBlock] = entry
+    preAssertions[ast] = entry
 
     // Exits
     val preThen = currentSkeleton.create()
     val preElse = currentSkeleton.create()
-    specialAssertions[cfg.regularExitBlock] = NodeAssertions(preThen, preElse, preThen, preElse)
+    postAssertions[ast] = NodeAssertions(preThen, preElse, preThen, preElse)
 
     // Traverse
-    traverse(entry, cfg.entryBlock, Store.FlowRule.EACH_TO_EACH)
+    traverse(ast, entry, cfg.entryBlock, Store.FlowRule.EACH_TO_EACH)
   }
 
-  private fun traverse(prev: NodeAssertions, block: Block, flowRule: Store.FlowRule) {
+  private fun traverse(ast: UnderlyingAST, prev: NodeAssertions, block: Block, flowRule: Store.FlowRule) {
     when (block) {
       is RegularBlock -> {
         var last = prev
@@ -238,24 +241,24 @@ class Inferrer(val checker: MungoChecker) {
           last = traverse(last, n, lastFlow) ?: return
           lastFlow = Store.FlowRule.EACH_TO_EACH
         }
-        block.successor?.let { traverse(last, it, block.flowRule) }
+        block.successor?.let { traverse(ast, last, it, block.flowRule) }
       }
       is ExceptionBlock -> {
         val last = traverse(prev, block.node, flowRule) ?: return
-        block.successor?.let { traverse(last, it, block.flowRule) }
+        block.successor?.let { traverse(ast, last, it, block.flowRule) }
         // TODO handle possible exceptions
       }
       is ConditionalBlock -> {
-        block.thenSuccessor?.let { traverse(prev, it, block.thenFlowRule) }
-        block.elseSuccessor?.let { traverse(prev, it, block.elseFlowRule) }
+        block.thenSuccessor?.let { traverse(ast, prev, it, block.thenFlowRule) }
+        block.elseSuccessor?.let { traverse(ast, prev, it, block.elseFlowRule) }
       }
       is SpecialBlock -> {
-        block.successor?.let { traverse(prev, it, block.flowRule) }
+        block.successor?.let { traverse(ast, prev, it, block.flowRule) }
         when (block.specialType!!) {
           SpecialBlock.SpecialBlockType.ENTRY -> {
           }
           SpecialBlock.SpecialBlockType.EXIT -> {
-            implies(prev, specialAssertions[block]!!, flowRule)
+            implies(prev, postAssertions[ast]!!, flowRule)
           }
           SpecialBlock.SpecialBlockType.EXCEPTIONAL_EXIT -> {
             // TODO
@@ -362,7 +365,7 @@ class Inferrer(val checker: MungoChecker) {
 
   fun getMethodPre(tree: MethodTree): SymbolicAssertion {
     val cfg = getCFG(tree)
-    val assertions = specialAssertions[cfg.entryBlock] ?: error("No assertion for method ${tree.name}")
+    val assertions = preAssertions[cfg.underlyingAST] ?: error("No assertion for method ${tree.name}")
     return assertions.preThen
   }
 
@@ -373,7 +376,7 @@ class Inferrer(val checker: MungoChecker) {
 
   fun getMethodPost(tree: MethodTree): Pair<SymbolicAssertion, SymbolicAssertion> {
     val cfg = getCFG(tree)
-    val assertions = specialAssertions[cfg.entryBlock] ?: error("No assertion for method ${tree.name}")
+    val assertions = postAssertions[cfg.underlyingAST] ?: error("No assertion for method ${tree.name}")
     return Pair(assertions.postThen, assertions.postElse)
   }
 
@@ -385,6 +388,11 @@ class Inferrer(val checker: MungoChecker) {
     println("Inferring constraints...")
 
     val visitor = ConstraintsInference(this, constraints)
+
+    for ((ast, assertions) in preAssertions) {
+      visitor.visitInitialAssertion(ast, assertions.preThen)
+    }
+
     for ((node, assertions) in assertionsList) {
       node.accept(visitor, assertions)
     }

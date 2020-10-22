@@ -1,68 +1,90 @@
 package org.checkerframework.checker.mungo.assertions
 
+import com.microsoft.z3.ArithExpr
 import com.microsoft.z3.BoolExpr
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.*
 
-sealed class Constraint {
+private sealed class Constraint {
   abstract fun toZ3(setup: ConstraintsSetup): BoolExpr
 }
 
-class AssertionImpliesAssertion(
-  val a: SymbolicAssertion,
-  val b: SymbolicAssertion,
+private class ImpliedAssertion(
+  val tail: SymbolicAssertion
+) : Constraint() {
+
+  // TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
+
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    val exprs = mutableListOf<BoolExpr>()
+    val impliedBy = tail.impliedBy()
+
+    tail.forEach { ref, info ->
+      exprs.add(setup.ctx.mkEq(
+        setup.fractionToExpr(info.fraction),
+        setup.min(impliedBy.map { it.getAccess(ref) })
+      ))
+
+      exprs.add(setup.fractionsAccumulation(ref, impliedBy, tail))
+
+      for (head in impliedBy) {
+        // exprs.add(SymFractionImpliesSymFraction(head.getAccess(ref), info.fraction).toZ3(setup))
+        // exprs.add(SymFractionImpliesSymFraction(head.getAccessDotZero(ref), info.packFraction).toZ3(setup))
+        // TODO this is slow...
+        exprs.add(SymTypeImpliesSymType(head.getType(ref), info.type).toZ3(setup))
+      }
+    }
+
+    for ((a, b) in tail.skeleton.equalities) {
+      // Equality is true in assertion "tail" if present in the other assertions
+      // and with read access to the variables
+      exprs.add(
+        setup.ctx.mkEq(
+          setup.mkEquals(tail, a, b),
+          setup.ctx.mkAnd(
+            *impliedBy.map {
+              setup.mkEquals(it, a, b)
+            }.toTypedArray()
+          )
+        )
+      )
+    }
+
+    return setup.ctx.mkAnd(*exprs.toTypedArray())
+  }
+}
+
+private class OnlyEffects(
+  val pre: SymbolicAssertion,
+  val post: SymbolicAssertion,
   val except: Set<Reference>
 ) : Constraint() {
 
-  init {
-    a.implies(b)
-  }
-
-  private fun implies(setup: ConstraintsSetup): BoolExpr {
-    val exprs = mutableListOf<BoolExpr>()
-    a.forEach { ref, info ->
-      if (!except.contains(ref)) {
-        exprs.add(SymFractionImpliesSymFraction(info.fraction, b.getAccess(ref)).toZ3(setup))
-        // exprs.add(SymFractionImpliesSymFraction(info.packFraction, b.getAccessDotZero(ref)).toZ3(setup))
-        exprs.add(setup.fractionsAccumulation(ref, a.skeleton.getPossibleEq(ref), a, b, false))
-        exprs.add(SymTypeImpliesSymType(info.type, b.getType(ref)).toZ3(setup))
-        // TODO make so that equalities in A imply equalities in B (if read access still exists)
-      }
-    }
-    return setup.ctx.mkAnd(*exprs.toTypedArray())
-  }
-
-  private fun eq(setup: ConstraintsSetup): BoolExpr {
-    val exprs = mutableListOf<BoolExpr>()
-    a.forEach { ref, info ->
-      if (!except.contains(ref)) {
-        exprs.add(SymFractionEqSymFraction(info.fraction, b.getAccess(ref)).toZ3(setup))
-        // exprs.add(SymFractionEqSymFraction(info.packFraction, b.getAccessDotZero(ref)).toZ3(setup))
-        exprs.add(setup.fractionsAccumulation(ref, a.skeleton.getPossibleEq(ref), a, b, true))
-        exprs.add(SymTypeEqSymType(info.type, b.getType(ref)).toZ3(setup))
-        // TODO make so that equalities in A imply equalities in B (if read access still exists)
-      }
-    }
-    return setup.ctx.mkAnd(*exprs.toTypedArray())
-  }
-
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return if (b.impliedByCount() == 1) eq(setup) else implies(setup)
+    val exprs = mutableListOf<BoolExpr>()
+    pre.forEach { ref, info ->
+      if (!except.contains(ref)) {
+        exprs.add(SymFractionEqSymFraction(info.fraction, post.getAccess(ref)).toZ3(setup))
+        exprs.add(SymFractionEqSymFraction(info.packFraction, post.getAccessDotZero(ref)).toZ3(setup))
+        exprs.add(SymTypeEqSymType(info.type, post.getType(ref)).toZ3(setup))
+        // TODO
+      }
+    }
+    return setup.ctx.mkAnd(*exprs.toTypedArray())
   }
 }
 
 // access(x, a) ==> access(x, b)
 // a >= b
-class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: SymbolicFraction) : Constraint() {
+private class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: SymbolicFraction) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.fractionToExpr(a)
     val expr2 = setup.fractionToExpr(b)
-    // setup.addMaximizeObjective(expr2)
     return setup.ctx.mkGe(expr1, expr2)
   }
 }
 
-class SymFractionEqSymFraction(val a: SymbolicFraction, val b: SymbolicFraction) : Constraint() {
+private class SymFractionEqSymFraction(val a: SymbolicFraction, val b: SymbolicFraction) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkEq(setup.fractionToExpr(a), setup.fractionToExpr(b))
   }
@@ -71,7 +93,7 @@ class SymFractionEqSymFraction(val a: SymbolicFraction, val b: SymbolicFraction)
 // typeof(x, a) ==> typeof(x, b)
 // a <: b
 // t1 <: t2
-class SymTypeImpliesSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() {
+private class SymTypeImpliesSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
@@ -79,7 +101,7 @@ class SymTypeImpliesSymType(val a: SymbolicType, val b: SymbolicType) : Constrai
   }
 }
 
-class SymTypeEqSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() {
+private class SymTypeEqSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
@@ -87,7 +109,7 @@ class SymTypeEqSymType(val a: SymbolicType, val b: SymbolicType) : Constraint() 
   }
 }
 
-class TypeImpliesSymType(val a: MungoType, val b: SymbolicType) : Constraint() {
+private class TypeImpliesSymType(val a: MungoType, val b: SymbolicType) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
@@ -95,7 +117,7 @@ class TypeImpliesSymType(val a: MungoType, val b: SymbolicType) : Constraint() {
   }
 }
 
-class SymTypeImpliesType(val a: SymbolicType, val b: MungoType) : Constraint() {
+private class SymTypeImpliesType(val a: SymbolicType, val b: MungoType) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
@@ -103,15 +125,22 @@ class SymTypeImpliesType(val a: SymbolicType, val b: MungoType) : Constraint() {
   }
 }
 
-class SymFractionGt(val a: SymbolicFraction, val b: Int) : Constraint() {
+private class SymFractionGt(val a: SymbolicFraction, val b: Int) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkGt(setup.fractionToExpr(a), setup.ctx.mkReal(b))
   }
 }
 
-class SymFractionEq(val a: SymbolicFraction, val b: Int) : Constraint() {
+private class SymFractionEq(val a: SymbolicFraction, val b: Int) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkEq(setup.fractionToExpr(a), setup.ctx.mkReal(b))
+  }
+}
+
+private class EqualityInAssertion(val assertion: SymbolicAssertion, val a: Reference, val b: Reference, val bool: Boolean) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    val expr = setup.mkEquals(assertion, a, b)
+    return if (bool) expr else setup.ctx.mkNot(expr)
   }
 }
 
@@ -148,35 +177,26 @@ class Constraints {
     return setup.end()
   }
 
-  /*
-  TODO
-  void main() {
-    Cell c1 = new Cell();
-    Cell c2 = c1;
-    // access(c1.item, f1) && access(c2.item, f2) && eq(c1,c2)
-    // f1 + f2 = 1
-
-    // access(c1.item, f3) && access(c2.item, f4) && eq(c1,c2)
-    // f3 = 1
-    c1.setItem(new Item());
-    // access(c1.item, f5) && access(c2.item, f6) && eq(c1,c2)
-    // f3 + f4 == f5 + f6
-
-    // access(c2.item, f7) && access(c1.item, f8) && eq(c1,c2)
-    // f7 = 1
-    c2.setItem(new Item());
-  }
-  */
-
+  // Inferred constraints
   private val constraints = mutableListOf<Constraint>()
 
-  fun implies(
-    a: SymbolicAssertion,
-    b: SymbolicAssertion,
-    except: Set<Reference> = emptySet()
-  ) {
+  // Track assertions that are implied by others
+  private val impliedAssertions = mutableSetOf<SymbolicAssertion>()
+
+  fun implies(a: SymbolicAssertion, b: SymbolicAssertion) {
     // a ==> b
-    constraints.add(AssertionImpliesAssertion(a, b, except))
+    a.implies(b)
+    if (impliedAssertions.add(b)) {
+      constraints.add(ImpliedAssertion(b))
+    }
+  }
+
+  fun onlyEffects(
+    pre: SymbolicAssertion,
+    post: SymbolicAssertion,
+    except: Set<Reference>
+  ) {
+    constraints.add(OnlyEffects(pre, post, except))
   }
 
   fun one(a: SymbolicFraction) {
@@ -199,6 +219,16 @@ class Constraints {
     // t1 <: t2
     addType(t1)
     constraints.add(TypeImpliesSymType(t1, t2))
+  }
+
+  fun equality(assertion: SymbolicAssertion, a: Reference, b: Reference) {
+    // eq(a, b)
+    constraints.add(EqualityInAssertion(assertion, a, b, true))
+  }
+
+  fun notEquality(assertion: SymbolicAssertion, a: Reference, b: Reference) {
+    // !eq(a, b)
+    constraints.add(EqualityInAssertion(assertion, a, b, false))
   }
 
 }

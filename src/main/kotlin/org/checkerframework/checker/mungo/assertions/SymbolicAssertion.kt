@@ -13,6 +13,14 @@ class SymbolicFraction {
 
   fun z3Symbol() = "f$id"
 
+  override fun equals(other: Any?): Boolean {
+    return this === other
+  }
+
+  override fun hashCode(): Int {
+    return id.hashCode()
+  }
+
   override fun toString() = z3Symbol()
 }
 
@@ -26,6 +34,14 @@ class SymbolicType {
 
   fun z3Symbol() = "t$id"
 
+  override fun equals(other: Any?): Boolean {
+    return this === other
+  }
+
+  override fun hashCode(): Int {
+    return id.hashCode()
+  }
+
   override fun toString() = z3Symbol()
 }
 
@@ -38,6 +54,14 @@ class SymbolicEquality {
   }
 
   fun z3Symbol() = "eq$id"
+
+  override fun equals(other: Any?): Boolean {
+    return this === other
+  }
+
+  override fun hashCode(): Int {
+    return id.hashCode()
+  }
 
   override fun toString() = z3Symbol()
 }
@@ -107,6 +131,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
   }
 
   fun impliedByCount() = impliedBy.size
+  fun impliedBy(): Set<SymbolicAssertion> = impliedBy
 
   val roots = mutableMapOf<Reference, SymbolicInfo>()
 

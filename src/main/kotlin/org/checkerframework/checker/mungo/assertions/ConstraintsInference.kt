@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.assertions
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.analysis.getReference
+import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
 
 class ConstraintsInference(private val inferrer: Inferrer, private val constraints: Constraints) : AbstractNodeVisitor<Void?, NodeAssertions>() {
@@ -50,10 +51,17 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
 
     fun onlySideEffect(result: NodeAssertions, except: Set<Reference>) {
-      constraints.implies(result.preThen, result.postThen, except)
+      constraints.onlyEffects(result.preThen, result.postThen, except)
       if (result.preThen !== result.preElse || result.postThen !== result.postElse) {
-        constraints.implies(result.preElse, result.postElse, except)
+        constraints.onlyEffects(result.preElse, result.postElse, except)
       }
+    }
+  }
+
+  fun visitInitialAssertion(ast: UnderlyingAST, pre: SymbolicAssertion) {
+    // TODO
+    for ((a, b) in pre.skeleton.equalities) {
+      constraints.notEquality(pre, a, b)
     }
   }
 
