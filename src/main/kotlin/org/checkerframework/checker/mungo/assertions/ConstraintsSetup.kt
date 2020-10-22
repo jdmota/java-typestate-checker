@@ -71,7 +71,7 @@ class ConstraintsSetup(private val usedTypes: Set<MungoType>) {
       code
     }
 
-    val union = ctx.mkRecFuncDecl(ctx.mkSymbol("union"), arrayOf(Type, Type), Type) { _, args ->
+    /*val union = ctx.mkRecFuncDecl(ctx.mkSymbol("union"), arrayOf(Type, Type), Type) { _, args ->
       val argA = args[0]
       val argB = args[1]
 
@@ -104,7 +104,7 @@ class ConstraintsSetup(private val usedTypes: Set<MungoType>) {
       val code = step1(usedTypes.iterator())
       println(code)
       code
-    }
+    }*/
 
     val min = ctx.mkRecFuncDecl(ctx.mkSymbol("fMin"), arrayOf(Real, Real), Real) { _, args ->
       val a = args[0] as ArithExpr

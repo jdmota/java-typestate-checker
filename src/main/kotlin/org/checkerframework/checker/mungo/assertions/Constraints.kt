@@ -27,11 +27,18 @@ private class ImpliedAssertion(
 
       exprs.add(setup.fractionsAccumulation(ref, impliedBy, tail))
 
-      for (head in impliedBy) {
-        // exprs.add(SymFractionImpliesSymFraction(head.getAccess(ref), info.fraction).toZ3(setup))
-        // exprs.add(SymFractionImpliesSymFraction(head.getAccessDotZero(ref), info.packFraction).toZ3(setup))
-        // TODO this is slow...
-        exprs.add(SymTypeImpliesSymType(head.getType(ref), info.type).toZ3(setup))
+      // exprs.add(SymFractionImpliesSymFraction(head.getAccess(ref), info.fraction).toZ3(setup))
+      // exprs.add(SymFractionImpliesSymFraction(head.getAccessDotZero(ref), info.packFraction).toZ3(setup))
+
+      // Subtyping constraints are more difficult for Z3 to solve
+      // If this assertion is only implied by another one,
+      // just add a constraint where the two types are the same
+      if (impliedBy.size == 1) {
+        exprs.add(SymTypeEqSymType(impliedBy.first().getType(ref), info.type).toZ3(setup))
+      } else {
+        for (head in impliedBy) {
+          exprs.add(SymTypeImpliesSymType(head.getType(ref), info.type).toZ3(setup))
+        }
       }
     }
 
