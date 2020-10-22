@@ -8,20 +8,24 @@ import org.checkerframework.checker.mungo.typecheck.*
 // Z3 Guide and Playground: https://rise4fun.com/z3/tutorial/guide
 // Z3 Java Api: https://z3prover.github.io/api/html/namespacecom_1_1microsoft_1_1z3.html
 
-class ConstraintsSetup(private val types: Set<MungoType>) {
+class ConstraintsSetup(private val usedTypes: Set<MungoType>) {
 
   val ctx = Z3Context()
 
-  private val symbols = object {
-    val subtype = ctx.mkSymbol("subtype")
-    val Type = ctx.mkSymbol("Type")
-    val typeSymbols = types.map { Pair(it, typeToSymbol(it)) }.toMap()
-    val typeSymbolsArray = typeSymbols.values.toTypedArray()
+  private val typesWithUnions = run {
+    val allTypes = mutableListOf<MungoType>()
+    usedTypes.forEach { a ->
+      usedTypes.forEach { b ->
+        if (a !== b) allTypes.add(MungoUnionType.create(listOf(a, b)))
+      }
+    }
+    allTypes.addAll(usedTypes)
+    allTypes.toSet()
   }
 
   private fun typeToSymbol(type: MungoType): Symbol {
     return ctx.mkSymbol(when (type) {
-      is MungoUnionType -> "TU_${type.types.joinToString("_")}"
+      is MungoUnionType -> "TU_${type.types.map { typeToSymbol(it) }.joinToString("_")}"
       is MungoStateType -> "TS${type.state.id}"
       is MungoMovedType -> "TMoved"
       is MungoPrimitiveType -> "TPrim"
@@ -38,17 +42,18 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
     val Bool = ctx.boolSort
     val True = ctx.mkTrue()
     val False = ctx.mkFalse()
-
     val Real = ctx.realSort
-
     val Location = ctx.mkUninterpretedSort("Location")
 
-    val Type = ctx.mkEnumSort(symbols.Type, *symbols.typeSymbolsArray)
-    val TypeExprs = symbols.typeSymbols.map { (type, sym) ->
-      Pair(type, ctx.mkApp(Type.getConstDecl(symbols.typeSymbolsArray.indexOf(sym))))
+    val typeSymbols = typesWithUnions.map { Pair(it, typeToSymbol(it)) }.toMap()
+    val typesArray = typeSymbols.values.toTypedArray()
+
+    val Type = ctx.mkEnumSort(ctx.mkSymbol("Type"), *typesArray)
+    val TypeExprs = typeSymbols.map { (type, sym) ->
+      Pair(type, ctx.mkApp(Type.getConstDecl(typesArray.indexOf(sym))))
     }.toMap()
 
-    val subtype = ctx.mkRecFuncDecl(symbols.subtype, arrayOf(Type, Type), Bool) { _, args ->
+    val subtype = ctx.mkRecFuncDecl(ctx.mkSymbol("subtype"), arrayOf(Type, Type), Bool) { _, args ->
       val a = args[0]
       val b = args[1]
       val code = ctx.mkAnd(*TypeExprs.map { (typeA, exprA) ->
@@ -62,6 +67,41 @@ class ConstraintsSetup(private val types: Set<MungoType>) {
           }.toTypedArray())
         )
       }.toTypedArray())
+      println(code)
+      code
+    }
+
+    val union = ctx.mkRecFuncDecl(ctx.mkSymbol("union"), arrayOf(Type, Type), Type) { _, args ->
+      val argA = args[0]
+      val argB = args[1]
+
+      fun step2(a: MungoType, it: Iterator<MungoType>): Expr {
+        val b = it.next()
+        return if (it.hasNext()) {
+          ctx.mkITE(
+            ctx.mkEq(argB, TypeExprs[b]),
+            TypeExprs[MungoUnionType.create(listOf(a, b))],
+            step2(a, it)
+          )
+        } else {
+          TypeExprs[MungoUnionType.create(listOf(a, b))]!!
+        }
+      }
+
+      fun step1(it: Iterator<MungoType>): Expr {
+        val a = it.next()
+        return if (it.hasNext()) {
+          ctx.mkITE(
+            ctx.mkEq(argA, TypeExprs[a]),
+            step2(a, usedTypes.iterator()),
+            step1(it)
+          )
+        } else {
+          step2(a, usedTypes.iterator())
+        }
+      }
+
+      val code = step1(usedTypes.iterator())
       println(code)
       code
     }
