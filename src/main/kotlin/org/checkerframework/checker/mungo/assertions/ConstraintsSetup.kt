@@ -207,13 +207,17 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     // println(expr)
   }
 
-  fun end(): Solution? {
+  fun end(): InferenceResult {
     val result = solver.check()
     val hasModel = result == Status.SATISFIABLE
     if (hasModel) {
       return Solution(this, solver.model)
     }
-    return null
+    return if (result == Status.UNSATISFIABLE) {
+      NoSolution()
+    } else {
+      UnknownSolution()
+    }
   }
 
   private val proveBasicProperties = false

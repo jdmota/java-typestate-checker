@@ -82,6 +82,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
 
     fun newValue(node: Node, assertions: NodeAssertions, type: MungoType) {
+      // TODO full permission to fields...
+      
       val thenInfo = inferrer.getInfo(node, assertions.postThen)
       val elseInfo = inferrer.getInfo(node, assertions.postElse)
 
@@ -171,16 +173,13 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.same(preExprInfo.fraction, postExprInfo.fraction)
 
       // Move permissions and type of the old object to the ghost variable
-      // TODO move permissions of fields
-      constraints.same(preTargetInfo.packFraction, postOldVarInfo.packFraction)
-      constraints.same(preTargetInfo.type, postOldVarInfo.type)
+      constraints.transfer(target = postOldVarInfo, preTargetInfo)
 
       // Equality
-      // TODO equality of fields as well
       if (exprRef == null) {
-        constraints.equality(postTargetInfo, postExprInfo, preExprInfo.packFraction, preExprInfo.type)
+        constraints.transfer(target = postTargetInfo, preExprInfo)
       } else {
-        constraints.equality(post, targetRef, exprRef, preExprInfo.packFraction, preExprInfo.type)
+        constraints.equality(post, targetRef, exprRef, preExprInfo)
       }
     }
 
@@ -208,6 +207,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitObjectCreation(node: ObjectCreationNode, result: NodeAssertions): Void? {
+    val newType = MungoTypecheck.objectCreation(inferrer.utils, node.type)
+    ensures.newValue(node, result, newType)
     return null
   }
 

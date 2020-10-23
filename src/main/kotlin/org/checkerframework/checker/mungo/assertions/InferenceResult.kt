@@ -4,7 +4,13 @@ import com.microsoft.z3.Expr
 import com.microsoft.z3.Model
 import org.checkerframework.checker.mungo.analysis.Reference
 
-class Solution(private val setup: ConstraintsSetup, private val model: Model) {
+sealed class InferenceResult
+
+class NoSolution : InferenceResult()
+
+class UnknownSolution : InferenceResult()
+
+class Solution(private val setup: ConstraintsSetup, private val model: Model) : InferenceResult() {
 
   fun get(x: SymbolicFraction): Expr = model.eval(setup.fractionToExpr(x), true)
 

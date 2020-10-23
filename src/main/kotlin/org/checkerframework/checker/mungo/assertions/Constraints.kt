@@ -1,6 +1,5 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.microsoft.z3.ArithExpr
 import com.microsoft.z3.BoolExpr
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.*
@@ -191,41 +190,41 @@ private class EqualityInAssertion(
   val assertion: SymbolicAssertion,
   val a: Reference,
   val b: Reference,
-  val amount: SymbolicFraction,
-  val type: SymbolicType,
+  val data: SymbolicInfo
 ) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    val target = assertion[a]
+    val expr = assertion[b]
     return setup.ctx.mkAnd(
       setup.mkEquals(assertion, a, b),
-      EqualityOfExpressions(
-        assertion[a],
-        assertion[b],
-        amount,
-        type
-      ).toZ3(setup)
+      setup.ctx.mkAnd(
+        setup.ctx.mkEq(
+          setup.ctx.mkAdd(
+            setup.fractionToExpr(target.packFraction),
+            setup.fractionToExpr(expr.packFraction)
+          ),
+          setup.fractionToExpr(data.packFraction)
+        ),
+        // TODO if the fraction is zero, the type should be Unknown instead
+        SymTypeEqSymType(target.type, data.type).toZ3(setup),
+        SymTypeEqSymType(expr.type, data.type).toZ3(setup)
+      )
     )
   }
 }
 
-// TODO equality between fields as well...
-private class EqualityOfExpressions(
-  val a: SymbolicInfo,
-  val b: SymbolicInfo,
-  val amount: SymbolicFraction,
-  val type: SymbolicType
+// TODO transfer between fields as well...
+private class TransferOfExpressions(
+  val target: SymbolicInfo,
+  val data: SymbolicInfo
 ) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkAnd(
       setup.ctx.mkEq(
-        setup.ctx.mkAdd(
-          setup.fractionToExpr(a.packFraction),
-          setup.fractionToExpr(b.packFraction)
-        ),
-        setup.fractionToExpr(amount)
+        setup.fractionToExpr(target.packFraction),
+        setup.fractionToExpr(data.packFraction)
       ),
-      // TODO if the fraction is zero, the type should be Unknown instead
-      SymTypeEqSymType(a.type, type).toZ3(setup),
-      SymTypeEqSymType(b.type, type).toZ3(setup)
+      SymTypeEqSymType(target.type, data.type).toZ3(setup)
     )
   }
 }
@@ -254,7 +253,7 @@ class Constraints {
     return this
   }
 
-  fun end(): Solution? {
+  fun end(): InferenceResult {
     for (constraint in constraints) {
       setup.addAssert(constraint.toZ3(setup))
     }
@@ -323,13 +322,13 @@ class Constraints {
     constraints.add(TypeImpliesSymType(t1, t2))
   }
 
-  fun equality(a: SymbolicInfo, b: SymbolicInfo, amount: SymbolicFraction, type: SymbolicType) {
-    constraints.add(EqualityOfExpressions(a, b, amount, type))
+  fun transfer(target: SymbolicInfo, data: SymbolicInfo) {
+    constraints.add(TransferOfExpressions(target, data))
   }
 
-  fun equality(assertion: SymbolicAssertion, a: Reference, b: Reference, amount: SymbolicFraction, type: SymbolicType) {
+  fun equality(assertion: SymbolicAssertion, a: Reference, b: Reference, data: SymbolicInfo) {
     // eq(a, b)
-    constraints.add(EqualityInAssertion(assertion, a, b, amount, type))
+    constraints.add(EqualityInAssertion(assertion, a, b, data))
   }
 
   fun notEquality(assertion: SymbolicAssertion, a: Reference, b: Reference) {

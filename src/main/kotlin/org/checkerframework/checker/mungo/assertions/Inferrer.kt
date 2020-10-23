@@ -423,15 +423,19 @@ class Inferrer(val checker: MungoChecker) {
       node.accept(visitor, assertions)
     }
 
-    val solution = constraints.end()
+    when (val solution = constraints.end()) {
+      is NoSolution -> {
+        println("No solution!\n")
+      }
+      is UnknownSolution -> {
+        println("Unknown solution!\n")
+      }
+      is Solution -> {
+        println("Correct!\n")
 
-    if (solution == null) {
-      println("Error!\n")
-    } else {
-      println("Correct!\n")
-
-      for ((node, assertions) in assertionsList) {
-        assertions.debug(solution, node.toString())
+        for ((node, assertions) in assertionsList) {
+          assertions.debug(solution, node.toString())
+        }
       }
     }
   }
