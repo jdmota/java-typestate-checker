@@ -34,29 +34,7 @@ class Inferrer(val checker: MungoChecker) {
   private val assertionsList = mutableListOf<Pair<Node, NodeAssertions>>()
   private val preAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val postAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
-  private val nodesInfo = mutableMapOf<NodeInfoInAssertion, SymbolicInfo>()
   private val constraints = Constraints()
-
-  private class NodeInfoInAssertion(val assertion: SymbolicAssertion, val node: Node) {
-    override fun equals(other: Any?): Boolean {
-      return other is NodeInfoInAssertion && assertion === other.assertion && node === other.node
-    }
-
-    override fun hashCode(): Int {
-      var result = System.identityHashCode(assertion)
-      result = 31 * result + System.identityHashCode(node)
-      return result
-    }
-  }
-
-  // For nodes that represent expression that are not references
-  private fun getNodeInfo(assertion: SymbolicAssertion, node: Node): SymbolicInfo {
-    return nodesInfo.computeIfAbsent(NodeInfoInAssertion(assertion, node)) {
-      val info = SymbolicInfo()
-      constraints.one(info.fraction)
-      info
-    }
-  }
 
   fun phase1(classTree: ClassTree) {
     val classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>> = ArrayDeque()
@@ -196,32 +174,28 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
-  fun getInfo(node: Node, assertion: SymbolicAssertion): SymbolicInfo {
-    // Assignments are also expressions
-    if (node is AssignmentNode) {
-      return getNodeInfo(assertion, node)
-    }
-    val ref = getReference(node)
-    if (ref != null) {
-      return assertion[ref]
-    }
-    return getNodeInfo(assertion, node)
+  fun getReference(node: Node): Reference {
+    return getDirectReference(node) ?: NodeRef(node)
   }
 
-  fun getReference(node: Node): Reference? {
+  fun getDirectReference(node: Node): Reference? {
     return when (node) {
       is ReturnNode -> ReturnSpecialVar(node.type)
       is VariableDeclarationNode -> getBasicReference(LocalVariableNode(node.tree))
-      is AssignmentNode -> OldSpecialVar(getBasicReference(node.target)!!, (node.tree as JCTree).pos)
       else -> getBasicReference(node)
     }
   }
+
+  fun getOldReference(node: AssignmentNode) = OldSpecialVar(getBasicReference(node.target)!!, (node.tree as JCTree).pos)
 
   private fun gatherLocations(cfg: ControlFlowGraph): Set<Reference> {
     val ast = cfg.underlyingAST
     val locations = locationsGatherer.getParameterLocations(ast).toMutableSet()
     for (node in cfg.allNodes) {
-      getReference(node)?.let { locations.addAll(locationsGatherer.getLocations(it)) }
+      getReference(node).let { locations.addAll(locationsGatherer.getLocations(it)) }
+      if (node is AssignmentNode) {
+        getOldReference(node).let { locations.addAll(locationsGatherer.getLocations(it)) }
+      }
     }
     // Lambdas with only one expression, do not have explicit return nodes
     // So add a location representing the return value
@@ -239,14 +213,14 @@ class Inferrer(val checker: MungoChecker) {
     for (node in cfg.allNodes) {
       when (node) {
         is AssignmentNode -> {
-          val target = getReference(node.target) ?: continue
-          val expression = getReference(node.expression) ?: continue
+          val target = getDirectReference(node.target) ?: continue
+          val expression = getDirectReference(node.expression) ?: continue
           equalities.add(Pair(target, expression))
         }
         is ReturnNode -> {
           val result = node.result ?: continue
-          val target = getReference(node) ?: continue
-          val expression = getReference(result) ?: continue
+          val target = getDirectReference(node) ?: continue
+          val expression = getDirectReference(result) ?: continue
           equalities.add(Pair(target, expression))
         }
         // TODO more...
@@ -448,20 +422,7 @@ class Inferrer(val checker: MungoChecker) {
         println("Correct!\n")
 
         for ((node, assertions) in assertionsList) {
-          val postThen = nodesInfo[NodeInfoInAssertion(assertions.postThen, node)]
-          val postElse = nodesInfo[NodeInfoInAssertion(assertions.postElse, node)]
-          val postThenStr = if (postThen == null) "" else "acc(#node.0,${solution.get(postThen.packFraction)}) && typeof(#node,${solution.get(postThen.type)})"
-          val postElseStr = if (postElse == null) "" else "acc(#node.0,${solution.get(postElse.packFraction)}) && typeof(#node,${solution.get(postElse.type)})"
-
-          val middleStr = if (postThenStr != postElseStr && (postThenStr.isNotEmpty() || postElseStr.isNotEmpty())) {
-            "$node\nthen: $postThenStr;\nelse: $postElseStr"
-          } else if (postThenStr.isNotEmpty()) {
-            "$node\n$postThenStr"
-          } else {
-            "$node"
-          }
-
-          assertions.debug(solution, middleStr)
+          assertions.debug(solution, node.toString())
         }
       }
     }

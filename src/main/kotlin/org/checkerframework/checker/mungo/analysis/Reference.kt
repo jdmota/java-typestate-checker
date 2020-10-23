@@ -252,3 +252,21 @@ class OldSpecialVar(val reference: Reference, val pos: Int) : Reference(referenc
     return "old($reference)[$pos]"
   }
 }
+
+class NodeRef(val node: Node) : Reference(node.type) {
+  override fun isThisField(): Boolean {
+    return false
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return other is NodeRef && node == other.node
+  }
+
+  override fun hashCode(): Int {
+    return System.identityHashCode(node)
+  }
+
+  override fun toString(): String {
+    return "node($node)"
+  }
+}

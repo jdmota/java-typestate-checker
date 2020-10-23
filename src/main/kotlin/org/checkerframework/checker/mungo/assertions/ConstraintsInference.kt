@@ -10,13 +10,13 @@ import javax.lang.model.element.ElementKind
 class ConstraintsInference(private val inferrer: Inferrer, private val constraints: Constraints) : AbstractNodeVisitor<Void?, NodeAssertions>() {
 
   private fun getRef(n: Node) = inferrer.getReference(n)
-  private fun getRefForSure(n: Node) = inferrer.getReference(n) ?: error("No reference for $n")
-  private fun getInfo(n: Node, a: SymbolicAssertion) = inferrer.getInfo(n, a)
+  private fun getDirectRef(n: Node) = inferrer.getDirectReference(n) ?: error("No reference for $n")
+  private fun getInfo(n: Node, a: SymbolicAssertion) = a[getRef(n)]
 
   private val require = object {
     fun read(node: Node, assertions: NodeAssertions) {
-      val thenInfo = inferrer.getInfo(node, assertions.preThen)
-      val elseInfo = inferrer.getInfo(node, assertions.preElse)
+      val thenInfo = getInfo(node, assertions.preThen)
+      val elseInfo = getInfo(node, assertions.preElse)
 
       constraints.notZero(thenInfo.fraction)
       if (thenInfo !== elseInfo) {
@@ -30,8 +30,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
 
     fun write(node: Node, assertions: NodeAssertions) {
-      val thenInfo = inferrer.getInfo(node, assertions.preThen)
-      val elseInfo = inferrer.getInfo(node, assertions.preElse)
+      val thenInfo = getInfo(node, assertions.preThen)
+      val elseInfo = getInfo(node, assertions.preElse)
 
       constraints.one(thenInfo.fraction)
       if (thenInfo !== elseInfo) {
@@ -49,8 +49,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
 
     fun type(node: Node, assertions: NodeAssertions, type: MungoType) {
-      val thenInfo = inferrer.getInfo(node, assertions.preThen)
-      val elseInfo = inferrer.getInfo(node, assertions.preElse)
+      val thenInfo = getInfo(node, assertions.preThen)
+      val elseInfo = getInfo(node, assertions.preElse)
 
       constraints.subtype(thenInfo.type, type)
       if (thenInfo !== elseInfo) {
@@ -67,7 +67,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
 
     fun newVar(n: VariableDeclarationNode, assertions: NodeAssertions) {
-      val ref = getRefForSure(n)
+      val ref = getDirectRef(n)
       newVar(assertions.postThen[ref])
       if (assertions.postThen !== assertions.postElse) {
         newVar(assertions.postElse[ref])
@@ -88,8 +88,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     fun newValue(node: Node, assertions: NodeAssertions, type: MungoType) {
       // TODO full permission to fields...
 
-      val thenInfo = inferrer.getInfo(node, assertions.postThen)
-      val elseInfo = inferrer.getInfo(node, assertions.postElse)
+      val thenInfo = getInfo(node, assertions.postThen)
+      val elseInfo = getInfo(node, assertions.postElse)
 
       constraints.subtype(type, thenInfo.type)
       constraints.one(thenInfo.packFraction)
@@ -121,6 +121,9 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         }
         is OldSpecialVar -> {
           ensures.newVar(info)
+        }
+        is NodeRef -> {
+
         }
       }
     }
@@ -157,11 +160,12 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
   override fun visitVariableDeclaration(n: VariableDeclarationNode, result: NodeAssertions): Void? {
     ensures.newVar(n, result)
-    ensures.onlySideEffect(result, setOf(getRefForSure(n)))
+    ensures.onlySideEffect(result, setOf(getDirectRef(n)))
     return null
   }
 
-  private fun assign(targetRef: Reference, expr: Node, oldRef: Reference, result: NodeAssertions) {
+  private fun assign(target: Node, expr: Node, oldRef: OldSpecialVar, result: NodeAssertions) {
+    val targetRef = getDirectRef(target)
     val exprRef = getRef(expr)
 
     fun helper(pre: SymbolicAssertion, post: SymbolicAssertion) {
@@ -179,7 +183,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.transfer(target = postOldVarInfo, null, data = preTargetInfo)
 
       // Equality
-      if (exprRef == null) {
+      if (exprRef is NodeRef) {
         constraints.transfer(target = postTargetInfo, expr = postExprInfo, data = preExprInfo)
       } else {
         constraints.equality(assertion = post, target = targetRef, expr = exprRef, data = preExprInfo)
@@ -191,23 +195,15 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       helper(result.preElse, result.postElse)
     }
 
-    if (exprRef == null) {
-      ensures.onlySideEffect(result, setOf(targetRef))
-    } else {
-      ensures.onlySideEffect(result, setOf(targetRef, exprRef))
-    }
+    ensures.onlySideEffect(result, setOf(targetRef, exprRef))
   }
 
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {
-    val targetRef = getRefForSure(n.target)
-    val oldRef = getRefForSure(n)
-
     require.write(n.target, result)
     require.read(n.expression, result)
 
     // TODO handle primitives
-
-    assign(targetRef, n.expression, oldRef, result)
+    assign(n.target, n.expression, inferrer.getOldReference(n), result)
     return null
   }
 

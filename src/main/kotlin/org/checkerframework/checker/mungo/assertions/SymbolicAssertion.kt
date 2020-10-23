@@ -167,7 +167,8 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
       is ThisReference,
       is ClassName,
       is ReturnSpecialVar,
-      is OldSpecialVar -> {
+      is OldSpecialVar,
+      is NodeRef -> {
         roots.computeIfAbsent(ref) { SymbolicInfo() }
       }
       is FieldAccess -> {
@@ -183,7 +184,8 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
       is ThisReference,
       is ClassName,
       is ReturnSpecialVar,
-      is OldSpecialVar -> {
+      is OldSpecialVar,
+      is NodeRef -> {
         roots[ref] ?: error("No info for $ref")
       }
       is FieldAccess -> {
@@ -216,7 +218,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     for ((a, b) in skeleton.equalities) {
       val equals = solution.equals(this, a, b).toString()
       if (equals != "false") {
-        str.append("eq($a,$b) ${if(equals == "true") "" else "($equals)"} && ")
+        str.append("eq($a,$b) ${if (equals == "true") "" else "($equals)"} && ")
         newLine = true
       }
     }
