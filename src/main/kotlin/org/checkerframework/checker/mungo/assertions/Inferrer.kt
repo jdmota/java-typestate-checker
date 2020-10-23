@@ -57,6 +57,8 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
+  private val symToTree = mutableMapOf<Symbol.MethodSymbol, MethodTree>()
+
   private fun phase1(
     classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>>,
     classTree: JCTree.JCClassDecl,
@@ -94,6 +96,9 @@ class Inferrer(val checker: MungoChecker) {
 
     // Analyze methods
     for (method in info.methods) {
+      val m = method as JCTree.JCMethodDecl
+      symToTree[m.sym] = m
+
       phase1(
         classQueue,
         lambdaQueue,
@@ -373,7 +378,7 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   fun getMethodPre(sym: Symbol.MethodSymbol): SymbolicAssertion? {
-    val tree = checker.utils.treeUtils.getTree(sym) ?: return null
+    val tree = symToTree[sym] ?: checker.utils.treeUtils.getTree(sym) ?: return null
     return getMethodPre(tree)
   }
 
@@ -384,7 +389,7 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   fun getMethodPost(sym: Symbol.MethodSymbol): Pair<SymbolicAssertion, SymbolicAssertion>? {
-    val tree = checker.utils.treeUtils.getTree(sym) ?: return null
+    val tree = symToTree[sym] ?: checker.utils.treeUtils.getTree(sym) ?: return null
     return getMethodPost(tree)
   }
 

@@ -41,6 +41,8 @@ private class ImpliedAssertion(
       }
     }
 
+    // TODO equalities only hold if enough permission!
+    // TODO equality of fields!
     for ((a, b) in tail.skeleton.equalities) {
       // Equality is true in assertion "tail" if present in the other assertions
       // and with read access to the variables

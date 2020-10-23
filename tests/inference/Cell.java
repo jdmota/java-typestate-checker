@@ -1,3 +1,6 @@
+import org.checkerframework.checker.mungo.lib.MungoTypestate;
+
+@MungoTypestate("Cell.protocol")
 public class Cell {
 
   private String item;

@@ -6,6 +6,8 @@ import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
 import javax.lang.model.element.ElementKind
+import javax.lang.model.element.ExecutableElement
+import javax.lang.model.type.TypeKind
 
 class ConstraintsInference(private val inferrer: Inferrer, private val constraints: Constraints) : AbstractNodeVisitor<Void?, NodeAssertions>() {
 
@@ -183,6 +185,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.transfer(target = postOldVarInfo, null, data = preTargetInfo)
 
       // Equality
+      // TODO if then != else, this might be too restrictive...
       if (exprRef is NodeRef) {
         constraints.transfer(target = postTargetInfo, expr = postExprInfo, data = preExprInfo)
       } else {
@@ -213,6 +216,14 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return null
   }
 
+  private fun isConstructor(method: ExecutableElement): Boolean {
+    if (method.kind == ElementKind.CONSTRUCTOR && method.simpleName.toString() == "<init>") {
+      // java.lang.Object constructor is side effect free
+      return true
+    }
+    return false
+  }
+
   /*
   Think of method calls like:
 
@@ -227,12 +238,23 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   d = #ret
   */
   override fun visitMethodInvocation(n: MethodInvocationNode, result: NodeAssertions): Void? {
+    val method = n.target.method as Symbol.MethodSymbol
+    if (isConstructor(method)) {
+      ensures.noSideEffects(result)
+      return null
+    }
+
     require.read(n.target.receiver, result)
 
-    val method = n.target.method as Symbol.MethodSymbol
-    val argExprs = n.arguments
+    val parameters = inferrer.locationsGatherer.getParameterLocations(method).filterNot { it is FieldAccess }
+    val includeThis = parameters.any { it is ThisReference }
+    val argExprs = mutableListOf<Node>().let {
+      if (includeThis) it.add(n.target.receiver)
+      it.addAll(n.arguments)
+      it
+    }
 
-    val parameters = inferrer.locationsGatherer.getParameterLocations(method)
+    // assert(parameters.size == argExprs.size)
 
     println(method)
     println(argExprs)
@@ -252,10 +274,13 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       require.type(n.target.receiver, result, union)
     }
 
-    // Transfer information about the return value
-    constraints.transfer(target = getInfo(n, result.postThen), null, data = postThen[ReturnSpecialVar(n.type)])
-    if (result.postThen !== result.postElse || postThen !== postElse) {
-      constraints.transfer(target = getInfo(n, result.postElse), null, data = postElse[ReturnSpecialVar(n.type)])
+    if (method.returnType.kind != TypeKind.VOID) {
+      // Transfer information about the return value
+      // TODO if then != else, this might be too restrictive...
+      constraints.transfer(target = getInfo(n, result.postThen), null, data = postThen[ReturnSpecialVar(n.type)])
+      if (result.postThen !== result.postElse || postThen !== postElse) {
+        constraints.transfer(target = getInfo(n, result.postElse), null, data = postElse[ReturnSpecialVar(n.type)])
+      }
     }
     return null
   }

@@ -1,0 +1,8 @@
+typestate Cell {
+  NoItem = {
+    void setItem(String): OneItem
+  }
+  OneItem = {
+    String getItem(): OneItem
+  }
+}
