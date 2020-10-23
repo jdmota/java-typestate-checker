@@ -211,6 +211,19 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     for ((ref, info) in roots) {
       info.toString(str, ref, solution)
     }
+
+    var newLine = false
+    for ((a, b) in skeleton.equalities) {
+      val equals = solution.equals(this, a, b).toString()
+      if (equals != "false") {
+        str.append("eq($a,$b) ${if(equals == "true") "" else "($equals)"} && ")
+        newLine = true
+      }
+    }
+    if (newLine) {
+      str.append("\n")
+    }
+
     return str.toString()
   }
 

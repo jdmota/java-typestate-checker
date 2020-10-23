@@ -2,8 +2,7 @@ package org.checkerframework.checker.mungo.assertions
 
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.analysis.*
-import org.checkerframework.checker.mungo.typecheck.MungoObjectType
-import org.checkerframework.checker.mungo.typecheck.MungoType
+import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
 import javax.lang.model.element.ElementKind
@@ -82,10 +81,15 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
     }
 
-    fun type(ref: Reference, assertions: NodeAssertions, type: MungoType) {
-      constraints.subtype(type, assertions.postThen.getType(ref))
-      if (assertions.postThen !== assertions.preElse) {
-        constraints.subtype(type, assertions.postThen.getType(ref))
+    fun newValue(node: Node, assertions: NodeAssertions, type: MungoType) {
+      val thenInfo = inferrer.getInfo(node, assertions.postThen)
+      val elseInfo = inferrer.getInfo(node, assertions.postElse)
+
+      constraints.subtype(type, thenInfo.type)
+      constraints.one(thenInfo.packFraction)
+      if (thenInfo !== elseInfo) {
+        constraints.subtype(type, elseInfo.type)
+        constraints.one(elseInfo.packFraction)
       }
     }
   }
@@ -288,17 +292,21 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitTypeCast(n: TypeCastNode, result: NodeAssertions): Void? {
+    ensures.noSideEffects(result)
     return null
   }
 
-  override fun visitBooleanLiteral(n: BooleanLiteralNode, result: NodeAssertions): Void? {
-    return super.visitBooleanLiteral(n, result)
+  override fun visitValueLiteral(n: ValueLiteralNode, result: NodeAssertions): Void? {
+    ensures.noSideEffects(result)
+    when (n) {
+      is NullLiteralNode -> ensures.newValue(n, result, MungoNullType.SINGLETON)
+      is StringLiteralNode -> ensures.newValue(n, result, MungoNoProtocolType.SINGLETON)
+      else -> ensures.newValue(n, result, MungoPrimitiveType.SINGLETON)
+    }
+    return null
   }
 
   override fun visitNode(n: Node?, result: NodeAssertions): Void? {
-    if (n is ValueLiteralNode) {
-      ensures.noSideEffects(result)
-    }
     return null
   }
 }
