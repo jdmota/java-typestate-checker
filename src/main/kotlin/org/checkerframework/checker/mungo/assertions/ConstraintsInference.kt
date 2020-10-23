@@ -24,7 +24,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
 
       if (node is FieldAccessNode) {
-        notNull(getRefForSure(node.receiver), assertions)
+        notNull(node.receiver, assertions)
         read(node.receiver, assertions)
       }
     }
@@ -39,19 +39,22 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
 
       if (node is FieldAccessNode) {
-        notNull(getRefForSure(node.receiver), assertions)
+        notNull(node.receiver, assertions)
         read(node.receiver, assertions)
       }
     }
 
-    private fun notNull(ref: Reference, assertions: NodeAssertions) {
-      type(ref, assertions, MungoObjectType.SINGLETON)
+    private fun notNull(node: Node, assertions: NodeAssertions) {
+      type(node, assertions, MungoObjectType.SINGLETON)
     }
 
-    fun type(ref: Reference, assertions: NodeAssertions, type: MungoType) {
-      constraints.subtype(assertions.preThen.getType(ref), type)
-      if (assertions.preThen !== assertions.preElse) {
-        constraints.subtype(assertions.preThen.getType(ref), type)
+    fun type(node: Node, assertions: NodeAssertions, type: MungoType) {
+      val thenInfo = inferrer.getInfo(node, assertions.preThen)
+      val elseInfo = inferrer.getInfo(node, assertions.preElse)
+
+      constraints.subtype(thenInfo.type, type)
+      if (thenInfo !== elseInfo) {
+        constraints.subtype(elseInfo.type, type)
       }
     }
   }
@@ -63,7 +66,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.nullType(info.type)
     }
 
-    fun newVar(ref: Reference, assertions: NodeAssertions) {
+    fun newVar(n: VariableDeclarationNode, assertions: NodeAssertions) {
+      val ref = getRefForSure(n)
       newVar(assertions.postThen[ref])
       if (assertions.postThen !== assertions.postElse) {
         newVar(assertions.postElse[ref])
@@ -83,7 +87,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
     fun newValue(node: Node, assertions: NodeAssertions, type: MungoType) {
       // TODO full permission to fields...
-      
+
       val thenInfo = inferrer.getInfo(node, assertions.postThen)
       val elseInfo = inferrer.getInfo(node, assertions.postElse)
 
@@ -152,9 +156,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitVariableDeclaration(n: VariableDeclarationNode, result: NodeAssertions): Void? {
-    val ref = getRefForSure(n)
-    ensures.newVar(ref, result)
-    ensures.onlySideEffect(result, setOf(ref))
+    ensures.newVar(n, result)
+    ensures.onlySideEffect(result, setOf(getRefForSure(n)))
     return null
   }
 
@@ -173,13 +176,13 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.same(preExprInfo.fraction, postExprInfo.fraction)
 
       // Move permissions and type of the old object to the ghost variable
-      constraints.transfer(target = postOldVarInfo, preTargetInfo)
+      constraints.transfer(target = postOldVarInfo, null, data = preTargetInfo)
 
       // Equality
       if (exprRef == null) {
-        constraints.transfer(target = postTargetInfo, preExprInfo)
+        constraints.transfer(target = postTargetInfo, expr = postExprInfo, data = preExprInfo)
       } else {
-        constraints.equality(post, targetRef, exprRef, preExprInfo)
+        constraints.equality(assertion = post, target = targetRef, expr = exprRef, data = preExprInfo)
       }
     }
 
@@ -201,6 +204,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
     require.write(n.target, result)
     require.read(n.expression, result)
+
+    // TODO handle primitives
 
     assign(targetRef, n.expression, oldRef, result)
     return null
@@ -238,9 +243,24 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     println(parameters)
     println()
 
-    val pre = inferrer.getMethodPre(method)
-    val (postThen, postElse) = inferrer.getMethodPost(method)
+    // TODO handle methods for which we do not have the code...
+    val pre = inferrer.getMethodPre(method) ?: return null
+    val (postThen, postElse) = inferrer.getMethodPost(method) ?: return null
 
+    val graph = inferrer.utils.classUtils.visitClassTypeMirror(n.target.receiver.type)
+    if (graph == null) {
+      // TODO same type
+    } else {
+      val states = MungoTypecheck.available(inferrer.utils, graph, method)
+      val union = MungoUnionType.create(states)
+      require.type(n.target.receiver, result, union)
+    }
+
+    // Transfer information about the return value
+    constraints.transfer(target = getInfo(n, result.postThen), null, data = postThen[ReturnSpecialVar(n.type)])
+    if (result.postThen !== result.postElse || postThen !== postElse) {
+      constraints.transfer(target = getInfo(n, result.postElse), null, data = postElse[ReturnSpecialVar(n.type)])
+    }
     return null
   }
 

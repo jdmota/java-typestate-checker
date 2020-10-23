@@ -5,7 +5,7 @@ import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
-import org.checkerframework.checker.mungo.typecheck.*
+import org.checkerframework.checker.mungo.typecheck.MungoStateType
 import org.checkerframework.checker.mungo.utils.treeToType
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -34,14 +34,28 @@ class Inferrer(val checker: MungoChecker) {
   private val assertionsList = mutableListOf<Pair<Node, NodeAssertions>>()
   private val preAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val postAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
-  private val nodeToInfo = IdentityHashMap<Node, SymbolicInfo>()
+  private val nodesInfo = mutableMapOf<NodeInfoInAssertion, SymbolicInfo>()
   private val constraints = Constraints()
 
+  private class NodeInfoInAssertion(val assertion: SymbolicAssertion, val node: Node) {
+    override fun equals(other: Any?): Boolean {
+      return other is NodeInfoInAssertion && assertion === other.assertion && node === other.node
+    }
+
+    override fun hashCode(): Int {
+      var result = System.identityHashCode(assertion)
+      result = 31 * result + System.identityHashCode(node)
+      return result
+    }
+  }
+
   // For nodes that represent expression that are not references
-  private fun getNodeInfo(node: Node): SymbolicInfo = nodeToInfo.computeIfAbsent(node) {
-    val info = SymbolicInfo()
-    constraints.one(info.fraction)
-    info
+  private fun getNodeInfo(assertion: SymbolicAssertion, node: Node): SymbolicInfo {
+    return nodesInfo.computeIfAbsent(NodeInfoInAssertion(assertion, node)) {
+      val info = SymbolicInfo()
+      constraints.one(info.fraction)
+      info
+    }
   }
 
   fun phase1(classTree: ClassTree) {
@@ -185,13 +199,13 @@ class Inferrer(val checker: MungoChecker) {
   fun getInfo(node: Node, assertion: SymbolicAssertion): SymbolicInfo {
     // Assignments are also expressions
     if (node is AssignmentNode) {
-      return getNodeInfo(node)
+      return getNodeInfo(assertion, node)
     }
     val ref = getReference(node)
     if (ref != null) {
       return assertion[ref]
     }
-    return getNodeInfo(node)
+    return getNodeInfo(assertion, node)
   }
 
   fun getReference(node: Node): Reference? {
@@ -395,8 +409,8 @@ class Inferrer(val checker: MungoChecker) {
     return assertions.preThen
   }
 
-  fun getMethodPost(sym: Symbol.MethodSymbol): Pair<SymbolicAssertion?, SymbolicAssertion?> {
-    val tree = checker.utils.treeUtils.getTree(sym) ?: return Pair(null, null)
+  fun getMethodPost(sym: Symbol.MethodSymbol): Pair<SymbolicAssertion, SymbolicAssertion>? {
+    val tree = checker.utils.treeUtils.getTree(sym) ?: return null
     return getMethodPost(tree)
   }
 
@@ -434,7 +448,20 @@ class Inferrer(val checker: MungoChecker) {
         println("Correct!\n")
 
         for ((node, assertions) in assertionsList) {
-          assertions.debug(solution, node.toString())
+          val postThen = nodesInfo[NodeInfoInAssertion(assertions.postThen, node)]
+          val postElse = nodesInfo[NodeInfoInAssertion(assertions.postElse, node)]
+          val postThenStr = if (postThen == null) "" else "acc(#node.0,${solution.get(postThen.packFraction)}) && typeof(#node,${solution.get(postThen.type)})"
+          val postElseStr = if (postElse == null) "" else "acc(#node.0,${solution.get(postElse.packFraction)}) && typeof(#node,${solution.get(postElse.type)})"
+
+          val middleStr = if (postThenStr != postElseStr && (postThenStr.isNotEmpty() || postElseStr.isNotEmpty())) {
+            "$node\nthen: $postThenStr;\nelse: $postElseStr"
+          } else if (postThenStr.isNotEmpty()) {
+            "$node\n$postThenStr"
+          } else {
+            "$node"
+          }
+
+          assertions.debug(solution, middleStr)
         }
       }
     }

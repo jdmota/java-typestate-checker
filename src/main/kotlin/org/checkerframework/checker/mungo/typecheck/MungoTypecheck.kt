@@ -6,6 +6,7 @@ import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
+import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -17,6 +18,14 @@ import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
 object MungoTypecheck {
+  fun available(utils: MungoUtils, graph: Graph, method: Symbol.MethodSymbol): List<MungoType> {
+    val env = graph.getEnv()
+    return graph.getAllConcreteStates().filter { state ->
+      // TODO with generics support, replace sameErasedMethod for sameMethod
+      state.transitions.entries.any { utils.methodUtils.sameErasedMethod(env, method, it.key) }
+    }.map { MungoStateType.create(graph, it) }
+  }
+
   fun check(
     utils: MungoUtils,
     info: MungoType,
@@ -34,7 +43,7 @@ object MungoTypecheck {
       is MungoMovedType -> createErrorMsg(node, isMoved = true)
       is MungoStateType -> {
         val env = info.graph.getEnv()
-        // TODO use sameMethod instead of sameErasedMethod
+        // TODO with generics support, replace sameErasedMethod for sameMethod
         if (info.state.transitions.entries.any { utils.methodUtils.sameErasedMethod(env, method, it.key) }) {
           null
         } else {

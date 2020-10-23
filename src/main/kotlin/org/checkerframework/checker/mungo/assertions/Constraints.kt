@@ -188,26 +188,26 @@ private class NotEqualityInAssertion(
 
 private class EqualityInAssertion(
   val assertion: SymbolicAssertion,
-  val a: Reference,
-  val b: Reference,
+  val target: Reference,
+  val expr: Reference,
   val data: SymbolicInfo
 ) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    val target = assertion[a]
-    val expr = assertion[b]
+    val targetInfo = assertion[target]
+    val exprInfo = assertion[expr]
     return setup.ctx.mkAnd(
-      setup.mkEquals(assertion, a, b),
+      setup.mkEquals(assertion, target, expr),
       setup.ctx.mkAnd(
         setup.ctx.mkEq(
           setup.ctx.mkAdd(
-            setup.fractionToExpr(target.packFraction),
-            setup.fractionToExpr(expr.packFraction)
+            setup.fractionToExpr(targetInfo.packFraction),
+            setup.fractionToExpr(exprInfo.packFraction)
           ),
           setup.fractionToExpr(data.packFraction)
         ),
         // TODO if the fraction is zero, the type should be Unknown instead
-        SymTypeEqSymType(target.type, data.type).toZ3(setup),
-        SymTypeEqSymType(expr.type, data.type).toZ3(setup)
+        SymTypeEqSymType(targetInfo.type, data.type).toZ3(setup),
+        SymTypeEqSymType(exprInfo.type, data.type).toZ3(setup)
       )
     )
   }
@@ -216,6 +216,7 @@ private class EqualityInAssertion(
 // TODO transfer between fields as well...
 private class TransferOfExpressions(
   val target: SymbolicInfo,
+  val expr: SymbolicInfo?,
   val data: SymbolicInfo
 ) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
@@ -224,7 +225,18 @@ private class TransferOfExpressions(
         setup.fractionToExpr(target.packFraction),
         setup.fractionToExpr(data.packFraction)
       ),
-      SymTypeEqSymType(target.type, data.type).toZ3(setup)
+      SymTypeEqSymType(target.type, data.type).toZ3(setup),
+      if (expr == null) {
+        setup.ctx.mkTrue()
+      } else {
+        setup.ctx.mkAnd(
+          setup.ctx.mkEq(
+            setup.fractionToExpr(expr.packFraction),
+            setup.ctx.mkReal(0)
+          ),
+          SymTypeEqType(expr.type, MungoUnknownType.SINGLETON).toZ3(setup)
+        )
+      }
     )
   }
 }
@@ -322,13 +334,13 @@ class Constraints {
     constraints.add(TypeImpliesSymType(t1, t2))
   }
 
-  fun transfer(target: SymbolicInfo, data: SymbolicInfo) {
-    constraints.add(TransferOfExpressions(target, data))
+  fun transfer(target: SymbolicInfo, expr: SymbolicInfo?, data: SymbolicInfo) {
+    constraints.add(TransferOfExpressions(target, expr, data))
   }
 
-  fun equality(assertion: SymbolicAssertion, a: Reference, b: Reference, data: SymbolicInfo) {
+  fun equality(assertion: SymbolicAssertion, target: Reference, expr: Reference, data: SymbolicInfo) {
     // eq(a, b)
-    constraints.add(EqualityInAssertion(assertion, a, b, data))
+    constraints.add(EqualityInAssertion(assertion, target, expr, data))
   }
 
   fun notEquality(assertion: SymbolicAssertion, a: Reference, b: Reference) {
