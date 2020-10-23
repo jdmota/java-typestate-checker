@@ -1,48 +1,73 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.sun.tools.javac.code.Symbol
-import org.checkerframework.checker.mungo.analysis.Reference
-import org.checkerframework.checker.mungo.analysis.getReference
+import org.checkerframework.checker.mungo.analysis.*
+import org.checkerframework.checker.mungo.typecheck.MungoObjectType
+import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
+import javax.lang.model.element.ElementKind
 
 class ConstraintsInference(private val inferrer: Inferrer, private val constraints: Constraints) : AbstractNodeVisitor<Void?, NodeAssertions>() {
 
-  private fun getRef(n: Node) = getReference(n) ?: error("No reference for $n")
+  private fun getRef(n: Node) = inferrer.getReference(n)
+  private fun getRefForSure(n: Node) = inferrer.getReference(n) ?: error("No reference for $n")
+  private fun getInfo(n: Node, a: SymbolicAssertion) = inferrer.getInfo(n, a)
 
   private val require = object {
-    fun read(ref: Reference, assertions: NodeAssertions) {
-      constraints.notZero(assertions.preThen.getAccess(ref))
-      if (assertions.preThen !== assertions.preElse) {
-        constraints.notZero(assertions.preElse.getAccess(ref))
+    fun read(node: Node, assertions: NodeAssertions) {
+      val thenInfo = inferrer.getInfo(node, assertions.preThen)
+      val elseInfo = inferrer.getInfo(node, assertions.preElse)
+
+      constraints.notZero(thenInfo.fraction)
+      if (thenInfo !== elseInfo) {
+        constraints.notZero(elseInfo.fraction)
+      }
+
+      if (node is FieldAccessNode) {
+        notNull(getRefForSure(node.receiver), assertions)
+        read(node.receiver, assertions)
       }
     }
 
-    fun read(n: Node, result: NodeAssertions) {
-      var curr: Node = n
-      while (true) {
-        read(getRef(curr), result)
-        if (curr is FieldAccessNode) {
-          curr = curr.receiver
-        } else {
-          break
-        }
+    fun write(node: Node, assertions: NodeAssertions) {
+      val thenInfo = inferrer.getInfo(node, assertions.preThen)
+      val elseInfo = inferrer.getInfo(node, assertions.preElse)
+
+      constraints.one(thenInfo.fraction)
+      if (thenInfo !== elseInfo) {
+        constraints.one(elseInfo.fraction)
+      }
+
+      if (node is FieldAccessNode) {
+        notNull(getRefForSure(node.receiver), assertions)
+        read(node.receiver, assertions)
       }
     }
 
-    fun write(ref: Reference, assertions: NodeAssertions) {
-      constraints.one(assertions.preThen.getAccess(ref))
+    private fun notNull(ref: Reference, assertions: NodeAssertions) {
+      type(ref, assertions, MungoObjectType.SINGLETON)
+    }
+
+    fun type(ref: Reference, assertions: NodeAssertions, type: MungoType) {
+      constraints.subtype(assertions.preThen.getType(ref), type)
       if (assertions.preThen !== assertions.preElse) {
-        constraints.one(assertions.preElse.getAccess(ref))
+        constraints.subtype(assertions.preThen.getType(ref), type)
       }
     }
   }
 
   private val ensures = object {
-    fun write(ref: Reference, assertions: NodeAssertions) {
-      constraints.one(assertions.postThen.getAccess(ref))
+    fun newVar(info: SymbolicInfo) {
+      constraints.one(info.fraction)
+      constraints.one(info.packFraction)
+      constraints.nullType(info.type)
+    }
+
+    fun newVar(ref: Reference, assertions: NodeAssertions) {
+      newVar(assertions.postThen[ref])
       if (assertions.postThen !== assertions.postElse) {
-        constraints.one(assertions.postElse.getAccess(ref))
+        newVar(assertions.postElse[ref])
       }
     }
 
@@ -56,10 +81,41 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         constraints.onlyEffects(result.preElse, result.postElse, except)
       }
     }
+
+    fun type(ref: Reference, assertions: NodeAssertions, type: MungoType) {
+      constraints.subtype(type, assertions.postThen.getType(ref))
+      if (assertions.postThen !== assertions.preElse) {
+        constraints.subtype(type, assertions.postThen.getType(ref))
+      }
+    }
   }
 
   fun visitInitialAssertion(ast: UnderlyingAST, pre: SymbolicAssertion) {
-    // TODO
+    pre.forEach { ref, info ->
+      when (ref) {
+        is LocalVariable -> {
+          if (ref.element.getKind() == ElementKind.PARAMETER) {
+            constraints.one(info.fraction)
+          }
+        }
+        is ThisReference -> {
+          constraints.one(info.fraction)
+          constraints.subtype(MungoObjectType.SINGLETON, info.type)
+        }
+        is FieldAccess -> {
+        }
+        is ClassName -> {
+        }
+        is ReturnSpecialVar -> {
+          ensures.newVar(info)
+        }
+        is OldSpecialVar -> {
+          ensures.newVar(info)
+        }
+      }
+    }
+
+    // TODO What about lambdas???
     for ((a, b) in pre.skeleton.equalities) {
       constraints.notEquality(pre, a, b)
     }
@@ -90,16 +146,60 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitVariableDeclaration(n: VariableDeclarationNode, result: NodeAssertions): Void? {
-    val ref = getRef(n)
-    ensures.write(ref, result)
+    val ref = getRefForSure(n)
+    ensures.newVar(ref, result)
     ensures.onlySideEffect(result, setOf(ref))
     return null
   }
 
+  private fun assign(targetRef: Reference, expr: Node, oldRef: Reference, result: NodeAssertions) {
+    val exprRef = getRef(expr)
+
+    fun helper(pre: SymbolicAssertion, post: SymbolicAssertion) {
+      val preTargetInfo = pre[targetRef]
+      val preExprInfo = getInfo(expr, pre)
+      val postTargetInfo = post[targetRef]
+      val postExprInfo = getInfo(expr, post)
+      val postOldVarInfo = post[oldRef]
+
+      // Permission to the target and expression remain the same
+      constraints.same(preTargetInfo.fraction, postTargetInfo.fraction)
+      constraints.same(preExprInfo.fraction, postExprInfo.fraction)
+
+      // Move permissions and type of the old object to the ghost variable
+      // TODO move permissions of fields
+      constraints.same(preTargetInfo.packFraction, postOldVarInfo.packFraction)
+      constraints.same(preTargetInfo.type, postOldVarInfo.type)
+
+      // Equality
+      // TODO equality of fields as well
+      if (exprRef == null) {
+        constraints.equality(postTargetInfo, postExprInfo, preExprInfo.packFraction, preExprInfo.type)
+      } else {
+        constraints.equality(post, targetRef, exprRef, preExprInfo.packFraction, preExprInfo.type)
+      }
+    }
+
+    helper(result.preThen, result.postThen)
+    if (result.preThen !== result.preElse || result.postThen !== result.postElse) {
+      helper(result.preElse, result.postElse)
+    }
+
+    if (exprRef == null) {
+      ensures.onlySideEffect(result, setOf(targetRef))
+    } else {
+      ensures.onlySideEffect(result, setOf(targetRef, exprRef))
+    }
+  }
+
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {
-    require.read(n.target, result)
-    require.write(getRef(n.target), result)
-    // TODO effects
+    val targetRef = getRefForSure(n.target)
+    val oldRef = getRefForSure(n)
+
+    require.write(n.target, result)
+    require.read(n.expression, result)
+
+    assign(targetRef, n.expression, oldRef, result)
     return null
   }
 

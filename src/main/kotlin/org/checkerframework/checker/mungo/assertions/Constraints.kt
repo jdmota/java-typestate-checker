@@ -69,14 +69,37 @@ private class OnlyEffects(
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val exprs = mutableListOf<BoolExpr>()
+
     pre.forEach { ref, info ->
       if (!except.contains(ref)) {
         exprs.add(SymFractionEqSymFraction(info.fraction, post.getAccess(ref)).toZ3(setup))
         exprs.add(SymFractionEqSymFraction(info.packFraction, post.getAccessDotZero(ref)).toZ3(setup))
         exprs.add(SymTypeEqSymType(info.type, post.getType(ref)).toZ3(setup))
-        // TODO
       }
     }
+
+    for ((a, b) in post.skeleton.equalities) {
+      if (!except.contains(a) && !except.contains(b)) {
+        exprs.add(
+          setup.ctx.mkEq(
+            setup.mkEquals(post, a, b),
+            setup.mkEquals(pre, a, b)
+          )
+        )
+      } else if (except.contains(a) && except.contains(b)) {
+        // Ignore
+        // This situation happens when dealing with assignments, which produce an equality
+      } else if (except.contains(a) != except.contains(b)) {
+        // One of them (a or b) changed, so invalidate the equality
+        exprs.add(
+          setup.ctx.mkEq(
+            setup.mkEquals(post, a, b),
+            setup.ctx.mkFalse()
+          )
+        )
+      }
+    }
+
     return setup.ctx.mkAnd(*exprs.toTypedArray())
   }
 }
@@ -116,6 +139,14 @@ private class SymTypeEqSymType(val a: SymbolicType, val b: SymbolicType) : Const
   }
 }
 
+private class SymTypeEqType(val a: SymbolicType, val b: MungoType) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    val expr1 = setup.typeToExpr(a)
+    val expr2 = setup.typeToExpr(b)
+    return setup.ctx.mkEq(expr1, expr2)
+  }
+}
+
 private class TypeImpliesSymType(val a: MungoType, val b: SymbolicType) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     val expr1 = setup.typeToExpr(a)
@@ -144,10 +175,58 @@ private class SymFractionEq(val a: SymbolicFraction, val b: Int) : Constraint() 
   }
 }
 
-private class EqualityInAssertion(val assertion: SymbolicAssertion, val a: Reference, val b: Reference, val bool: Boolean) : Constraint() {
+private class NotEqualityInAssertion(
+  val assertion: SymbolicAssertion,
+  val a: Reference,
+  val b: Reference
+) : Constraint() {
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    val expr = setup.mkEquals(assertion, a, b)
-    return if (bool) expr else setup.ctx.mkNot(expr)
+    return setup.ctx.mkNot(
+      setup.mkEquals(assertion, a, b)
+    )
+  }
+}
+
+private class EqualityInAssertion(
+  val assertion: SymbolicAssertion,
+  val a: Reference,
+  val b: Reference,
+  val amount: SymbolicFraction,
+  val type: SymbolicType,
+) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return setup.ctx.mkAnd(
+      setup.mkEquals(assertion, a, b),
+      EqualityOfExpressions(
+        assertion[a],
+        assertion[b],
+        amount,
+        type
+      ).toZ3(setup)
+    )
+  }
+}
+
+// TODO equality between fields as well...
+private class EqualityOfExpressions(
+  val a: SymbolicInfo,
+  val b: SymbolicInfo,
+  val amount: SymbolicFraction,
+  val type: SymbolicType
+) : Constraint() {
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return setup.ctx.mkAnd(
+      setup.ctx.mkEq(
+        setup.ctx.mkAdd(
+          setup.fractionToExpr(a.packFraction),
+          setup.fractionToExpr(b.packFraction)
+        ),
+        setup.fractionToExpr(amount)
+      ),
+      // TODO if the fraction is zero, the type should be Unknown instead
+      SymTypeEqSymType(a.type, type).toZ3(setup),
+      SymTypeEqSymType(b.type, type).toZ3(setup)
+    )
   }
 }
 
@@ -216,6 +295,22 @@ class Constraints {
     constraints.add(SymFractionGt(a, 0))
   }
 
+  fun same(a: SymbolicFraction, b: SymbolicFraction) {
+    // a == b
+    constraints.add(SymFractionEqSymFraction(a, b))
+  }
+
+  fun nullType(t: SymbolicType) {
+    // t == Null
+    addType(MungoNullType.SINGLETON)
+    constraints.add(SymTypeEqType(t, MungoNullType.SINGLETON))
+  }
+
+  fun same(a: SymbolicType, b: SymbolicType) {
+    // a == b
+    constraints.add(SymTypeEqSymType(a, b))
+  }
+
   fun subtype(t1: SymbolicType, t2: MungoType) {
     // t1 <: t2
     addType(t2)
@@ -228,14 +323,18 @@ class Constraints {
     constraints.add(TypeImpliesSymType(t1, t2))
   }
 
-  fun equality(assertion: SymbolicAssertion, a: Reference, b: Reference) {
+  fun equality(a: SymbolicInfo, b: SymbolicInfo, amount: SymbolicFraction, type: SymbolicType) {
+    constraints.add(EqualityOfExpressions(a, b, amount, type))
+  }
+
+  fun equality(assertion: SymbolicAssertion, a: Reference, b: Reference, amount: SymbolicFraction, type: SymbolicType) {
     // eq(a, b)
-    constraints.add(EqualityInAssertion(assertion, a, b, true))
+    constraints.add(EqualityInAssertion(assertion, a, b, amount, type))
   }
 
   fun notEquality(assertion: SymbolicAssertion, a: Reference, b: Reference) {
     // !eq(a, b)
-    constraints.add(EqualityInAssertion(assertion, a, b, false))
+    constraints.add(NotEqualityInAssertion(assertion, a, b))
   }
 
 }

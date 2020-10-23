@@ -11,14 +11,11 @@ import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.block.*
-import org.checkerframework.dataflow.cfg.node.AssignmentNode
-import org.checkerframework.dataflow.cfg.node.ConditionalNotNode
-import org.checkerframework.dataflow.cfg.node.Node
-import org.checkerframework.dataflow.cfg.node.ReturnNode
+import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
-import kotlin.math.exp
+import org.checkerframework.checker.mungo.analysis.getReference as getBasicReference
 
 class Inferrer(val checker: MungoChecker) {
 
@@ -37,7 +34,15 @@ class Inferrer(val checker: MungoChecker) {
   private val assertionsList = mutableListOf<Pair<Node, NodeAssertions>>()
   private val preAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val postAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
+  private val nodeToInfo = IdentityHashMap<Node, SymbolicInfo>()
   private val constraints = Constraints()
+
+  // For nodes that represent expression that are not references
+  private fun getNodeInfo(node: Node): SymbolicInfo = nodeToInfo.computeIfAbsent(node) {
+    val info = SymbolicInfo()
+    constraints.one(info.fraction)
+    info
+  }
 
   fun phase1(classTree: ClassTree) {
     val classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>> = ArrayDeque()
@@ -174,6 +179,27 @@ class Inferrer(val checker: MungoChecker) {
     // Queue lambdas
     for (lambda in cfg.declaredLambdas) {
       lambdaQueue.add(Pair(lambda, skeleton))
+    }
+  }
+
+  fun getInfo(node: Node, assertion: SymbolicAssertion): SymbolicInfo {
+    // Assignments are also expressions
+    if (node is AssignmentNode) {
+      return getNodeInfo(node)
+    }
+    val ref = getReference(node)
+    if (ref != null) {
+      return assertion[ref]
+    }
+    return getNodeInfo(node)
+  }
+
+  fun getReference(node: Node): Reference? {
+    return when (node) {
+      is ReturnNode -> ReturnSpecialVar(node.type)
+      is VariableDeclarationNode -> getBasicReference(LocalVariableNode(node.tree))
+      is AssignmentNode -> OldSpecialVar(getBasicReference(node.target)!!, (node.tree as JCTree).pos)
+      else -> getBasicReference(node)
     }
   }
 

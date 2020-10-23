@@ -8,7 +8,7 @@ import org.checkerframework.checker.mungo.typecheck.*
 // Z3 Guide and Playground: https://rise4fun.com/z3/tutorial/guide
 // Z3 Java Api: https://z3prover.github.io/api/html/namespacecom_1_1microsoft_1_1z3.html
 
-class ConstraintsSetup(private val usedTypes: Set<MungoType>) {
+class ConstraintsSetup(usedTypes: Set<MungoType>) {
 
   val ctx = Z3Context()
 
@@ -70,41 +70,6 @@ class ConstraintsSetup(private val usedTypes: Set<MungoType>) {
       println(code)
       code
     }
-
-    /*val union = ctx.mkRecFuncDecl(ctx.mkSymbol("union"), arrayOf(Type, Type), Type) { _, args ->
-      val argA = args[0]
-      val argB = args[1]
-
-      fun step2(a: MungoType, it: Iterator<MungoType>): Expr {
-        val b = it.next()
-        return if (it.hasNext()) {
-          ctx.mkITE(
-            ctx.mkEq(argB, TypeExprs[b]),
-            TypeExprs[MungoUnionType.create(listOf(a, b))],
-            step2(a, it)
-          )
-        } else {
-          TypeExprs[MungoUnionType.create(listOf(a, b))]!!
-        }
-      }
-
-      fun step1(it: Iterator<MungoType>): Expr {
-        val a = it.next()
-        return if (it.hasNext()) {
-          ctx.mkITE(
-            ctx.mkEq(argA, TypeExprs[a]),
-            step2(a, usedTypes.iterator()),
-            step1(it)
-          )
-        } else {
-          step2(a, usedTypes.iterator())
-        }
-      }
-
-      val code = step1(usedTypes.iterator())
-      println(code)
-      code
-    }*/
 
     val min = ctx.mkRecFuncDecl(ctx.mkSymbol("fMin"), arrayOf(Real, Real), Real) { _, args ->
       val a = args[0] as ArithExpr
@@ -239,7 +204,7 @@ class ConstraintsSetup(private val usedTypes: Set<MungoType>) {
 
   fun addAssert(expr: BoolExpr) {
     solver.add(expr)
-    println(expr)
+    // println(expr)
   }
 
   fun end(): Solution? {
@@ -330,13 +295,3 @@ class ConstraintsSetup(private val usedTypes: Set<MungoType>) {
   }
 
 }
-
-/*fun main(args: Array<String>) {
-  ConstraintsSetup(setOf(
-    MungoNoProtocolType.SINGLETON,
-    MungoEndedType.SINGLETON,
-    MungoNullType.SINGLETON,
-    MungoPrimitiveType.SINGLETON,
-    MungoMovedType.SINGLETON
-  )).start()
-}*/

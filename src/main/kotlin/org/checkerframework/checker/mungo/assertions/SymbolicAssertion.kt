@@ -83,7 +83,27 @@ class SymbolicInfo {
   }
 
   fun toString(str: StringBuilder, ref: Reference, solution: Solution) {
-    str.appendLine("acc($ref,${solution.get(fraction)}) && acc($ref.0,${solution.get(packFraction)}) && typeof($ref,${solution.get(type)})")
+    val access = solution.get(fraction).toString()
+    val accessDotZero = solution.get(packFraction).toString()
+    val type = solution.get(type).toString()
+    var newLine = false
+
+    if (access != "0") {
+      str.append("acc($ref,$access) && ")
+      newLine = true
+    }
+    if (accessDotZero != "0") {
+      str.append("acc($ref.0,$accessDotZero) && ")
+      newLine = true
+    }
+    if (type != "TUnknown") {
+      str.append("typeof($ref,$type)")
+      newLine = true
+    }
+    if (newLine) {
+      str.append("\n")
+    }
+
     for ((child, info) in children) {
       info.toString(str, child, solution)
     }
@@ -157,7 +177,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     }
   }
 
-  fun get(ref: Reference): SymbolicInfo {
+  operator fun get(ref: Reference): SymbolicInfo {
     return when (ref) {
       is LocalVariable,
       is ThisReference,

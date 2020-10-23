@@ -43,9 +43,6 @@ fun getReference(node: Node): Reference? {
     is SuperNode -> ThisReference(node.getType())
     is LocalVariableNode -> LocalVariable(node)
     is ClassNameNode -> ClassName(node.type)
-    is ReturnNode -> ReturnSpecialVar(node.type)
-    is VariableDeclarationNode -> getReference(LocalVariableNode(node.tree))
-    is AssignmentNode -> OldSpecialVar(getReference(node.target)!!, (node.tree as JCTree).pos)
     else -> null
   }
 }
