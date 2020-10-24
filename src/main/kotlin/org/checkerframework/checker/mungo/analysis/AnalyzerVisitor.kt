@@ -63,14 +63,14 @@ class AnalyzerVisitor(private val checker: MungoChecker, private val analyzer: A
   private fun refineStore(invocation: MethodInvocationNode, method: Symbol.MethodSymbol, receiver: Reference, store: MutableStore, predicate: (String) -> Boolean) {
     val prevValue = analyzer.getCurrentInferredInfo(invocation.target.receiver)
     val prevInfo = prevValue.mungoType
-    val newInfo = MungoTypecheck.refine(utils, invocation.treePath, prevInfo, method, predicate)
+    val newInfo = MungoTypecheck.refine(utils, prevInfo, method, predicate)
     store[receiver] = StoreInfo(prevValue, newInfo)
   }
 
   private fun refineStoreMore(invocation: MethodInvocationNode, method: Symbol.MethodSymbol, receiver: Reference, store: MutableStore, predicate: (String) -> Boolean) {
     val prevValue = analyzer.getCurrentInferredInfo(invocation.target.receiver)
     val prevInfo = prevValue.mungoType
-    val newInfo = MungoTypecheck.refine(utils, invocation.treePath, prevInfo, method, predicate)
+    val newInfo = MungoTypecheck.refine(utils, prevInfo, method, predicate)
     // We are refining a switch case or an expression after the method invocation was done,
     // so intersect with the old information.
     store.intersect(receiver, StoreInfo(prevValue, newInfo))

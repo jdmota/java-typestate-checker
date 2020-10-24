@@ -68,7 +68,7 @@ class SymbolicEquality {
 
 class SymbolicPacked {}
 
-class SymbolicInfo {
+class SymbolicInfo(val ref: Reference) {
   val fraction = SymbolicFraction() // access(x, f1)
   val type = SymbolicType() // typeof(x, t1)
   val packed = SymbolicPacked() // packed(x) or unpacked(x)
@@ -83,9 +83,9 @@ class SymbolicInfo {
   }
 
   fun toString(str: StringBuilder, ref: Reference, solution: Solution) {
-    val access = solution.get(fraction).toString()
-    val accessDotZero = solution.get(packFraction).toString()
-    val type = solution.get(type).toString()
+    val access = solution.get(fraction)
+    val accessDotZero = solution.get(packFraction)
+    val type = solution.get(type)
     var newLine = false
 
     if (access != "0") {
@@ -96,7 +96,7 @@ class SymbolicInfo {
       str.append("acc($ref.0,$accessDotZero) && ")
       newLine = true
     }
-    if (type != "TUnknown") {
+    if (type != "MungoUnknownType") {
       str.append("typeof($ref,$type)")
       newLine = true
     }
@@ -107,6 +107,10 @@ class SymbolicInfo {
     for ((child, info) in children) {
       info.toString(str, child, solution)
     }
+  }
+
+  override fun toString(): String {
+    return "Info{ref=$ref, f=$fraction, t=$type, pf=$packFraction}"
   }
 }
 
@@ -150,7 +154,6 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     }
   }
 
-  fun impliedByCount() = impliedBy.size
   fun impliedBy(): Set<SymbolicAssertion> = impliedBy
 
   val roots = mutableMapOf<Reference, SymbolicInfo>()
@@ -163,23 +166,25 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
 
   fun prepare(ref: Reference): SymbolicInfo {
     return when (ref) {
+      is ParameterVariable,
       is LocalVariable,
       is ThisReference,
       is ClassName,
       is ReturnSpecialVar,
       is OldSpecialVar,
       is NodeRef -> {
-        roots.computeIfAbsent(ref) { SymbolicInfo() }
+        roots.computeIfAbsent(ref) { SymbolicInfo(it) }
       }
       is FieldAccess -> {
         val parent = prepare(ref.receiver)
-        parent.children.computeIfAbsent(ref) { SymbolicInfo() }
+        parent.children.computeIfAbsent(ref) { SymbolicInfo(it) }
       }
     }
   }
 
   operator fun get(ref: Reference): SymbolicInfo {
     return when (ref) {
+      is ParameterVariable,
       is LocalVariable,
       is ThisReference,
       is ClassName,
@@ -230,7 +235,13 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
   }
 
   override fun toString(): String {
-    return "SymbolicAssertion"
+    val str = StringBuilder()
+    for ((ref, info) in roots) {
+      if (ref is ThisReference || ref is LocalVariable) {
+        str.append(info.toString())
+      }
+    }
+    return str.toString()
   }
 }
 

@@ -116,6 +116,10 @@ fun createLocalVariable(tree: VariableTree): LocalVariable {
   return LocalVariable(LocalVariableNode(tree))
 }
 
+fun createParameterVariable(tree: VariableTree): ParameterVariable {
+  return ParameterVariable(LocalVariableNode(tree))
+}
+
 class FieldAccess(val receiver: Reference, type: TypeMirror, val field: VariableElement) : Reference(type) {
 
   constructor(receiver: Reference, field: VariableElement) : this(receiver, ElementUtils.getType(field), field)
@@ -211,6 +215,39 @@ class LocalVariable(type: TypeMirror, val element: VarSymbol) : Reference(type) 
 
   override fun toString(): String {
     return elementName
+  }
+}
+
+class ParameterVariable(type: TypeMirror, val element: VarSymbol) : Reference(type) {
+  constructor(node: LocalVariableNode) : this(node.type, node.element as VarSymbol)
+  constructor(elem: Element) : this(ElementUtils.getType(elem), elem as VarSymbol)
+
+  private val elementName = element.name.toString()
+  private val ownerName = element.owner.toString()
+
+  fun toLocalVariable() = LocalVariable(type, element)
+
+  override fun isThisField(): Boolean {
+    return false
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (other !is ParameterVariable) return false
+    // The code below isn't just return vs.equals(vsother) because an element might be
+    // different between subcheckers. The owner of a lambda parameter is the enclosing
+    // method, so a local variable and a lambda parameter might have the same name and the
+    // same owner. pos is used to differentiate this case.
+    return element.pos == other.element.pos && other.elementName == elementName && other.ownerName == ownerName
+  }
+
+  override fun hashCode(): Int {
+    var result = elementName.hashCode()
+    result = 31 * result + ownerName.hashCode()
+    return result
+  }
+
+  override fun toString(): String {
+    return "param($elementName)"
   }
 }
 

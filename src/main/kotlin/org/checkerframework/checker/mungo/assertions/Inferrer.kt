@@ -15,6 +15,7 @@ import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
+import javax.lang.model.type.TypeKind
 import org.checkerframework.checker.mungo.analysis.getReference as getBasicReference
 
 class Inferrer(val checker: MungoChecker) {
@@ -193,6 +194,8 @@ class Inferrer(val checker: MungoChecker) {
 
   fun getOldReference(node: AssignmentNode) = OldSpecialVar(getBasicReference(node.target)!!, (node.tree as JCTree).pos)
 
+  fun getParameterReference(node: LocalVariableNode) = ParameterVariable(node)
+
   private fun gatherLocations(cfg: ControlFlowGraph): Set<Reference> {
     val ast = cfg.underlyingAST
     val locations = locationsGatherer.getParameterLocations(ast).toMutableSet()
@@ -214,6 +217,8 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   private fun gatherEqualities(cfg: ControlFlowGraph): Set<Pair<Reference, Reference>> {
+    val ast = cfg.underlyingAST
+    val parameters = locationsGatherer.getParameterLocations(ast).filterIsInstance<ParameterVariable>()
     val equalities = mutableSetOf<Pair<Reference, Reference>>()
     for (node in cfg.allNodes) {
       when (node) {
@@ -231,6 +236,9 @@ class Inferrer(val checker: MungoChecker) {
         // TODO more...
       }
     }
+    for (param in parameters) {
+      equalities.add(Pair(param, param.toLocalVariable()))
+    }
     return equalities
   }
 
@@ -244,7 +252,7 @@ class Inferrer(val checker: MungoChecker) {
 
     // Exits
     val preThen = currentSkeleton.create()
-    val preElse = currentSkeleton.create()
+    val preElse = preThen // TODO different assertion when the method returns a boolean
     postAssertions[ast] = NodeAssertions(preThen, preElse, preThen, preElse)
 
     // Traverse
@@ -371,7 +379,7 @@ class Inferrer(val checker: MungoChecker) {
 
   private fun shouldEachToEach(node: Node?, after: Node?): Boolean {
     return when (after) {
-      is ReturnNode -> after.result === node
+      is ReturnNode -> after.result === node && node?.type?.kind == TypeKind.BOOLEAN
       is ConditionalNotNode -> after.operand === node
       else -> false
     }
@@ -419,6 +427,9 @@ class Inferrer(val checker: MungoChecker) {
     when (val solution = constraints.end()) {
       is NoSolution -> {
         println("No solution!\n")
+        for (expr in solution.unsatCore) {
+          println(constraints.labelToString(expr.toString()))
+        }
       }
       is UnknownSolution -> {
         println("Unknown solution!\n")

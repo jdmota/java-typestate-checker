@@ -14,16 +14,6 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
 
   val utils get() = checker.utils
 
-  /*private fun getFields(classTree: ClassTree): List<VariableTree> {
-    return prepareClass(classTree).nonStatic.fields
-  }
-
-  private fun getFields(element: Element): List<VariableTree> {
-    val tree = checker.utils.treeUtils.getTree(element)
-    if (tree is ClassTree) return getFields(tree)
-    return emptyList()
-  }*/
-
   fun getLocations(ref: Reference): List<Reference> {
     val list = mutableListOf<Reference>()
     getLocationsHelper(list, ref)
@@ -42,46 +32,40 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
           getLocationsHelper(list, FieldAccess(ref, it))
         }
       }
-      // getFields(element).forEach { list.addAll(getLocations(ref, it)) }
     }
     return list
   }
 
-  private val cache1 = WeakIdentityHashMap<Tree, List<Reference>>()
-  private val cache2 = WeakIdentityHashMap<Symbol, List<Reference>>()
+  private val cache1 = WeakIdentityHashMap<JCTree.JCLambda, List<Reference>>()
+  private val cache2 = WeakIdentityHashMap<Symbol.MethodSymbol, List<Reference>>()
 
-  private fun getParameterLocations(method: JCTree.JCLambda): List<Reference> {
+  fun getParameterLocations(method: JCTree.JCLambda): List<Reference> {
     return cache1.computeIfAbsent(method) {
-      method.parameters.fold(mutableListOf()) { l, param -> getLocationsHelper(l, createLocalVariable(param)) }
-    }
-  }
-
-  fun getParameterLocations(method: JCTree.JCMethodDecl): List<Reference> {
-    return cache1.computeIfAbsent(method) {
-      val sym = method.sym
-      val list = mutableListOf<Reference>()
-      if (!sym.isStatic) {
-        getLocationsHelper(list, ThisReference(sym.enclosingElement.asType()))
+      method.parameters.fold(mutableListOf()) { l, param ->
+        val ref = createParameterVariable(param)
+        getLocationsHelper(l, ref)
+        getLocationsHelper(l, ref.toLocalVariable())
       }
-      method.parameters.fold(list) { l, param -> getLocationsHelper(l, createLocalVariable(param)) }
     }
   }
 
   fun getParameterLocations(sym: Symbol.MethodSymbol): List<Reference> {
-    /*val tree = checker.utils.treeUtils.getTree(sym)
-    return getParameterLocations(tree as JCTree.JCMethodDecl)*/
     return cache2.computeIfAbsent(sym) {
       val list = mutableListOf<Reference>()
       if (!sym.isStatic) {
         getLocationsHelper(list, ThisReference(sym.enclosingElement.asType()))
       }
-      sym.parameters.fold(list) { l, param -> getLocationsHelper(l, LocalVariable(param)) }
+      sym.parameters.fold(list) { l, param ->
+        val ref = ParameterVariable(param)
+        getLocationsHelper(l, ref)
+        getLocationsHelper(l, ref.toLocalVariable())
+      }
     }
   }
 
   fun getParameterLocations(ast: UnderlyingAST): List<Reference> {
     return when (ast) {
-      is UnderlyingAST.CFGMethod -> getParameterLocations(ast.method as JCTree.JCMethodDecl)
+      is UnderlyingAST.CFGMethod -> getParameterLocations((ast.method as JCTree.JCMethodDecl).sym)
       is UnderlyingAST.CFGLambda -> getParameterLocations(ast.lambdaTree as JCTree.JCLambda)
       else -> emptyList()
     }

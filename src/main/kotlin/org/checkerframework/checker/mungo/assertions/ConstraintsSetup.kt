@@ -23,9 +23,13 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     allTypes.toSet()
   }
 
-  private fun typeToSymbol(type: MungoType): Symbol {
-    return ctx.mkSymbol(when (type) {
-      is MungoUnionType -> "TU_${type.types.map { typeToSymbol(it) }.joinToString("_")}"
+  private val labelToType = mutableMapOf<String, MungoType>()
+
+  fun labelToType(label: String) = labelToType[label] ?: error("No type for label $label")
+
+  private fun typeToLabel(type: MungoType): String {
+    val label = when (type) {
+      is MungoUnionType -> "TU_${type.types.joinToString("_") { typeToLabel(it) }}"
       is MungoStateType -> "TS${type.state.id}"
       is MungoMovedType -> "TMoved"
       is MungoPrimitiveType -> "TPrim"
@@ -35,7 +39,13 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       is MungoObjectType -> "TObj"
       is MungoUnknownType -> "TUnknown"
       is MungoBottomType -> "TBottom"
-    })
+    }
+    labelToType[label] = type
+    return label
+  }
+
+  private fun typeToSymbol(type: MungoType): Symbol {
+    return ctx.mkSymbol(typeToLabel(type))
   }
 
   private val setup = object {
@@ -202,8 +212,17 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     return this
   }
 
-  fun addAssert(expr: BoolExpr) {
+  private fun addAssert(expr: BoolExpr) {
     solver.add(expr)
+    // println(expr)
+  }
+
+  fun addAssert(expr: BoolExpr, label: String) {
+    if (label.isNotEmpty()) {
+      solver.assertAndTrack(expr, ctx.mkBoolConst(label))
+    } else {
+      solver.add(expr)
+    }
     // println(expr)
   }
 
@@ -214,7 +233,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       return Solution(this, solver.model)
     }
     return if (result == Status.UNSATISFIABLE) {
-      NoSolution()
+      NoSolution(solver.unsatCore)
     } else {
       UnknownSolution()
     }

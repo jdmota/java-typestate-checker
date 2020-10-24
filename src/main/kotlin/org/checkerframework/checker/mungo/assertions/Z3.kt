@@ -3,8 +3,7 @@ package org.checkerframework.checker.mungo.assertions
 import com.microsoft.z3.*
 import java.lang.reflect.Method
 
-
-class Z3Context : Context() {
+class Z3Context : Context(mutableMapOf(Pair("model", "true"), Pair("unsat_core", "true"))) {
 
   companion object {
     private val getNativeObjectMethod: Method = Z3Object::class.java.getDeclaredMethod("getNativeObject")

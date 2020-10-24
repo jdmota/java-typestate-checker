@@ -100,11 +100,25 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         constraints.one(elseInfo.packFraction)
       }
     }
+
+    fun type(node: Node, assertions: NodeAssertions, type: MungoType) {
+      val thenInfo = getInfo(node, assertions.postThen)
+      val elseInfo = getInfo(node, assertions.postElse)
+
+      constraints.subtype(type, thenInfo.type)
+      if (thenInfo !== elseInfo) {
+        constraints.subtype(type, elseInfo.type)
+      }
+    }
   }
 
   fun visitInitialAssertion(ast: UnderlyingAST, pre: SymbolicAssertion) {
     pre.forEach { ref, info ->
       when (ref) {
+        is ParameterVariable -> {
+          constraints.one(info.fraction)
+          constraints.paramAndLocalVars(pre, ref, ref.toLocalVariable())
+        }
         is LocalVariable -> {
           if (ref.element.getKind() == ElementKind.PARAMETER) {
             constraints.one(info.fraction)
@@ -132,7 +146,9 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
     // TODO What about lambdas???
     for ((a, b) in pre.skeleton.equalities) {
-      constraints.notEquality(pre, a, b)
+      if (a !is ParameterVariable && b !is ParameterVariable) {
+        constraints.notEquality(pre, a, b)
+      }
     }
   }
 
@@ -166,7 +182,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return null
   }
 
-  private fun assign(target: Node, expr: Node, oldRef: OldSpecialVar, result: NodeAssertions) {
+  // TODO handle primitives
+  private fun assign(target: Node, expr: Node, oldRef: OldSpecialVar?, result: NodeAssertions) {
     val targetRef = getDirectRef(target)
     val exprRef = getRef(expr)
 
@@ -175,14 +192,16 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       val preExprInfo = getInfo(expr, pre)
       val postTargetInfo = post[targetRef]
       val postExprInfo = getInfo(expr, post)
-      val postOldVarInfo = post[oldRef]
 
       // Permission to the target and expression remain the same
       constraints.same(preTargetInfo.fraction, postTargetInfo.fraction)
       constraints.same(preExprInfo.fraction, postExprInfo.fraction)
 
-      // Move permissions and type of the old object to the ghost variable
-      constraints.transfer(target = postOldVarInfo, null, data = preTargetInfo)
+      if (oldRef != null) {
+        val postOldVarInfo = post[oldRef]
+        // Move permissions and type of the old object to the ghost variable
+        constraints.transfer(target = postOldVarInfo, null, data = preTargetInfo)
+      }
 
       // Equality
       // TODO if then != else, this might be too restrictive...
@@ -204,8 +223,6 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {
     require.write(n.target, result)
     require.read(n.expression, result)
-
-    // TODO handle primitives
     assign(n.target, n.expression, inferrer.getOldReference(n), result)
     return null
   }
@@ -246,34 +263,55 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
     require.read(n.target.receiver, result)
 
-    val parameters = inferrer.locationsGatherer.getParameterLocations(method).filterNot { it is FieldAccess }
+    val parameters = inferrer.locationsGatherer.getParameterLocations(method).filter {
+      it is ThisReference || it is ParameterVariable
+    }
     val includeThis = parameters.any { it is ThisReference }
-    val argExprs = mutableListOf<Node>().let {
+    val arguments = mutableListOf<Node>().let {
       if (includeThis) it.add(n.target.receiver)
       it.addAll(n.arguments)
       it
-    }
+    }.map { getRef(it) }
 
     // assert(parameters.size == argExprs.size)
 
     println(method)
-    println(argExprs)
+    println(arguments)
     println(parameters)
     println()
+
+    ensures.onlySideEffect(result, arguments.toSet())
 
     // TODO handle methods for which we do not have the code...
     val pre = inferrer.getMethodPre(method) ?: return null
     val (postThen, postElse) = inferrer.getMethodPost(method) ?: return null
 
+    // Arguments
+    var itParams = parameters.iterator()
+    var itArgs = arguments.iterator()
+    while (itParams.hasNext()) {
+      val param = itParams.next()
+      val expr = itArgs.next()
+      constraints.passingParameter(result.preThen[expr], pre[param])
+      if (result.preThen !== result.preElse) {
+        constraints.passingParameter(result.preElse[expr], pre[param])
+      }
+    }
+
+    // Required and ensured states
     val graph = inferrer.utils.classUtils.visitClassTypeMirror(n.target.receiver.type)
     if (graph == null) {
       // TODO same type
     } else {
       val states = MungoTypecheck.available(inferrer.utils, graph, method)
       val union = MungoUnionType.create(states)
+      val destination = MungoTypecheck.refine(inferrer.utils, union, method) { _ -> true }
       require.type(n.target.receiver, result, union)
+      ensures.type(n.target.receiver, result, destination)
+      println("\n$method: $union -> $destination\n")
     }
 
+    // Transfer return value
     if (method.returnType.kind != TypeKind.VOID) {
       // Transfer information about the return value
       // TODO if then != else, this might be too restrictive...
@@ -282,10 +320,27 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         constraints.transfer(target = getInfo(n, result.postElse), null, data = postElse[ReturnSpecialVar(n.type)])
       }
     }
+
+    // Other effects
+    itParams = parameters.iterator()
+    itArgs = arguments.iterator()
+    while (itParams.hasNext()) {
+      val param = itParams.next()
+      val expr = itArgs.next()
+      constraints.restoringParameter(postThen[param], result.postThen[expr])
+      constraints.restoringParameter(postElse[param], result.postElse[expr])
+    }
     return null
   }
 
   override fun visitReturn(n: ReturnNode, result: NodeAssertions): Void? {
+    val expr = n.result
+    if (expr == null) {
+      ensures.noSideEffects(result)
+    } else {
+      require.read(expr, result)
+      assign(n, expr, null, result)
+    }
     return null
   }
 

@@ -2,18 +2,14 @@ package org.checkerframework.checker.mungo.typecheck
 
 import com.sun.source.tree.MemberSelectTree
 import com.sun.source.tree.MethodInvocationTree
-import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
-import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
-import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.TreeUtils
-import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
@@ -186,7 +182,7 @@ object MungoTypecheck {
     return "Cannot access $fieldName ${items.joinToString(", ")}"
   }
 
-  fun refine(utils: MungoUtils, tree: TreePath, type: MungoType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): MungoType {
+  fun refine(utils: MungoUtils, type: MungoType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): MungoType {
     return when (type) {
       // Unknown stays Unknown
       is MungoUnknownType -> MungoUnknownType.SINGLETON
@@ -205,7 +201,7 @@ object MungoTypecheck {
       // Objects with no protocol, stay like that
       is MungoNoProtocolType -> MungoNoProtocolType.SINGLETON
       // Refine...
-      is MungoUnionType -> MungoUnionType.create(type.types.map { refine(utils, tree, it, method, predicate) })
+      is MungoUnionType -> MungoUnionType.create(type.types.map { refine(utils, it, method, predicate) })
       is MungoStateType -> MungoUnionType.create(refine(utils, type, method, predicate))
     }
   }
