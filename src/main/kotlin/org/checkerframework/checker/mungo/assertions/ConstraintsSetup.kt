@@ -111,6 +111,14 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     ctx.mkApp(setup.min, a, b) as ArithExpr
   }
 
+  fun mkAnd(c: Collection<BoolExpr>): BoolExpr {
+    return if (c.size == 1) {
+      c.first()
+    } else {
+      ctx.mkAnd(*c.toTypedArray())
+    }
+  }
+
   private var eqUuid = 1L
   private val assertionToEq = mutableMapOf<SymbolicAssertion, FuncDecl>()
 

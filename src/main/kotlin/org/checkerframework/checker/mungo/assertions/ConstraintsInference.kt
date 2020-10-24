@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
+import com.microsoft.z3.BoolExpr
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
@@ -209,13 +210,54 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.equality(result, targetRef, exprRef)
     }
 
-    if (oldRef == null) {
-      ensures.onlySideEffect(result, setOf(targetRef, exprRef))
+    val effects = if (oldRef == null) {
+      setOf(targetRef, exprRef)
     } else {
-      ensures.onlySideEffect(result, setOf(targetRef, exprRef, oldRef))
+      setOf(targetRef, exprRef, oldRef)
     }
+    ensures.onlySideEffect(result, effects)
 
-    // TODO other equalities? like x = y; old = x; x = z; // old = y
+    constraints.other { setup ->
+      val exprs = mutableListOf<BoolExpr>()
+      handle(result) { tail, heads ->
+        // old = target;
+        // target = expr;
+
+        // (P[E/x] <=> replace x with E)
+        // {P[E/x]} x := E {P}
+        // {eq(a,b)[E/x]} x := E {eq(a,b)}
+        // {eq(E,E)[E/x]} x := E {eq(x,E)}
+        // {eq(old,?)[E/x]} old := x {eq(old,?)}
+
+        // TODO handle "old" assignment
+
+        // Replace "x" with "e" in "p"
+        fun replace(p: Reference, x: Reference, e: Reference) = if (p == x) e else p
+
+        val equalities = tail.skeleton.equalities
+
+        for ((a, b) in equalities) {
+          if (effects.contains(a) || effects.contains(b)) {
+            val c = replace(a, targetRef, exprRef)
+            val d = replace(b, targetRef, exprRef)
+            if (c == d) {
+              // setup.mkEquals(it, c, d) == true
+              exprs.add(setup.mkEquals(tail, a, b))
+            } else if (equalities.contains(Pair(c, d))) {
+              exprs.add(
+                setup.ctx.mkEq(
+                  setup.mkEquals(tail, a, b),
+                  setup.mkAnd(heads.map {
+                    setup.mkEquals(it, c, d)
+                  })
+                )
+              )
+            }
+          }
+        }
+      }
+      setup.mkAnd(exprs)
+    }
   }
 
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {

@@ -219,6 +219,7 @@ class Inferrer(val checker: MungoChecker) {
     return locations
   }
 
+  // TODO include eq(old(var),something)
   private fun gatherEqualities(cfg: ControlFlowGraph): Set<Pair<Reference, Reference>> {
     val ast = cfg.underlyingAST
     val parameters = locationsGatherer.getParameterLocations(ast).filterIsInstance<ParameterVariable>()

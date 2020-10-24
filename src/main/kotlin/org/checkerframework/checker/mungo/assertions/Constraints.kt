@@ -64,16 +64,14 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
     exprs.add(
       setup.ctx.mkEq(
         setup.mkEquals(tail, a, b),
-        setup.ctx.mkAnd(
-          *heads.map {
-            setup.mkEquals(it, a, b)
-          }.toTypedArray()
-        )
+        setup.mkAnd(heads.map {
+          setup.mkEquals(it, a, b)
+        })
       )
     )
   }
 
-  return setup.ctx.mkAnd(*exprs.toTypedArray())
+  return setup.mkAnd(exprs)
 }
 
 private class ImpliedAssertion(val tail: SymbolicAssertion) : Constraint() {
@@ -96,7 +94,9 @@ private open class OnlyEffects(val assertions: NodeAssertions, val except: Set<R
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return reduce(setup, assertions) { tail, heads -> handleImplies(tail, heads, setup, except) }
+    return reduce(setup, assertions) { tail, heads ->
+      handleImplies(tail, heads, setup, except)
+    }
   }
 }
 
@@ -266,7 +266,7 @@ fun handleEquality(target: Reference, expr: Reference, tail: SymbolicAssertion, 
   handleTypeImplication(exprs, heads, expr, postExprInfo.type, setup)
 
   // TODO handle fields
-  return setup.ctx.mkAnd(*exprs.toTypedArray())
+  return setup.mkAnd(exprs)
 }
 
 private class EqualityInAssertion(
@@ -318,7 +318,7 @@ fun handleTransfer(
     exprs.add(SymTypeEqType(postExprInfo.type, MungoUnknownType.SINGLETON).toZ3(setup))
   }
 
-  return setup.ctx.mkAnd(*exprs.toTypedArray())
+  return setup.mkAnd(exprs)
 }
 
 private class TransferOfExpressions(
@@ -410,6 +410,17 @@ private class RestoringParameter(
         SymTypeImpliesSymType(parameter.type, expr.type).toZ3(setup)
       }
     )
+  }
+}
+
+private class OtherConstraint(val fn: (ConstraintsSetup) -> BoolExpr) : Constraint() {
+
+  override fun toString(): String {
+    return "($id) other"
+  }
+
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return fn(setup)
   }
 }
 
@@ -554,6 +565,10 @@ class Constraints {
 
   fun restoringParameter(parameter: SymbolicInfo, expr: SymbolicInfo) {
     constraints.add(RestoringParameter(parameter, expr))
+  }
+
+  fun other(fn: (ConstraintsSetup) -> BoolExpr) {
+    constraints.add(OtherConstraint(fn))
   }
 
 }
