@@ -82,6 +82,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
 
     fun onlySideEffect(result: NodeAssertions, except: Set<Reference>) {
+      // TODO expand "except" set with the fields
       constraints.onlyEffects(result, except)
     }
 
@@ -191,33 +192,27 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     val exprRef = getRef(expr)
 
     fun helper(pre: SymbolicAssertion, post: SymbolicAssertion) {
-      val preTargetInfo = pre[targetRef]
-      val preExprInfo = getInfo(expr, pre)
-      val postTargetInfo = post[targetRef]
-      val postExprInfo = getInfo(expr, post)
-
       // Permission to the target and expression remain the same
-      constraints.same(preTargetInfo.fraction, postTargetInfo.fraction)
-      constraints.same(preExprInfo.fraction, postExprInfo.fraction)
-
-      if (oldRef != null) {
-        val postOldVarInfo = post[oldRef]
-        // Move permissions and type of the old object to the ghost variable
-        constraints.transfer(target = postOldVarInfo, null, data = preTargetInfo)
-      }
-
-      // Equality
-      // TODO if then != else, this might be too restrictive...
-      if (exprRef is NodeRef) {
-        constraints.transfer(target = postTargetInfo, expr = postExprInfo, data = preExprInfo)
-      } else {
-        constraints.equality(assertion = post, target = targetRef, expr = exprRef, data = preExprInfo)
-      }
+      constraints.same(pre[targetRef].fraction, post[targetRef].fraction)
+      constraints.same(getInfo(expr, pre).fraction, getInfo(expr, post).fraction)
     }
 
+    // TODO refactor this as well
     helper(result.preThen, result.postThen)
     if (result.preThen !== result.preElse || result.postThen !== result.postElse) {
       helper(result.preElse, result.postElse)
+    }
+
+    // Move permissions and type of the old object to the ghost variable
+    if (oldRef != null) {
+      constraints.transfer(false, result, oldRef, targetRef)
+    }
+
+    // Equality
+    if (exprRef is NodeRef) {
+      constraints.transfer(true, result, targetRef, exprRef)
+    } else {
+      constraints.equality(result, targetRef, exprRef)
     }
 
     if (oldRef == null) {
@@ -225,6 +220,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     } else {
       ensures.onlySideEffect(result, setOf(targetRef, exprRef, oldRef))
     }
+
+    // TODO other equalities? like x = y; old = x; x = z; // old = y
   }
 
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {
@@ -318,12 +315,12 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
       // Transfer return value
       if (method.returnType.kind != TypeKind.VOID) {
-        // Transfer information about the return value
-        // TODO if then != else, this might be too restrictive...
-        constraints.transfer(target = getInfo(call, result.postThen), null, data = postThen[ReturnSpecialVar(call.type)])
-        if (result.postThen !== result.postElse || postThen !== postElse) {
-          constraints.transfer(target = getInfo(call, result.postElse), null, data = postElse[ReturnSpecialVar(call.type)])
-        }
+        constraints.transfer(
+          false,
+          NodeAssertions(postThen, postElse, result.postThen, result.postElse),
+          getRef(call),
+          ReturnSpecialVar(call.type)
+        )
       }
     }
 

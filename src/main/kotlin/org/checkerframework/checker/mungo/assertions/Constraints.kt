@@ -32,17 +32,7 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
 
     // exprs.add(SymFractionImpliesSymFraction(head.getAccess(ref), info.fraction).toZ3(setup))
     // exprs.add(SymFractionImpliesSymFraction(head.getAccessDotZero(ref), info.packFraction).toZ3(setup))
-
-    // Subtyping constraints are more difficult for Z3 to solve
-    // If this assertion is only implied by another one,
-    // just add a constraint where the two types are the same
-    if (heads.size == 1) {
-      exprs.add(SymTypeEqSymType(heads.first().getType(ref), info.type).toZ3(setup))
-    } else {
-      for (head in heads) {
-        exprs.add(SymTypeImpliesSymType(head.getType(ref), info.type).toZ3(setup))
-      }
-    }
+    handleTypeImplication(exprs, heads, ref, info.type, setup)
   }
 
   // TODO equalities only hold if enough permission!
@@ -227,11 +217,46 @@ private class NotEqualityInAssertion(
   }
 }
 
+fun handleTypeImplication(exprs: MutableList<BoolExpr>, pres: Set<SymbolicAssertion>, ref: Reference, type: SymbolicType, setup: ConstraintsSetup) {
+  // Subtyping constraints are more difficult for Z3 to solve
+  // If this assertion is only implied by another one,
+  // just add a constraint where the two types are the same
+  if (pres.size == 1) {
+    exprs.add(SymTypeEqSymType(pres.first().getType(ref), type).toZ3(setup))
+  } else {
+    for (pre in pres) {
+      exprs.add(SymTypeImpliesSymType(pre.getType(ref), type).toZ3(setup))
+    }
+  }
+  // TODO if the fraction is zero, the type should be Unknown instead
+}
+
+fun handleEquality(target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
+  val exprs = mutableListOf<BoolExpr>()
+  val postTargetInfo = tail[target]
+  val postExprInfo = tail[expr]
+
+  exprs.add(setup.mkEquals(tail, target, expr))
+
+  exprs.add(setup.ctx.mkEq(
+    setup.ctx.mkAdd(
+      setup.fractionToExpr(postTargetInfo.packFraction),
+      setup.fractionToExpr(postExprInfo.packFraction)
+    ),
+    setup.min(heads.map { it[expr].packFraction })
+  ))
+
+  handleTypeImplication(exprs, heads, expr, postTargetInfo.type, setup)
+  handleTypeImplication(exprs, heads, expr, postExprInfo.type, setup)
+
+  // TODO handle fields
+  return setup.ctx.mkAnd(*exprs.toTypedArray())
+}
+
 private class EqualityInAssertion(
-  val assertion: SymbolicAssertion,
+  val assertions: NodeAssertions,
   val target: Reference,
-  val expr: Reference,
-  val data: SymbolicInfo
+  val expr: Reference
 ) : Constraint() {
 
   override fun toString(): String {
@@ -239,31 +264,56 @@ private class EqualityInAssertion(
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    val targetInfo = assertion[target]
-    val exprInfo = assertion[expr]
+    if (assertions.postThen === assertions.postElse) {
+      return handleEquality(target, expr, assertions.postThen, setOf(assertions.preThen, assertions.preElse), setup)
+    }
     return setup.ctx.mkAnd(
-      setup.mkEquals(assertion, target, expr),
-      setup.ctx.mkAnd(
-        setup.ctx.mkEq(
-          setup.ctx.mkAdd(
-            setup.fractionToExpr(targetInfo.packFraction),
-            setup.fractionToExpr(exprInfo.packFraction)
-          ),
-          setup.fractionToExpr(data.packFraction)
-        ),
-        // TODO if the fraction is zero, the type should be Unknown instead
-        SymTypeEqSymType(targetInfo.type, data.type).toZ3(setup),
-        SymTypeEqSymType(exprInfo.type, data.type).toZ3(setup)
-      )
+      handleEquality(target, expr, assertions.postThen, setOf(assertions.preThen), setup),
+      handleEquality(target, expr, assertions.postElse, setOf(assertions.preElse), setup)
     )
   }
 }
 
-// TODO transfer between fields as well...
+// TODO handle fields
+fun handleTransfer(
+  resetExpr: Boolean,
+  target: Reference,
+  expr: Reference,
+  tail: SymbolicAssertion,
+  heads: Set<SymbolicAssertion>,
+  setup: ConstraintsSetup
+): BoolExpr {
+  val exprs = mutableListOf<BoolExpr>()
+  val postTargetInfo = tail[target]
+
+  exprs.add(setup.ctx.mkEq(
+    setup.fractionToExpr(postTargetInfo.packFraction),
+    setup.min(heads.map { it[expr].packFraction })
+  ))
+
+  if (resetExpr) {
+    val postExprInfo = tail[expr]
+    exprs.add(setup.ctx.mkEq(
+      setup.fractionToExpr(postExprInfo.packFraction),
+      setup.ctx.mkReal(0)
+    ))
+  }
+
+  handleTypeImplication(exprs, heads, expr, postTargetInfo.type, setup)
+
+  if (resetExpr) {
+    val postExprInfo = tail[expr]
+    exprs.add(SymTypeEqType(postExprInfo.type, MungoUnknownType.SINGLETON).toZ3(setup))
+  }
+
+  return setup.ctx.mkAnd(*exprs.toTypedArray())
+}
+
 private class TransferOfExpressions(
-  val target: SymbolicInfo,
-  val expr: SymbolicInfo?,
-  val data: SymbolicInfo
+  val resetExpr: Boolean,
+  val assertions: NodeAssertions,
+  val target: Reference,
+  val expr: Reference
 ) : Constraint() {
 
   override fun toString(): String {
@@ -271,23 +321,12 @@ private class TransferOfExpressions(
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    if (assertions.postThen === assertions.postElse) {
+      return handleTransfer(resetExpr, target, expr, assertions.postThen, setOf(assertions.preThen, assertions.preElse), setup)
+    }
     return setup.ctx.mkAnd(
-      setup.ctx.mkEq(
-        setup.fractionToExpr(target.packFraction),
-        setup.fractionToExpr(data.packFraction)
-      ),
-      SymTypeEqSymType(target.type, data.type).toZ3(setup),
-      if (expr == null) {
-        setup.ctx.mkTrue()
-      } else {
-        setup.ctx.mkAnd(
-          setup.ctx.mkEq(
-            setup.fractionToExpr(expr.packFraction),
-            setup.ctx.mkReal(0)
-          ),
-          SymTypeEqType(expr.type, MungoUnknownType.SINGLETON).toZ3(setup)
-        )
-      }
+      handleTransfer(resetExpr, target, expr, assertions.postThen, setOf(assertions.preThen), setup),
+      handleTransfer(resetExpr, target, expr, assertions.postElse, setOf(assertions.preElse), setup)
     )
   }
 }
@@ -445,6 +484,11 @@ class Constraints {
     constraints.add(SymFractionEqSymFraction(a, b))
   }
 
+  fun same(a: SymbolicFraction, value: Int) {
+    // a == value
+    constraints.add(SymFractionEq(a, value))
+  }
+
   fun nullType(t: SymbolicType) {
     // t == Null
     addType(MungoNullType.SINGLETON)
@@ -454,6 +498,11 @@ class Constraints {
   fun same(a: SymbolicType, b: SymbolicType) {
     // a == b
     constraints.add(SymTypeEqSymType(a, b))
+  }
+
+  fun same(a: SymbolicType, b: MungoType) {
+    // a == b
+    constraints.add(SymTypeEqType(a, b))
   }
 
   fun subtype(t1: SymbolicType, t2: MungoType) {
@@ -468,13 +517,13 @@ class Constraints {
     constraints.add(TypeImpliesSymType(t1, t2))
   }
 
-  fun transfer(target: SymbolicInfo, expr: SymbolicInfo?, data: SymbolicInfo) {
-    constraints.add(TransferOfExpressions(target, expr, data))
+  fun transfer(resetExpr: Boolean, assertions: NodeAssertions, target: Reference, expr: Reference) {
+    constraints.add(TransferOfExpressions(resetExpr, assertions, target, expr))
   }
 
-  fun equality(assertion: SymbolicAssertion, target: Reference, expr: Reference, data: SymbolicInfo) {
+  fun equality(assertions: NodeAssertions, target: Reference, expr: Reference) {
     // eq(a, b)
-    constraints.add(EqualityInAssertion(assertion, target, expr, data))
+    constraints.add(EqualityInAssertion(assertions, target, expr))
   }
 
   fun notEquality(assertion: SymbolicAssertion, a: Reference, b: Reference) {
