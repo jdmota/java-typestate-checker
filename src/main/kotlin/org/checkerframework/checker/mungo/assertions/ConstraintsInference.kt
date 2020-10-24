@@ -191,16 +191,10 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     val targetRef = getDirectRef(target)
     val exprRef = getRef(expr)
 
-    fun helper(pre: SymbolicAssertion, post: SymbolicAssertion) {
-      // Permission to the target and expression remain the same
-      constraints.same(pre[targetRef].fraction, post[targetRef].fraction)
-      constraints.same(getInfo(expr, pre).fraction, getInfo(expr, post).fraction)
-    }
-
-    // TODO refactor this as well
-    helper(result.preThen, result.postThen)
-    if (result.preThen !== result.preElse || result.postThen !== result.postElse) {
-      helper(result.preElse, result.postElse)
+    // Permission to the target and expression remain the same
+    handle(result) { tail, heads ->
+      constraints.same(tail[targetRef].fraction, heads.map { it[targetRef].fraction })
+      constraints.same(tail[exprRef].fraction, heads.map { it[exprRef].fraction })
     }
 
     // Move permissions and type of the old object to the ghost variable

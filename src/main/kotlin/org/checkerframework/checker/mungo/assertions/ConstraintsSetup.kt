@@ -125,6 +125,15 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
         ctx.mkApp(fn, args[0], args[0]) as BoolExpr
       })
 
+      // Symmetric
+      // (assert (forall ((x Loc) (y Loc)) (= (eq x y) (eq y x))))
+      addAssert(ctx.mkForall(arrayOf(setup.Location, setup.Location)) { args ->
+        ctx.mkEq(
+          ctx.mkApp(fn, args[0], args[1]) as BoolExpr,
+          ctx.mkApp(fn, args[1], args[0]) as BoolExpr
+        )
+      })
+
       // Transitive
       // (assert (forall ((x Loc) (y Loc) (z Loc)) (=> (and (eq x y) (eq y z)) (eq x z))))
       addAssert(ctx.mkForall(arrayOf(setup.Location, setup.Location, setup.Location)) { args ->

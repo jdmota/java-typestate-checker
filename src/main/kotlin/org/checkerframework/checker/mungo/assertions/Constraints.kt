@@ -15,6 +15,26 @@ sealed class Constraint {
   abstract fun toZ3(setup: ConstraintsSetup): BoolExpr
 }
 
+fun handle(result: NodeAssertions, fn: (tail: SymbolicAssertion, heads: Set<SymbolicAssertion>) -> Unit) {
+  if (result.postThen === result.postElse) {
+    fn(result.postThen, setOf(result.preThen, result.preElse))
+  } else {
+    fn(result.postThen, setOf(result.preThen))
+    fn(result.postElse, setOf(result.preElse))
+  }
+}
+
+fun reduce(setup: ConstraintsSetup, result: NodeAssertions, fn: (tail: SymbolicAssertion, heads: Set<SymbolicAssertion>) -> BoolExpr): BoolExpr {
+  return if (result.postThen === result.postElse) {
+    fn(result.postThen, setOf(result.preThen, result.preElse))
+  } else {
+    setup.ctx.mkAnd(
+      fn(result.postThen, setOf(result.preThen)),
+      fn(result.postElse, setOf(result.preElse))
+    )
+  }
+}
+
 // TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
 
 fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup, except: Set<Reference>): BoolExpr {
@@ -76,13 +96,7 @@ private open class OnlyEffects(val assertions: NodeAssertions, val except: Set<R
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    if (assertions.postThen === assertions.postElse) {
-      return handleImplies(assertions.postThen, setOf(assertions.preThen, assertions.preElse), setup, except)
-    }
-    return setup.ctx.mkAnd(
-      handleImplies(assertions.postThen, setOf(assertions.preThen), setup, except),
-      handleImplies(assertions.postElse, setOf(assertions.preElse), setup, except)
-    )
+    return reduce(setup, assertions) { tail, heads -> handleImplies(tail, heads, setup, except) }
   }
 }
 
@@ -101,14 +115,16 @@ private class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: Symb
   }
 }
 
-private class SymFractionEqSymFraction(val a: SymbolicFraction, val b: SymbolicFraction) : Constraint() {
+private class SymFractionEqSymFraction(val a: SymbolicFraction, val b: Collection<SymbolicFraction>) : Constraint() {
+
+  constructor(a: SymbolicFraction, b: SymbolicFraction) : this(a, listOf(b))
 
   override fun toString(): String {
     return "($id) $a = $b"
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return setup.ctx.mkEq(setup.fractionToExpr(a), setup.fractionToExpr(b))
+    return setup.ctx.mkEq(setup.fractionToExpr(a), setup.min(b))
   }
 }
 
@@ -264,13 +280,9 @@ private class EqualityInAssertion(
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    if (assertions.postThen === assertions.postElse) {
-      return handleEquality(target, expr, assertions.postThen, setOf(assertions.preThen, assertions.preElse), setup)
+    return reduce(setup, assertions) { tail, heads ->
+      handleEquality(target, expr, tail, heads, setup)
     }
-    return setup.ctx.mkAnd(
-      handleEquality(target, expr, assertions.postThen, setOf(assertions.preThen), setup),
-      handleEquality(target, expr, assertions.postElse, setOf(assertions.preElse), setup)
-    )
   }
 }
 
@@ -321,13 +333,9 @@ private class TransferOfExpressions(
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    if (assertions.postThen === assertions.postElse) {
-      return handleTransfer(resetExpr, target, expr, assertions.postThen, setOf(assertions.preThen, assertions.preElse), setup)
+    return reduce(setup, assertions) { tail, heads ->
+      handleTransfer(resetExpr, target, expr, tail, heads, setup)
     }
-    return setup.ctx.mkAnd(
-      handleTransfer(resetExpr, target, expr, assertions.postThen, setOf(assertions.preThen), setup),
-      handleTransfer(resetExpr, target, expr, assertions.postElse, setOf(assertions.preElse), setup)
-    )
   }
 }
 
@@ -480,6 +488,11 @@ class Constraints {
   }
 
   fun same(a: SymbolicFraction, b: SymbolicFraction) {
+    // a == b
+    constraints.add(SymFractionEqSymFraction(a, b))
+  }
+
+  fun same(a: SymbolicFraction, b: Collection<SymbolicFraction>) {
     // a == b
     constraints.add(SymFractionEqSymFraction(a, b))
   }
