@@ -51,7 +51,10 @@ public class Main {
   public static void main2(String args[]) {
     Cell cell = new Cell();
     cell.setItem("Hello World!");
-    String item = cell.getItem();
+
+    Cell cell2 = cell;
+
+    String item = cell2.getItem();
   }
 
 }

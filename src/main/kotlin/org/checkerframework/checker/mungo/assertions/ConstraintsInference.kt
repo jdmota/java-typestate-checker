@@ -181,6 +181,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   override fun visitVariableDeclaration(n: VariableDeclarationNode, result: NodeAssertions): Void? {
     ensures.newVar(n, result)
     ensures.onlySideEffect(result, setOf(getDirectRef(n)))
+    // FIXME nothing equals this variable!
     return null
   }
 
@@ -225,34 +226,41 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
         // (P[E/x] <=> replace x with E)
         // {P[E/x]} x := E {P}
-        // {eq(a,b)[E/x]} x := E {eq(a,b)}
-        // {eq(E,E)[E/x]} x := E {eq(x,E)}
-        // {eq(old,?)[E/x]} old := x {eq(old,?)}
 
-        // TODO handle "old" assignment
+        // {P[expr/target][target/old]}
+        // old := target
+        // {P[expr/target]}
+        // target := expr
+        // {P}
+
+        // TODO use this logic more!
 
         // Replace "x" with "e" in "p"
-        fun replace(p: Reference, x: Reference, e: Reference) = if (p == x) e else p
+        fun r1(p: Reference, x: Reference, e: Reference) =
+          if (p == x) e else p
+
+        fun r2(p: Reference) = if (oldRef == null) {
+          r1(p, targetRef, exprRef)
+        } else {
+          r1(r1(p, targetRef, exprRef), oldRef, targetRef)
+        }
 
         val equalities = tail.skeleton.equalities
 
         for ((a, b) in equalities) {
           if (effects.contains(a) || effects.contains(b)) {
-            val c = replace(a, targetRef, exprRef)
-            val d = replace(b, targetRef, exprRef)
-            if (c == d) {
-              // setup.mkEquals(it, c, d) == true
-              exprs.add(setup.mkEquals(tail, a, b))
-            } else if (equalities.contains(Pair(c, d))) {
-              exprs.add(
-                setup.ctx.mkEq(
-                  setup.mkEquals(tail, a, b),
-                  setup.mkAnd(heads.map {
-                    setup.mkEquals(it, c, d)
-                  })
-                )
+            val c = r2(a)
+            val d = r2(b)
+            exprs.add(when {
+              c == d -> setup.mkEquals(tail, a, b)
+              equalities.contains(Pair(c, d)) -> setup.ctx.mkEq(
+                setup.mkEquals(tail, a, b),
+                setup.mkAnd(heads.map {
+                  setup.mkEquals(it, c, d)
+                })
               )
-            }
+              else -> setup.ctx.mkNot(setup.mkEquals(tail, a, b))
+            })
           }
         }
       }
