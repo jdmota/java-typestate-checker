@@ -192,9 +192,12 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
-  fun getOldReference(node: AssignmentNode) = OldSpecialVar(getBasicReference(node.target)!!, (node.tree as JCTree).pos)
-
-  fun getParameterReference(node: LocalVariableNode) = ParameterVariable(node)
+  fun getOldReference(node: AssignmentNode): OldSpecialVar? {
+    if (node.tree is VariableTree) {
+      return null
+    }
+    return OldSpecialVar(getBasicReference(node.target)!!, (node.tree as JCTree).pos)
+  }
 
   private fun gatherLocations(cfg: ControlFlowGraph): Set<Reference> {
     val ast = cfg.underlyingAST
@@ -202,7 +205,7 @@ class Inferrer(val checker: MungoChecker) {
     for (node in cfg.allNodes) {
       getReference(node).let { locations.addAll(locationsGatherer.getLocations(it)) }
       if (node is AssignmentNode) {
-        getOldReference(node).let { locations.addAll(locationsGatherer.getLocations(it)) }
+        getOldReference(node)?.let { locations.addAll(locationsGatherer.getLocations(it)) }
       }
     }
     // Lambdas with only one expression, do not have explicit return nodes
@@ -427,12 +430,13 @@ class Inferrer(val checker: MungoChecker) {
     when (val solution = constraints.end()) {
       is NoSolution -> {
         println("No solution!\n")
+
         for (expr in solution.unsatCore) {
           println(constraints.labelToString(expr.toString()))
         }
       }
       is UnknownSolution -> {
-        println("Unknown solution!\n")
+        println("Unknown. Reason: ${solution.reason}\n")
       }
       is Solution -> {
         println("Correct!\n")

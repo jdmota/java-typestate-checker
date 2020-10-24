@@ -216,6 +216,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
   fun toString(solution: Solution): String {
     val str = StringBuilder()
     for ((ref, info) in roots) {
+      if (solution.skipRef(ref)) continue
       info.toString(str, ref, solution)
     }
 

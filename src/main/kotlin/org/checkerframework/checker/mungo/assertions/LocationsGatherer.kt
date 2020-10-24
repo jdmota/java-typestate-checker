@@ -1,6 +1,5 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.sun.source.tree.Tree
 import com.sun.source.util.TreePathScanner
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree

@@ -6,6 +6,7 @@ import org.checkerframework.checker.mungo.analysis.ParameterVariable
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.analysis.ThisReference
 import org.checkerframework.checker.mungo.typecheck.*
+import kotlin.math.exp
 
 private var constraintsUUID = 1L
 
@@ -14,108 +15,84 @@ sealed class Constraint {
   abstract fun toZ3(setup: ConstraintsSetup): BoolExpr
 }
 
-private class ImpliedAssertion(
-  val tail: SymbolicAssertion
-) : Constraint() {
+// TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
+
+fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup, except: Set<Reference>): BoolExpr {
+  val exprs = mutableListOf<BoolExpr>()
+
+  tail.forEach { ref, info ->
+    if (except.contains(ref)) return@forEach
+
+    exprs.add(setup.ctx.mkEq(
+      setup.fractionToExpr(info.fraction),
+      setup.min(heads.map { it.getAccess(ref) })
+    ))
+
+    exprs.add(setup.fractionsAccumulation(ref, heads, tail))
+
+    // exprs.add(SymFractionImpliesSymFraction(head.getAccess(ref), info.fraction).toZ3(setup))
+    // exprs.add(SymFractionImpliesSymFraction(head.getAccessDotZero(ref), info.packFraction).toZ3(setup))
+
+    // Subtyping constraints are more difficult for Z3 to solve
+    // If this assertion is only implied by another one,
+    // just add a constraint where the two types are the same
+    if (heads.size == 1) {
+      exprs.add(SymTypeEqSymType(heads.first().getType(ref), info.type).toZ3(setup))
+    } else {
+      for (head in heads) {
+        exprs.add(SymTypeImpliesSymType(head.getType(ref), info.type).toZ3(setup))
+      }
+    }
+  }
+
+  // TODO equalities only hold if enough permission!
+  // TODO equality of fields!
+  for ((a, b) in tail.skeleton.equalities) {
+    if (except.contains(a) || except.contains(b)) continue
+    // Equality is true in assertion "tail" if present in the other assertions
+    // and with read access to the variables
+    exprs.add(
+      setup.ctx.mkEq(
+        setup.mkEquals(tail, a, b),
+        setup.ctx.mkAnd(
+          *heads.map {
+            setup.mkEquals(it, a, b)
+          }.toTypedArray()
+        )
+      )
+    )
+  }
+
+  return setup.ctx.mkAnd(*exprs.toTypedArray())
+}
+
+private class ImpliedAssertion(val tail: SymbolicAssertion) : Constraint() {
 
   override fun toString(): String {
     return "($id) (${tail.impliedBy().joinToString(" && ")}}) ==> $tail"
   }
 
-  // TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
-
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    val exprs = mutableListOf<BoolExpr>()
-    val impliedBy = tail.impliedBy()
-
-    tail.forEach { ref, info ->
-      exprs.add(setup.ctx.mkEq(
-        setup.fractionToExpr(info.fraction),
-        setup.min(impliedBy.map { it.getAccess(ref) })
-      ))
-
-      exprs.add(setup.fractionsAccumulation(ref, impliedBy, tail))
-
-      // exprs.add(SymFractionImpliesSymFraction(head.getAccess(ref), info.fraction).toZ3(setup))
-      // exprs.add(SymFractionImpliesSymFraction(head.getAccessDotZero(ref), info.packFraction).toZ3(setup))
-
-      // Subtyping constraints are more difficult for Z3 to solve
-      // If this assertion is only implied by another one,
-      // just add a constraint where the two types are the same
-      if (impliedBy.size == 1) {
-        exprs.add(SymTypeEqSymType(impliedBy.first().getType(ref), info.type).toZ3(setup))
-      } else {
-        for (head in impliedBy) {
-          exprs.add(SymTypeImpliesSymType(head.getType(ref), info.type).toZ3(setup))
-        }
-      }
-    }
-
-    // TODO equalities only hold if enough permission!
-    // TODO equality of fields!
-    for ((a, b) in tail.skeleton.equalities) {
-      // Equality is true in assertion "tail" if present in the other assertions
-      // and with read access to the variables
-      exprs.add(
-        setup.ctx.mkEq(
-          setup.mkEquals(tail, a, b),
-          setup.ctx.mkAnd(
-            *impliedBy.map {
-              setup.mkEquals(it, a, b)
-            }.toTypedArray()
-          )
-        )
-      )
-    }
-
-    return setup.ctx.mkAnd(*exprs.toTypedArray())
+    return handleImplies(tail, tail.impliedBy(), setup, emptySet())
   }
 }
 
-private class OnlyEffects(
-  val pre: SymbolicAssertion,
-  val post: SymbolicAssertion,
-  val except: Set<Reference>
-) : Constraint() {
+private class NoSideEffects(assertions: NodeAssertions) : OnlyEffects(assertions, emptySet())
+
+private open class OnlyEffects(val assertions: NodeAssertions, val except: Set<Reference>) : Constraint() {
 
   override fun toString(): String {
-    return "($id) OnlyEffects {$except}"
+    return if (except.isEmpty()) "($id) NoSideEffects" else "($id) OnlyEffects {$except}"
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    val exprs = mutableListOf<BoolExpr>()
-
-    pre.forEach { ref, info ->
-      if (!except.contains(ref)) {
-        exprs.add(SymFractionEqSymFraction(info.fraction, post.getAccess(ref)).toZ3(setup))
-        exprs.add(SymFractionEqSymFraction(info.packFraction, post.getAccessDotZero(ref)).toZ3(setup))
-        exprs.add(SymTypeEqSymType(info.type, post.getType(ref)).toZ3(setup))
-      }
+    if (assertions.postThen === assertions.postElse) {
+      return handleImplies(assertions.postThen, setOf(assertions.preThen, assertions.preElse), setup, except)
     }
-
-    for ((a, b) in post.skeleton.equalities) {
-      if (!except.contains(a) && !except.contains(b)) {
-        exprs.add(
-          setup.ctx.mkEq(
-            setup.mkEquals(post, a, b),
-            setup.mkEquals(pre, a, b)
-          )
-        )
-      } else if (except.contains(a) && except.contains(b)) {
-        // Ignore
-        // This situation happens when dealing with assignments, which produce an equality
-      } else if (except.contains(a) != except.contains(b)) {
-        // One of them (a or b) changed, so invalidate the equality
-        exprs.add(
-          setup.ctx.mkEq(
-            setup.mkEquals(post, a, b),
-            setup.ctx.mkFalse()
-          )
-        )
-      }
-    }
-
-    return setup.ctx.mkAnd(*exprs.toTypedArray())
+    return setup.ctx.mkAnd(
+      handleImplies(assertions.postThen, setOf(assertions.preThen), setup, except),
+      handleImplies(assertions.postElse, setOf(assertions.preElse), setup, except)
+    )
   }
 }
 
@@ -246,9 +223,7 @@ private class NotEqualityInAssertion(
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return setup.ctx.mkNot(
-      setup.mkEquals(assertion, a, b)
-    )
+    return setup.ctx.mkNot(setup.mkEquals(assertion, a, b))
   }
 }
 
@@ -318,6 +293,9 @@ private class TransferOfExpressions(
 }
 
 // TODO handle fields as well...
+// Make the reference representing the parameter
+// and the corresponding local variable equals
+// But start with all the permission on the side of the parameter
 private class ParameterAndLocalVariable(
   val assertion: SymbolicAssertion,
   val parameter: ParameterVariable,
@@ -444,12 +422,12 @@ class Constraints {
     }
   }
 
-  fun onlyEffects(
-    pre: SymbolicAssertion,
-    post: SymbolicAssertion,
-    except: Set<Reference>
-  ) {
-    constraints.add(OnlyEffects(pre, post, except))
+  fun noSideEffects(assertions: NodeAssertions) {
+    constraints.add(NoSideEffects(assertions))
+  }
+
+  fun onlyEffects(assertions: NodeAssertions, except: Set<Reference>) {
+    constraints.add(OnlyEffects(assertions, except))
   }
 
   fun one(a: SymbolicFraction) {

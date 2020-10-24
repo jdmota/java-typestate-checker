@@ -235,7 +235,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     return if (result == Status.UNSATISFIABLE) {
       NoSolution(solver.unsatCore)
     } else {
-      UnknownSolution()
+      UnknownSolution(solver.reasonUnknown)
     }
   }
 

@@ -5,6 +5,7 @@ import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
+import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
 import javax.lang.model.type.TypeKind
@@ -77,14 +78,11 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
 
     fun noSideEffects(result: NodeAssertions) {
-      onlySideEffect(result, emptySet())
+      constraints.noSideEffects(result)
     }
 
     fun onlySideEffect(result: NodeAssertions, except: Set<Reference>) {
-      constraints.onlyEffects(result.preThen, result.postThen, except)
-      if (result.preThen !== result.preElse || result.postThen !== result.postElse) {
-        constraints.onlyEffects(result.preElse, result.postElse, except)
-      }
+      constraints.onlyEffects(result, except)
     }
 
     fun newValue(node: Node, assertions: NodeAssertions, type: MungoType) {
@@ -143,11 +141,13 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         }
       }
     }
+    // TODO lambdas
 
-    // TODO What about lambdas???
-    for ((a, b) in pre.skeleton.equalities) {
-      if (a !is ParameterVariable && b !is ParameterVariable) {
-        constraints.notEquality(pre, a, b)
+    if (ast is UnderlyingAST.CFGMethod) {
+      for ((a, b) in pre.skeleton.equalities) {
+        if (a !is ParameterVariable && b !is ParameterVariable) {
+          constraints.notEquality(pre, a, b)
+        }
       }
     }
   }
@@ -184,6 +184,9 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
   // TODO handle primitives
   private fun assign(target: Node, expr: Node, oldRef: OldSpecialVar?, result: NodeAssertions) {
+    require.write(target, result)
+    require.read(expr, result)
+
     val targetRef = getDirectRef(target)
     val exprRef = getRef(expr)
 
@@ -217,23 +220,30 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       helper(result.preElse, result.postElse)
     }
 
-    ensures.onlySideEffect(result, setOf(targetRef, exprRef))
+    if (oldRef == null) {
+      ensures.onlySideEffect(result, setOf(targetRef, exprRef))
+    } else {
+      ensures.onlySideEffect(result, setOf(targetRef, exprRef, oldRef))
+    }
   }
 
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {
-    require.write(n.target, result)
-    require.read(n.expression, result)
     assign(n.target, n.expression, inferrer.getOldReference(n), result)
     return null
   }
 
   override fun visitObjectCreation(node: ObjectCreationNode, result: NodeAssertions): Void? {
-    val newType = MungoTypecheck.objectCreation(inferrer.utils, node.type)
-    ensures.newValue(node, result, newType)
+    val constructor = TreeUtils.elementFromUse(node.tree!!) as Symbol.MethodSymbol
+    call(node, null, node.arguments, constructor, result)
     return null
   }
 
-  private fun isConstructor(method: ExecutableElement): Boolean {
+  override fun visitMethodInvocation(n: MethodInvocationNode, result: NodeAssertions): Void? {
+    call(n, n.target.receiver, n.arguments, n.target.method as Symbol.MethodSymbol, result)
+    return null
+  }
+
+  private fun isObjectConstructor(method: ExecutableElement): Boolean {
     if (method.kind == ElementKind.CONSTRUCTOR && method.simpleName.toString() == "<init>") {
       // java.lang.Object constructor is side effect free
       return true
@@ -241,50 +251,36 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return false
   }
 
-  /*
-  Think of method calls like:
-
-  d = method(a, b, c)
-
-  as:
-
-  #arg0 = a
-  #arg1 = b
-  #arg2 = c
-  method()
-  d = #ret
-  */
-  override fun visitMethodInvocation(n: MethodInvocationNode, result: NodeAssertions): Void? {
-    val method = n.target.method as Symbol.MethodSymbol
-    if (isConstructor(method)) {
+  private fun call(call: Node, receiver: Node?, argNodes: Collection<Node>, method: Symbol.MethodSymbol, result: NodeAssertions) {
+    if (isObjectConstructor(method)) {
       ensures.noSideEffects(result)
-      return null
+      return
     }
 
-    require.read(n.target.receiver, result)
-
+    // Is this a constructor call?
+    val isConstructor = method.getKind() == ElementKind.CONSTRUCTOR
+    // Gather all parameters
     val parameters = inferrer.locationsGatherer.getParameterLocations(method).filter {
-      it is ThisReference || it is ParameterVariable
+      if (isConstructor) it is ParameterVariable else it is ThisReference || it is ParameterVariable
     }
+    // Is "this" one of the parameters?
     val includeThis = parameters.any { it is ThisReference }
+    // Gather all arguments
     val arguments = mutableListOf<Node>().let {
-      if (includeThis) it.add(n.target.receiver)
-      it.addAll(n.arguments)
+      if (includeThis && receiver != null) {
+        it.add(receiver)
+      }
+      it.addAll(argNodes)
       it
     }.map { getRef(it) }
 
     // assert(parameters.size == argExprs.size)
 
-    println(method)
-    println(arguments)
-    println(parameters)
-    println()
-
-    ensures.onlySideEffect(result, arguments.toSet())
+    ensures.onlySideEffect(result, arguments.toSet().plus(getRef(call)))
 
     // TODO handle methods for which we do not have the code...
-    val pre = inferrer.getMethodPre(method) ?: return null
-    val (postThen, postElse) = inferrer.getMethodPost(method) ?: return null
+    val pre = inferrer.getMethodPre(method) ?: return
+    val (postThen, postElse) = inferrer.getMethodPost(method) ?: return
 
     // Arguments
     var itParams = parameters.iterator()
@@ -298,26 +294,36 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
     }
 
-    // Required and ensured states
-    val graph = inferrer.utils.classUtils.visitClassTypeMirror(n.target.receiver.type)
-    if (graph == null) {
-      // TODO same type
+    if (isConstructor) {
+      // Constructor return value
+      val newType = MungoTypecheck.objectCreation(inferrer.utils, call.type)
+      ensures.newValue(call, result, newType)
     } else {
-      val states = MungoTypecheck.available(inferrer.utils, graph, method)
-      val union = MungoUnionType.create(states)
-      val destination = MungoTypecheck.refine(inferrer.utils, union, method) { _ -> true }
-      require.type(n.target.receiver, result, union)
-      ensures.type(n.target.receiver, result, destination)
-      println("\n$method: $union -> $destination\n")
-    }
+      // Required and ensured states
+      if (receiver != null) {
+        require.read(receiver, result)
 
-    // Transfer return value
-    if (method.returnType.kind != TypeKind.VOID) {
-      // Transfer information about the return value
-      // TODO if then != else, this might be too restrictive...
-      constraints.transfer(target = getInfo(n, result.postThen), null, data = postThen[ReturnSpecialVar(n.type)])
-      if (result.postThen !== result.postElse || postThen !== postElse) {
-        constraints.transfer(target = getInfo(n, result.postElse), null, data = postElse[ReturnSpecialVar(n.type)])
+        val graph = inferrer.utils.classUtils.visitClassTypeMirror(receiver.type)
+        if (graph == null) {
+          // TODO same type
+        } else {
+          val states = MungoTypecheck.available(inferrer.utils, graph, method)
+          val union = MungoUnionType.create(states)
+          val destination = MungoTypecheck.refine(inferrer.utils, union, method) { _ -> true }
+          // TODO improve computing of destination (e.g. create a Z3 function that takes a type, etc...)
+          require.type(receiver, result, union)
+          ensures.type(receiver, result, destination)
+        }
+      }
+
+      // Transfer return value
+      if (method.returnType.kind != TypeKind.VOID) {
+        // Transfer information about the return value
+        // TODO if then != else, this might be too restrictive...
+        constraints.transfer(target = getInfo(call, result.postThen), null, data = postThen[ReturnSpecialVar(call.type)])
+        if (result.postThen !== result.postElse || postThen !== postElse) {
+          constraints.transfer(target = getInfo(call, result.postElse), null, data = postElse[ReturnSpecialVar(call.type)])
+        }
       }
     }
 
@@ -330,7 +336,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.restoringParameter(postThen[param], result.postThen[expr])
       constraints.restoringParameter(postElse[param], result.postElse[expr])
     }
-    return null
+
+    // TODO equalities from inside the method that can be tracked outside!
   }
 
   override fun visitReturn(n: ReturnNode, result: NodeAssertions): Void? {
@@ -338,57 +345,19 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     if (expr == null) {
       ensures.noSideEffects(result)
     } else {
-      require.read(expr, result)
       assign(n, expr, null, result)
     }
     return null
   }
 
-  override fun visitTernaryExpression(n: TernaryExpressionNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitConditionalNot(n: ConditionalNotNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitEqualTo(n: EqualToNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitNotEqual(n: NotEqualNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitLambdaResultExpression(n: LambdaResultExpressionNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitStringConcatenateAssignment(n: StringConcatenateAssignmentNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitCase(n: CaseNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitInstanceOf(n: InstanceOfNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitNarrowingConversion(n: NarrowingConversionNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitWideningConversion(n: WideningConversionNode, result: NodeAssertions): Void? {
-    return null
-  }
-
-  override fun visitStringConversion(n: StringConversionNode, result: NodeAssertions): Void? {
-    return null
-  }
-
   override fun visitTypeCast(n: TypeCastNode, result: NodeAssertions): Void? {
+    require.read(n.operand, result)
+    ensures.noSideEffects(result)
+    return null
+  }
+
+  override fun visitClassName(n: ClassNameNode, result: NodeAssertions): Void? {
+    require.read(n, result)
     ensures.noSideEffects(result)
     return null
   }
@@ -404,6 +373,13 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitNode(n: Node?, result: NodeAssertions): Void? {
+    if (n != null) {
+      println("----")
+      println("NOT ANALYZED")
+      println(n)
+      println(n::class.java)
+      println("----")
+    }
     return null
   }
 }

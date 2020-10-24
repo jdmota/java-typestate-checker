@@ -3,13 +3,15 @@ package org.checkerframework.checker.mungo.assertions
 import com.microsoft.z3.BoolExpr
 import com.microsoft.z3.Expr
 import com.microsoft.z3.Model
-import org.checkerframework.checker.mungo.analysis.Reference
+import org.checkerframework.checker.mungo.analysis.*
 
-sealed class InferenceResult
+sealed class InferenceResult {
+
+}
 
 class NoSolution(val unsatCore: Array<BoolExpr>) : InferenceResult()
 
-class UnknownSolution : InferenceResult()
+class UnknownSolution(val reason: String?) : InferenceResult()
 
 class Solution(private val setup: ConstraintsSetup, private val model: Model) : InferenceResult() {
 
@@ -19,6 +21,19 @@ class Solution(private val setup: ConstraintsSetup, private val model: Model) : 
 
   fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): Expr {
     return model.eval(setup.mkEquals(assertion, a, b), false)
+  }
+
+  fun skipRef(ref: Reference): Boolean {
+    return when(ref) {
+      is FieldAccess -> false
+      is ThisReference -> false
+      is ClassName -> true
+      is LocalVariable -> false
+      is ParameterVariable -> false
+      is ReturnSpecialVar -> false
+      is OldSpecialVar -> false
+      is NodeRef -> true
+    }
   }
 
 }
