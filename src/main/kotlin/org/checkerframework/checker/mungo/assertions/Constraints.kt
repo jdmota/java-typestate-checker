@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.assertions
 import com.microsoft.z3.BoolExpr
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
+import javax.lang.model.type.TypeKind
 
 private var constraintsUUID = 1L
 
@@ -71,7 +72,14 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
   return setup.mkAnd(exprs)
 }
 
-fun handleEquality(old: Reference?, target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
+fun handleEquality(
+  old: Reference?,
+  target: Reference,
+  expr: Reference,
+  tail: SymbolicAssertion,
+  heads: Set<SymbolicAssertion>,
+  setup: ConstraintsSetup
+): BoolExpr {
   val unknown = UnknownRef(expr.type)
 
   val assignments1 = if (old == null) {
@@ -167,6 +175,96 @@ fun handleEquality(old: Reference?, target: Reference, expr: Reference, tail: Sy
           setup.mkEquals(it, c, d)
         })
       )
+      else -> setup.ctx.mkNot(setup.mkEquals(tail, a, b))
+    })
+  }
+
+  return setup.mkAnd(exprs)
+}
+
+fun handleCall(
+  callRef: Reference,
+  arguments: List<Reference>,
+  parameters: List<Reference>,
+  methodPre: SymbolicAssertion,
+  methodPost: Set<SymbolicAssertion>,
+  tail: SymbolicAssertion,
+  heads: Set<SymbolicAssertion>,
+  setup: ConstraintsSetup
+): BoolExpr {
+  val returnRef = ReturnSpecialVar(callRef.type)
+  val exprs = mutableListOf<BoolExpr>()
+  val changedRefs = arguments.toSet().plus(callRef)
+
+  fun replace(p: Reference): Pair<Reference, Set<SymbolicAssertion>> {
+    // TODO instead of p == x it should be hasPrefix(p, prefix = x)
+    return if (p == callRef) {
+      if (callRef.type.kind == TypeKind.VOID) {
+        Pair(callRef, heads)
+      } else {
+        Pair(returnRef, methodPost)
+      }
+    } else {
+      val idx = arguments.indexOf(p)
+      if (idx < 0) {
+        Pair(p, heads)
+      } else {
+        Pair(parameters[idx], methodPost)
+      }
+    }
+  }
+
+  // TODO add the fractions that were left in the current context
+
+  tail.forEach { ref, info ->
+    val (otherRef, otherHeads) = replace(ref)
+
+    if (changedRefs.contains(ref)) {
+      // The access permission to access the variables/fields that hold the relevant values
+      // Remains the same
+      exprs.add(setup.ctx.mkEq(
+        setup.fractionToExpr(info.fraction),
+        setup.min(heads.map { it[ref].fraction })
+      ))
+    } else {
+      exprs.add(setup.ctx.mkEq(
+        setup.fractionToExpr(info.fraction),
+        setup.min(otherHeads.map { it[otherRef].fraction })
+      ))
+    }
+
+    exprs.add(setup.ctx.mkEq(
+      setup.fractionToExpr(info.packFraction),
+      setup.min(otherHeads.map { it[otherRef].packFraction })
+    ))
+
+    // Subtyping constraints are more difficult for Z3 to solve
+    // If this assertion is only implied by another one,
+    // just add a constraint where the two types are the same
+    if (otherHeads.size == 1) {
+      exprs.add(SymTypeEqSymType(otherHeads.first()[otherRef].type, info.type).toZ3(setup))
+    } else {
+      for (head in otherHeads) {
+        exprs.add(SymTypeImpliesSymType(head[otherRef].type, info.type).toZ3(setup))
+      }
+    }
+  }
+
+  // TODO equalities from inside the method that can be tracked outside!
+
+  for ((a, b) in tail.skeleton.equalities) {
+    val (c, cHeads) = replace(a)
+    val (d, dHeads) = replace(b)
+    exprs.add(when {
+      c == d -> setup.mkEquals(tail, a, b)
+      cHeads === dHeads -> {
+        setup.ctx.mkEq(
+          setup.mkEquals(tail, a, b),
+          setup.mkAnd(cHeads.map {
+            setup.mkEquals(it, c, d)
+          })
+        )
+      }
       else -> setup.ctx.mkNot(setup.mkEquals(tail, a, b))
     })
   }

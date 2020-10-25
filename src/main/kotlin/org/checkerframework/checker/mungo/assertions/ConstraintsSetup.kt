@@ -98,13 +98,19 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
   fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
   fun mkSubtype(a: SymbolicType, b: SymbolicType) = mkSubtype(typeToExpr(a), typeToExpr(b))
 
-  fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr) = if (a === b) {
-    setup.True
-  } else {
-    ctx.mkApp(assertionToEq(assertion), a, b) as BoolExpr
-  }
+  private fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr): BoolExpr =
+    if (a === b) {
+      setup.True
+    } else {
+      ctx.mkApp(assertionToEq(assertion), a, b) as BoolExpr
+    }
 
-  fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference) = mkEquals(assertion, refToExpr(a), refToExpr(b))
+  fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference): BoolExpr =
+    if (assertion.skeleton.equalities.contains(Pair(a, b))) {
+      mkEquals(assertion, refToExpr(a), refToExpr(b))
+    } else {
+      setup.False
+    }
 
   fun mkMin(a: ArithExpr, b: ArithExpr) = if (a === b) {
     a
