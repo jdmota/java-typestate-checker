@@ -33,6 +33,7 @@ fun reduce(setup: ConstraintsSetup, result: NodeAssertions, fn: (tail: SymbolicA
 }
 
 // TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
+// TODO handle primitives, since they can be copied many times
 
 fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup, except: Set<Reference>): BoolExpr {
   val exprs = mutableListOf<BoolExpr>()
@@ -70,10 +71,34 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
   return setup.mkAnd(exprs)
 }
 
-fun handleEquality2(target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
+fun handleEquality(old: Reference?, target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
   val unknown = UnknownRef(expr.type)
-  val oldRef: Reference? = null
-  // TODO
+
+  val assignments1 = if (old == null) {
+    listOf(
+      Pair(target, expr),
+      Pair(expr, unknown)
+    )
+  } else {
+    listOf(
+      Pair(old, target),
+      Pair(target, expr),
+      Pair(expr, unknown)
+    )
+  }
+
+  val assignments2 = if (old == null) {
+    listOf(
+      Pair(target, expr)
+    )
+  } else {
+    listOf(
+      Pair(old, target),
+      Pair(target, expr)
+    )
+  }
+
+  val changedRefs = setOf(old, target, expr)
 
   // old = target;
   // target = expr;
@@ -90,39 +115,43 @@ fun handleEquality2(target: Reference, expr: Reference, tail: SymbolicAssertion,
   // expr := unknown;
   // {P}
 
-  // When dealing with resources, we want to move everything to the "target"
-  // That is why we use this "unknown" trick
-  fun accessReplace(p: Reference) = if (oldRef == null) {
-    p.replace(expr, unknown).replace(target, expr)
-  } else {
-    p.replace(expr, unknown).replace(target, expr).replace(oldRef, target)
-  }
-
-  // When dealing with equalities, we are dealing with normal logic
-  // No need for the "unknown" trick
-  fun equalsReplace(p: Reference) = if (oldRef == null) {
-    p.replace(target, expr)
-  } else {
-    p.replace(target, expr).replace(oldRef, target)
-  }
+  fun accessReplace(p: Reference) = assignments1.foldRight(p) { (a, b), p -> p.replace(a, b) }
+  fun equalsReplace(p: Reference) = assignments2.foldRight(p) { (a, b), p -> p.replace(a, b) }
 
   val exprs = mutableListOf<BoolExpr>()
 
   tail.forEach { ref, info ->
-    val ref = accessReplace(ref)
+    val otherRef = accessReplace(ref)
 
-    // FIXME except the expr and target!!
-    exprs.add(setup.ctx.mkEq(
-      setup.fractionToExpr(info.fraction),
-      setup.min(heads.map { it[ref].fraction })
-    ))
+    if (changedRefs.contains(ref)) {
+      // The access permission to access the variables/fields that hold the relevant values
+      // Remains the same
+      exprs.add(setup.ctx.mkEq(
+        setup.fractionToExpr(info.fraction),
+        setup.min(heads.map { it[ref].fraction })
+      ))
+    } else {
+      exprs.add(setup.ctx.mkEq(
+        setup.fractionToExpr(info.fraction),
+        setup.min(heads.map { it[otherRef].fraction })
+      ))
+    }
 
     exprs.add(setup.ctx.mkEq(
       setup.fractionToExpr(info.packFraction),
-      setup.min(heads.map { it[ref].packFraction })
+      setup.min(heads.map { it[otherRef].packFraction })
     ))
 
-    handleTypeImplication(exprs, heads, ref, info.type, setup)
+    // Subtyping constraints are more difficult for Z3 to solve
+    // If this assertion is only implied by another one,
+    // just add a constraint where the two types are the same
+    if (heads.size == 1) {
+      exprs.add(SymTypeEqSymType(heads.first()[otherRef].type, info.type).toZ3(setup))
+    } else {
+      for (head in heads) {
+        exprs.add(SymTypeImpliesSymType(head[otherRef].type, info.type).toZ3(setup))
+      }
+    }
   }
 
   val equalities = tail.skeleton.equalities
@@ -159,7 +188,7 @@ fun handleTypeImplication(exprs: MutableList<BoolExpr>, pres: Set<SymbolicAssert
   // TODO if the fraction is zero, the type should be Unknown instead
 }
 
-fun handleEquality(target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
+/*fun handleEquality(target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
   val exprs = mutableListOf<BoolExpr>()
   val postTargetInfo = tail[target]
   val postExprInfo = tail[expr]
@@ -179,7 +208,7 @@ fun handleEquality(target: Reference, expr: Reference, tail: SymbolicAssertion, 
 
   // TODO handle fields
   return setup.mkAnd(exprs)
-}
+}*/
 
 private class ImpliedAssertion(val tail: SymbolicAssertion) : Constraint() {
 
@@ -342,6 +371,7 @@ private class NotEqualityInAssertion(
 
 private class EqualityInAssertion(
   val assertions: NodeAssertions,
+  val old: Reference?,
   val target: Reference,
   val expr: Reference
 ) : Constraint() {
@@ -352,7 +382,7 @@ private class EqualityInAssertion(
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return reduce(setup, assertions) { tail, heads ->
-      handleEquality(target, expr, tail, heads, setup)
+      handleEquality(old, target, expr, tail, heads, setup)
     }
   }
 }
@@ -616,9 +646,9 @@ class Constraints {
     constraints.add(TransferOfExpressions(resetExpr, assertions, target, expr))
   }
 
-  fun equality(assertions: NodeAssertions, target: Reference, expr: Reference) {
+  fun equality(assertions: NodeAssertions, old: Reference?, target: Reference, expr: Reference) {
     // eq(a, b)
-    constraints.add(EqualityInAssertion(assertions, target, expr))
+    constraints.add(EqualityInAssertion(assertions, old, target, expr))
   }
 
   fun notEquality(assertion: SymbolicAssertion, a: Reference, b: Reference) {

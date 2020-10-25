@@ -185,8 +185,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return null
   }
 
-  // TODO handle primitives
-  private fun assign(target: Node, expr: Node, oldRef: OldSpecialVar?, result: NodeAssertions) {
+  /*private fun assign(target: Node, expr: Node, oldRef: OldSpecialVar?, result: NodeAssertions) {
     require.write(target, result)
     require.read(expr, result)
 
@@ -208,7 +207,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     if (exprRef is NodeRef) {
       constraints.transfer(true, result, targetRef, exprRef)
     } else {
-      constraints.equality(result, targetRef, exprRef)
+      constraints.equality(result, oldRef, targetRef, exprRef)
     }
 
     val effects = if (oldRef == null) {
@@ -266,10 +265,30 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
       setup.mkAnd(exprs)
     }
-  }
+  }*/
 
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {
-    assign(n.target, n.expression, inferrer.getOldReference(n), result)
+    require.write(n.target, result)
+    require.read(n.expression, result)
+
+    val targetRef = getDirectRef(n.target)
+    val exprRef = getRef(n.expression)
+    constraints.equality(result, inferrer.getOldReference(n), targetRef, exprRef)
+    return null
+  }
+
+  override fun visitReturn(n: ReturnNode, result: NodeAssertions): Void? {
+    val expr = n.result
+    if (expr == null) {
+      ensures.noSideEffects(result)
+    } else {
+      require.write(n, result)
+      require.read(expr, result)
+
+      val targetRef = getDirectRef(n)
+      val exprRef = getRef(expr)
+      constraints.equality(result, null, targetRef, exprRef)
+    }
     return null
   }
 
@@ -374,21 +393,12 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     while (itParams.hasNext()) {
       val param = itParams.next()
       val expr = itArgs.next()
+      // TODO add the fractions that were left in the current context
       constraints.restoringParameter(postThen[param], result.postThen[expr])
       constraints.restoringParameter(postElse[param], result.postElse[expr])
     }
 
     // TODO equalities from inside the method that can be tracked outside!
-  }
-
-  override fun visitReturn(n: ReturnNode, result: NodeAssertions): Void? {
-    val expr = n.result
-    if (expr == null) {
-      ensures.noSideEffects(result)
-    } else {
-      assign(n, expr, null, result)
-    }
-    return null
   }
 
   override fun visitTypeCast(n: TypeCastNode, result: NodeAssertions): Void? {

@@ -23,11 +23,20 @@ class Inferrer(val checker: MungoChecker) {
 
   val utils get() = checker.utils
   val processingEnv = checker.processingEnvironment
-
   lateinit var root: JCTree.JCCompilationUnit
+
+  private var firstTime = true
 
   fun setRoot(root: CompilationUnitTree) {
     this.root = root as JCTree.JCCompilationUnit
+
+    if (firstTime) {
+      firstTime = false
+
+      val ref = UnknownRef(utils.typeUtils.nullType)
+      unknownInfo = SymbolicInfo(ref)
+      emptySkeleton = SymbolicAssertionSkeleton(unknownInfo, emptySet(), emptySet())
+    }
   }
 
   val locationsGatherer = LocationsGatherer(checker)
@@ -37,12 +46,8 @@ class Inferrer(val checker: MungoChecker) {
   private val preAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val postAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val constraints = Constraints()
-  private val unknownInfo = run {
-    val ref = UnknownRef(utils.typeUtils.nullType)
-    val info = SymbolicInfo(ref)
-    info
-  }
-  private val emptySkeleton = SymbolicAssertionSkeleton(unknownInfo, emptySet(), emptySet())
+  private lateinit var unknownInfo: SymbolicInfo
+  private lateinit var emptySkeleton: SymbolicAssertionSkeleton
 
   fun phase1(classTree: ClassTree) {
     val classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>> = ArrayDeque()
