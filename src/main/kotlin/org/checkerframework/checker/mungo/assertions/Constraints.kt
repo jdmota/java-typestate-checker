@@ -196,20 +196,20 @@ fun handleCall(
   val exprs = mutableListOf<BoolExpr>()
   val changedRefs = arguments.toSet().plus(callRef)
 
-  fun replace(p: Reference): Pair<Reference, Set<SymbolicAssertion>> {
+  fun replace(p: Reference): Reference {
     // TODO instead of p == x it should be hasPrefix(p, prefix = x)
     return if (p == callRef) {
       if (callRef.type.kind == TypeKind.VOID) {
-        Pair(callRef, heads)
+        callRef
       } else {
-        Pair(returnRef, methodPost)
+        returnRef
       }
     } else {
       val idx = arguments.indexOf(p)
       if (idx < 0) {
-        Pair(p, heads)
+        p
       } else {
-        Pair(parameters[idx], methodPost)
+        parameters[idx]
       }
     }
   }
@@ -217,35 +217,60 @@ fun handleCall(
   // TODO add the fractions that were left in the current context
 
   tail.forEach { ref, info ->
-    val (otherRef, otherHeads) = replace(ref)
+    val otherRef = replace(ref)
 
-    if (changedRefs.contains(ref)) {
-      // The access permission to access the variables/fields that hold the relevant values
-      // Remains the same
-      exprs.add(setup.ctx.mkEq(
-        setup.fractionToExpr(info.fraction),
-        setup.min(heads.map { it[ref].fraction })
-      ))
+    // newFraction = prevFraction - stolenFraction
+    // newFraction = prevFraction - ( fractionInPre - fractionInPost )
+
+    val stolenFraction = if (ref === otherRef || changedRefs.contains(ref)) {
+      setup.mkZero()
     } else {
-      exprs.add(setup.ctx.mkEq(
-        setup.fractionToExpr(info.fraction),
-        setup.min(otherHeads.map { it[otherRef].fraction })
-      ))
+      setup.mkSub(
+        setup.fractionToExpr(methodPre[otherRef].fraction),
+        setup.min(methodPost.map { it[otherRef].fraction })
+      )
+    }
+
+    exprs.add(setup.ctx.mkEq(
+      setup.fractionToExpr(info.fraction),
+      setup.mkSub(
+        setup.min(heads.map { it[ref].fraction }),
+        stolenFraction
+      )
+    ))
+
+    val stolenPackedFraction = if (ref === otherRef) {
+      setup.mkZero()
+    } else {
+      setup.mkSub(
+        setup.fractionToExpr(methodPre[otherRef].packFraction),
+        setup.min(methodPost.map { it[otherRef].packFraction })
+      )
     }
 
     exprs.add(setup.ctx.mkEq(
       setup.fractionToExpr(info.packFraction),
-      setup.min(otherHeads.map { it[otherRef].packFraction })
+      setup.mkSub(
+        setup.min(heads.map { it[ref].packFraction }),
+        stolenPackedFraction
+      )
     ))
 
-    // Subtyping constraints are more difficult for Z3 to solve
-    // If this assertion is only implied by another one,
-    // just add a constraint where the two types are the same
-    if (otherHeads.size == 1) {
-      exprs.add(SymTypeEqSymType(otherHeads.first()[otherRef].type, info.type).toZ3(setup))
+    if (ref === otherRef) {
+      if (heads.size == 1) {
+        exprs.add(SymTypeEqSymType(heads.first()[ref].type, info.type).toZ3(setup))
+      } else {
+        heads.forEach {
+          exprs.add(SymTypeImpliesSymType(it[otherRef].type, info.type).toZ3(setup))
+        }
+      }
     } else {
-      for (head in otherHeads) {
-        exprs.add(SymTypeImpliesSymType(head[otherRef].type, info.type).toZ3(setup))
+      if (methodPost.size == 1) {
+        exprs.add(SymTypeEqSymType(methodPost.first()[otherRef].type, info.type).toZ3(setup))
+      } else {
+        methodPost.forEach {
+          exprs.add(SymTypeImpliesSymType(it[otherRef].type, info.type).toZ3(setup))
+        }
       }
     }
   }
@@ -253,8 +278,8 @@ fun handleCall(
   // TODO equalities from inside the method that can be tracked outside!
 
   for ((a, b) in tail.skeleton.equalities) {
-    val (c, cHeads) = replace(a)
-    val (d, dHeads) = replace(b)
+    val c = replace(a)
+    val d = replace(b)
     exprs.add(when {
       c == d -> setup.mkEquals(tail, a, b)
       cHeads === dHeads -> {

@@ -53,6 +53,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     val Bool = ctx.boolSort
     val True = ctx.mkTrue()
     val False = ctx.mkFalse()
+    val Zero = ctx.mkReal(0)
     val Real = ctx.realSort
     val Location = ctx.mkUninterpretedSort("Location")
 
@@ -112,10 +113,19 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       setup.False
     }
 
-  fun mkMin(a: ArithExpr, b: ArithExpr) = if (a === b) {
+  private fun mkMin(a: ArithExpr, b: ArithExpr) = if (a === b) {
     a
   } else {
     ctx.mkApp(setup.min, a, b) as ArithExpr
+  }
+
+  fun min(fraction: Collection<SymbolicFraction>): ArithExpr {
+    val iterator = fraction.iterator()
+    var expr = fractionToExpr(iterator.next())
+    while (iterator.hasNext()) {
+      expr = mkMin(expr, fractionToExpr(iterator.next()))
+    }
+    return expr
   }
 
   fun mkAnd(c: Collection<BoolExpr>): BoolExpr {
@@ -123,6 +133,16 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       c.first()
     } else {
       ctx.mkAnd(*c.toTypedArray())
+    }
+  }
+
+  fun mkZero(): RatNum = setup.Zero
+
+  fun mkSub(a: ArithExpr, b: ArithExpr): ArithExpr {
+    return if (b === setup.Zero) {
+      a
+    } else {
+      ctx.mkSub(a, b)
     }
   }
 
@@ -193,15 +213,6 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     return refToExpr.computeIfAbsent(ref) {
       ctx.mkConst("ref${refUuid++}", setup.Location)
     }
-  }
-
-  fun min(fraction: Collection<SymbolicFraction>): ArithExpr {
-    val iterator = fraction.iterator()
-    var expr = fractionToExpr(iterator.next())
-    while (iterator.hasNext()) {
-      expr = mkMin(expr, fractionToExpr(iterator.next()))
-    }
-    return expr
   }
 
   fun fractionsAccumulation(thisRef: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
