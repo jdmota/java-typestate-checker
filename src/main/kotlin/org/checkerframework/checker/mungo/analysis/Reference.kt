@@ -6,6 +6,7 @@ import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.javacutil.TypesUtils
 import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind.*
 import javax.lang.model.element.Modifier
@@ -97,6 +98,7 @@ fun getReference(tree: Tree): Reference? {
 
 sealed class Reference(val type: TypeMirror) {
   abstract fun isThisField(): Boolean
+  abstract fun replace(x: Reference, by: Reference): Reference
 }
 
 fun createFieldAccess(tree: VariableTree, classTree: ClassTree): FieldAccess {
@@ -146,6 +148,17 @@ class FieldAccess(val receiver: Reference, type: TypeMirror, val field: Variable
   override fun toString(): String {
     return "$receiver.$field"
   }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    val newReceiver = receiver.replace(x, by)
+    if (newReceiver === receiver) {
+      return this
+    }
+    return FieldAccess(newReceiver, type, field)
+  }
 }
 
 class ThisReference(type: TypeMirror) : Reference(type) {
@@ -163,6 +176,13 @@ class ThisReference(type: TypeMirror) : Reference(type) {
 
   override fun toString(): String {
     return "this"
+  }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    return this
   }
 }
 
@@ -184,6 +204,13 @@ class ClassName(type: TypeMirror) : Reference(type) {
 
   override fun toString(): String {
     return "$typeString.class"
+  }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    return this
   }
 }
 
@@ -215,6 +242,13 @@ class LocalVariable(type: TypeMirror, val element: VarSymbol) : Reference(type) 
 
   override fun toString(): String {
     return elementName
+  }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    return this
   }
 }
 
@@ -249,6 +283,13 @@ class ParameterVariable(type: TypeMirror, val element: VarSymbol) : Reference(ty
   override fun toString(): String {
     return "param($elementName)"
   }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    return this
+  }
 }
 
 class ReturnSpecialVar(type: TypeMirror) : Reference(type) {
@@ -266,6 +307,13 @@ class ReturnSpecialVar(type: TypeMirror) : Reference(type) {
 
   override fun toString(): String {
     return "#ret"
+  }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    return this
   }
 }
 
@@ -288,6 +336,13 @@ class OldSpecialVar(val reference: Reference, val pos: Int) : Reference(referenc
   override fun toString(): String {
     return "old($reference)[$pos]"
   }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    return this
+  }
 }
 
 class NodeRef(val node: Node) : Reference(node.type) {
@@ -305,5 +360,37 @@ class NodeRef(val node: Node) : Reference(node.type) {
 
   override fun toString(): String {
     return "node($node)"
+  }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    return this
+  }
+}
+
+class UnknownRef(type: TypeMirror) : Reference(type) {
+  override fun isThisField(): Boolean {
+    return false
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return other is UnknownRef
+  }
+
+  override fun hashCode(): Int {
+    return 0
+  }
+
+  override fun toString(): String {
+    return "unknown"
+  }
+
+  override fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) {
+      return by
+    }
+    return this
   }
 }

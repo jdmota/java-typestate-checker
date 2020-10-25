@@ -6,6 +6,7 @@ import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.MungoStateType
+import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.checker.mungo.utils.treeToType
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -36,10 +37,16 @@ class Inferrer(val checker: MungoChecker) {
   private val preAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val postAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val constraints = Constraints()
+  private val unknownInfo = run {
+    val ref = UnknownRef(utils.typeUtils.nullType)
+    val info = SymbolicInfo(ref)
+    info
+  }
+  private val emptySkeleton = SymbolicAssertionSkeleton(unknownInfo, emptySet(), emptySet())
 
   fun phase1(classTree: ClassTree) {
     val classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>> = ArrayDeque()
-    classQueue.add(Pair(classTree, SymbolicAssertionSkeleton.empty))
+    classQueue.add(Pair(classTree, emptySkeleton))
 
     while (!classQueue.isEmpty()) {
       val qel = classQueue.remove()
@@ -163,7 +170,7 @@ class Inferrer(val checker: MungoChecker) {
     println("---")
 
     // Save skeleton for the creation of new assertions
-    val skeleton = SymbolicAssertionSkeleton(locations, equalities)
+    val skeleton = SymbolicAssertionSkeleton(unknownInfo, locations, equalities)
     currentSkeleton = skeleton
 
     // Associate assertions before and after each node, and connect implications
@@ -417,6 +424,9 @@ class Inferrer(val checker: MungoChecker) {
     constraints.start()
 
     println("Inferring constraints...")
+
+    constraints.same(unknownInfo.packFraction, 0)
+    constraints.same(unknownInfo.type, MungoUnknownType.SINGLETON)
 
     val visitor = ConstraintsInference(this, constraints)
 

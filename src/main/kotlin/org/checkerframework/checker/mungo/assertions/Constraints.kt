@@ -1,10 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.BoolExpr
-import org.checkerframework.checker.mungo.analysis.LocalVariable
-import org.checkerframework.checker.mungo.analysis.ParameterVariable
-import org.checkerframework.checker.mungo.analysis.Reference
-import org.checkerframework.checker.mungo.analysis.ThisReference
+import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
 import kotlin.math.exp
 
@@ -48,10 +45,9 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
       setup.min(heads.map { it.getAccess(ref) })
     ))
 
+    // TODO what about the transferring of the type?
     exprs.add(setup.fractionsAccumulation(ref, heads, tail))
 
-    // exprs.add(SymFractionImpliesSymFraction(head.getAccess(ref), info.fraction).toZ3(setup))
-    // exprs.add(SymFractionImpliesSymFraction(head.getAccessDotZero(ref), info.packFraction).toZ3(setup))
     handleTypeImplication(exprs, heads, ref, info.type, setup)
   }
 
@@ -71,6 +67,117 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
     )
   }
 
+  return setup.mkAnd(exprs)
+}
+
+fun handleEquality2(target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
+  val unknown = UnknownRef(expr.type)
+  val oldRef: Reference? = null
+  // TODO
+
+  // old = target;
+  // target = expr;
+  // expr = unknown;
+
+  // (P[E/x] <=> replace x with E)
+  // {P[E/x]} x := E {P}
+
+  // {P[unknown/expr][expr/target][target/old]}
+  // old := target
+  // {P[unknown/expr][expr/target]}
+  // target := expr
+  // {P[unknown/expr]}
+  // expr := unknown;
+  // {P}
+
+  // When dealing with resources, we want to move everything to the "target"
+  // That is why we use this "unknown" trick
+  fun accessReplace(p: Reference) = if (oldRef == null) {
+    p.replace(expr, unknown).replace(target, expr)
+  } else {
+    p.replace(expr, unknown).replace(target, expr).replace(oldRef, target)
+  }
+
+  // When dealing with equalities, we are dealing with normal logic
+  // No need for the "unknown" trick
+  fun equalsReplace(p: Reference) = if (oldRef == null) {
+    p.replace(target, expr)
+  } else {
+    p.replace(target, expr).replace(oldRef, target)
+  }
+
+  val exprs = mutableListOf<BoolExpr>()
+
+  tail.forEach { ref, info ->
+    val ref = accessReplace(ref)
+
+    // FIXME except the expr and target!!
+    exprs.add(setup.ctx.mkEq(
+      setup.fractionToExpr(info.fraction),
+      setup.min(heads.map { it[ref].fraction })
+    ))
+
+    exprs.add(setup.ctx.mkEq(
+      setup.fractionToExpr(info.packFraction),
+      setup.min(heads.map { it[ref].packFraction })
+    ))
+
+    handleTypeImplication(exprs, heads, ref, info.type, setup)
+  }
+
+  val equalities = tail.skeleton.equalities
+
+  for ((a, b) in equalities) {
+    val c = equalsReplace(a)
+    val d = equalsReplace(b)
+    exprs.add(when {
+      c == d -> setup.mkEquals(tail, a, b)
+      equalities.contains(Pair(c, d)) -> setup.ctx.mkEq(
+        setup.mkEquals(tail, a, b),
+        setup.mkAnd(heads.map {
+          setup.mkEquals(it, c, d)
+        })
+      )
+      else -> setup.ctx.mkNot(setup.mkEquals(tail, a, b))
+    })
+  }
+
+  return setup.mkAnd(exprs)
+}
+
+fun handleTypeImplication(exprs: MutableList<BoolExpr>, pres: Set<SymbolicAssertion>, ref: Reference, type: SymbolicType, setup: ConstraintsSetup) {
+  // Subtyping constraints are more difficult for Z3 to solve
+  // If this assertion is only implied by another one,
+  // just add a constraint where the two types are the same
+  if (pres.size == 1) {
+    exprs.add(SymTypeEqSymType(pres.first().getType(ref), type).toZ3(setup))
+  } else {
+    for (pre in pres) {
+      exprs.add(SymTypeImpliesSymType(pre.getType(ref), type).toZ3(setup))
+    }
+  }
+  // TODO if the fraction is zero, the type should be Unknown instead
+}
+
+fun handleEquality(target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
+  val exprs = mutableListOf<BoolExpr>()
+  val postTargetInfo = tail[target]
+  val postExprInfo = tail[expr]
+
+  exprs.add(setup.mkEquals(tail, target, expr))
+
+  exprs.add(setup.ctx.mkEq(
+    setup.ctx.mkAdd(
+      setup.fractionToExpr(postTargetInfo.packFraction),
+      setup.fractionToExpr(postExprInfo.packFraction)
+    ),
+    setup.min(heads.map { it[expr].packFraction })
+  ))
+
+  handleTypeImplication(exprs, heads, expr, postTargetInfo.type, setup)
+  handleTypeImplication(exprs, heads, expr, postExprInfo.type, setup)
+
+  // TODO handle fields
   return setup.mkAnd(exprs)
 }
 
@@ -231,42 +338,6 @@ private class NotEqualityInAssertion(
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkNot(setup.mkEquals(assertion, a, b))
   }
-}
-
-fun handleTypeImplication(exprs: MutableList<BoolExpr>, pres: Set<SymbolicAssertion>, ref: Reference, type: SymbolicType, setup: ConstraintsSetup) {
-  // Subtyping constraints are more difficult for Z3 to solve
-  // If this assertion is only implied by another one,
-  // just add a constraint where the two types are the same
-  if (pres.size == 1) {
-    exprs.add(SymTypeEqSymType(pres.first().getType(ref), type).toZ3(setup))
-  } else {
-    for (pre in pres) {
-      exprs.add(SymTypeImpliesSymType(pre.getType(ref), type).toZ3(setup))
-    }
-  }
-  // TODO if the fraction is zero, the type should be Unknown instead
-}
-
-fun handleEquality(target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
-  val exprs = mutableListOf<BoolExpr>()
-  val postTargetInfo = tail[target]
-  val postExprInfo = tail[expr]
-
-  exprs.add(setup.mkEquals(tail, target, expr))
-
-  exprs.add(setup.ctx.mkEq(
-    setup.ctx.mkAdd(
-      setup.fractionToExpr(postTargetInfo.packFraction),
-      setup.fractionToExpr(postExprInfo.packFraction)
-    ),
-    setup.min(heads.map { it[expr].packFraction })
-  ))
-
-  handleTypeImplication(exprs, heads, expr, postTargetInfo.type, setup)
-  handleTypeImplication(exprs, heads, expr, postExprInfo.type, setup)
-
-  // TODO handle fields
-  return setup.mkAnd(exprs)
 }
 
 private class EqualityInAssertion(

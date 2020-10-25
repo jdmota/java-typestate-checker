@@ -115,13 +115,10 @@ class SymbolicInfo(val ref: Reference) {
 }
 
 class SymbolicAssertionSkeleton(
+  val unknownInfo: SymbolicInfo,
   val locations: Set<Reference>,
   val equalities: Set<Pair<Reference, Reference>>
 ) {
-  companion object {
-    val empty = SymbolicAssertionSkeleton(emptySet(), emptySet())
-  }
-
   private val eqTracker = MutableEqualityTracker()
 
   init {
@@ -179,6 +176,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
         val parent = prepare(ref.receiver)
         parent.children.computeIfAbsent(ref) { SymbolicInfo(it) }
       }
+      is UnknownRef -> skeleton.unknownInfo
     }
   }
 
@@ -197,6 +195,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
         val parent = get(ref.receiver)
         parent.children[ref] ?: error("No info for $ref")
       }
+      is UnknownRef -> skeleton.unknownInfo
     }
   }
 
