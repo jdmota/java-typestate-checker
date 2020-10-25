@@ -1,6 +1,5 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.microsoft.z3.BoolExpr
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
@@ -70,14 +69,6 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.nullType(info.type)
     }
 
-    fun newVar(n: VariableDeclarationNode, assertions: NodeAssertions) {
-      val ref = getDirectRef(n)
-      newVar(assertions.postThen[ref])
-      if (assertions.postThen !== assertions.postElse) {
-        newVar(assertions.postElse[ref])
-      }
-    }
-
     fun noSideEffects(result: NodeAssertions) {
       constraints.noSideEffects(result)
     }
@@ -120,7 +111,10 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
           constraints.paramAndLocalVars(pre, ref, ref.toLocalVariable())
         }
         is LocalVariable -> {
-          if (ref.element.getKind() == ElementKind.PARAMETER) {
+          if (ref.element.getKind() != ElementKind.PARAMETER) {
+            // Prepare local variable declarations
+            ensures.newVar(info)
+          } else {
             constraints.one(info.fraction)
           }
         }
@@ -140,6 +134,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         }
         is NodeRef -> {
 
+        }
+        is UnknownRef -> {
         }
       }
     }
@@ -179,93 +175,10 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitVariableDeclaration(n: VariableDeclarationNode, result: NodeAssertions): Void? {
-    ensures.newVar(n, result)
-    ensures.onlySideEffect(result, setOf(getDirectRef(n)))
-    // FIXME nothing equals this variable!
+    // Full permission is already given at the beginning of the method
+    ensures.noSideEffects(result)
     return null
   }
-
-  /*private fun assign(target: Node, expr: Node, oldRef: OldSpecialVar?, result: NodeAssertions) {
-    require.write(target, result)
-    require.read(expr, result)
-
-    val targetRef = getDirectRef(target)
-    val exprRef = getRef(expr)
-
-    // Permission to the target and expression remain the same
-    handle(result) { tail, heads ->
-      constraints.same(tail[targetRef].fraction, heads.map { it[targetRef].fraction })
-      constraints.same(tail[exprRef].fraction, heads.map { it[exprRef].fraction })
-    }
-
-    // Move permissions and type of the old object to the ghost variable
-    if (oldRef != null) {
-      constraints.transfer(false, result, oldRef, targetRef)
-    }
-
-    // Equality
-    if (exprRef is NodeRef) {
-      constraints.transfer(true, result, targetRef, exprRef)
-    } else {
-      constraints.equality(result, oldRef, targetRef, exprRef)
-    }
-
-    val effects = if (oldRef == null) {
-      setOf(targetRef, exprRef)
-    } else {
-      setOf(targetRef, exprRef, oldRef)
-    }
-    ensures.onlySideEffect(result, effects)
-
-    constraints.other { setup ->
-      val exprs = mutableListOf<BoolExpr>()
-      handle(result) { tail, heads ->
-        // old = target;
-        // target = expr;
-
-        // (P[E/x] <=> replace x with E)
-        // {P[E/x]} x := E {P}
-
-        // {P[expr/target][target/old]}
-        // old := target
-        // {P[expr/target]}
-        // target := expr
-        // {P}
-
-        // TODO use this logic more!
-
-        // Replace "x" with "e" in "p"
-        fun r1(p: Reference, x: Reference, e: Reference) =
-          if (p == x) e else p
-
-        fun r2(p: Reference) = if (oldRef == null) {
-          r1(p, targetRef, exprRef)
-        } else {
-          r1(r1(p, targetRef, exprRef), oldRef, targetRef)
-        }
-
-        val equalities = tail.skeleton.equalities
-
-        for ((a, b) in equalities) {
-          if (effects.contains(a) || effects.contains(b)) {
-            val c = r2(a)
-            val d = r2(b)
-            exprs.add(when {
-              c == d -> setup.mkEquals(tail, a, b)
-              equalities.contains(Pair(c, d)) -> setup.ctx.mkEq(
-                setup.mkEquals(tail, a, b),
-                setup.mkAnd(heads.map {
-                  setup.mkEquals(it, c, d)
-                })
-              )
-              else -> setup.ctx.mkNot(setup.mkEquals(tail, a, b))
-            })
-          }
-        }
-      }
-      setup.mkAnd(exprs)
-    }
-  }*/
 
   override fun visitAssignment(n: AssignmentNode, result: NodeAssertions): Void? {
     require.write(n.target, result)
@@ -341,6 +254,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     // TODO handle methods for which we do not have the code...
     val pre = inferrer.getMethodPre(method) ?: return
     val (postThen, postElse) = inferrer.getMethodPost(method) ?: return
+
+    // TODO require some packFraction!!!
 
     // Arguments
     var itParams = parameters.iterator()

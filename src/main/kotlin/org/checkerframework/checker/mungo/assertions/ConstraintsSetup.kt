@@ -16,7 +16,8 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     val allTypes = mutableListOf<MungoType>()
     usedTypes.forEach { a ->
       usedTypes.forEach { b ->
-        if (a !== b) allTypes.add(MungoUnionType.create(listOf(a, b)))
+        // TODo do not create unions for now...
+        // if (a !== b) allTypes.add(MungoUnionType.create(listOf(a, b)))
       }
     }
     allTypes.addAll(usedTypes)

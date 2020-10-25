@@ -54,7 +54,7 @@ public class Main {
 
     Cell cell2 = cell;
 
-    String item = cell2.getItem();
+    // String item = cell2.getItem();
   }
 
 }

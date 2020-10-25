@@ -227,7 +227,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     for ((a, b) in skeleton.equalities) {
       val equals = solution.equals(this, a, b).toString()
       if (equals != "false") {
-        str.append("eq($a,$b) ${if (equals == "true") "" else "($equals)"} && ")
+        str.append("eq($a,$b)${if (equals == "true") "" else " ($equals)"} && ")
         newLine = true
       }
     }

@@ -3,7 +3,6 @@ package org.checkerframework.checker.mungo.assertions
 import com.microsoft.z3.BoolExpr
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
-import kotlin.math.exp
 
 private var constraintsUUID = 1L
 
@@ -33,6 +32,7 @@ fun reduce(setup: ConstraintsSetup, result: NodeAssertions, fn: (tail: SymbolicA
 }
 
 // TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
+// TODO if the fraction is zero, the type should be Unknown instead
 // TODO handle primitives, since they can be copied many times
 
 fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup, except: Set<Reference>): BoolExpr {
@@ -185,30 +185,7 @@ fun handleTypeImplication(exprs: MutableList<BoolExpr>, pres: Set<SymbolicAssert
       exprs.add(SymTypeImpliesSymType(pre.getType(ref), type).toZ3(setup))
     }
   }
-  // TODO if the fraction is zero, the type should be Unknown instead
 }
-
-/*fun handleEquality(target: Reference, expr: Reference, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
-  val exprs = mutableListOf<BoolExpr>()
-  val postTargetInfo = tail[target]
-  val postExprInfo = tail[expr]
-
-  exprs.add(setup.mkEquals(tail, target, expr))
-
-  exprs.add(setup.ctx.mkEq(
-    setup.ctx.mkAdd(
-      setup.fractionToExpr(postTargetInfo.packFraction),
-      setup.fractionToExpr(postExprInfo.packFraction)
-    ),
-    setup.min(heads.map { it[expr].packFraction })
-  ))
-
-  handleTypeImplication(exprs, heads, expr, postTargetInfo.type, setup)
-  handleTypeImplication(exprs, heads, expr, postExprInfo.type, setup)
-
-  // TODO handle fields
-  return setup.mkAnd(exprs)
-}*/
 
 private class ImpliedAssertion(val tail: SymbolicAssertion) : Constraint() {
 
