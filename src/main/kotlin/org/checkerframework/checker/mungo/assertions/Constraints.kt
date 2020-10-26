@@ -28,22 +28,48 @@ fun reduce(result: NodeAssertions, fn: (tail: SymbolicAssertion, heads: Set<Symb
 // TODO if the fraction is zero, the type should be Unknown instead
 // TODO handle primitives, since they can be copied many times
 
-fun fractionsAccumulation(setup: ConstraintsSetup, thisRef: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
-  val others = post.skeleton.getPossibleEq(thisRef)
+fun fractionsAccumulation(setup: ConstraintsSetup, ref: FieldAccess, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
+  val parent = ref.receiver
+  val otherParents = post.skeleton.getPossibleEq(parent)
   // Example:
   // x y z
   // f1 + f2 + f3 = f4 + f5 + f6
   // (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
-  val thisRefExpr = setup.refToExpr(thisRef)
+  val parentExpr = setup.refToExpr(ref)
   val addition = setup.ctx.mkAdd(
-    *others.map { otherRef ->
-      val otherRefExpr = setup.refToExpr(otherRef)
+    *otherParents.map { otherParent ->
+      val otherParentExpr = setup.refToExpr(otherParent)
+      val otherRef = ref.replace(parent, otherParent)
       val sub = setup.mkSub(
-        setup.min(pres.map { it[otherRef].packFraction }),
-        setup.fractionToExpr(post[otherRef].packFraction)
+        setup.min(pres.map { it[otherRef].fraction }),
+        setup.fractionToExpr(post[otherRef].fraction)
       )
       setup.mkITE(
-        setup.mkEquals(post, thisRefExpr, otherRefExpr),
+        setup.mkEquals(post, parentExpr, otherParentExpr),
+        sub,
+        setup.ctx.mkReal(0)
+      )
+    }.toTypedArray()
+  )
+  return setup.ctx.mkEq(addition, setup.ctx.mkReal(0))
+}
+
+fun packFractionsAccumulation(setup: ConstraintsSetup, ref: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
+  val others = post.skeleton.getPossibleEq(ref)
+  // Example:
+  // x y z
+  // f1 + f2 + f3 = f4 + f5 + f6
+  // (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
+  val refExpr = setup.refToExpr(ref)
+  val addition = setup.ctx.mkAdd(
+    *others.map { other ->
+      val otherExpr = setup.refToExpr(other)
+      val sub = setup.mkSub(
+        setup.min(pres.map { it[other].packFraction }),
+        setup.fractionToExpr(post[other].packFraction)
+      )
+      setup.mkITE(
+        setup.mkEquals(post, refExpr, otherExpr),
         sub,
         setup.ctx.mkReal(0)
       )
@@ -56,14 +82,18 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
   val exprs = mutableListOf<BoolExpr>()
 
   tail.forEach { ref, info ->
-    exprs.add(setup.ctx.mkEq(
-      setup.fractionToExpr(info.fraction),
-      setup.min(heads.map { it[ref].fraction })
-    ))
+    if (ref is FieldAccess) {
+      exprs.add(fractionsAccumulation(setup, ref, heads, tail))
+    } else {
+      exprs.add(setup.ctx.mkEq(
+        setup.fractionToExpr(info.fraction),
+        setup.min(heads.map { it[ref].fraction })
+      ))
+    }
+
+    exprs.add(packFractionsAccumulation(setup, ref, heads, tail))
 
     // TODO what about the transferring of the type?
-    // TODO what about fraction accumulation of fractions? not just packedFractions? Because of fields!
-    exprs.add(fractionsAccumulation(setup, ref, heads, tail))
 
     // Subtyping constraints are more difficult for Z3 to solve
     // If this assertion is only implied by another one,
