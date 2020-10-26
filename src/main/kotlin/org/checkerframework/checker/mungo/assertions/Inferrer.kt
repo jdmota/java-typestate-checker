@@ -243,13 +243,10 @@ class Inferrer(val checker: MungoChecker) {
       // Even constructors and methods that "return" void
       val method = ast.method as JCTree.JCMethodDecl
       val methodSym = method.sym
-      val returnType = methodSym.returnType
-      val objType = methodSym.enclosingElement.asType()
-      val isConstructor = methodSym.getKind() == ElementKind.CONSTRUCTOR
-      if (isConstructor) {
-        locations.add(ReturnSpecialVar(objType))
+      if (methodSym.getKind() == ElementKind.CONSTRUCTOR) {
+        locations.add(ReturnSpecialVar(methodSym.enclosingElement.asType()))
       } else {
-        locations.add(ReturnSpecialVar(returnType))
+        locations.add(ReturnSpecialVar(methodSym.returnType))
       }
     }
     return locations

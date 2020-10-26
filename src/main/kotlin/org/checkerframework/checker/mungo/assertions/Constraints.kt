@@ -374,7 +374,7 @@ private class CallConstraints(
 }
 
 // Make the reference representing the parameter
-// and the corresponding local variable equals
+// and the corresponding local variable equal
 // But start with all the permission on the side of the parameter
 private class ParameterAndLocalVariable(
   val assertion: SymbolicAssertion,
