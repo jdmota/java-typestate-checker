@@ -167,7 +167,7 @@ class Inferrer(val checker: MungoChecker) {
 
     // Gather locations and possible equalities
     val locations = gatherLocations(cfg).plus(outerSkeleton.locations)
-    val equalities = gatherEqualities(cfg).plus(outerSkeleton.equalities)
+    val equalities = gatherEqualities(cfg, locations).plus(outerSkeleton.equalities)
 
     // Debug
     println("---")
@@ -252,11 +252,11 @@ class Inferrer(val checker: MungoChecker) {
     return locations
   }
 
-  // TODO include eq(old(var),something)
-  private fun gatherEqualities(cfg: ControlFlowGraph): Set<Pair<Reference, Reference>> {
+  private fun gatherEqualities(cfg: ControlFlowGraph, allLocations: Set<Reference>): Set<Pair<Reference, Reference>> {
     val ast = cfg.underlyingAST
-    val parameters = locationsGatherer.getParameterLocations(ast).filterIsInstance<ParameterVariable>()
     val equalities = mutableSetOf<Pair<Reference, Reference>>()
+
+    // Produce some equalities
     for (node in cfg.allNodes) {
       when (node) {
         is AssignmentNode -> {
@@ -271,10 +271,28 @@ class Inferrer(val checker: MungoChecker) {
           equalities.add(Pair(target, expression))
         }
         // TODO more...
+        // TODO include eq(old(var),something)
       }
     }
+
+    // Equalities between parameter variable and local variable
+    val parameters = locationsGatherer.getParameterLocations(ast).filterIsInstance<ParameterVariable>()
     for (param in parameters) {
       equalities.add(Pair(param, param.toLocalVariable()))
+    }
+
+    // Additional pairings
+    val localsAndFields = allLocations.filter {
+      it is NodeRef || it is LocalVariable || (it is FieldAccess && !it.isThisField())
+    }.toSet()
+
+    for (a in localsAndFields) {
+      for (b in localsAndFields) {
+        if (a !== b && a.type === b.type) {
+          println("EQUALITY $a $b")
+          equalities.add(Pair(a, b))
+        }
+      }
     }
     return equalities
   }

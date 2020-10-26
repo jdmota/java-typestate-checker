@@ -190,6 +190,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     val targetRef = getDirectRef(n.target)
     val exprRef = getRef(n.expression)
     constraints.equality(result, inferrer.getOldReference(n), targetRef, exprRef)
+
+    // TODO the type of this assignment is the type of the expression
     return null
   }
 

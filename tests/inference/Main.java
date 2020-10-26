@@ -54,8 +54,7 @@ public class Main {
 
     Item item = cell.getItem();
 
-    // TODO contradiction
-    item.changeState();
+    // item.changeState();
 
     //Item item2 = cell.getItem();
 

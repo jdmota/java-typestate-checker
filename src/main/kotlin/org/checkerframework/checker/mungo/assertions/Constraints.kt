@@ -353,7 +353,7 @@ private class CallConstraints(
 ) : Constraint() {
 
   override fun toString(): String {
-    return "($id) Call"
+    return "($id) Call $callRef"
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
