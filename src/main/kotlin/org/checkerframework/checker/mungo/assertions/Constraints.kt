@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.BoolExpr
+import com.microsoft.z3.Expr
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -10,17 +11,16 @@ private var constraintsUUID = 1L
 
 sealed class Constraint {
   val id = constraintsUUID++
-  abstract fun toZ3(setup: ConstraintsSetup): BoolExpr
+  abstract fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr>
 }
 
-fun reduce(setup: ConstraintsSetup, result: NodeAssertions, fn: (tail: SymbolicAssertion, heads: Set<SymbolicAssertion>) -> BoolExpr): BoolExpr {
+fun reduce(result: NodeAssertions, fn: (tail: SymbolicAssertion, heads: Set<SymbolicAssertion>) -> Collection<BoolExpr>): Collection<BoolExpr> {
   return if (result.postThen === result.postElse) {
     fn(result.postThen, setOf(result.preThen, result.preElse))
   } else {
-    setup.ctx.mkAnd(
-      fn(result.postThen, setOf(result.preThen)),
-      fn(result.postElse, setOf(result.preElse))
-    )
+    val t = fn(result.postThen, setOf(result.preThen))
+    val e = fn(result.postElse, setOf(result.preElse))
+    t.plus(e)
   }
 }
 
@@ -28,7 +28,7 @@ fun reduce(setup: ConstraintsSetup, result: NodeAssertions, fn: (tail: SymbolicA
 // TODO if the fraction is zero, the type should be Unknown instead
 // TODO handle primitives, since they can be copied many times
 
-fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): BoolExpr {
+fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): Collection<BoolExpr> {
   val exprs = mutableListOf<BoolExpr>()
 
   tail.forEach { ref, info ->
@@ -58,7 +58,7 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
     )
   }
 
-  return setup.mkAnd(exprs)
+  return exprs
 }
 
 fun handleEquality(
@@ -68,7 +68,7 @@ fun handleEquality(
   tail: SymbolicAssertion,
   heads: Set<SymbolicAssertion>,
   setup: ConstraintsSetup
-): BoolExpr {
+): Collection<BoolExpr> {
   val unknown = UnknownRef(expr.type)
 
   val assignments1 = if (old == null) {
@@ -143,10 +143,10 @@ fun handleEquality(
     // If this assertion is only implied by another one,
     // just add a constraint where the two types are the same
     if (heads.size == 1) {
-      exprs.add(SymTypeEqSymType(heads.first()[otherRef].type, info.type).toZ3(setup))
+      exprs.addAll(SymTypeEqSymType(heads.first()[otherRef].type, info.type).toZ3(setup))
     } else {
       for (head in heads) {
-        exprs.add(SymTypeImpliesSymType(head[otherRef].type, info.type).toZ3(setup))
+        exprs.addAll(SymTypeImpliesSymType(head[otherRef].type, info.type).toZ3(setup))
       }
     }
   }
@@ -168,7 +168,7 @@ fun handleEquality(
     })
   }
 
-  return setup.mkAnd(exprs)
+  return exprs
 }
 
 fun handleCall(
@@ -182,7 +182,7 @@ fun handleCall(
   tail: SymbolicAssertion,
   heads: Set<SymbolicAssertion>,
   setup: ConstraintsSetup
-): BoolExpr {
+): Collection<BoolExpr> {
   val isConstructor = callRef is NodeRef && callRef.node is ObjectCreationNode
   val returnRef = ReturnSpecialVar(callRef.type)
   val thisRef = ThisReference(callRef.type)
@@ -250,31 +250,32 @@ fun handleCall(
         (ref == callRef && isConstructor) ||
         (ref == receiverRef)
       ) {
-        exprs.add(SymTypeEqType(info.type, overrideType).toZ3(setup))
+        exprs.addAll(SymTypeEqType(info.type, overrideType).toZ3(setup))
         return@forEach
       }
     }
 
     if (ref === otherRef) {
       if (heads.size == 1) {
-        exprs.add(SymTypeEqSymType(heads.first()[ref].type, info.type).toZ3(setup))
+        exprs.addAll(SymTypeEqSymType(heads.first()[ref].type, info.type).toZ3(setup))
       } else {
         heads.forEach {
-          exprs.add(SymTypeImpliesSymType(it[otherRef].type, info.type).toZ3(setup))
+          exprs.addAll(SymTypeImpliesSymType(it[otherRef].type, info.type).toZ3(setup))
         }
       }
     } else {
       if (methodPost.size == 1) {
-        exprs.add(SymTypeEqSymType(methodPost.first()[otherRef].type, info.type).toZ3(setup))
+        exprs.addAll(SymTypeEqSymType(methodPost.first()[otherRef].type, info.type).toZ3(setup))
       } else {
         methodPost.forEach {
-          exprs.add(SymTypeImpliesSymType(it[otherRef].type, info.type).toZ3(setup))
+          exprs.addAll(SymTypeImpliesSymType(it[otherRef].type, info.type).toZ3(setup))
         }
       }
     }
   }
 
   // TODO equalities from inside the method that can be tracked outside!
+  // FIXME
 
   for ((a, b) in tail.skeleton.equalities) {
     val c = replace(a)
@@ -288,6 +289,7 @@ fun handleCall(
             setup.mkEquals(it, a, b)
           })
         )
+        // FIXME could be true via transitivity?
       }
       a !== c && b !== d -> {
         setup.ctx.mkEq(
@@ -301,7 +303,7 @@ fun handleCall(
     })
   }
 
-  return setup.mkAnd(exprs)
+  return exprs
 }
 
 fun handleTypeImplication(exprs: MutableList<BoolExpr>, pres: Set<SymbolicAssertion>, ref: Reference, type: SymbolicType, setup: ConstraintsSetup) {
@@ -309,10 +311,10 @@ fun handleTypeImplication(exprs: MutableList<BoolExpr>, pres: Set<SymbolicAssert
   // If this assertion is only implied by another one,
   // just add a constraint where the two types are the same
   if (pres.size == 1) {
-    exprs.add(SymTypeEqSymType(pres.first().getType(ref), type).toZ3(setup))
+    exprs.addAll(SymTypeEqSymType(pres.first().getType(ref), type).toZ3(setup))
   } else {
     for (pre in pres) {
-      exprs.add(SymTypeImpliesSymType(pre.getType(ref), type).toZ3(setup))
+      exprs.addAll(SymTypeImpliesSymType(pre.getType(ref), type).toZ3(setup))
     }
   }
 }
@@ -323,7 +325,7 @@ private class ImpliedAssertion(val tail: SymbolicAssertion) : Constraint() {
     return "($id) (${tail.impliedBy().joinToString(" && ")}}) ==> $tail"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
     return handleImplies(tail, tail.impliedBy(), setup)
   }
 }
@@ -334,8 +336,8 @@ private class NoSideEffects(val assertions: NodeAssertions) : Constraint() {
     return "($id) NoSideEffects"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return reduce(setup, assertions) { tail, heads ->
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    return reduce(assertions) { tail, heads ->
       handleImplies(tail, heads, setup)
     }
   }
@@ -356,8 +358,8 @@ private class CallConstraints(
     return "($id) Call $callRef"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return reduce(setup, assertions) { tail, heads ->
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    return reduce(assertions) { tail, heads ->
       handleCall(
         callRef,
         receiverRef,
@@ -387,33 +389,34 @@ private class ParameterAndLocalVariable(
     return "($id) param+local: $parameter $local"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    fun helper(parameter: Reference, local: Reference): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    val exprs = mutableListOf<BoolExpr>()
+
+    fun helper(parameter: Reference, local: Reference) {
       val paramInfo = assertion[parameter]
       val localInfo = assertion[local]
-      return setup.ctx.mkAnd(
-        if (parameter === this.parameter) {
-          setup.ctx.mkTrue()
-        } else {
-          setup.ctx.mkEq(
-            setup.fractionToExpr(localInfo.fraction),
-            setup.ctx.mkReal(0)
-          )
-        },
+      exprs.add(if (parameter === this.parameter) {
+        setup.ctx.mkTrue()
+      } else {
         setup.ctx.mkEq(
-          setup.fractionToExpr(localInfo.packFraction),
+          setup.fractionToExpr(localInfo.fraction),
           setup.ctx.mkReal(0)
-        ),
-        SymTypeEqType(localInfo.type, MungoUnknownType.SINGLETON).toZ3(setup),
-        setup.mkAnd(paramInfo.children.map { (ref, _) ->
-          helper(ref, ref.replace(parameter, local))
-        })
-      )
+        )
+      })
+      exprs.add(setup.ctx.mkEq(
+        setup.fractionToExpr(localInfo.packFraction),
+        setup.ctx.mkReal(0)
+      ))
+      exprs.addAll(SymTypeEqType(localInfo.type, MungoUnknownType.SINGLETON).toZ3(setup))
+      paramInfo.children.map { (ref, _) ->
+        helper(ref, ref.replace(parameter, local))
+      }
     }
-    return setup.ctx.mkAnd(
-      setup.mkEquals(assertion, parameter, local),
-      helper(parameter, local)
-    )
+
+    exprs.add(setup.mkEquals(assertion, parameter, local))
+
+    helper(parameter, local)
+    return exprs
   }
 }
 
@@ -426,27 +429,24 @@ private class PassingParameter(
     return "($id) param passing $expr -> $parameter"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    fun helper(expr: SymbolicInfo, parameter: SymbolicInfo): BoolExpr {
-      return setup.ctx.mkAnd(
-        if (expr === this.expr) {
-          SymFractionGt(expr.fraction, 0).toZ3(setup)
-        } else {
-          SymFractionImpliesSymFraction(expr.fraction, parameter.fraction).toZ3(setup)
-        },
-        SymFractionImpliesSymFraction(expr.packFraction, parameter.packFraction).toZ3(setup),
-        SymTypeImpliesSymType(expr.type, parameter.type).toZ3(setup),
-        /*if (parameter.ref is ThisReference) {
-          setup.ctx.mkTrue()
-        } else {
-          SymTypeImpliesSymType(expr.type, parameter.type).toZ3(setup)
-        }*/
-        setup.mkAnd(expr.children.map { (ref, info) ->
-          helper(info, parameter.children[ref.replace(expr.ref, parameter.ref)]!!)
-        })
-      )
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    val exprs = mutableListOf<BoolExpr>()
+
+    fun helper(expr: SymbolicInfo, parameter: SymbolicInfo) {
+      exprs.addAll(if (expr === this.expr) {
+        SymFractionGt(expr.fraction, 0).toZ3(setup)
+      } else {
+        SymFractionImpliesSymFraction(expr.fraction, parameter.fraction).toZ3(setup)
+      })
+      exprs.addAll(SymFractionImpliesSymFraction(expr.packFraction, parameter.packFraction).toZ3(setup))
+      exprs.addAll(SymTypeImpliesSymType(expr.type, parameter.type).toZ3(setup))
+      expr.children.map { (ref, info) ->
+        helper(info, parameter.children[ref.replace(expr.ref, parameter.ref)]!!)
+      }
     }
-    return helper(expr, parameter)
+
+    helper(expr, parameter)
+    return exprs
   }
 }
 
@@ -460,8 +460,8 @@ private class NotEqualityInAssertion(
     return "($id) !eq($a,$b)"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return setup.ctx.mkNot(setup.mkEquals(assertion, a, b))
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    return listOf(setup.ctx.mkNot(setup.mkEquals(assertion, a, b)))
   }
 }
 
@@ -476,8 +476,8 @@ private class EqualityInAssertion(
     return "($id) $target = $expr;"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return reduce(setup, assertions) { tail, heads ->
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    return reduce(assertions) { tail, heads ->
       handleEquality(old, target, expr, tail, heads, setup)
     }
   }
@@ -491,10 +491,10 @@ private class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: Symb
     return "($id) $a ==> $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
     val expr1 = setup.fractionToExpr(a)
     val expr2 = setup.fractionToExpr(b)
-    return setup.ctx.mkGe(expr1, expr2)
+    return listOf(setup.ctx.mkGe(expr1, expr2))
   }
 }
 
@@ -506,8 +506,8 @@ private class SymFractionEqSymFraction(val a: SymbolicFraction, val b: Collectio
     return "($id) $a = $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return setup.ctx.mkEq(setup.fractionToExpr(a), setup.min(b))
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    return listOf(setup.ctx.mkEq(setup.fractionToExpr(a), setup.min(b)))
   }
 }
 
@@ -520,10 +520,10 @@ private class SymTypeImpliesSymType(val a: SymbolicType, val b: SymbolicType) : 
     return "($id) $a ==> $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
-    return setup.mkSubtype(expr1, expr2)
+    return listOf(setup.mkSubtype(expr1, expr2))
   }
 }
 
@@ -533,10 +533,10 @@ private class SymTypeEqSymType(val a: SymbolicType, val b: SymbolicType) : Const
     return "($id) $a = $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
-    return setup.ctx.mkEq(expr1, expr2)
+    return listOf(setup.ctx.mkEq(expr1, expr2))
   }
 }
 
@@ -546,10 +546,10 @@ private class SymTypeEqType(val a: SymbolicType, val b: MungoType) : Constraint(
     return "($id) $a = $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
-    return setup.ctx.mkEq(expr1, expr2)
+    return listOf(setup.ctx.mkEq(expr1, expr2))
   }
 }
 
@@ -559,10 +559,10 @@ private class TypeImpliesSymType(val a: MungoType, val b: SymbolicType) : Constr
     return "($id) $a ==> $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
-    return setup.mkSubtype(expr1, expr2)
+    return listOf(setup.mkSubtype(expr1, expr2))
   }
 }
 
@@ -572,10 +572,10 @@ private class SymTypeImpliesType(val a: SymbolicType, val b: MungoType) : Constr
     return "($id) $a ==> $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
     val expr1 = setup.typeToExpr(a)
     val expr2 = setup.typeToExpr(b)
-    return setup.mkSubtype(expr1, expr2)
+    return listOf(setup.mkSubtype(expr1, expr2))
   }
 }
 
@@ -585,8 +585,8 @@ private class SymFractionGt(val a: SymbolicFraction, val b: Int) : Constraint() 
     return "($id) $a > $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return setup.ctx.mkGt(setup.fractionToExpr(a), setup.ctx.mkReal(b))
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    return listOf(setup.ctx.mkGt(setup.fractionToExpr(a), setup.ctx.mkReal(b)))
   }
 }
 
@@ -596,8 +596,8 @@ private class SymFractionEq(val a: SymbolicFraction, val b: Int) : Constraint() 
     return "($id) $a = $b"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return setup.ctx.mkEq(setup.fractionToExpr(a), setup.ctx.mkReal(b))
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    return listOf(setup.ctx.mkEq(setup.fractionToExpr(a), setup.ctx.mkReal(b)))
   }
 }
 
@@ -607,8 +607,8 @@ private class OtherConstraint(val fn: (ConstraintsSetup) -> BoolExpr) : Constrai
     return "($id) other"
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
-    return fn(setup)
+  override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
+    return listOf(fn(setup))
   }
 }
 
@@ -642,18 +642,20 @@ class Constraints {
     return this
   }
 
-  private val idToConstraint = mutableMapOf<String, Constraint>()
+  private val idToConstraint = mutableMapOf<String, Pair<Constraint, Expr>>()
 
-  fun labelToString(label: String): String {
-    val c = idToConstraint[label.subSequence(1, label.lastIndex)]
-    return c?.toString() ?: ""
+  fun getConstraintByLabel(label: String): Pair<Constraint, Expr> {
+    return idToConstraint[label.subSequence(1, label.lastIndex)]!!
   }
 
   fun end(): InferenceResult {
     for (constraint in constraints) {
-      val label = "${constraint.id}"
-      idToConstraint[label] = constraint
-      setup.addAssert(constraint.toZ3(setup), label)
+      val z3exprs = constraint.toZ3(setup)
+      for ((idx, z3expr) in z3exprs.withIndex()) {
+        val label = "${constraint.id}-$idx"
+        idToConstraint[label] = Pair(constraint, z3expr)
+        setup.addAssert(z3expr, label)
+      }
     }
 
     println("Solving...")

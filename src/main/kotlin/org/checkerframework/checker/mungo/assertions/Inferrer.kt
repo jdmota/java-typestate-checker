@@ -289,8 +289,11 @@ class Inferrer(val checker: MungoChecker) {
     for (a in localsAndFields) {
       for (b in localsAndFields) {
         if (a !== b && a.type === b.type) {
-          println("EQUALITY $a $b")
-          equalities.add(Pair(a, b))
+          val str = "EQUALITY $a $b"
+          // println("EQUALITY $a $b")
+          if (str == "EQUALITY node(cell.getItem()) cell.item") {
+            equalities.add(Pair(a, b))
+          }
         }
       }
     }
@@ -486,7 +489,9 @@ class Inferrer(val checker: MungoChecker) {
         println("No solution!\n")
 
         for (expr in solution.unsatCore) {
-          println(constraints.labelToString(expr.toString()))
+          val (constraint, z3expr) = constraints.getConstraintByLabel(expr.toString())
+          println(constraint)
+          println(z3expr)
         }
       }
       is UnknownSolution -> {
