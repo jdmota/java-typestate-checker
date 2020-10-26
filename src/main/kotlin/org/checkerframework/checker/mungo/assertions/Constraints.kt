@@ -26,6 +26,8 @@ fun reduce(result: NodeAssertions, fn: (tail: SymbolicAssertion, heads: Set<Symb
 
 // TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
 // TODO if the fraction is zero, the type should be Unknown instead
+// TODO equalities only hold with enough permission
+
 // TODO handle primitives, since they can be copied many times
 
 fun fractionsAccumulation(setup: ConstraintsSetup, ref: FieldAccess, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
@@ -79,27 +81,20 @@ fun packFractionsAccumulation(setup: ConstraintsSetup, ref: Reference, pres: Col
 fun typesAccumulation(setup: ConstraintsSetup, ref: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): Expr {
   // "others" includes "ref"
   val others = post.skeleton.getPossibleEq(ref)
-  val addition = setup.ctx.mkAdd(
-    *others.map { other ->
-      val sub = setup.mkSub(
-        setup.mkMin(pres.map { it[other].packFraction }),
-        setup.fractionToExpr(post[other].packFraction)
-      )
-      setup.mkITE(
-        setup.mkEquals(post, ref, other),
-        sub,
-        setup.ctx.mkReal(0)
-      )
-    }.toTypedArray()
-  )
-  // return setup.ctx.mkEq(addition, setup.ctx.mkReal(0))
+  val typeExpr = setup.mkIntersectionWithExprs(others.map { other ->
+    setup.mkITE(
+      setup.mkEquals(post, ref, other),
+      setup.mkUnion(pres.map { it[other].type }),
+      setup.typeToExpr(MungoUnknownType.SINGLETON)
+    )
+  })
   return setup.ctx.mkITE(
     setup.ctx.mkGt(
       setup.fractionToExpr(post[ref].packFraction),
       setup.ctx.mkReal(0)
     ),
     setup.typeToExpr(MungoUnknownType.SINGLETON),
-    setup.typeToExpr(MungoUnknownType.SINGLETON)
+    typeExpr
   )
 }
 
@@ -118,15 +113,13 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
 
     exprs.add(packFractionsAccumulation(setup, ref, heads, tail))
 
-    // TODO what about the transferring of the type?
-
     exprs.add(setup.ctx.mkEq(
       setup.typeToExpr(info.type),
-      setup.mkUnion(heads.map { it[ref].type })
+      // setup.mkUnion(heads.map { it[ref].type })
+      typesAccumulation(setup, ref, heads, tail)
     ))
   }
 
-  // TODO equalities only hold if enough permission!
   // TODO equality of fields!
   for ((a, b) in tail.skeleton.equalities) {
     // Equality is true in assertion "tail" if present in the other assertions

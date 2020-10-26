@@ -3,7 +3,6 @@ package org.checkerframework.checker.mungo.assertions
 import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.*
-import org.checkerframework.checker.mungo.utils.MungoUtils
 
 // Z3 Tutorial: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.225.8231&rep=rep1&type=pdf
 // Z3 Guide and Playground: https://rise4fun.com/z3/tutorial/guide
@@ -84,6 +83,12 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       code
     }
 
+    fun closestUpperBound(type: MungoType) = when {
+      TypeExprs.contains(type) -> type
+      type.isSubtype(MungoObjectType.SINGLETON) -> MungoObjectType.SINGLETON
+      else -> MungoUnknownType.SINGLETON
+    }
+
     val union = ctx.mkRecFuncDecl(ctx.mkSymbol("union"), arrayOf(Type, Type), Type) { _, args ->
       val a = args[0]
       val b = args[1]
@@ -92,16 +97,45 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       fun helper2(typeA: MungoType, it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
         if (it.hasNext()) {
           val (typeB, exprB) = it.next()
-          val union = typeA.union(typeB).let {
-            if (TypeExprs.contains(it)) {
-              it
-            } else {
-              MungoUnknownType.SINGLETON // TODO find better option
-            }
-          }
+          val union = closestUpperBound(typeA.union(typeB))
           return ctx.mkITE(
             ctx.mkEq(b, exprB),
             TypeExprs[union],
+            helper2(typeA, it)
+          )
+        }
+        return unknown
+      }
+
+      fun helper1(it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
+        if (it.hasNext()) {
+          val (typeA, exprA) = it.next()
+          return ctx.mkITE(
+            ctx.mkEq(a, exprA),
+            helper2(typeA, TypeExprs.iterator()),
+            helper1(it)
+          )
+        }
+        return unknown
+      }
+
+      val code = helper1(TypeExprs.iterator())
+      // println(code)
+      code
+    }
+
+    val intersection = ctx.mkRecFuncDecl(ctx.mkSymbol("intersection"), arrayOf(Type, Type), Type) { _, args ->
+      val a = args[0]
+      val b = args[1]
+      val unknown = TypeExprs[MungoUnknownType.SINGLETON]!!
+
+      fun helper2(typeA: MungoType, it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
+        if (it.hasNext()) {
+          val (typeB, exprB) = it.next()
+          val intersection = closestUpperBound(typeA.intersect(typeB))
+          return ctx.mkITE(
+            ctx.mkEq(b, exprB),
+            TypeExprs[intersection],
             helper2(typeA, it)
           )
         }
@@ -201,6 +235,31 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     var expr = typeToExpr(iterator.next())
     while (iterator.hasNext()) {
       expr = mkUnion(expr, typeToExpr(iterator.next()))
+    }
+    return expr
+  }
+
+  private fun mkIntersection(a: Expr, b: Expr) =
+    if (a === b) {
+      a
+    } else {
+      ctx.mkApp(setup.intersection, a, b)
+    }
+
+  fun mkIntersection(types: Collection<SymbolicType>): Expr {
+    val iterator = types.iterator()
+    var expr = typeToExpr(iterator.next())
+    while (iterator.hasNext()) {
+      expr = mkIntersection(expr, typeToExpr(iterator.next()))
+    }
+    return expr
+  }
+
+  fun mkIntersectionWithExprs(types: Collection<Expr>): Expr {
+    val iterator = types.iterator()
+    var expr = iterator.next()
+    while (iterator.hasNext()) {
+      expr = mkIntersection(expr, iterator.next())
     }
     return expr
   }
