@@ -65,6 +65,8 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       Pair(type, ctx.mkApp(Type.getConstDecl(typesArray.indexOf(sym))))
     }.toMap()
 
+    val UnknownExpr = TypeExprs[MungoUnknownType.SINGLETON]!!
+
     val subtype = ctx.mkRecFuncDecl(ctx.mkSymbol("subtype"), arrayOf(Type, Type), Bool) { _, args ->
       val a = args[0]
       val b = args[1]
@@ -92,7 +94,6 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     val union = ctx.mkRecFuncDecl(ctx.mkSymbol("union"), arrayOf(Type, Type), Type) { _, args ->
       val a = args[0]
       val b = args[1]
-      val unknown = TypeExprs[MungoUnknownType.SINGLETON]!!
 
       fun helper2(typeA: MungoType, it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
         if (it.hasNext()) {
@@ -104,7 +105,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
             helper2(typeA, it)
           )
         }
-        return unknown
+        return UnknownExpr
       }
 
       fun helper1(it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
@@ -116,7 +117,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
             helper1(it)
           )
         }
-        return unknown
+        return UnknownExpr
       }
 
       val code = helper1(TypeExprs.iterator())
@@ -127,7 +128,6 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     val intersection = ctx.mkRecFuncDecl(ctx.mkSymbol("intersection"), arrayOf(Type, Type), Type) { _, args ->
       val a = args[0]
       val b = args[1]
-      val unknown = TypeExprs[MungoUnknownType.SINGLETON]!!
 
       fun helper2(typeA: MungoType, it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
         if (it.hasNext()) {
@@ -139,7 +139,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
             helper2(typeA, it)
           )
         }
-        return unknown
+        return UnknownExpr
       }
 
       fun helper1(it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
@@ -151,7 +151,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
             helper1(it)
           )
         }
-        return unknown
+        return UnknownExpr
       }
 
       val code = helper1(TypeExprs.iterator())
@@ -175,7 +175,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
   fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
   fun mkSubtype(a: SymbolicType, b: SymbolicType) = mkSubtype(typeToExpr(a), typeToExpr(b))
 
-  fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr): BoolExpr =
+  private fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr): BoolExpr =
     if (a === b) {
       setup.True
     } else {
@@ -183,10 +183,11 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     }
 
   fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference): BoolExpr =
-    if (assertion.skeleton.equalities.contains(Pair(a, b))) {
-      mkEquals(assertion, refToExpr(a), refToExpr(b))
-    } else {
-      setup.False
+    when {
+      a == b -> setup.True
+      assertion.skeleton.equalities.contains(Pair(a, b)) -> mkEquals(assertion, refToExpr(a), refToExpr(b))
+      assertion.skeleton.equalities.contains(Pair(b, a)) -> mkEquals(assertion, refToExpr(b), refToExpr(a))
+      else -> setup.False
     }
 
   fun mkAnd(c: Collection<BoolExpr>): BoolExpr {
@@ -246,22 +247,12 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       ctx.mkApp(setup.intersection, a, b)
     }
 
-  fun mkIntersection(types: Collection<SymbolicType>): Expr {
-    val iterator = types.iterator()
-    var expr = typeToExpr(iterator.next())
-    while (iterator.hasNext()) {
-      expr = mkIntersection(expr, typeToExpr(iterator.next()))
-    }
-    return expr
-  }
-
   fun mkIntersectionWithExprs(types: Collection<Expr>): Expr {
-    val iterator = types.iterator()
-    var expr = iterator.next()
-    while (iterator.hasNext()) {
-      expr = mkIntersection(expr, iterator.next())
+    var expr: Expr? = null
+    for (t in types.filterNot { it === setup.UnknownExpr }) {
+      expr = if (expr == null) t else mkIntersection(expr, t)
     }
-    return expr
+    return expr ?: setup.UnknownExpr
   }
 
   private var eqUuid = 1L

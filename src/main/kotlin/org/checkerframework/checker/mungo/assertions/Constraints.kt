@@ -9,6 +9,21 @@ import org.checkerframework.dataflow.cfg.node.ObjectCreationNode
 
 private var constraintsUUID = 1L
 
+class Z3Constraints {
+
+  private val phase1 = mutableListOf<BoolExpr>()
+  private val phase2 = mutableListOf<BoolExpr>()
+
+  fun addIn1(expr: BoolExpr) {
+    phase1.add(expr)
+  }
+
+  fun addIn2(expr: BoolExpr) {
+    phase2.add(expr)
+  }
+
+}
+
 sealed class Constraint {
   val id = constraintsUUID++
   abstract fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr>
@@ -93,8 +108,8 @@ fun typesAccumulation(setup: ConstraintsSetup, ref: Reference, pres: Collection<
       setup.fractionToExpr(post[ref].packFraction),
       setup.ctx.mkReal(0)
     ),
-    setup.typeToExpr(MungoUnknownType.SINGLETON),
-    typeExpr
+    typeExpr,
+    setup.typeToExpr(MungoUnknownType.SINGLETON)
   )
 }
 
@@ -115,8 +130,8 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
 
     exprs.add(setup.ctx.mkEq(
       setup.typeToExpr(info.type),
-      // setup.mkUnion(heads.map { it[ref].type })
-      typesAccumulation(setup, ref, heads, tail)
+      setup.mkUnion(heads.map { it[ref].type })
+      // TODO too slow typesAccumulation(setup, ref, heads, tail)
     ))
   }
 

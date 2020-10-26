@@ -32,18 +32,26 @@ public class Main {
     // eq(cell.item, item2)
 
 
-    // access(cell.item.0, f1) && access(item.0, f2)
+
+
+
+    // access(item.0, f1) && access(cell.item.0, f2)
     // eq_1(item, cell.item) == false
     item = cell.item;
-    // access(cell.item.0, f3) && access(item.0, f4)
+    // access(item.0, f3) && access(cell.item.0, f4)
     // eq_2(item, cell.item) == true
-    // f1 = f3 + f4
+    // f3 = f2 && f4 = 0
 
 
-    // access(cell.item.0, f5) && access(item.0, f6)
-    // f3 + f4 = f5 + f6
+    // access(item.0, f5) && access(cell.item.0, f6)
     // eq_3(item, cell.item) == eq_2(item, cell.item)
-    item2 = item;
+    // f3 + f4 = f5 + f6
+    // (f3 - f5) + (f4 - f6) = 0
+
+
+    // item:      (if eq_3(item, item)           then (f3 - f5) else 0) + (if eq_3(item, cell.item) then (f4 - f6) else 0) = 0
+    // cell.item: (if eq_3(cell.item, cell.item) then (f4 - f6) else 0) + (if eq_3(cell.item, item) then (f3 - f5) else 0) = 0
+
 
 
   }*/
@@ -54,7 +62,7 @@ public class Main {
 
     Item item = cell.getItem();
 
-    // item.changeState();
+    item.changeState();
 
     //Item item2 = cell.getItem();
 
