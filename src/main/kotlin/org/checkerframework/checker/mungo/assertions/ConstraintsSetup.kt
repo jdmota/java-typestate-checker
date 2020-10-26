@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.assertions
 import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.*
+import org.checkerframework.checker.mungo.utils.MungoUtils
 
 // Z3 Tutorial: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.225.8231&rep=rep1&type=pdf
 // Z3 Guide and Playground: https://rise4fun.com/z3/tutorial/guide
@@ -83,6 +84,47 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       code
     }
 
+    val union = ctx.mkRecFuncDecl(ctx.mkSymbol("union"), arrayOf(Type, Type), Type) { _, args ->
+      val a = args[0]
+      val b = args[1]
+      val unknown = TypeExprs[MungoUnknownType.SINGLETON]!!
+
+      fun helper2(typeA: MungoType, it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
+        if (it.hasNext()) {
+          val (typeB, exprB) = it.next()
+          val union = typeA.union(typeB).let {
+            if (TypeExprs.contains(it)) {
+              it
+            } else {
+              MungoUnknownType.SINGLETON // TODO find better option
+            }
+          }
+          return ctx.mkITE(
+            ctx.mkEq(b, exprB),
+            TypeExprs[union],
+            helper2(typeA, it)
+          )
+        }
+        return unknown
+      }
+
+      fun helper1(it: Iterator<Map.Entry<MungoType, Expr>>): Expr {
+        if (it.hasNext()) {
+          val (typeA, exprA) = it.next()
+          return ctx.mkITE(
+            ctx.mkEq(a, exprA),
+            helper2(typeA, TypeExprs.iterator()),
+            helper1(it)
+          )
+        }
+        return unknown
+      }
+
+      val code = helper1(TypeExprs.iterator())
+      // println(code)
+      code
+    }
+
     val min = ctx.mkRecFuncDecl(ctx.mkSymbol("fMin"), arrayOf(Real, Real), Real) { _, args ->
       val a = args[0] as ArithExpr
       val b = args[1] as ArithExpr
@@ -113,21 +155,6 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       setup.False
     }
 
-  private fun mkMin(a: ArithExpr, b: ArithExpr) = if (a === b) {
-    a
-  } else {
-    ctx.mkApp(setup.min, a, b) as ArithExpr
-  }
-
-  fun min(fraction: Collection<SymbolicFraction>): ArithExpr {
-    val iterator = fraction.iterator()
-    var expr = fractionToExpr(iterator.next())
-    while (iterator.hasNext()) {
-      expr = mkMin(expr, fractionToExpr(iterator.next()))
-    }
-    return expr
-  }
-
   fun mkAnd(c: Collection<BoolExpr>): BoolExpr {
     return if (c.size == 1) {
       c.first()
@@ -144,6 +171,38 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     } else {
       ctx.mkSub(a, b)
     }
+  }
+
+  private fun mkMin(a: ArithExpr, b: ArithExpr) =
+    if (a === b) {
+      a
+    } else {
+      ctx.mkApp(setup.min, a, b) as ArithExpr
+    }
+
+  fun mkMin(fractions: Collection<SymbolicFraction>): ArithExpr {
+    val iterator = fractions.iterator()
+    var expr = fractionToExpr(iterator.next())
+    while (iterator.hasNext()) {
+      expr = mkMin(expr, fractionToExpr(iterator.next()))
+    }
+    return expr
+  }
+
+  private fun mkUnion(a: Expr, b: Expr) =
+    if (a === b) {
+      a
+    } else {
+      ctx.mkApp(setup.union, a, b)
+    }
+
+  fun mkUnion(types: Collection<SymbolicType>): Expr {
+    val iterator = types.iterator()
+    var expr = typeToExpr(iterator.next())
+    while (iterator.hasNext()) {
+      expr = mkUnion(expr, typeToExpr(iterator.next()))
+    }
+    return expr
   }
 
   private var eqUuid = 1L
@@ -203,7 +262,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
   }
 
   // Get an Z3 expression for a type
-  fun typeToExpr(t: MungoType) = setup.TypeExprs[t] ?: error("No expression for $t")
+  fun typeToExpr(t: MungoType): Expr = setup.TypeExprs[t] ?: error("No expression for $t")
 
   private var refUuid = 1L
   private val refToExpr = mutableMapOf<Reference, Expr>()

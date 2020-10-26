@@ -54,7 +54,7 @@ public class Main {
 
     Item item = cell.getItem();
 
-    item.changeState();
+    // item.changeState();
 
     //Item item2 = cell.getItem();
 

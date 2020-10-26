@@ -30,22 +30,17 @@ fun reduce(result: NodeAssertions, fn: (tail: SymbolicAssertion, heads: Set<Symb
 
 fun fractionsAccumulation(setup: ConstraintsSetup, ref: FieldAccess, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
   val parent = ref.receiver
+  // "otherParents" includes "parent"
   val otherParents = post.skeleton.getPossibleEq(parent)
-  // Example:
-  // x y z
-  // f1 + f2 + f3 = f4 + f5 + f6
-  // (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
-  val parentExpr = setup.refToExpr(ref)
   val addition = setup.ctx.mkAdd(
     *otherParents.map { otherParent ->
-      val otherParentExpr = setup.refToExpr(otherParent)
       val otherRef = ref.replace(parent, otherParent)
       val sub = setup.mkSub(
-        setup.min(pres.map { it[otherRef].fraction }),
+        setup.mkMin(pres.map { it[otherRef].fraction }),
         setup.fractionToExpr(post[otherRef].fraction)
       )
       setup.mkITE(
-        setup.mkEquals(post, parentExpr, otherParentExpr),
+        setup.mkEquals(post, parent, otherParent),
         sub,
         setup.ctx.mkReal(0)
       )
@@ -54,28 +49,58 @@ fun fractionsAccumulation(setup: ConstraintsSetup, ref: FieldAccess, pres: Colle
   return setup.ctx.mkEq(addition, setup.ctx.mkReal(0))
 }
 
+// Example:
+// x y z
+// f1 + f2 + f3 = f4 + f5 + f6
+// (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
 fun packFractionsAccumulation(setup: ConstraintsSetup, ref: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
+  // "others" includes "ref"
   val others = post.skeleton.getPossibleEq(ref)
-  // Example:
-  // x y z
-  // f1 + f2 + f3 = f4 + f5 + f6
-  // (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
-  val refExpr = setup.refToExpr(ref)
   val addition = setup.ctx.mkAdd(
     *others.map { other ->
-      val otherExpr = setup.refToExpr(other)
       val sub = setup.mkSub(
-        setup.min(pres.map { it[other].packFraction }),
+        setup.mkMin(pres.map { it[other].packFraction }),
         setup.fractionToExpr(post[other].packFraction)
       )
       setup.mkITE(
-        setup.mkEquals(post, refExpr, otherExpr),
+        setup.mkEquals(post, ref, other),
         sub,
         setup.ctx.mkReal(0)
       )
     }.toTypedArray()
   )
   return setup.ctx.mkEq(addition, setup.ctx.mkReal(0))
+}
+
+// Example:
+// x y z
+// f1 + f2 + f3 = f4 + f5 + f6
+// f4 = f1 + f2 - f5 + f3 - f6
+fun typesAccumulation(setup: ConstraintsSetup, ref: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): Expr {
+  // "others" includes "ref"
+  val others = post.skeleton.getPossibleEq(ref)
+  val addition = setup.ctx.mkAdd(
+    *others.map { other ->
+      val sub = setup.mkSub(
+        setup.mkMin(pres.map { it[other].packFraction }),
+        setup.fractionToExpr(post[other].packFraction)
+      )
+      setup.mkITE(
+        setup.mkEquals(post, ref, other),
+        sub,
+        setup.ctx.mkReal(0)
+      )
+    }.toTypedArray()
+  )
+  // return setup.ctx.mkEq(addition, setup.ctx.mkReal(0))
+  return setup.ctx.mkITE(
+    setup.ctx.mkGt(
+      setup.fractionToExpr(post[ref].packFraction),
+      setup.ctx.mkReal(0)
+    ),
+    setup.typeToExpr(MungoUnknownType.SINGLETON),
+    setup.typeToExpr(MungoUnknownType.SINGLETON)
+  )
 }
 
 fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): Collection<BoolExpr> {
@@ -87,7 +112,7 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
     } else {
       exprs.add(setup.ctx.mkEq(
         setup.fractionToExpr(info.fraction),
-        setup.min(heads.map { it[ref].fraction })
+        setup.mkMin(heads.map { it[ref].fraction })
       ))
     }
 
@@ -95,16 +120,10 @@ fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup:
 
     // TODO what about the transferring of the type?
 
-    // Subtyping constraints are more difficult for Z3 to solve
-    // If this assertion is only implied by another one,
-    // just add a constraint where the two types are the same
-    if (heads.size == 1) {
-      exprs.addAll(SymTypeEqSymType(heads.first()[ref].type, info.type).toZ3(setup))
-    } else {
-      for (head in heads) {
-        exprs.addAll(SymTypeImpliesSymType(head[ref].type, info.type).toZ3(setup))
-      }
-    }
+    exprs.add(setup.ctx.mkEq(
+      setup.typeToExpr(info.type),
+      setup.mkUnion(heads.map { it[ref].type })
+    ))
   }
 
   // TODO equalities only hold if enough permission!
@@ -189,30 +208,24 @@ fun handleEquality(
       // Remains the same
       exprs.add(setup.ctx.mkEq(
         setup.fractionToExpr(info.fraction),
-        setup.min(heads.map { it[ref].fraction })
+        setup.mkMin(heads.map { it[ref].fraction })
       ))
     } else {
       exprs.add(setup.ctx.mkEq(
         setup.fractionToExpr(info.fraction),
-        setup.min(heads.map { it[otherRef].fraction })
+        setup.mkMin(heads.map { it[otherRef].fraction })
       ))
     }
 
     exprs.add(setup.ctx.mkEq(
       setup.fractionToExpr(info.packFraction),
-      setup.min(heads.map { it[otherRef].packFraction })
+      setup.mkMin(heads.map { it[otherRef].packFraction })
     ))
 
-    // Subtyping constraints are more difficult for Z3 to solve
-    // If this assertion is only implied by another one,
-    // just add a constraint where the two types are the same
-    if (heads.size == 1) {
-      exprs.addAll(SymTypeEqSymType(heads.first()[otherRef].type, info.type).toZ3(setup))
-    } else {
-      for (head in heads) {
-        exprs.addAll(SymTypeImpliesSymType(head[otherRef].type, info.type).toZ3(setup))
-      }
-    }
+    exprs.add(setup.ctx.mkEq(
+      setup.typeToExpr(info.type),
+      setup.mkUnion(heads.map { it[otherRef].type })
+    ))
   }
 
   val equalities = tail.skeleton.equalities
@@ -280,14 +293,14 @@ fun handleCall(
     } else {
       setup.mkSub(
         setup.fractionToExpr(methodPre[otherRef].fraction),
-        setup.min(methodPost.map { it[otherRef].fraction })
+        setup.mkMin(methodPost.map { it[otherRef].fraction })
       )
     }
 
     exprs.add(setup.ctx.mkEq(
       setup.fractionToExpr(info.fraction),
       setup.mkSub(
-        setup.min(heads.map { it[ref].fraction }),
+        setup.mkMin(heads.map { it[ref].fraction }),
         stolenFraction
       )
     ))
@@ -297,14 +310,14 @@ fun handleCall(
     } else {
       setup.mkSub(
         setup.fractionToExpr(methodPre[otherRef].packFraction),
-        setup.min(methodPost.map { it[otherRef].packFraction })
+        setup.mkMin(methodPost.map { it[otherRef].packFraction })
       )
     }
 
     exprs.add(setup.ctx.mkEq(
       setup.fractionToExpr(info.packFraction),
       setup.mkSub(
-        setup.min(heads.map { it[ref].packFraction }),
+        setup.mkMin(heads.map { it[ref].packFraction }),
         stolenPackedFraction
       )
     ))
@@ -320,21 +333,15 @@ fun handleCall(
     }
 
     if (ref === otherRef) {
-      if (heads.size == 1) {
-        exprs.addAll(SymTypeEqSymType(heads.first()[ref].type, info.type).toZ3(setup))
-      } else {
-        heads.forEach {
-          exprs.addAll(SymTypeImpliesSymType(it[otherRef].type, info.type).toZ3(setup))
-        }
-      }
+      exprs.add(setup.ctx.mkEq(
+        setup.typeToExpr(info.type),
+        setup.mkUnion(heads.map { it[ref].type })
+      ))
     } else {
-      if (methodPost.size == 1) {
-        exprs.addAll(SymTypeEqSymType(methodPost.first()[otherRef].type, info.type).toZ3(setup))
-      } else {
-        methodPost.forEach {
-          exprs.addAll(SymTypeImpliesSymType(it[otherRef].type, info.type).toZ3(setup))
-        }
-      }
+      exprs.add(setup.ctx.mkEq(
+        setup.typeToExpr(info.type),
+        setup.mkUnion(methodPost.map { it[otherRef].type })
+      ))
     }
   }
 
@@ -558,7 +565,7 @@ private class SymFractionEqSymFraction(val a: SymbolicFraction, val b: Collectio
   }
 
   override fun toZ3(setup: ConstraintsSetup): Collection<BoolExpr> {
-    return listOf(setup.ctx.mkEq(setup.fractionToExpr(a), setup.min(b)))
+    return listOf(setup.ctx.mkEq(setup.fractionToExpr(a), setup.mkMin(b)))
   }
 }
 

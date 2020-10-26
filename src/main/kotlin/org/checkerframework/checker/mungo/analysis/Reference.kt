@@ -131,6 +131,8 @@ class FieldAccess(val receiver: Reference, type: TypeMirror, val field: Variable
   val isStatic get() = ElementUtils.isStatic(field)
   val isNonPrivate = !field.modifiers.contains(Modifier.PRIVATE)
 
+  val fieldName get() = field.simpleName.toString()
+
   override fun isThisField(): Boolean {
     return if (receiver is ThisReference) true else receiver.isThisField()
   }

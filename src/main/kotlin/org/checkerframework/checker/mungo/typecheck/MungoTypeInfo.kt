@@ -16,6 +16,7 @@ sealed class MungoType {
   open fun isSubtype(other: MungoType): Boolean = isSubtype(this, other)
 
   open fun intersect(other: MungoType): MungoType = intersect(this, other)
+  open fun union(other: MungoType) = MungoUnionType.create(listOf(this, other))
 
   open fun mostSpecific(other: MungoType) = when {
     this.isSubtype(other) -> this
@@ -127,8 +128,6 @@ class MungoUnionType private constructor(val types: Set<MungoType>) : MungoType(
       // Create union type
       return MungoUnionType(flatTypes)
     }
-
-    fun join(a: MungoType, b: MungoType) = intersect(a, b)
   }
 
   override fun equals(other: Any?) = when {
