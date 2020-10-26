@@ -189,14 +189,14 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
       is ReturnSpecialVar,
       is OldSpecialVar,
       is NodeRef -> {
-        roots[ref] ?: error("No info for $ref")
+        roots[ref] ?: skeleton.unknownInfo // error("No info for $ref")
       }
       is FieldAccess -> {
         val parent = get(ref.receiver)
         if (parent === skeleton.unknownInfo) {
           skeleton.unknownInfo
         } else {
-          parent.children[ref] ?: error("No info for $ref")
+          parent.children[ref] ?: skeleton.unknownInfo // error("No info for $ref")
         }
       }
       is UnknownRef -> skeleton.unknownInfo

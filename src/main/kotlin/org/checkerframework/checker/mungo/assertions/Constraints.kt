@@ -3,6 +3,7 @@ package org.checkerframework.checker.mungo.assertions
 import com.microsoft.z3.BoolExpr
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.dataflow.cfg.node.ObjectCreationNode
 
 private var constraintsUUID = 1L
@@ -614,6 +615,7 @@ private class OtherConstraint(val fn: (ConstraintsSetup) -> BoolExpr) : Constrai
 class Constraints {
 
   private lateinit var setup: ConstraintsSetup
+  private var started = false
 
   private val types = mutableSetOf(
     MungoUnknownType.SINGLETON,
@@ -627,10 +629,15 @@ class Constraints {
   )
 
   fun addType(type: MungoType) {
+    if (started) {
+      MungoUtils.printStack()
+      error("Already started adding constraints to Z3")
+    }
     types.add(type)
   }
 
   fun start(): Constraints {
+    started = true
     setup = ConstraintsSetup(types).start()
     return this
   }
@@ -698,8 +705,7 @@ class Constraints {
 
   fun nullType(t: SymbolicType) {
     // t == Null
-    addType(MungoNullType.SINGLETON)
-    constraints.add(SymTypeEqType(t, MungoNullType.SINGLETON))
+    same(t, MungoNullType.SINGLETON)
   }
 
   fun same(a: SymbolicType, b: SymbolicType) {
@@ -709,6 +715,7 @@ class Constraints {
 
   fun same(a: SymbolicType, b: MungoType) {
     // a == b
+    addType(b)
     constraints.add(SymTypeEqType(a, b))
   }
 
@@ -742,17 +749,18 @@ class Constraints {
     assertions: NodeAssertions,
     callRef: Reference,
     receiverRef: Reference?,
-    receiverType: MungoType?,
+    overrideType: MungoType?,
     arguments: List<Reference>,
     parameters: List<Reference>,
     methodPre: SymbolicAssertion,
     methodPost: Set<SymbolicAssertion>
   ) {
+    overrideType?.let { addType(it) }
     constraints.add(CallConstraints(
       assertions,
       callRef,
       receiverRef,
-      receiverType,
+      overrideType,
       arguments,
       parameters,
       methodPre,

@@ -1,0 +1,10 @@
+typestate Item {
+  S0 = {
+    void changeState(): S1,
+    drop: end
+  }
+  S1 = {
+    void changeState(): S1,
+    drop: end
+  }
+}

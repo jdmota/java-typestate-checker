@@ -48,13 +48,53 @@ public class Main {
 
   }*/
 
-  public static void main2(String args[]) {
+  public static void main1() {
     Cell cell = new Cell();
-    cell.setItem("Hello World!");
+    cell.setItem(new Item());
 
-    Cell cell2 = cell;
+    Item item = cell.getItem();
 
-    String item = cell2.getItem();
+    // TODO contradiction
+    item.changeState();
+
+    //Item item2 = cell.getItem();
+
+    //item2.changeState();
   }
+
+  /*public static void main2() {
+    Cell c = new Cell();
+    c.setItem(new Item());
+
+    Item item = c.getItem();
+
+    Thread t = new Thread(() -> {
+      item.changeState();
+    });
+
+    t.start();
+    t.join();
+
+    Item item2 = c.getItem();
+    item2.changeState();
+  }*/
+
+  /*public static void main3() {
+    Cell c = new Cell();
+    c.setItem(new Item());
+
+    Item item = c.getItem();
+
+    Thread t = new Thread(() -> {
+      item.changeState();
+    });
+
+    t.start();
+
+    Item item2 = c.getItem();
+    item2.changeState();
+
+    t.join();
+  }*/
 
 }

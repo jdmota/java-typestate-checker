@@ -391,7 +391,8 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   private fun shouldEachToEach(node: Node): Boolean {
-    return when (val block = node.block) {
+    return node.type.kind == TypeKind.BOOLEAN
+    /*return when (val block = node.block) {
       is RegularBlock -> {
         val idx = block.nodes.indexOf(node)
         val nextIdx = idx + 1
@@ -402,10 +403,10 @@ class Inferrer(val checker: MungoChecker) {
       }
       is ExceptionBlock -> return shouldEachToEach(node, block.successor)
       else -> false
-    }
+    }*/
   }
 
-  private fun shouldEachToEach(node: Node?, succ: Block?): Boolean {
+  private fun shouldEachToEach(node: Node, succ: Block?): Boolean {
     return when (succ) {
       is ConditionalBlock -> true
       is SpecialBlock -> succ.specialType == SpecialBlock.SpecialBlockType.EXIT
@@ -445,10 +446,6 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   fun phase2() {
-    println("Starting phase 2...")
-
-    constraints.start()
-
     println("Inferring constraints...")
 
     constraints.same(unknownInfo.packFraction, 0)
@@ -463,6 +460,8 @@ class Inferrer(val checker: MungoChecker) {
     for ((node, assertions) in assertionsList) {
       node.accept(visitor, assertions)
     }
+
+    constraints.start()
 
     when (val solution = constraints.end()) {
       is NoSolution -> {
