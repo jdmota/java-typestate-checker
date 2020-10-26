@@ -28,19 +28,53 @@ fun reduce(result: NodeAssertions, fn: (tail: SymbolicAssertion, heads: Set<Symb
 // TODO if the fraction is zero, the type should be Unknown instead
 // TODO handle primitives, since they can be copied many times
 
+fun fractionsAccumulation(setup: ConstraintsSetup, thisRef: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
+  val others = post.skeleton.getPossibleEq(thisRef)
+  // Example:
+  // x y z
+  // f1 + f2 + f3 = f4 + f5 + f6
+  // (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
+  val thisRefExpr = setup.refToExpr(thisRef)
+  val addition = setup.ctx.mkAdd(
+    *others.map { otherRef ->
+      val otherRefExpr = setup.refToExpr(otherRef)
+      val sub = setup.mkSub(
+        setup.min(pres.map { it[otherRef].packFraction }),
+        setup.fractionToExpr(post[otherRef].packFraction)
+      )
+      setup.mkITE(
+        setup.mkEquals(post, thisRefExpr, otherRefExpr),
+        sub,
+        setup.ctx.mkReal(0)
+      )
+    }.toTypedArray()
+  )
+  return setup.ctx.mkEq(addition, setup.ctx.mkReal(0))
+}
+
 fun handleImplies(tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, setup: ConstraintsSetup): Collection<BoolExpr> {
   val exprs = mutableListOf<BoolExpr>()
 
   tail.forEach { ref, info ->
     exprs.add(setup.ctx.mkEq(
       setup.fractionToExpr(info.fraction),
-      setup.min(heads.map { it.getAccess(ref) })
+      setup.min(heads.map { it[ref].fraction })
     ))
 
     // TODO what about the transferring of the type?
-    exprs.add(setup.fractionsAccumulation(ref, heads, tail))
+    // TODO what about fraction accumulation of fractions? not just packedFractions? Because of fields!
+    exprs.add(fractionsAccumulation(setup, ref, heads, tail))
 
-    handleTypeImplication(exprs, heads, ref, info.type, setup)
+    // Subtyping constraints are more difficult for Z3 to solve
+    // If this assertion is only implied by another one,
+    // just add a constraint where the two types are the same
+    if (heads.size == 1) {
+      exprs.addAll(SymTypeEqSymType(heads.first()[ref].type, info.type).toZ3(setup))
+    } else {
+      for (head in heads) {
+        exprs.addAll(SymTypeImpliesSymType(head[ref].type, info.type).toZ3(setup))
+      }
+    }
   }
 
   // TODO equalities only hold if enough permission!
@@ -304,19 +338,6 @@ fun handleCall(
   }
 
   return exprs
-}
-
-fun handleTypeImplication(exprs: MutableList<BoolExpr>, pres: Set<SymbolicAssertion>, ref: Reference, type: SymbolicType, setup: ConstraintsSetup) {
-  // Subtyping constraints are more difficult for Z3 to solve
-  // If this assertion is only implied by another one,
-  // just add a constraint where the two types are the same
-  if (pres.size == 1) {
-    exprs.addAll(SymTypeEqSymType(pres.first().getType(ref), type).toZ3(setup))
-  } else {
-    for (pre in pres) {
-      exprs.addAll(SymTypeImpliesSymType(pre.getType(ref), type).toZ3(setup))
-    }
-  }
 }
 
 private class ImpliedAssertion(val tail: SymbolicAssertion) : Constraint() {

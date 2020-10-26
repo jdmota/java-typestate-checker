@@ -99,7 +99,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
   fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
   fun mkSubtype(a: SymbolicType, b: SymbolicType) = mkSubtype(typeToExpr(a), typeToExpr(b))
 
-  private fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr): BoolExpr =
+  fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr): BoolExpr =
     if (a === b) {
       setup.True
     } else {
@@ -213,30 +213,6 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     return refToExpr.computeIfAbsent(ref) {
       ctx.mkConst("ref${refUuid++}", setup.Location)
     }
-  }
-
-  fun fractionsAccumulation(thisRef: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
-    val others = post.skeleton.getPossibleEq(thisRef)
-    // Example:
-    // x y z
-    // f1 + f2 + f3 = f4 + f5 + f6
-    // (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
-    val thisRefExpr = refToExpr(thisRef)
-    val addition = ctx.mkAdd(
-      *others.map { ref ->
-        val otherRef = refToExpr(ref)
-        val sub = ctx.mkSub(
-          min(pres.map { it.getAccessDotZero(ref) }),
-          fractionToExpr(post.getAccessDotZero(ref))
-        )
-        mkITE(
-          mkEquals(post, thisRefExpr, otherRef),
-          sub,
-          ctx.mkReal(0)
-        )
-      }.toTypedArray()
-    )
-    return ctx.mkEq(addition, ctx.mkReal(0))
   }
 
   private lateinit var solver: Solver

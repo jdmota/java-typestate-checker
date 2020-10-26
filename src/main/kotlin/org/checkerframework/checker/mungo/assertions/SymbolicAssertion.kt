@@ -203,12 +203,6 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     }
   }
 
-  fun getAccess(ref: Reference) = get(ref).fraction
-
-  fun getAccessDotZero(ref: Reference) = get(ref).packFraction
-
-  fun getType(ref: Reference) = get(ref).type
-
   fun forEach(fn: (Reference, SymbolicInfo) -> Unit) {
     for ((ref, info) in roots) {
       fn(ref, info)
