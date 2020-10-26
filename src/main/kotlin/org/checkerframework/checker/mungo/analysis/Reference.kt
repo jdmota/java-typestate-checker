@@ -99,6 +99,7 @@ fun getReference(tree: Tree): Reference? {
 sealed class Reference(val type: TypeMirror) {
   abstract fun isThisField(): Boolean
   abstract fun replace(x: Reference, by: Reference): Reference
+  abstract fun hasPrefix(prefix: Reference): Boolean
 }
 
 fun createFieldAccess(tree: VariableTree, classTree: ClassTree): FieldAccess {
@@ -159,6 +160,13 @@ class FieldAccess(val receiver: Reference, type: TypeMirror, val field: Variable
     }
     return FieldAccess(newReceiver, type, field)
   }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    if (this == prefix) {
+      return true
+    }
+    return receiver.hasPrefix(prefix)
+  }
 }
 
 class ThisReference(type: TypeMirror) : Reference(type) {
@@ -183,6 +191,10 @@ class ThisReference(type: TypeMirror) : Reference(type) {
       return by
     }
     return this
+  }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    return this == prefix
   }
 }
 
@@ -211,6 +223,10 @@ class ClassName(type: TypeMirror) : Reference(type) {
       return by
     }
     return this
+  }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    return this == prefix
   }
 }
 
@@ -249,6 +265,10 @@ class LocalVariable(type: TypeMirror, val element: VarSymbol) : Reference(type) 
       return by
     }
     return this
+  }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    return this == prefix
   }
 }
 
@@ -290,6 +310,10 @@ class ParameterVariable(type: TypeMirror, val element: VarSymbol) : Reference(ty
     }
     return this
   }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    return this == prefix
+  }
 }
 
 class ReturnSpecialVar(type: TypeMirror) : Reference(type) {
@@ -314,6 +338,10 @@ class ReturnSpecialVar(type: TypeMirror) : Reference(type) {
       return by
     }
     return this
+  }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    return this == prefix
   }
 }
 
@@ -343,6 +371,10 @@ class OldSpecialVar(val reference: Reference, val pos: Int) : Reference(referenc
     }
     return this
   }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    return this == prefix
+  }
 }
 
 class NodeRef(val node: Node) : Reference(node.type) {
@@ -368,6 +400,10 @@ class NodeRef(val node: Node) : Reference(node.type) {
     }
     return this
   }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    return this == prefix
+  }
 }
 
 class UnknownRef(type: TypeMirror) : Reference(type) {
@@ -392,5 +428,9 @@ class UnknownRef(type: TypeMirror) : Reference(type) {
       return by
     }
     return this
+  }
+
+  override fun hasPrefix(prefix: Reference): Boolean {
+    return this == prefix
   }
 }

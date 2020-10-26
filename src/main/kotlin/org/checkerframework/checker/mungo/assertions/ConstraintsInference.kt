@@ -8,7 +8,6 @@ import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
-import javax.lang.model.type.TypeKind
 
 class ConstraintsInference(private val inferrer: Inferrer, private val constraints: Constraints) : AbstractNodeVisitor<Void?, NodeAssertions>() {
 
@@ -73,14 +72,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       constraints.noSideEffects(result)
     }
 
-    fun onlySideEffect(result: NodeAssertions, except: Set<Reference>) {
-      // TODO expand "except" set with the fields
-      constraints.onlyEffects(result, except)
-    }
-
-    fun newValue(node: Node, assertions: NodeAssertions, type: MungoType) {
-      // TODO full permission to fields...
-
+    fun newLiteralValue(node: Node, assertions: NodeAssertions, type: MungoType) {
       val thenInfo = getInfo(node, assertions.postThen)
       val elseInfo = getInfo(node, assertions.postElse)
 
@@ -120,11 +112,20 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         }
         is ThisReference -> {
           constraints.one(info.fraction)
-          constraints.subtype(MungoObjectType.SINGLETON, info.type)
+          constraints.same(info.type, MungoObjectType.SINGLETON)
+          // TODO only require 1 of packFraction if the method performs a state change
+          // or mutates fields or is constructor
+          constraints.other { setup ->
+            setup.ctx.mkEq(
+              setup.fractionToExpr(info.packFraction),
+              setup.ctx.mkReal(1)
+            )
+          }
         }
         is FieldAccess -> {
-        }
-        is ClassName -> {
+          if (inferrer.isConstructor(ast) && ref.isThisField()) {
+            constraints.one(info.fraction)
+          }
         }
         is ReturnSpecialVar -> {
           ensures.newVar(info)
@@ -133,7 +134,9 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
           ensures.newVar(info)
         }
         is NodeRef -> {
-
+          constraints.one(info.fraction)
+        }
+        is ClassName -> {
         }
         is UnknownRef -> {
         }
@@ -217,7 +220,11 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   private fun isObjectConstructor(method: ExecutableElement): Boolean {
-    if (method.kind == ElementKind.CONSTRUCTOR && method.simpleName.toString() == "<init>") {
+    if (
+      method.kind == ElementKind.CONSTRUCTOR &&
+      method.simpleName.toString() == "<init>" &&
+      method.enclosingElement.toString() == "java.lang.Object"
+    ) {
       // java.lang.Object constructor is side effect free
       return true
     }
@@ -249,17 +256,13 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
     // assert(parameters.size == argExprs.size)
 
-    ensures.onlySideEffect(result, arguments.toSet().plus(getRef(call)))
-
     // TODO handle methods for which we do not have the code...
     val pre = inferrer.getMethodPre(method) ?: return
     val (postThen, postElse) = inferrer.getMethodPost(method) ?: return
 
-    // TODO require some packFraction!!!
-
     // Arguments
-    var itParams = parameters.iterator()
-    var itArgs = arguments.iterator()
+    val itParams = parameters.iterator()
+    val itArgs = arguments.iterator()
     while (itParams.hasNext()) {
       val param = itParams.next()
       val expr = itArgs.next()
@@ -269,51 +272,39 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
     }
 
+    var overrideType: MungoType? = null
+
     if (isConstructor) {
-      // Constructor return value
-      val newType = MungoTypecheck.objectCreation(inferrer.utils, call.type)
-      ensures.newValue(call, result, newType)
+      val objType = method.enclosingElement.asType()
+      overrideType = MungoTypecheck.objectCreation(inferrer.utils, objType)
     } else {
       // Required and ensured states
       if (receiver != null) {
         require.read(receiver, result)
 
         val graph = inferrer.utils.classUtils.visitClassTypeMirror(receiver.type)
-        if (graph == null) {
-          // TODO same type
-        } else {
+        if (graph != null) {
           val states = MungoTypecheck.available(inferrer.utils, graph, method)
           val union = MungoUnionType.create(states)
-          val destination = MungoTypecheck.refine(inferrer.utils, union, method) { _ -> true }
-          // TODO improve computing of destination (e.g. create a Z3 function that takes a type, etc...)
+
           require.type(receiver, result, union)
-          ensures.type(receiver, result, destination)
+
+          overrideType = MungoTypecheck.refine(inferrer.utils, union, method) { _ -> true }
+          // TODO improve computing of destination (e.g. create a Z3 function that takes a type, etc...)
         }
       }
-
-      // Transfer return value
-      if (method.returnType.kind != TypeKind.VOID) {
-        constraints.transfer(
-          false,
-          NodeAssertions(postThen, postElse, result.postThen, result.postElse),
-          getRef(call),
-          ReturnSpecialVar(call.type)
-        )
-      }
     }
 
-    // Other effects
-    itParams = parameters.iterator()
-    itArgs = arguments.iterator()
-    while (itParams.hasNext()) {
-      val param = itParams.next()
-      val expr = itArgs.next()
-      // TODO add the fractions that were left in the current context
-      constraints.restoringParameter(postThen[param], result.postThen[expr])
-      constraints.restoringParameter(postElse[param], result.postElse[expr])
-    }
-
-    // TODO equalities from inside the method that can be tracked outside!
+    constraints.call(
+      result,
+      getRef(call),
+      receiver?.let { getRef(it) },
+      overrideType,
+      arguments,
+      parameters,
+      methodPre = pre,
+      methodPost = setOf(postThen, postElse)
+    )
   }
 
   override fun visitTypeCast(n: TypeCastNode, result: NodeAssertions): Void? {
@@ -331,9 +322,9 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   override fun visitValueLiteral(n: ValueLiteralNode, result: NodeAssertions): Void? {
     ensures.noSideEffects(result)
     when (n) {
-      is NullLiteralNode -> ensures.newValue(n, result, MungoNullType.SINGLETON)
-      is StringLiteralNode -> ensures.newValue(n, result, MungoNoProtocolType.SINGLETON)
-      else -> ensures.newValue(n, result, MungoPrimitiveType.SINGLETON)
+      is NullLiteralNode -> ensures.newLiteralValue(n, result, MungoNullType.SINGLETON)
+      is StringLiteralNode -> ensures.newLiteralValue(n, result, MungoNoProtocolType.SINGLETON)
+      else -> ensures.newLiteralValue(n, result, MungoPrimitiveType.SINGLETON)
     }
     return null
   }

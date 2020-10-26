@@ -16,6 +16,7 @@ import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
+import javax.lang.model.element.ElementKind
 import javax.lang.model.type.TypeKind
 import org.checkerframework.checker.mungo.analysis.getReference as getBasicReference
 
@@ -211,6 +212,16 @@ class Inferrer(val checker: MungoChecker) {
     return OldSpecialVar(getBasicReference(node.target)!!, (node.tree as JCTree).pos)
   }
 
+  fun isConstructor(ast: UnderlyingAST): Boolean {
+    return ast is UnderlyingAST.CFGMethod && isConstructor(ast.method)
+  }
+
+  fun isConstructor(m: MethodTree): Boolean {
+    val method = m as JCTree.JCMethodDecl
+    val methodSym = method.sym
+    return methodSym.getKind() == ElementKind.CONSTRUCTOR
+  }
+
   private fun gatherLocations(cfg: ControlFlowGraph): Set<Reference> {
     val ast = cfg.underlyingAST
     val locations = locationsGatherer.getParameterLocations(ast).toMutableSet()
@@ -220,12 +231,25 @@ class Inferrer(val checker: MungoChecker) {
         getOldReference(node)?.let { locations.addAll(locationsGatherer.getLocations(it)) }
       }
     }
-    // Lambdas with only one expression, do not have explicit return nodes
-    // So add a location representing the return value
     if (ast is UnderlyingAST.CFGLambda) {
+      // Lambdas with only one expression, do not have explicit return nodes
+      // So add a location representing the return value
       val lambda = ast.lambdaTree
       if (lambda.bodyKind == LambdaExpressionTree.BodyKind.EXPRESSION) {
         locations.add(ReturnSpecialVar(treeToType(lambda.body)))
+      }
+    } else if (ast is UnderlyingAST.CFGMethod) {
+      // Ensure all methods have a #ret reference,
+      // Even constructors and methods that "return" void
+      val method = ast.method as JCTree.JCMethodDecl
+      val methodSym = method.sym
+      val returnType = methodSym.returnType
+      val objType = methodSym.enclosingElement.asType()
+      val isConstructor = methodSym.getKind() == ElementKind.CONSTRUCTOR
+      if (isConstructor) {
+        locations.add(ReturnSpecialVar(objType))
+      } else {
+        locations.add(ReturnSpecialVar(returnType))
       }
     }
     return locations
@@ -406,7 +430,7 @@ class Inferrer(val checker: MungoChecker) {
     return getMethodPre(tree)
   }
 
-  fun getMethodPre(tree: MethodTree): SymbolicAssertion {
+  private fun getMethodPre(tree: MethodTree): SymbolicAssertion {
     val cfg = getCFG(tree)
     val assertions = preAssertions[cfg.underlyingAST] ?: error("No assertion for method ${tree.name}")
     return assertions.preThen
@@ -417,7 +441,7 @@ class Inferrer(val checker: MungoChecker) {
     return getMethodPost(tree)
   }
 
-  fun getMethodPost(tree: MethodTree): Pair<SymbolicAssertion, SymbolicAssertion> {
+  private fun getMethodPost(tree: MethodTree): Pair<SymbolicAssertion, SymbolicAssertion> {
     val cfg = getCFG(tree)
     val assertions = postAssertions[cfg.underlyingAST] ?: error("No assertion for method ${tree.name}")
     return Pair(assertions.postThen, assertions.postElse)
