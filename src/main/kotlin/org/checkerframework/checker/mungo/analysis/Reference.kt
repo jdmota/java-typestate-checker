@@ -395,7 +395,7 @@ class NodeRef(val node: Node) : Reference(node.type) {
   }
 
   override fun toString(): String {
-    return "node($node)"
+    return "node($node)[${(node.tree as? JCTree)?.pos}]"
   }
 
   override fun replace(x: Reference, by: Reference): Reference {

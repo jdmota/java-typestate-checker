@@ -82,7 +82,7 @@ class SymbolicInfo(val ref: Reference) {
     }
   }
 
-  fun toString(str: StringBuilder, ref: Reference, solution: Solution) {
+  fun toString(str: StringBuilder, ref: Reference, solution: SomeSolution) {
     val access = solution.get(fraction)
     val accessDotZero = solution.get(packFraction)
     val type = solution.get(type)
@@ -96,7 +96,7 @@ class SymbolicInfo(val ref: Reference) {
       str.append("acc($ref.0,$accessDotZero) && ")
       newLine = true
     }
-    if (type != "MungoUnknownType") {
+    if (type != "Unknown") {
       str.append("typeof($ref,$type)")
       newLine = true
     }
@@ -210,7 +210,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     }
   }
 
-  fun toString(solution: Solution): String {
+  fun toString(solution: SomeSolution): String {
     val str = StringBuilder()
     for ((ref, info) in roots) {
       if (solution.skipRef(ref)) continue
@@ -273,7 +273,7 @@ class NodeAssertions(
     println("----")
   }
 
-  fun debug(solution: Solution, middle: String) {
+  fun debug(solution: SomeSolution, middle: String) {
     println("----")
     val preThenStr = preThen.toString(solution)
     val preElseStr = preElse.toString(solution)

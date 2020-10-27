@@ -114,6 +114,7 @@ fun packFractionsAccumulation(setup: ConstraintsSetup, ref: Reference, pres: Col
   return setup.ctx.mkEq(addition, setup.ctx.mkReal(0))
 }
 
+// TODO remember that packFraction > 0 only holds if fraction > 0 also holds!
 fun typesAccumulation(setup: ConstraintsSetup, ref: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): Expr {
   // "others" includes "ref"
   val others = post.skeleton.getPossibleEq(ref)
@@ -777,6 +778,10 @@ class Constraints {
     println("Solving (phase 2)...")
     val result2 = setup.solve()
     println("Phase 2 done")
+
+    if (result2 !is Solution) {
+      return IncompleteSolution(setup, result1.model, if (result2 is NoSolution) result2.unsatCore else null)
+    }
     return result2
   }
 

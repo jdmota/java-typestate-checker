@@ -293,7 +293,8 @@ class Inferrer(val checker: MungoChecker) {
           // println("EQUALITY $a $b")
           if (
             str == "node(cell.getItem()) cell.item" ||
-            str == "item item2"
+            str == "item item2" ||
+            (a is NodeRef && a.node.toString() == "cell.getItem()" && b.toString() == "cell.item")
           ) {
             equalities.add(Pair(a, b))
           }
@@ -514,6 +515,29 @@ class Inferrer(val checker: MungoChecker) {
             assertions.postThen,
             assertions.postElse
           ).debug(solution, "--> method: ${if (ast is UnderlyingAST.CFGMethod) ast.method.name.toString() else "something"}")
+        }
+      }
+      is IncompleteSolution -> {
+        println("Found SAT access permission but no types match\n")
+
+        for ((node, assertions) in assertionsList) {
+          assertions.debug(solution, "--> $node")
+        }
+
+        for ((ast, assertions) in postAssertions) {
+          val a = preAssertions[ast]!!
+          NodeAssertions(
+            a.preThen,
+            a.preElse,
+            assertions.postThen,
+            assertions.postElse
+          ).debug(solution, "--> method: ${if (ast is UnderlyingAST.CFGMethod) ast.method.name.toString() else "something"}")
+        }
+
+        solution.unsatCore?.forEach { expr ->
+          val (constraint, z3expr) = constraints.getConstraintByLabel(expr.toString())
+          println(constraint)
+          println(z3expr)
         }
       }
     }
