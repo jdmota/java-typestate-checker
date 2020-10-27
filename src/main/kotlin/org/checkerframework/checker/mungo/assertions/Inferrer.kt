@@ -518,7 +518,7 @@ class Inferrer(val checker: MungoChecker) {
         }
       }
       is IncompleteSolution -> {
-        println("Found SAT access permission but no types match\n")
+        println("Found SAT access permissions but no types match\n")
 
         for ((node, assertions) in assertionsList) {
           assertions.debug(solution, "--> $node")

@@ -70,6 +70,12 @@ fun reduce(
 
 // TODO handle primitives, since they can be copied many times
 
+// TODO is it possible that Z3 assigns an equality to true, even without support?
+// eq(a,b) && eq(b,c) ==> eq(a,c)
+// but even though eq(a,b) && eq(b,c) is false, Z3 makes eq(a,c) true, allowing undesirable transferring of permissions?
+// Answer: no, since mkEquals() will default to False if we talk about an equality that is not in the assertion skeleton
+// TODO but this means that the transitivity is not useful...
+
 fun fractionsAccumulation(setup: ConstraintsSetup, ref: FieldAccess, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): BoolExpr {
   val parent = ref.receiver
   // "otherParents" includes "parent"
@@ -291,6 +297,8 @@ fun handleCall(
   val thisRef = ThisReference(callRef.type)
   val changedRefs = arguments.toSet().plus(callRef)
 
+  // TODO what if use(cell, cell.item) ??
+
   fun replace(p: Reference): Reference {
     return if (p.hasPrefix(callRef)) {
       when {
@@ -383,7 +391,11 @@ fun handleCall(
   }
 
   // TODO am I able to track equalities of old values? like after this.item = newItem ??
-  // TODO equalities from inside the method that can be tracked outside!
+
+  fun isModified(ref: Reference): Boolean {
+    // TODO improve to use the fractions, to preserve more equalities
+    return arguments.any { it != ref && ref.hasPrefix(it) }
+  }
 
   for ((a, b) in tail.skeleton.equalities) {
     val c = replace(a)
@@ -397,7 +409,6 @@ fun handleCall(
             setup.mkEquals(it, a, b)
           })
         )
-        // TODO could be true via transitivity?
       }
       a !== c && b !== d -> {
         setup.ctx.mkEq(
@@ -407,7 +418,17 @@ fun handleCall(
           })
         )
       }
-      else -> setup.ctx.mkNot(setup.mkEquals(tail, a, b))
+      isModified(a) || isModified(b) -> {
+        setup.ctx.mkNot(setup.mkEquals(tail, a, b))
+      }
+      else -> {
+        setup.ctx.mkEq(
+          setup.mkEquals(tail, a, b),
+          setup.mkAnd(heads.map {
+            setup.mkEquals(it, a, b)
+          })
+        )
+      }
     })
   }
 }
