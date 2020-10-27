@@ -62,36 +62,15 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   private val ensures = object {
-    fun newVar(info: SymbolicInfo) {
+    fun newVar(info: SymbolicInfo, type: MungoType = MungoNullType.SINGLETON) {
       constraints.one(info.fraction)
       constraints.one(info.packFraction)
-      constraints.nullType(info.type)
+      constraints.same(info.type, type)
+      // TODO fields?
     }
 
     fun noSideEffects(result: NodeAssertions) {
       constraints.noSideEffects(result)
-    }
-
-    fun newLiteralValue(node: Node, assertions: NodeAssertions, type: MungoType) {
-      val thenInfo = getInfo(node, assertions.postThen)
-      val elseInfo = getInfo(node, assertions.postElse)
-
-      constraints.subtype(type, thenInfo.type)
-      constraints.one(thenInfo.packFraction)
-      if (thenInfo !== elseInfo) {
-        constraints.subtype(type, elseInfo.type)
-        constraints.one(elseInfo.packFraction)
-      }
-    }
-
-    fun type(node: Node, assertions: NodeAssertions, type: MungoType) {
-      val thenInfo = getInfo(node, assertions.postThen)
-      val elseInfo = getInfo(node, assertions.postElse)
-
-      constraints.subtype(type, thenInfo.type)
-      if (thenInfo !== elseInfo) {
-        constraints.subtype(type, elseInfo.type)
-      }
     }
   }
 
@@ -134,7 +113,17 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
           ensures.newVar(info)
         }
         is NodeRef -> {
-          constraints.one(info.fraction)
+          val node = ref.node
+          val type = if (node is ValueLiteralNode) {
+            when (node) {
+              is NullLiteralNode -> MungoNullType.SINGLETON
+              is StringLiteralNode -> MungoNoProtocolType.SINGLETON
+              else -> MungoPrimitiveType.SINGLETON
+            }
+          } else {
+            MungoUnknownType.SINGLETON
+          }
+          ensures.newVar(info, type)
         }
         is ClassName -> {
         }
@@ -323,11 +312,6 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
   override fun visitValueLiteral(n: ValueLiteralNode, result: NodeAssertions): Void? {
     ensures.noSideEffects(result)
-    when (n) {
-      is NullLiteralNode -> ensures.newLiteralValue(n, result, MungoNullType.SINGLETON)
-      is StringLiteralNode -> ensures.newLiteralValue(n, result, MungoNoProtocolType.SINGLETON)
-      else -> ensures.newLiteralValue(n, result, MungoPrimitiveType.SINGLETON)
-    }
     return null
   }
 

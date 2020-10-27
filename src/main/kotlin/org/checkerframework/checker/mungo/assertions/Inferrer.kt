@@ -469,6 +469,7 @@ class Inferrer(val checker: MungoChecker) {
   fun phase2() {
     println("Inferring constraints...")
 
+    constraints.same(unknownInfo.fraction, 0)
     constraints.same(unknownInfo.packFraction, 0)
     constraints.same(unknownInfo.type, MungoUnknownType.SINGLETON)
 
@@ -499,7 +500,17 @@ class Inferrer(val checker: MungoChecker) {
         println("Correct!\n")
 
         for ((node, assertions) in assertionsList) {
-          assertions.debug(solution, node.toString())
+          assertions.debug(solution, "--> $node")
+        }
+
+        for ((ast, assertions) in postAssertions) {
+          val a = preAssertions[ast]!!
+          NodeAssertions(
+            a.preThen,
+            a.preElse,
+            assertions.postThen,
+            assertions.postElse
+          ).debug(solution, "--> method: ${if (ast is UnderlyingAST.CFGMethod) ast.method.name.toString() else "something"}")
         }
       }
     }

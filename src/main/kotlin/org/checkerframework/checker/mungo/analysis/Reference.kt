@@ -137,6 +137,8 @@ class FieldAccess(val receiver: Reference, type: TypeMirror, val field: Variable
     return if (receiver is ThisReference) true else receiver.isThisField()
   }
 
+  fun getRoot(): Reference = if (receiver is FieldAccess) receiver.getRoot() else receiver
+
   override fun equals(other: Any?): Boolean {
     if (other !is FieldAccess) return false
     return other.field == field && other.receiver == receiver

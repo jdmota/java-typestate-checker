@@ -35,28 +35,45 @@ public class Main {
 
 
 
-    // access(item.0, f1) && access(cell.item.0, f2)
-    // eq_1(item, cell.item) == false
+
+
+    access(item.0, f1) && access(cell.item.0, f2)
+    eq_1(item, cell.item) == false
+
     item = cell.item;
-    // access(item.0, f3) && access(cell.item.0, f4)
-    // eq_2(item, cell.item) == true
-    // f3 = f2 && f4 = 0
 
 
-    // access(item.0, f5) && access(cell.item.0, f6)
-    // eq_3(item, cell.item) == eq_2(item, cell.item)
-    // f3 + f4 = f5 + f6
-    // (f3 - f5) + (f4 - f6) = 0
 
 
-    // item:      (if eq_3(item, item)           then (f3 - f5) else 0) + (if eq_3(item, cell.item) then (f4 - f6) else 0) = 0
-    // cell.item: (if eq_3(cell.item, cell.item) then (f4 - f6) else 0) + (if eq_3(cell.item, item) then (f3 - f5) else 0) = 0
+    access(item.0, f3) && access(cell.item.0, f4) && access(item2.0, f5)
+    eq_2(item, cell.item) && eq_2(item2, item)
+
+
+    access(item.0, f6) && access(cell.item.0, f7) && access(item2.0, f8)
+    eq_3(item, cell.item) && eq_2(item2, item)
+
+
+      f3 + f4 + f5 = f6 + f7 + f8
+      (f3 - f6) + (f4 - f7) + (f5 - f8) = 0
+
+
+    item:      (if eq_3(item, item)      then (f3 - f6) else 0) +
+               (if eq_3(item, cell.item) then (f4 - f7) else 0) +
+               (if eq_3(item, item2)     then (f5 - f8) else 0) +
+          = 0
+
+
+    cell.item: (if eq_3(cell.item, cell.item) then (f4 - f6) else 0) + (if eq_3(cell.item, item) then (f3 - f5) else 0) = 0
+
+
+    item2: (if eq_3(cell.item, cell.item) then (f4 - f6) else 0) + (if eq_3(cell.item, item) then (f3 - f5) else 0) = 0
 
 
 
   }*/
 
   public static void main1() {
+
     Cell cell = new Cell();
     cell.setItem(new Item());
 

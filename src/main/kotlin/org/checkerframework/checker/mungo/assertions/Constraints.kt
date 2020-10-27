@@ -263,16 +263,12 @@ fun handleEquality(
   for ((a, b) in equalities) {
     val c = equalsReplace(a)
     val d = equalsReplace(b)
-    result.addIn1(when {
-      c == d -> setup.mkEquals(tail, a, b)
-      equalities.contains(Pair(c, d)) -> setup.ctx.mkEq(
-        setup.mkEquals(tail, a, b),
-        setup.mkAnd(heads.map {
-          setup.mkEquals(it, c, d)
-        })
-      )
-      else -> setup.ctx.mkNot(setup.mkEquals(tail, a, b))
-    })
+    result.addIn1(setup.ctx.mkEq(
+      setup.mkEquals(tail, a, b),
+      setup.mkAnd(heads.map {
+        setup.mkEquals(it, c, d)
+      })
+    ))
   }
 }
 
@@ -313,42 +309,54 @@ fun handleCall(
   tail.forEach { ref, info ->
     val otherRef = replace(ref)
 
-    // newFraction = prevFraction - stolenFraction
-    // newFraction = prevFraction - ( fractionInPre - fractionInPost )
-
-    val stolenFraction = if (ref === otherRef || changedRefs.contains(ref)) {
-      setup.mkZero()
-    } else {
-      setup.mkSub(
-        setup.fractionToExpr(methodPre[otherRef].fraction),
+    if (ref.hasPrefix(callRef)) {
+      result.addIn1(setup.ctx.mkEq(
+        setup.fractionToExpr(info.fraction),
         setup.mkMin(methodPost.map { it[otherRef].fraction })
-      )
-    }
+      ))
 
-    result.addIn1(setup.ctx.mkEq(
-      setup.fractionToExpr(info.fraction),
-      setup.mkSub(
-        setup.mkMin(heads.map { it[ref].fraction }),
-        stolenFraction
-      )
-    ))
-
-    val stolenPackedFraction = if (ref === otherRef) {
-      setup.mkZero()
-    } else {
-      setup.mkSub(
-        setup.fractionToExpr(methodPre[otherRef].packFraction),
+      result.addIn1(setup.ctx.mkEq(
+        setup.fractionToExpr(info.packFraction),
         setup.mkMin(methodPost.map { it[otherRef].packFraction })
-      )
-    }
+      ))
+    } else {
+      // newFraction = prevFraction - stolenFraction
+      // newFraction = prevFraction - ( fractionInPre - fractionInPost )
 
-    result.addIn1(setup.ctx.mkEq(
-      setup.fractionToExpr(info.packFraction),
-      setup.mkSub(
-        setup.mkMin(heads.map { it[ref].packFraction }),
-        stolenPackedFraction
-      )
-    ))
+      val stolenFraction = if (ref === otherRef || changedRefs.contains(ref)) {
+        setup.mkZero()
+      } else {
+        setup.mkSub(
+          setup.fractionToExpr(methodPre[otherRef].fraction),
+          setup.mkMin(methodPost.map { it[otherRef].fraction })
+        )
+      }
+
+      result.addIn1(setup.ctx.mkEq(
+        setup.fractionToExpr(info.fraction),
+        setup.mkSub(
+          setup.mkMin(heads.map { it[ref].fraction }),
+          stolenFraction
+        )
+      ))
+
+      val stolenPackedFraction = if (ref === otherRef) {
+        setup.mkZero()
+      } else {
+        setup.mkSub(
+          setup.fractionToExpr(methodPre[otherRef].packFraction),
+          setup.mkMin(methodPost.map { it[otherRef].packFraction })
+        )
+      }
+
+      result.addIn1(setup.ctx.mkEq(
+        setup.fractionToExpr(info.packFraction),
+        setup.mkSub(
+          setup.mkMin(heads.map { it[ref].packFraction }),
+          stolenPackedFraction
+        )
+      ))
+    }
 
     if (overrideType != null) {
       if (
@@ -375,7 +383,6 @@ fun handleCall(
 
   // TODO am I able to track equalities of old values? like after this.item = newItem ??
   // TODO equalities from inside the method that can be tracked outside!
-  // FIXME
 
   for ((a, b) in tail.skeleton.equalities) {
     val c = replace(a)
@@ -389,7 +396,7 @@ fun handleCall(
             setup.mkEquals(it, a, b)
           })
         )
-        // FIXME could be true via transitivity?
+        // TODO could be true via transitivity?
       }
       a !== c && b !== d -> {
         setup.ctx.mkEq(
@@ -483,14 +490,12 @@ private class ParameterAndLocalVariable(
     fun helper(parameter: Reference, local: Reference) {
       val paramInfo = assertion[parameter]
       val localInfo = assertion[local]
-      result.addIn1(if (parameter === this.parameter) {
-        setup.ctx.mkTrue()
-      } else {
-        setup.ctx.mkEq(
+      if (local !== this.local) {
+        result.addIn1(setup.ctx.mkEq(
           setup.fractionToExpr(localInfo.fraction),
           setup.ctx.mkReal(0)
-        )
-      })
+        ))
+      }
       result.addIn1(setup.ctx.mkEq(
         setup.fractionToExpr(localInfo.packFraction),
         setup.ctx.mkReal(0)
@@ -763,8 +768,9 @@ class Constraints {
     for ((constraint, phase2) in phase2Iterators) {
       for ((idx, z3expr) in phase2.withIndex()) {
         val label = "${constraint.id}-$idx-2"
-        idToConstraint[label] = Pair(constraint, z3expr)
-        setup.addAssert(result1.eval(z3expr), label)
+        val simplified = result1.eval(z3expr)
+        idToConstraint[label] = Pair(constraint, simplified)
+        setup.addAssert(simplified, label)
       }
     }
 
@@ -815,11 +821,6 @@ class Constraints {
   fun same(a: SymbolicFraction, value: Int) {
     // a == value
     constraints.add(SymFractionEq(a, value))
-  }
-
-  fun nullType(t: SymbolicType) {
-    // t == Null
-    same(t, MungoNullType.SINGLETON)
   }
 
   fun same(a: SymbolicType, b: SymbolicType) {

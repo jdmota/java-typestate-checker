@@ -40,7 +40,7 @@ class Solution(private val setup: ConstraintsSetup, private val model: Model) : 
       is ParameterVariable -> false
       is ReturnSpecialVar -> false
       is OldSpecialVar -> false
-      is NodeRef -> true
+      is NodeRef -> false
       is UnknownRef -> true
     }
   }

@@ -237,6 +237,9 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     for ((ref, info) in roots) {
       if (ref is ThisReference || ref is LocalVariable) {
         str.append(info.toString())
+        for ((_, child) in info.children) {
+          str.append(child.toString())
+        }
       }
     }
     return str.toString()
