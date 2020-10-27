@@ -73,7 +73,6 @@ public class Main {
   }*/
 
   public static void main1() {
-
     Cell cell = new Cell();
     cell.setItem(new Item());
 

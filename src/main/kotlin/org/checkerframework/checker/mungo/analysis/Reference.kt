@@ -387,7 +387,7 @@ class NodeRef(val node: Node) : Reference(node.type) {
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is NodeRef && node == other.node
+    return other is NodeRef && node === other.node
   }
 
   override fun hashCode(): Int {

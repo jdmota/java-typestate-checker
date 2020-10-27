@@ -769,7 +769,7 @@ class Constraints {
       for ((idx, z3expr) in phase2.withIndex()) {
         val label = "${constraint.id}-$idx-2"
         val simplified = result1.eval(z3expr)
-        idToConstraint[label] = Pair(constraint, simplified)
+        idToConstraint[label] = Pair(constraint, z3expr)
         setup.addAssert(simplified, label)
       }
     }

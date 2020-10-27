@@ -289,9 +289,12 @@ class Inferrer(val checker: MungoChecker) {
     for (a in localsAndFields) {
       for (b in localsAndFields) {
         if (a !== b && a.type === b.type) {
-          val str = "EQUALITY $a $b"
+          val str = "$a $b"
           // println("EQUALITY $a $b")
-          if (str == "EQUALITY node(cell.getItem()) cell.item") {
+          if (
+            str == "node(cell.getItem()) cell.item" ||
+            str == "item item2"
+          ) {
             equalities.add(Pair(a, b))
           }
         }
