@@ -30,7 +30,7 @@ sealed class MungoType {
 private fun isObjectType(a: MungoType) = a is MungoStateType || a is MungoEndedType || a is MungoNoProtocolType
 private fun isNotObjectType(a: MungoType) = a is MungoNullType || a is MungoPrimitiveType || a is MungoMovedType
 
-// pre: isObjectType(a)
+// Returns true iff a <: b assuming that isObjectType(a)
 private fun isObjectSubtype(a: MungoType, b: MungoType) = when (b) {
   is MungoUnknownType -> true
   is MungoObjectType -> true
@@ -39,6 +39,7 @@ private fun isObjectSubtype(a: MungoType, b: MungoType) = when (b) {
 }
 
 // pre: isNotObjectType(a)
+// Returns true iff a <: b assuming that isNotObjectType(a)
 private fun isNotObjectSubtype(a: MungoType, b: MungoType) = when (b) {
   is MungoUnknownType -> true
   is MungoUnionType -> b.types.any { it == a }
@@ -72,6 +73,7 @@ private fun intersect(a: MungoType, b: MungoType): MungoType = when (a) {
   is MungoUnknownType -> b
   is MungoObjectType -> when (b) {
     is MungoUnknownType -> a
+    is MungoObjectType -> a
     is MungoUnionType -> MungoUnionType.create(b.types.map { intersect(a, it) })
     else -> if (isObjectType(b)) b else MungoBottomType.SINGLETON
   }

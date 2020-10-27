@@ -170,10 +170,10 @@ class Inferrer(val checker: MungoChecker) {
     val equalities = gatherEqualities(cfg, locations).plus(outerSkeleton.equalities)
 
     // Debug
-    println("---")
+    /*println("---")
     println("Locations $locations")
     println("Equalities $equalities")
-    println("---")
+    println("---")*/
 
     // Save skeleton for the creation of new assertions
     val skeleton = SymbolicAssertionSkeleton(unknownInfo, locations, equalities)
@@ -261,13 +261,13 @@ class Inferrer(val checker: MungoChecker) {
       when (node) {
         is AssignmentNode -> {
           val target = getDirectReference(node.target) ?: continue
-          val expression = getDirectReference(node.expression) ?: continue
+          val expression = getReference(node.expression)
           equalities.add(Pair(target, expression))
         }
         is ReturnNode -> {
           val result = node.result ?: continue
           val target = getDirectReference(node) ?: continue
-          val expression = getDirectReference(result) ?: continue
+          val expression = getReference(result)
           equalities.add(Pair(target, expression))
         }
         // TODO more...
