@@ -116,10 +116,10 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
           // TODO only require 1 of packFraction if the method performs a state change
           // or mutates fields or is constructor
           constraints.other { setup ->
-            setup.ctx.mkEq(
+            Z3Constraints().addIn1(setup.ctx.mkEq(
               setup.fractionToExpr(info.packFraction),
               setup.ctx.mkReal(1)
-            )
+            ))
           }
         }
         is FieldAccess -> {

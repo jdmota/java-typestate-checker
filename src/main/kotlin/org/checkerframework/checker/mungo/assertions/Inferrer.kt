@@ -482,9 +482,7 @@ class Inferrer(val checker: MungoChecker) {
       node.accept(visitor, assertions)
     }
 
-    constraints.start()
-
-    when (val solution = constraints.end()) {
+    when (val solution = constraints.solve()) {
       is NoSolution -> {
         println("No solution!\n")
 

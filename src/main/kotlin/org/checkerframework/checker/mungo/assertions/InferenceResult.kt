@@ -6,14 +6,22 @@ import com.microsoft.z3.Model
 import org.checkerframework.checker.mungo.analysis.*
 
 sealed class InferenceResult {
-
+  abstract fun isSat(): Boolean
 }
 
-class NoSolution(val unsatCore: Array<BoolExpr>) : InferenceResult()
+class NoSolution(val unsatCore: Array<BoolExpr>) : InferenceResult() {
+  override fun isSat() = false
+}
 
-class UnknownSolution(val reason: String?) : InferenceResult()
+class UnknownSolution(val reason: String?) : InferenceResult() {
+  override fun isSat() = false
+}
 
 class Solution(private val setup: ConstraintsSetup, private val model: Model) : InferenceResult() {
+
+  override fun isSat() = true
+
+  fun eval(expr: BoolExpr): BoolExpr = model.eval(expr, false).simplify() as BoolExpr
 
   fun get(x: SymbolicFraction): String = model.eval(setup.fractionToExpr(x), true).toString()
 
@@ -24,7 +32,7 @@ class Solution(private val setup: ConstraintsSetup, private val model: Model) : 
   }
 
   fun skipRef(ref: Reference): Boolean {
-    return when(ref) {
+    return when (ref) {
       is FieldAccess -> false
       is ThisReference -> false
       is ClassName -> true

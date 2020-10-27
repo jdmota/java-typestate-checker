@@ -259,7 +259,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
   private val assertionToEq = mutableMapOf<SymbolicAssertion, FuncDecl>()
 
   // Get "eq" function for a certain assertion
-  fun assertionToEq(a: SymbolicAssertion): FuncDecl {
+  private fun assertionToEq(a: SymbolicAssertion): FuncDecl {
     return assertionToEq.computeIfAbsent(a) {
       val fn = ctx.mkFuncDecl("eq${eqUuid++}", arrayOf(setup.Location, setup.Location), setup.Bool)
 
@@ -318,7 +318,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
   private val refToExpr = mutableMapOf<Reference, Expr>()
 
   // Get an Z3 expression for a location
-  fun refToExpr(ref: Reference): Expr {
+  private fun refToExpr(ref: Reference): Expr {
     return refToExpr.computeIfAbsent(ref) {
       ctx.mkConst("ref${refUuid++}", setup.Location)
     }
@@ -346,7 +346,11 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     // println(expr)
   }
 
-  fun end(): InferenceResult {
+  fun push() {
+    solver.push()
+  }
+
+  fun solve(): InferenceResult {
     val result = solver.check()
     val hasModel = result == Status.SATISFIABLE
     if (hasModel) {
