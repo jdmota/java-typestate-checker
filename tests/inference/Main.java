@@ -82,7 +82,7 @@ public class Main {
 
     Item item2 = cell.getItem();
 
-    //item2.changeState();
+    item2.changeState();
   }
 
   /*public static void main2() {

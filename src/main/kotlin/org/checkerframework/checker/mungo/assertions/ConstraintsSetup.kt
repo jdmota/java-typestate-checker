@@ -53,7 +53,6 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     val Bool = ctx.boolSort
     val True = ctx.mkTrue()
     val False = ctx.mkFalse()
-    val Zero = ctx.mkReal(0)
     val Real = ctx.realSort
     val Location = ctx.mkUninterpretedSort("Location")
 
@@ -166,138 +165,35 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     }
   }
 
-  fun <T : Expr> mkITE(condition: BoolExpr, a: T, b: T): T = when {
-    condition === setup.True -> a
-    condition === setup.False -> b
-    a === b -> a
-    else -> ctx.mkITE(condition, a, b) as T
-  }
-
   fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
-  fun mkSubtype(a: SymbolicType, b: SymbolicType) = mkSubtype(typeToExpr(a), typeToExpr(b))
 
-  private fun mkEquals(assertion: SymbolicAssertion, a: Expr, b: Expr): BoolExpr =
+  fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference): BoolExpr =
     if (a === b) {
       setup.True
     } else {
-      ctx.mkApp(assertionToEq(assertion), a, b) as BoolExpr
+      ctx.mkApp(assertionToEq(assertion), refToExpr(a), refToExpr(b)) as BoolExpr
     }
 
-  fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference): BoolExpr =
-    when {
-      a == b -> setup.True
-      assertion.skeleton.equalities.contains(Pair(a, b)) -> mkEquals(assertion, refToExpr(a), refToExpr(b))
-      assertion.skeleton.equalities.contains(Pair(b, a)) -> mkEquals(assertion, refToExpr(b), refToExpr(a))
-      else -> setup.False
-    }
-
-  // exists x :: eq(a, x) && eq(x, b)
-  fun mkEqualsTransitive(assertion: SymbolicAssertion, a: Reference, b: Reference): BoolExpr {
-    // "a" and "b" are in this set
-    val possibleEqualities = assertion.skeleton.getPossibleEq(a)
-    val others = possibleEqualities.filterNot { it == a || it == b }
-
-    return mkOr(others.map {
-      mkAnd(listOf(
-        mkEquals(assertion, a, it),
-        mkEquals(assertion, it, b)
-      ))
-    })
-    /*return ctx.mkExists(arrayOf(setup.Location)) { args ->
-      val x = args[0]
-      ctx.mkAnd(
-        mkEquals(assertion, refToExpr(a), x),
-        mkEquals(assertion, x, refToExpr(b))
-      )
-    }*/
-  }
-
-  fun mkAnd(b: Collection<BoolExpr>): BoolExpr {
-    if (b.contains(setup.False))
-      return setup.False
-
-    val bools = b.filterNot { it === setup.True }
-
-    return when {
-      bools.isEmpty() -> setup.True
-      bools.size == 1 -> bools.first()
-      else -> ctx.mkAnd(*bools.toTypedArray())
-    }
-  }
-
-  fun mkOr(b: Collection<BoolExpr>): BoolExpr {
-    if (b.contains(setup.True))
-      return setup.True
-
-    val bools = b.filterNot { it === setup.False }
-
-    return when {
-      bools.isEmpty() -> setup.False
-      bools.size == 1 -> bools.first()
-      else -> ctx.mkOr(*bools.toTypedArray())
-    }
-  }
-
-  fun mkBool(b: Boolean): BoolExpr = if (b) setup.True else setup.False
-
-  fun mkZero(): RatNum = setup.Zero
-
-  fun mkLt(f: SymbolicFraction, num: Int): BoolExpr = ctx.mkLt(fractionToExpr(f), ctx.mkReal(num))
-
-  fun mkSub(a: ArithExpr, b: ArithExpr): ArithExpr {
-    return if (b === setup.Zero) {
-      a
-    } else {
-      ctx.mkSub(a, b)
-    }
-  }
-
-  private fun mkMin(a: ArithExpr, b: ArithExpr) =
+  fun mkMin(a: ArithExpr, b: ArithExpr) =
     if (a === b) {
       a
     } else {
       ctx.mkApp(setup.min, a, b) as ArithExpr
     }
 
-  fun mkMin(fractions: Collection<SymbolicFraction>): ArithExpr {
-    val iterator = fractions.iterator()
-    var expr = fractionToExpr(iterator.next())
-    while (iterator.hasNext()) {
-      expr = mkMin(expr, fractionToExpr(iterator.next()))
-    }
-    return expr
-  }
-
-  private fun mkUnion(a: Expr, b: Expr) =
+  fun mkUnion(a: Expr, b: Expr): Expr =
     if (a === b) {
       a
     } else {
       ctx.mkApp(setup.union, a, b)
     }
 
-  fun mkUnion(types: Collection<SymbolicType>): Expr {
-    val iterator = types.iterator()
-    var expr = typeToExpr(iterator.next())
-    while (iterator.hasNext()) {
-      expr = mkUnion(expr, typeToExpr(iterator.next()))
-    }
-    return expr
-  }
-
-  private fun mkIntersection(a: Expr, b: Expr) =
+  fun mkIntersection(a: Expr, b: Expr): Expr =
     if (a === b) {
       a
     } else {
       ctx.mkApp(setup.intersection, a, b)
     }
-
-  fun mkIntersectionWithExprs(types: Collection<Expr>): Expr {
-    var expr: Expr? = null
-    for (t in types.filterNot { it === setup.UnknownExpr }) {
-      expr = if (expr == null) t else mkIntersection(expr, t)
-    }
-    return expr ?: setup.UnknownExpr
-  }
 
   val keyToSomething = mutableMapOf<String, Any>()
 
@@ -343,35 +239,30 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     }
   }
 
-  val allSymbolicFractions = GenericEqualityTracker<SymbolicFraction>()
-  val allSymbolicTypes = GenericEqualityTracker<SymbolicType>()
-
-  private val symbolicFractionToExpr = mutableMapOf<SymbolicFraction, ArithExpr>()
-
-  // Get an Z3 expression for a symbolic fraction
-  fun fractionToExpr(f: SymbolicFraction) = symbolicFractionToExpr.computeIfAbsent(f) {
-    keyToSomething[f.z3Symbol()] = f
-    val c = ctx.mkConst(f.z3Symbol(), setup.Real) as ArithExpr
-    // 0 <= c <= 1
-    addAssert(ctx.mkAnd(ctx.mkGe(c, ctx.mkReal(0)), ctx.mkLe(c, ctx.mkReal(1))))
-    c
+  private val fractionKeyToExpr = mutableMapOf<String, ArithExpr>()
+  fun mkFraction(key: String): ArithExpr {
+    return fractionKeyToExpr.computeIfAbsent(key) {
+      val c = ctx.mkConst(it, setup.Real) as ArithExpr
+      keyToSomething[key] = c
+      // 0 <= c <= 1
+      addAssert(ctx.mkAnd(ctx.mkGe(c, ctx.mkReal(0)), ctx.mkLe(c, ctx.mkReal(1))))
+      c
+    }
   }
 
-  private val symbolicTypeToExpr = mutableMapOf<SymbolicType, Expr>()
-
-  // Get an Z3 expression for a symbolic type
-  fun typeToExpr(t: SymbolicType) = symbolicTypeToExpr.computeIfAbsent(t) {
-    keyToSomething[t.z3Symbol()] = t
-    ctx.mkConst(t.z3Symbol(), setup.Type)
+  private val typeKeyToExpr = mutableMapOf<String, Expr>()
+  fun mkType(key: String): Expr {
+    return typeKeyToExpr.computeIfAbsent(key) {
+      val t = ctx.mkConst(it, setup.Type)
+      keyToSomething[key] = t
+      t
+    }
   }
 
-  // Get an Z3 expression for a type
-  fun typeToExpr(t: MungoType): Expr = setup.TypeExprs[t] ?: error("No expression for $t")
+  fun mkType(t: MungoType): Expr = setup.TypeExprs[t] ?: error("No expression for $t")
 
   private var refUuid = 1L
   private val refToExpr = mutableMapOf<Reference, Expr>()
-
-  // Get an Z3 expression for a location
   private fun refToExpr(ref: Reference): Expr {
     return refToExpr.computeIfAbsent(ref) {
       val key = "ref${refUuid++}"
@@ -459,14 +350,14 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       // All subtypes of Unknown
       // (assert (forall ((t Type)) (subtype t Unknown)))
       addAssert(ctx.mkForall(arrayOf(setup.Type)) { args ->
-        mkSubtype(args[0], typeToExpr(MungoUnknownType.SINGLETON))
+        mkSubtype(args[0], mkType(MungoUnknownType.SINGLETON))
       })
 
       // Single top
       // (assert (exists ((t Type)) (and (= t Unknown) (forall ((x Type)) (subtype x t)))))
       addAssert(ctx.mkExists(arrayOf(setup.Type)) { args ->
         ctx.mkAnd(
-          ctx.mkEq(args[0], typeToExpr(MungoUnknownType.SINGLETON)),
+          ctx.mkEq(args[0], mkType(MungoUnknownType.SINGLETON)),
           ctx.mkForall(arrayOf(setup.Type)) { innerArgs ->
             mkSubtype(innerArgs[0], args[0])
           }
@@ -476,14 +367,14 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       // Bottom subtype of all
       // (assert (forall ((t Type)) (subtype Bottom t)))
       addAssert(ctx.mkForall(arrayOf(setup.Type)) { args ->
-        mkSubtype(typeToExpr(MungoBottomType.SINGLETON), args[0])
+        mkSubtype(mkType(MungoBottomType.SINGLETON), args[0])
       })
 
       // Single bottom
       // (assert (exists ((t Type)) (and (= t Bottom) (forall ((x Type)) (subtype t x)))))
       addAssert(ctx.mkExists(arrayOf(setup.Type)) { args ->
         ctx.mkAnd(
-          ctx.mkEq(args[0], typeToExpr(MungoBottomType.SINGLETON)),
+          ctx.mkEq(args[0], mkType(MungoBottomType.SINGLETON)),
           ctx.mkForall(arrayOf(setup.Type)) { innerArgs ->
             mkSubtype(args[0], innerArgs[0])
           }

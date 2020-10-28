@@ -6,6 +6,7 @@ import java.lang.StringBuilder
 class SymbolicFraction {
 
   val id = uuid++
+  val expr = Make.S.fraction(z3Symbol())
 
   companion object {
     private var uuid = 1L
@@ -27,33 +28,13 @@ class SymbolicFraction {
 class SymbolicType {
 
   val id = uuid++
+  val expr = Make.S.type(z3Symbol())
 
   companion object {
     private var uuid = 1L
   }
 
   fun z3Symbol() = "t$id"
-
-  override fun equals(other: Any?): Boolean {
-    return this === other
-  }
-
-  override fun hashCode(): Int {
-    return id.hashCode()
-  }
-
-  override fun toString() = z3Symbol()
-}
-
-class SymbolicEquality {
-
-  val id = uuid++
-
-  companion object {
-    private var uuid = 1L
-  }
-
-  fun z3Symbol() = "eq$id"
 
   override fun equals(other: Any?): Boolean {
     return this === other

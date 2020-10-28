@@ -96,11 +96,13 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
           constraints.same(info.type, MungoObjectType.SINGLETON)
           // TODO only require 1 of packFraction if the method performs a state change
           // or mutates fields or is constructor
-          constraints.other { setup ->
-            Z3Constraints().addIn1(setup.ctx.mkEq(
-              setup.fractionToExpr(info.packFraction),
-              setup.ctx.mkReal(1)
-            ))
+          constraints.other {
+            ConstraintsSet().addIn1(
+              Make.S.eq(
+                info.packFraction.expr,
+                Make.ONE
+              )
+            )
           }
         }
         is FieldAccess -> {
