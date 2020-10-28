@@ -193,28 +193,21 @@ fun handleEquality(
 ) {
   val unknown = UnknownRef(expr.type)
 
-  val assignments1 = if (old == null) {
-    listOf(
-      Pair(target, expr),
-      Pair(expr, unknown)
-    )
-  } else {
-    listOf(
-      Pair(old, target),
-      Pair(target, expr),
-      Pair(expr, unknown)
-    )
-  }
+  val accessReplacements = mutableListOf<Pair<Reference, Reference>>()
+  val equalsReplacements = mutableListOf<Pair<Reference, Reference>>()
 
-  val assignments2 = if (old == null) {
-    listOf(
-      Pair(target, expr)
-    )
-  } else {
-    listOf(
-      Pair(old, target),
-      Pair(target, expr)
-    )
+  if (old != null) {
+    accessReplacements.add(Pair(old, target))
+  }
+  accessReplacements.add(Pair(target, expr))
+  accessReplacements.add(Pair(expr, unknown)) // Force permission to go to the target
+
+  if (old != null) {
+    equalsReplacements.add(Pair(old, target))
+  }
+  equalsReplacements.add(Pair(target, expr))
+  if (expr is NodeRef) {
+    equalsReplacements.add(Pair(expr, unknown)) // Invalidate equalities with nodes
   }
 
   val changedRefs = setOf(old, target, expr)
@@ -234,8 +227,8 @@ fun handleEquality(
   // expr := unknown;
   // {P}
 
-  fun accessReplace(p: Reference) = assignments1.foldRight(p) { (a, b), p -> p.replace(a, b) }
-  fun equalsReplace(p: Reference) = assignments2.foldRight(p) { (a, b), p -> p.replace(a, b) }
+  fun accessReplace(p: Reference) = accessReplacements.foldRight(p) { (a, b), p -> p.replace(a, b) }
+  fun equalsReplace(p: Reference) = equalsReplacements.foldRight(p) { (a, b), p -> p.replace(a, b) }
 
   tail.forEach { ref, info ->
     val otherRef = accessReplace(ref)
@@ -778,19 +771,21 @@ class Constraints {
     types.add(type)
   }
 
-  private val idToConstraint = mutableMapOf<String, Pair<Constraint, Expr>>()
+  private val idToConstraint = mutableMapOf<String, Pair<Constraint, BoolExpr>>()
 
-  fun getConstraintByLabel(label: String): Pair<Constraint, Expr> {
+  fun getConstraintByLabel(label: String): Pair<Constraint, BoolExpr> {
     return idToConstraint[label.subSequence(1, label.lastIndex)]!!
   }
 
-  fun formatExpr(expr: Expr): String {
+  fun formatExpr(expr: Expr, solution: IncompleteSolution? = null): String {
     val initial = expr.toString().replace("(", "( ").replace(")", " )")
     return initial.split(' ').joinToString(" ") {
-      val something = setup.keyToSomething[it]
-      if (something is Reference) {
-        something.toString()
-      } else it
+      when (val something = setup.keyToSomething[it]) {
+        is Reference -> something.toString()
+        is SymbolicFraction -> solution?.get(something) ?: it
+        is SymbolicType -> it
+        else -> it
+      }
     }
   }
 

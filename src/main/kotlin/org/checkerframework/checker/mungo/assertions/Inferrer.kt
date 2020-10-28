@@ -556,7 +556,7 @@ class Inferrer(val checker: MungoChecker) {
         solution.unsatCore?.forEach { expr ->
           val (constraint, z3expr) = constraints.getConstraintByLabel(expr.toString())
           println(constraint)
-          println(constraints.formatExpr(z3expr))
+          println(constraints.formatExpr(solution.eval(z3expr), solution))
         }
       }
     }

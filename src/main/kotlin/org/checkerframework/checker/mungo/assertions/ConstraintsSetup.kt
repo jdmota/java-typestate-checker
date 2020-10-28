@@ -343,10 +343,14 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     }
   }
 
+  val allSymbolicFractions = GenericEqualityTracker<SymbolicFraction>()
+  val allSymbolicTypes = GenericEqualityTracker<SymbolicType>()
+
   private val symbolicFractionToExpr = mutableMapOf<SymbolicFraction, ArithExpr>()
 
   // Get an Z3 expression for a symbolic fraction
   fun fractionToExpr(f: SymbolicFraction) = symbolicFractionToExpr.computeIfAbsent(f) {
+    keyToSomething[f.z3Symbol()] = f
     val c = ctx.mkConst(f.z3Symbol(), setup.Real) as ArithExpr
     // 0 <= c <= 1
     addAssert(ctx.mkAnd(ctx.mkGe(c, ctx.mkReal(0)), ctx.mkLe(c, ctx.mkReal(1))))
@@ -357,6 +361,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
 
   // Get an Z3 expression for a symbolic type
   fun typeToExpr(t: SymbolicType) = symbolicTypeToExpr.computeIfAbsent(t) {
+    keyToSomething[t.z3Symbol()] = t
     ctx.mkConst(t.z3Symbol(), setup.Type)
   }
 

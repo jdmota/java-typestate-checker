@@ -90,3 +90,51 @@ class MutableEqualityTracker(
   }
 
 }
+
+class Equalities<E>(val root: E, val set: MutableSet<E> = mutableSetOf(root))
+
+class GenericEqualityTracker<E>(
+  private val data: MutableMap<E, Equalities<E>> = mutableMapOf()
+) {
+
+  fun getSet(ref: E): Set<E> {
+    return data.computeIfAbsent(ref) {
+      Equalities(it)
+    }.set
+  }
+
+  operator fun get(ref: E): E {
+    return data.computeIfAbsent(ref) {
+      Equalities(it)
+    }.root
+  }
+
+  operator fun set(a: E, b: E) {
+    if (a == b) {
+      return
+    }
+    val aData = data[a]
+    val bData = data[b]
+
+    when {
+      aData != null && bData != null -> {
+        aData.set.addAll(bData.set)
+        data[b] = aData
+      }
+      aData != null && bData == null -> {
+        aData.set.add(b)
+        data[b] = aData
+      }
+      aData == null && bData != null -> {
+        bData.set.add(a)
+        data[a] = bData
+      }
+      else -> {
+        val aData = Equalities(a)
+        aData.set.add(b)
+        data[b] = aData
+      }
+    }
+  }
+
+}
