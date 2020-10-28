@@ -190,15 +190,24 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       else -> setup.False
     }
 
-  fun mkAnd(c: Collection<BoolExpr>): BoolExpr {
-    return if (c.size == 1) {
-      c.first()
-    } else {
-      ctx.mkAnd(*c.toTypedArray())
+  fun mkAnd(b: Collection<BoolExpr>): BoolExpr {
+    if (b.contains(setup.False))
+      return setup.False
+
+    val bools = b.filterNot { it === setup.True }
+
+    return when {
+      bools.isEmpty() -> setup.True
+      bools.size == 1 -> bools.first()
+      else -> ctx.mkAnd(*bools.toTypedArray())
     }
   }
 
+  fun mkBool(b: Boolean) = if (b) setup.True else setup.False
+
   fun mkZero(): RatNum = setup.Zero
+
+  fun mkLt(f: SymbolicFraction, num: Int): BoolExpr = ctx.mkLt(fractionToExpr(f), ctx.mkReal(num))
 
   fun mkSub(a: ArithExpr, b: ArithExpr): ArithExpr {
     return if (b === setup.Zero) {

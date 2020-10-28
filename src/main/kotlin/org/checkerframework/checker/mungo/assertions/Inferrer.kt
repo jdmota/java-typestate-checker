@@ -261,13 +261,13 @@ class Inferrer(val checker: MungoChecker) {
       when (node) {
         is AssignmentNode -> {
           val target = getDirectReference(node.target) ?: continue
-          val expression = getReference(node.expression)
+          val expression = getDirectReference(node.expression) ?: continue
           equalities.add(Pair(target, expression))
         }
         is ReturnNode -> {
           val result = node.result ?: continue
           val target = getDirectReference(node) ?: continue
-          val expression = getReference(result)
+          val expression = getDirectReference(result) ?: continue
           equalities.add(Pair(target, expression))
         }
         // TODO more...
@@ -290,11 +290,12 @@ class Inferrer(val checker: MungoChecker) {
       for (b in localsAndFields) {
         if (a !== b && a.type === b.type) {
           val str = "$a $b"
-          // println("EQUALITY $a $b")
           if (
-            str == "node(cell.getItem()) cell.item" ||
             str == "item item2" ||
-            (a is NodeRef && a.node.toString() == "cell.getItem()" && b.toString() == "cell.item")
+            str == "cell.item item" ||
+            str == "cell.item item2" ||
+            (a is NodeRef && a.node.toString() == "cell.getItem()" && b.toString() == "cell.item") ||
+            (a is NodeRef && a.node.toString() == "cell.getItem()" && b.toString() == "item")
           ) {
             equalities.add(Pair(a, b))
           }

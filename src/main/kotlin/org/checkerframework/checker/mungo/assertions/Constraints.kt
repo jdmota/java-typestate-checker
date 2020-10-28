@@ -419,7 +419,18 @@ fun handleCall(
         )
       }
       isModified(a) || isModified(b) -> {
-        setup.ctx.mkNot(setup.mkEquals(tail, a, b))
+        setup.ctx.mkEq(
+          setup.mkEquals(tail, a, b),
+          setup.mkAnd(heads.map {
+            setup.mkEquals(it, a, b)
+          }.plus(
+            if (a !== c) setup.mkLt(methodPre[c].fraction, 1) else setup.mkBool(true)
+          ).plus(
+            if (b !== d) setup.mkLt(methodPre[d].fraction, 1) else setup.mkBool(true)
+          ))
+        )
+        // TODO the problem is that cell.getItem() has full permission in its precondition...
+        // setup.ctx.mkNot(setup.mkEquals(tail, a, b))
       }
       else -> {
         setup.ctx.mkEq(
@@ -759,8 +770,32 @@ class Constraints {
     return idToConstraint[label.subSequence(1, label.lastIndex)]!!
   }
 
-  fun solve(): InferenceResult {
-    started = true
+  private val splitIn2Phases = true
+
+  private fun solveIn1Phase(): InferenceResult {
+    val setup = ConstraintsSetup(types).start()
+
+    for (constraint in constraints) {
+      val z3exprs = constraint.toZ3(setup)
+
+      for ((idx, z3expr) in z3exprs.phase1It().withIndex()) {
+        val label = "${constraint.id}-$idx-1"
+        idToConstraint[label] = Pair(constraint, z3expr)
+        setup.addAssert(z3expr, label)
+      }
+
+      for ((idx, z3expr) in z3exprs.phase2It().withIndex()) {
+        val label = "${constraint.id}-$idx-2"
+        idToConstraint[label] = Pair(constraint, z3expr)
+        setup.addAssert(z3expr, label)
+      }
+    }
+
+    println("Solving...")
+    return setup.solve()
+  }
+
+  private fun solveIn2Phases(): InferenceResult {
     val setup = ConstraintsSetup(types).start()
     val phase2Iterators = mutableListOf<Pair<Constraint, Iterator<BoolExpr>>>()
 
@@ -804,6 +839,15 @@ class Constraints {
       return IncompleteSolution(setup, result1.model, if (result2 is NoSolution) result2.unsatCore else null)
     }
     return result2
+  }
+
+  fun solve(): InferenceResult {
+    started = true
+    return if (splitIn2Phases) {
+      solveIn2Phases()
+    } else {
+      solveIn1Phase()
+    }
   }
 
   // Inferred constraints
