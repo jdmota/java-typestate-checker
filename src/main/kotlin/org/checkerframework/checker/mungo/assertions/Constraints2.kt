@@ -20,6 +20,14 @@ sealed class TinyArithExpr : TinyExpr<TinyArithExpr, ArithExpr>()
 sealed class TinyMungoTypeExpr : TinyExpr<TinyMungoTypeExpr, Expr>()
 
 class TinySomeFraction(val key: String) : TinyArithExpr() {
+  override fun equals(other: Any?): Boolean {
+    return other is TinySomeFraction && key == other.key
+  }
+
+  override fun hashCode(): Int {
+    return key.hashCode()
+  }
+
   override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyArithExpr {
     return map[this] as? TinyArithExpr ?: this
   }
@@ -30,12 +38,38 @@ class TinySomeFraction(val key: String) : TinyArithExpr() {
 }
 
 class TinySomeType(val key: String) : TinyMungoTypeExpr() {
+  override fun equals(other: Any?): Boolean {
+    return other is TinySomeType && key == other.key
+  }
+
+  override fun hashCode(): Int {
+    return key.hashCode()
+  }
+
   override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyMungoTypeExpr {
     return map[this] as? TinyMungoTypeExpr ?: this
   }
 
   override fun toZ3(setup: ConstraintsSetup): Expr {
     return setup.mkType(key)
+  }
+}
+
+class TinyMungoType(val type: MungoType) : TinyMungoTypeExpr() {
+  override fun equals(other: Any?): Boolean {
+    return other is TinyMungoType && type == other.type
+  }
+
+  override fun hashCode(): Int {
+    return type.hashCode()
+  }
+
+  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyMungoTypeExpr {
+    return this
+  }
+
+  override fun toZ3(setup: ConstraintsSetup): Expr {
+    return setup.mkType(type)
   }
 }
 
@@ -323,24 +357,6 @@ class TinyUnion(val list: Collection<TinyMungoTypeExpr>) : TinyMungoTypeExpr() {
       expr = setup.mkUnion(expr, iterator.next().toZ3(setup))
     }
     return expr
-  }
-}
-
-class TinyMungoType(val type: MungoType) : TinyMungoTypeExpr() {
-  override fun equals(other: Any?): Boolean {
-    return other is TinyMungoType && type == other.type
-  }
-
-  override fun hashCode(): Int {
-    return type.hashCode()
-  }
-
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyMungoTypeExpr {
-    return this
-  }
-
-  override fun toZ3(setup: ConstraintsSetup): Expr {
-    return setup.mkType(type)
   }
 }
 
