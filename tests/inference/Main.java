@@ -80,10 +80,6 @@ public class Main {
 
     item.changeState();
 
-    // TODO since the getItem() assumes that the item is in state S0|S1,
-    // and since eq(item, cell.item) is not tracked
-    // the second getItem() call will not work since it wont know in which state the item is
-
     Item item2 = cell.getItem();
 
     //item2.changeState();

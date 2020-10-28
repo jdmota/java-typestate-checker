@@ -62,6 +62,12 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   private val ensures = object {
+    fun noSideEffects(result: NodeAssertions) {
+      constraints.noSideEffects(result)
+    }
+  }
+
+  fun visitInitialAssertion(ast: UnderlyingAST, pre: SymbolicAssertion) {
     fun newVar(info: SymbolicInfo, type: MungoType = MungoNullType.SINGLETON) {
       constraints.one(info.fraction)
       constraints.one(info.packFraction)
@@ -69,12 +75,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       // TODO fields?
     }
 
-    fun noSideEffects(result: NodeAssertions) {
-      constraints.noSideEffects(result)
-    }
-  }
+    val isPure = inferrer.isPure(ast)
 
-  fun visitInitialAssertion(ast: UnderlyingAST, pre: SymbolicAssertion) {
     pre.forEach { ref, info ->
       when (ref) {
         is ParameterVariable -> {
@@ -84,7 +86,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         is LocalVariable -> {
           if (ref.element.getKind() != ElementKind.PARAMETER) {
             // Prepare local variable declarations
-            ensures.newVar(info)
+            newVar(info)
           } else {
             constraints.one(info.fraction)
           }
@@ -104,13 +106,18 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         is FieldAccess -> {
           if (inferrer.isConstructor(ast) && ref.isThisField()) {
             constraints.one(info.fraction)
+          } else if (isPure) {
+            // Force pure methods to require less fractions
+            // So that more information can be preserved after this method call
+            constraints.notOne(info.fraction)
+            constraints.notOne(info.packFraction)
           }
         }
         is ReturnSpecialVar -> {
-          ensures.newVar(info)
+          newVar(info)
         }
         is OldSpecialVar -> {
-          ensures.newVar(info)
+          newVar(info)
         }
         is NodeRef -> {
           val node = ref.node
@@ -123,7 +130,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
           } else {
             MungoUnknownType.SINGLETON
           }
-          ensures.newVar(info, type)
+          newVar(info, type)
         }
         is ClassName -> {
         }

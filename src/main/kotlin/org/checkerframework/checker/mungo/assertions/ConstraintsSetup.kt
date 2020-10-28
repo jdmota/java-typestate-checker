@@ -166,9 +166,10 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     }
   }
 
-  fun <T : Expr> mkITE(condition: BoolExpr, a: T, b: T): T = when (condition) {
-    setup.True -> a
-    setup.False -> b
+  fun <T : Expr> mkITE(condition: BoolExpr, a: T, b: T): T = when {
+    condition === setup.True -> a
+    condition === setup.False -> b
+    a === b -> a
     else -> ctx.mkITE(condition, a, b) as T
   }
 
@@ -190,6 +191,27 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       else -> setup.False
     }
 
+  // exists x :: eq(a, x) && eq(x, b)
+  fun mkEqualsTransitive(assertion: SymbolicAssertion, a: Reference, b: Reference): BoolExpr {
+    // "a" and "b" are in this set
+    val possibleEqualities = assertion.skeleton.getPossibleEq(a)
+    val others = possibleEqualities.filterNot { it == a || it == b }
+
+    return mkOr(others.map {
+      mkAnd(listOf(
+        mkEquals(assertion, a, it),
+        mkEquals(assertion, it, b)
+      ))
+    })
+    /*return ctx.mkExists(arrayOf(setup.Location)) { args ->
+      val x = args[0]
+      ctx.mkAnd(
+        mkEquals(assertion, refToExpr(a), x),
+        mkEquals(assertion, x, refToExpr(b))
+      )
+    }*/
+  }
+
   fun mkAnd(b: Collection<BoolExpr>): BoolExpr {
     if (b.contains(setup.False))
       return setup.False
@@ -203,7 +225,20 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     }
   }
 
-  fun mkBool(b: Boolean) = if (b) setup.True else setup.False
+  fun mkOr(b: Collection<BoolExpr>): BoolExpr {
+    if (b.contains(setup.True))
+      return setup.True
+
+    val bools = b.filterNot { it === setup.False }
+
+    return when {
+      bools.isEmpty() -> setup.False
+      bools.size == 1 -> bools.first()
+      else -> ctx.mkOr(*bools.toTypedArray())
+    }
+  }
+
+  fun mkBool(b: Boolean): BoolExpr = if (b) setup.True else setup.False
 
   fun mkZero(): RatNum = setup.Zero
 
@@ -264,13 +299,18 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     return expr ?: setup.UnknownExpr
   }
 
+  val keyToSomething = mutableMapOf<String, Any>()
+
   private var eqUuid = 1L
   private val assertionToEq = mutableMapOf<SymbolicAssertion, FuncDecl>()
 
   // Get "eq" function for a certain assertion
   private fun assertionToEq(a: SymbolicAssertion): FuncDecl {
     return assertionToEq.computeIfAbsent(a) {
-      val fn = ctx.mkFuncDecl("eq${eqUuid++}", arrayOf(setup.Location, setup.Location), setup.Bool)
+      val key = "eq${eqUuid++}"
+      // keyToSomething[key] = a
+
+      val fn = ctx.mkFuncDecl(key, arrayOf(setup.Location, setup.Location), setup.Bool)
 
       // Reflexive
       // (assert (forall ((x Loc)) (eq x x)))
@@ -329,7 +369,9 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
   // Get an Z3 expression for a location
   private fun refToExpr(ref: Reference): Expr {
     return refToExpr.computeIfAbsent(ref) {
-      ctx.mkConst("ref${refUuid++}", setup.Location)
+      val key = "ref${refUuid++}"
+      keyToSomething[key] = ref
+      ctx.mkConst(key, setup.Location)
     }
   }
 

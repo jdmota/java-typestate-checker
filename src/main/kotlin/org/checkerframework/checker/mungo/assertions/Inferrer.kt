@@ -471,6 +471,24 @@ class Inferrer(val checker: MungoChecker) {
     return Pair(assertions.postThen, assertions.postElse)
   }
 
+  private val isPureCache = IdentityHashMap<Tree, Boolean>()
+
+  fun isPure(ast: UnderlyingAST): Boolean {
+    val tree = astToTree(ast)
+    return isPureCache.computeIfAbsent(tree) {
+      getCFG(it).allNodes.all { node ->
+        when (node) {
+          is ThisLiteralNode -> true
+          is LocalVariableNode -> true
+          is FieldAccessNode -> true
+          is ReturnNode -> true
+          is ValueLiteralNode -> true
+          else -> false
+        }
+      }
+    }
+  }
+
   fun phase2() {
     println("Inferring constraints...")
 
@@ -495,7 +513,7 @@ class Inferrer(val checker: MungoChecker) {
         for (expr in solution.unsatCore) {
           val (constraint, z3expr) = constraints.getConstraintByLabel(expr.toString())
           println(constraint)
-          println(z3expr)
+          println(constraints.formatExpr(z3expr))
         }
       }
       is UnknownSolution -> {
@@ -538,7 +556,7 @@ class Inferrer(val checker: MungoChecker) {
         solution.unsatCore?.forEach { expr ->
           val (constraint, z3expr) = constraints.getConstraintByLabel(expr.toString())
           println(constraint)
-          println(z3expr)
+          println(constraints.formatExpr(z3expr))
         }
       }
     }

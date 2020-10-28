@@ -392,55 +392,58 @@ fun handleCall(
 
   // TODO am I able to track equalities of old values? like after this.item = newItem ??
 
-  fun isModified(ref: Reference): Boolean {
-    // TODO improve to use the fractions, to preserve more equalities
-    return arguments.any { it != ref && ref.hasPrefix(it) }
+  fun isMaybeModified(ref: Reference): Boolean {
+    return ref.hasPrefix(callRef) || arguments.any { it != ref && ref.hasPrefix(it) }
   }
 
   for ((a, b) in tail.skeleton.equalities) {
     val c = replace(a)
     val d = replace(b)
-    result.addIn1(when {
-      c == d -> setup.mkEquals(tail, a, b)
-      a === c && b === d -> {
-        setup.ctx.mkEq(
-          setup.mkEquals(tail, a, b),
-          setup.mkAnd(heads.map {
-            setup.mkEquals(it, a, b)
-          })
+
+    val aWasPassed = isMaybeModified(a)
+    val bWasPassed = isMaybeModified(b)
+
+    val aIsNotModified = if (aWasPassed) setup.mkLt(methodPre[c].fraction, 1) else setup.mkBool(true)
+    val bIsNotModified = if (bWasPassed) setup.mkLt(methodPre[d].fraction, 1) else setup.mkBool(true)
+
+    result.addIn1(setup.ctx.mkEq(
+      setup.mkEquals(tail, a, b),
+      setup.mkITE(
+        setup.mkAnd(listOf(aIsNotModified, bIsNotModified)),
+        // None is modified, equality holds if it holds before
+        setup.mkAnd(heads.map {
+          setup.mkEquals(it, a, b)
+        }),
+        setup.mkITE(
+          setup.mkAnd(listOf(aIsNotModified)),
+          // Only b is modified...
+          if (aWasPassed) {
+            setup.mkAnd(methodPost.map {
+              setup.mkEquals(it, c, d)
+            })
+          } else {
+            // This means that "a" did not even go into the method
+            setup.mkEqualsTransitive(tail, a, b)
+          },
+          setup.mkITE(
+            setup.mkAnd(listOf(bIsNotModified)),
+            // Only a is modified...
+            if (bWasPassed) {
+              setup.mkAnd(methodPost.map {
+                setup.mkEquals(it, c, d)
+              })
+            } else {
+              // This means that "b" did not even go into the method
+              setup.mkEqualsTransitive(tail, a, b)
+            },
+            // Both are modified, equality only holds if present in the method post-condition
+            setup.mkAnd(methodPost.map {
+              setup.mkEquals(it, c, d)
+            })
+          )
         )
-      }
-      a !== c && b !== d -> {
-        setup.ctx.mkEq(
-          setup.mkEquals(tail, a, b),
-          setup.mkAnd(methodPost.map {
-            setup.mkEquals(it, c, d)
-          })
-        )
-      }
-      isModified(a) || isModified(b) -> {
-        setup.ctx.mkEq(
-          setup.mkEquals(tail, a, b),
-          setup.mkAnd(heads.map {
-            setup.mkEquals(it, a, b)
-          }.plus(
-            if (a !== c) setup.mkLt(methodPre[c].fraction, 1) else setup.mkBool(true)
-          ).plus(
-            if (b !== d) setup.mkLt(methodPre[d].fraction, 1) else setup.mkBool(true)
-          ))
-        )
-        // TODO the problem is that cell.getItem() has full permission in its precondition...
-        // setup.ctx.mkNot(setup.mkEquals(tail, a, b))
-      }
-      else -> {
-        setup.ctx.mkEq(
-          setup.mkEquals(tail, a, b),
-          setup.mkAnd(heads.map {
-            setup.mkEquals(it, a, b)
-          })
-        )
-      }
-    })
+      )
+    ))
   }
 }
 
@@ -719,6 +722,17 @@ private class SymFractionGt(val a: SymbolicFraction, val b: Int) : Constraint() 
   }
 }
 
+private class SymFractionLt(val a: SymbolicFraction, val b: Int) : Constraint() {
+
+  override fun toString(): String {
+    return "($id) $a < $b"
+  }
+
+  override fun toZ3(setup: ConstraintsSetup): Z3Constraints {
+    return Z3Constraints().addIn1(setup.mkLt(a, b))
+  }
+}
+
 private class SymFractionEq(val a: SymbolicFraction, val b: Int) : Constraint() {
 
   override fun toString(): String {
@@ -770,10 +784,21 @@ class Constraints {
     return idToConstraint[label.subSequence(1, label.lastIndex)]!!
   }
 
+  fun formatExpr(expr: Expr): String {
+    val initial = expr.toString().replace("(", "( ").replace(")", " )")
+    return initial.split(' ').joinToString(" ") {
+      val something = setup.keyToSomething[it]
+      if (something is Reference) {
+        something.toString()
+      } else it
+    }
+  }
+
   private val splitIn2Phases = true
+  private lateinit var setup: ConstraintsSetup
 
   private fun solveIn1Phase(): InferenceResult {
-    val setup = ConstraintsSetup(types).start()
+    setup = ConstraintsSetup(types).start()
 
     for (constraint in constraints) {
       val z3exprs = constraint.toZ3(setup)
@@ -796,7 +821,7 @@ class Constraints {
   }
 
   private fun solveIn2Phases(): InferenceResult {
-    val setup = ConstraintsSetup(types).start()
+    setup = ConstraintsSetup(types).start()
     val phase2Iterators = mutableListOf<Pair<Constraint, Iterator<BoolExpr>>>()
 
     for (constraint in constraints) {
@@ -871,6 +896,11 @@ class Constraints {
   fun one(a: SymbolicFraction) {
     // a == 1
     constraints.add(SymFractionEq(a, 1))
+  }
+
+  fun notOne(a: SymbolicFraction) {
+    // a < 1
+    constraints.add(SymFractionLt(a, 1))
   }
 
   fun notZero(a: SymbolicFraction) {
