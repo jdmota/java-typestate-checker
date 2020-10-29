@@ -791,31 +791,56 @@ class Constraints {
     return setup.solve()
   }
 
+  /*
+  Goal g4 = ctx.mkGoal(true, false, false);
+  g4.add(ctx.mkGt(xr, ctx.mkReal(10, 1)));
+  g4.add(ctx.mkEq(yr, ctx.mkAdd(xr, ctx.mkReal(1, 1))));
+  g4.add(ctx.mkGt(yr, ctx.mkReal(1, 1)));
+
+  ApplyResult ar = applyTactic(ctx, ctx.mkTactic("simplify"), g4);
+  if (ar.getNumSubgoals() == 1
+          && (ar.getSubgoals()[0].isDecidedSat() || ar.getSubgoals()[0]
+                  .isDecidedUnsat()))
+      throw new TestFailedException();
+
+  ar = applyTactic(ctx, ctx.andThen(ctx.mkTactic("simplify"),
+          ctx.mkTactic("solve-eqs")), g4);
+  if (ar.getNumSubgoals() == 1
+          && (ar.getSubgoals()[0].isDecidedSat() || ar.getSubgoals()[0]
+                  .isDecidedUnsat()))
+      throw new TestFailedException();
+
+  Solver s = ctx.mkSolver();
+  for (BoolExpr e : ar.getSubgoals()[0].getFormulas())
+      s.add(e);
+  Status q = s.check();
+  System.out.println("Solver says: " + q);
+  System.out.println("Model: \n" + s.getModel());
+  if (q != Status.SATISFIABLE)
+      throw new TestFailedException();
+  */
+
   private fun solveIn2Phases(): InferenceResult {
     setup = ConstraintsSetup(types).start()
     val constraintsSets = constraints.map { it.build() }
     val allPhase1Exprs = mutableListOf<Triple<Constraint, TinyBoolExpr, TinyBoolExpr>>()
     val allPhase2Exprs = mutableListOf<Triple<Constraint, TinyBoolExpr, TinyBoolExpr>>()
 
-    println("Simplifying...")
-
-    // FIXME because of the simplification, the values are not showing in the solution!!!
-
-    val simplifier = Simplifier()
+    // println("Simplifying...")
+    /*val simplifier = Simplifier()
     for (set in constraintsSets) {
       for (expr in set) {
         simplifier.track(expr)
       }
-    }
+    }*/
 
     // Simplify...
-
     for (set in constraintsSets) {
       for (expr in set.phase1It()) {
-        allPhase1Exprs.add(Triple(set.constraint, expr, simplifier.simplify(expr)))
+        allPhase1Exprs.add(Triple(set.constraint, expr, expr /*simplifier.simplify(expr)*/))
       }
       for (expr in set.phase2It()) {
-        allPhase2Exprs.add(Triple(set.constraint, expr, simplifier.simplify(expr)))
+        allPhase2Exprs.add(Triple(set.constraint, expr, expr /*simplifier.simplify(expr)*/))
       }
     }
 
@@ -824,7 +849,7 @@ class Constraints {
     for ((idx, triple) in allPhase1Exprs.withIndex()) {
       val (constraint, expr, simplifiedExpr) = triple
       val label = "${constraint.id}-$idx-1"
-      val z3expr = simplifiedExpr.toZ3(setup)
+      val z3expr = expr.toZ3(setup)
       idToConstraint[label] = Triple(constraint, expr, z3expr)
       setup.addAssert(z3expr, label)
     }
@@ -844,7 +869,7 @@ class Constraints {
     for ((idx, triple) in allPhase2Exprs.withIndex()) {
       val (constraint, expr, simplifiedExpr) = triple
       val label = "${constraint.id}-$idx-2"
-      val z3expr = simplifiedExpr.toZ3(setup)
+      val z3expr = expr.toZ3(setup)
       val simplified = result1.eval(z3expr)
       idToConstraint[label] = Triple(constraint, expr, z3expr)
       setup.addAssert(simplified, label)

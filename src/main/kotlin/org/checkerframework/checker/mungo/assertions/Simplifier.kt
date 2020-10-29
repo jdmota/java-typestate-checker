@@ -34,7 +34,7 @@ class Simplifier : Substitution {
   private val allEqualities = GenericEqualityTracker<TinyExpr<*, *>> { it is TinyReal || it is TinyMungoType }
   private val track = { it: TinyExpr<*, *> ->
     // FIXME if we uncomment this, simplification breaks?
-    /*it is TinyReal || it is TinyMungoType ||*/
+    // it is TinyReal || it is TinyMungoType ||
     it is TinySomeFraction || it is TinySomeType
   }
 

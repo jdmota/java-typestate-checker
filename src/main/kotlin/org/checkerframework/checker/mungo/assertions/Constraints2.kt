@@ -247,11 +247,11 @@ class TinyITEMungoType(
 
 class TinyReal(val num: Int, val denominator: Int = 1) : TinyArithExpr() {
   override fun equals(other: Any?): Boolean {
-    return other is TinyReal && num == other.num && denominator == other.denominator
+    return other is TinyReal && num * other.denominator == other.num * denominator
   }
 
   override fun hashCode(): Int {
-    return num * denominator
+    return num
   }
 
   override fun substitute(s: Substitution): TinyArithExpr {
