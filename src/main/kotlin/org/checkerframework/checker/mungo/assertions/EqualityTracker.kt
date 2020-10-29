@@ -91,9 +91,13 @@ class MutableEqualityTracker(
 
 }
 
-class Equalities<E>(val root: E, val set: MutableSet<E> = mutableSetOf(root))
+class Equalities<E>(var root: E, var set: MutableSet<E> = mutableSetOf(root)) {
+  override fun toString(): String {
+    return "{root=$root, set=$set}"
+  }
+}
 
-class GenericEqualityTracker<E>(private val prefer: (E) -> Boolean) : Map<E, E> {
+class GenericEqualityTracker<E>(private val prefer: (E) -> Boolean) {
 
   private val data: MutableMap<E, Equalities<E>> = mutableMapOf()
 
@@ -101,7 +105,7 @@ class GenericEqualityTracker<E>(private val prefer: (E) -> Boolean) : Map<E, E> 
     return data.computeIfAbsent(ref) { Equalities(it) }
   }
 
-  override operator fun get(key: E): E {
+  operator fun get(key: E): E {
     return data(key).root
   }
 
@@ -112,35 +116,21 @@ class GenericEqualityTracker<E>(private val prefer: (E) -> Boolean) : Map<E, E> 
     val aData = data(a)
     val bData = data(b)
 
-    // If A is preferable as root
-    if (prefer(aData.root)) {
-      aData.set.addAll(bData.set)
-      data[b] = aData
-    } else {
-      bData.set.addAll(aData.set)
-      data[a] = bData
+    val (dest, src) = when {
+      prefer(aData.root) -> Pair(aData, bData)
+      prefer(bData.root) -> Pair(bData, aData)
+      aData.set.size <= bData.set.size -> Pair(aData, bData)
+      else -> Pair(bData, aData)
+    }
+
+    for (it in src.set) {
+      data[it] = dest
+      dest.set.add(it)
     }
   }
 
-  override val keys: Set<E>
-    get() = data.keys
-  override val size: Int
-    get() = data.size
-  override val values: Collection<E>
-    get() = TODO("Not yet implemented")
-  override val entries: Set<Map.Entry<E, E>>
-    get() = TODO("Not yet implemented")
-
-  override fun containsKey(key: E): Boolean {
-    return data.containsKey(key)
-  }
-
-  override fun containsValue(value: E): Boolean {
-    return data[value]?.root == value ?: false
-  }
-
-  override fun isEmpty(): Boolean {
-    return data.isEmpty()
+  override fun toString(): String = data.entries.joinToString(", ", "{", "}") {
+    "${it.key}=${it.value.root}"
   }
 
 }

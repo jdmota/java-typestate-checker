@@ -742,9 +742,9 @@ class Constraints {
     types.add(type)
   }
 
-  private val idToConstraint = mutableMapOf<String, Pair<Constraint, BoolExpr>>()
+  private val idToConstraint = mutableMapOf<String, Triple<Constraint, TinyBoolExpr, BoolExpr>>()
 
-  fun getConstraintByLabel(label: String): Pair<Constraint, BoolExpr> {
+  fun getConstraintByLabel(label: String): Triple<Constraint, TinyBoolExpr, BoolExpr> {
     return idToConstraint[label.subSequence(1, label.lastIndex)]!!
   }
 
@@ -775,14 +775,14 @@ class Constraints {
       for ((idx, expr) in set.phase1It().withIndex()) {
         val label = "${constraint.id}-$idx-1"
         val z3expr = expr.toZ3(setup)
-        idToConstraint[label] = Pair(constraint, z3expr)
+        idToConstraint[label] = Triple(constraint, expr, z3expr)
         setup.addAssert(z3expr, label)
       }
 
       for ((idx, expr) in set.phase2It().withIndex()) {
         val label = "${constraint.id}-$idx-2"
         val z3expr = expr.toZ3(setup)
-        idToConstraint[label] = Pair(constraint, z3expr)
+        idToConstraint[label] = Triple(constraint, expr, z3expr)
         setup.addAssert(z3expr, label)
       }
     }
@@ -794,23 +794,17 @@ class Constraints {
   private fun solveIn2Phases(): InferenceResult {
     setup = ConstraintsSetup(types).start()
     val constraintsSets = constraints.map { it.build() }
-    val allPhase1Exprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
-    val allPhase2Exprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
+    val allPhase1Exprs = mutableListOf<Triple<Constraint, TinyBoolExpr, TinyBoolExpr>>()
+    val allPhase2Exprs = mutableListOf<Triple<Constraint, TinyBoolExpr, TinyBoolExpr>>()
 
     println("Simplifying...")
 
     // FIXME because of the simplification, the values are not showing in the solution!!!
 
-    // Track equalities
-    val allEqualities = GenericEqualityTracker<TinyExpr<*, *>> { it is TinyReal || it is TinyMungoType }
-
+    val simplifier = Simplifier()
     for (set in constraintsSets) {
       for (expr in set) {
-        if (expr is TinyEqArith) {
-          allEqualities[expr.a] = expr.b
-        } else if (expr is TinyEqMungoType) {
-          allEqualities[expr.a] = expr.b
-        }
+        simplifier.track(expr)
       }
     }
 
@@ -818,20 +812,20 @@ class Constraints {
 
     for (set in constraintsSets) {
       for (expr in set.phase1It()) {
-        allPhase1Exprs.add(Pair(set.constraint, expr.substitute(allEqualities)))
+        allPhase1Exprs.add(Triple(set.constraint, expr, simplifier.simplify(expr)))
       }
       for (expr in set.phase2It()) {
-        allPhase2Exprs.add(Pair(set.constraint, expr.substitute(allEqualities)))
+        allPhase2Exprs.add(Triple(set.constraint, expr, simplifier.simplify(expr)))
       }
     }
 
     // Phase 1...
 
-    for ((idx, pair) in allPhase1Exprs.withIndex()) {
-      val (constraint, expr) = pair
+    for ((idx, triple) in allPhase1Exprs.withIndex()) {
+      val (constraint, expr, simplifiedExpr) = triple
       val label = "${constraint.id}-$idx-1"
-      val z3expr = expr.toZ3(setup)
-      idToConstraint[label] = Pair(constraint, z3expr)
+      val z3expr = simplifiedExpr.toZ3(setup)
+      idToConstraint[label] = Triple(constraint, expr, z3expr)
       setup.addAssert(z3expr, label)
     }
 
@@ -847,12 +841,12 @@ class Constraints {
 
     setup.push()
 
-    for ((idx, pair) in allPhase2Exprs.withIndex()) {
-      val (constraint, expr) = pair
+    for ((idx, triple) in allPhase2Exprs.withIndex()) {
+      val (constraint, expr, simplifiedExpr) = triple
       val label = "${constraint.id}-$idx-2"
-      val z3expr = expr.toZ3(setup)
+      val z3expr = simplifiedExpr.toZ3(setup)
       val simplified = result1.eval(z3expr)
-      idToConstraint[label] = Pair(constraint, z3expr)
+      idToConstraint[label] = Triple(constraint, expr, z3expr)
       setup.addAssert(simplified, label)
     }
 

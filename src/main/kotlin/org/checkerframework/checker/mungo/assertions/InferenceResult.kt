@@ -1,8 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.microsoft.z3.BoolExpr
-import com.microsoft.z3.Expr
-import com.microsoft.z3.Model
+import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.analysis.*
 
 sealed class InferenceResult
@@ -11,9 +9,13 @@ class NoSolution(val unsatCore: Array<BoolExpr>) : InferenceResult()
 
 class UnknownSolution(val reason: String?) : InferenceResult()
 
-sealed class SomeSolution : InferenceResult() {
+sealed class SomeSolution(protected val setup: ConstraintsSetup, val model: Model) : InferenceResult() {
 
-  abstract fun <T : Expr> eval(expr: T): T
+  fun <T : Expr> eval(expr: T): T = model.eval(expr, false).simplify() as T
+
+  fun <E : Expr, T : TinyExpr<T, E>> eval(expr: T): E {
+    return eval(expr.toZ3(setup))
+  }
 
   abstract fun get(x: SymbolicFraction): String
 
@@ -37,9 +39,7 @@ sealed class SomeSolution : InferenceResult() {
 
 }
 
-class IncompleteSolution(private val setup: ConstraintsSetup, val model: Model, val unsatCore: Array<BoolExpr>?) : SomeSolution() {
-
-  override fun <T : Expr> eval(expr: T): T = model.eval(expr, false).simplify() as T
+class IncompleteSolution(setup: ConstraintsSetup, model: Model, val unsatCore: Array<BoolExpr>?) : SomeSolution(setup, model) {
 
   override fun get(x: SymbolicFraction): String = model.eval(setup.mkFraction(x.z3Symbol()), true).toString()
 
@@ -51,9 +51,7 @@ class IncompleteSolution(private val setup: ConstraintsSetup, val model: Model, 
 
 }
 
-class Solution(private val setup: ConstraintsSetup, val model: Model) : SomeSolution() {
-
-  override fun <T : Expr> eval(expr: T): T = model.eval(expr, false).simplify() as T
+class Solution(setup: ConstraintsSetup, model: Model) : SomeSolution(setup, model) {
 
   override fun get(x: SymbolicFraction): String = model.eval(setup.mkFraction(x.z3Symbol()), true).toString()
 

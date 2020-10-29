@@ -1,15 +1,13 @@
 package org.checkerframework.checker.mungo.assertions
 
-import com.microsoft.z3.ArithExpr
-import com.microsoft.z3.BoolExpr
-import com.microsoft.z3.Expr
+import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.MungoBottomType
 import org.checkerframework.checker.mungo.typecheck.MungoType
 import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 
 sealed class TinyExpr<E : TinyExpr<E, Z>, Z : Expr> {
-  abstract fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): E
+  abstract fun substitute(s: Substitution): E
   abstract fun toZ3(setup: ConstraintsSetup): Z
 }
 
@@ -28,12 +26,16 @@ class TinySomeFraction(val key: String) : TinyArithExpr() {
     return key.hashCode()
   }
 
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyArithExpr {
-    return map[this] as? TinyArithExpr ?: this
+  override fun substitute(s: Substitution): TinyArithExpr {
+    return s[this] as? TinyArithExpr ?: this
   }
 
   override fun toZ3(setup: ConstraintsSetup): ArithExpr {
     return setup.mkFraction(key)
+  }
+
+  override fun toString(): String {
+    return key
   }
 }
 
@@ -46,12 +48,16 @@ class TinySomeType(val key: String) : TinyMungoTypeExpr() {
     return key.hashCode()
   }
 
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyMungoTypeExpr {
-    return map[this] as? TinyMungoTypeExpr ?: this
+  override fun substitute(s: Substitution): TinyMungoTypeExpr {
+    return s[this] as? TinyMungoTypeExpr ?: this
   }
 
   override fun toZ3(setup: ConstraintsSetup): Expr {
     return setup.mkType(key)
+  }
+
+  override fun toString(): String {
+    return key
   }
 }
 
@@ -64,72 +70,100 @@ class TinyMungoType(val type: MungoType) : TinyMungoTypeExpr() {
     return type.hashCode()
   }
 
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyMungoTypeExpr {
+  override fun substitute(s: Substitution): TinyMungoTypeExpr {
     return this
   }
 
   override fun toZ3(setup: ConstraintsSetup): Expr {
     return setup.mkType(type)
   }
+
+  override fun toString(): String {
+    return type.format()
+  }
 }
 
 class TinyAdd(val list: Collection<TinyArithExpr>) : TinyArithExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyArithExpr {
-    return Make.S.add(list.map { it.substitute(map) })
+  override fun substitute(s: Substitution): TinyArithExpr {
+    return Make.S.add(list.map { it.substitute(s) })
   }
 
   override fun toZ3(setup: ConstraintsSetup): ArithExpr {
     return setup.ctx.mkAdd(*list.map { it.toZ3(setup) }.toTypedArray())
   }
+
+  override fun toString(): String {
+    return "(${list.joinToString(" + ")})"
+  }
 }
 
 class TinySub(val a: TinyArithExpr, val b: TinyArithExpr) : TinyArithExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyArithExpr {
-    return Make.S.sub(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyArithExpr {
+    return Make.S.sub(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): ArithExpr {
     return setup.ctx.mkSub(a.toZ3(setup), b.toZ3(setup))
   }
+
+  override fun toString(): String {
+    return "($a - $b)"
+  }
 }
 
 class TinyGt(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.gt(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.gt(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkGt(a.toZ3(setup), b.toZ3(setup))
   }
+
+  override fun toString(): String {
+    return "($a > $b)"
+  }
 }
 
 class TinyLt(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.lt(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.lt(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkLt(a.toZ3(setup), b.toZ3(setup))
   }
+
+  override fun toString(): String {
+    return "($a < $b)"
+  }
 }
 
 class TinyGe(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.ge(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.ge(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkGe(a.toZ3(setup), b.toZ3(setup))
   }
+
+  override fun toString(): String {
+    return "($a >= $b)"
+  }
 }
 
 class TinyLe(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.le(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.le(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkLe(a.toZ3(setup), b.toZ3(setup))
+  }
+
+  override fun toString(): String {
+    return "($a <= $b)"
   }
 }
 
@@ -138,11 +172,11 @@ class TinyITEArith(
   val thenExpr: TinyArithExpr,
   val elseExpr: TinyArithExpr
 ) : TinyArithExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyArithExpr {
+  override fun substitute(s: Substitution): TinyArithExpr {
     return Make.S.ite(
-      condition.substitute(map),
-      thenExpr.substitute(map),
-      elseExpr.substitute(map)
+      condition.substitute(s),
+      thenExpr.substitute(s),
+      elseExpr.substitute(s)
     )
   }
 
@@ -153,6 +187,10 @@ class TinyITEArith(
       elseExpr.toZ3(setup)
     ) as ArithExpr
   }
+
+  override fun toString(): String {
+    return "(if $condition then $thenExpr else $elseExpr)"
+  }
 }
 
 class TinyITEBool(
@@ -160,11 +198,11 @@ class TinyITEBool(
   val thenExpr: TinyBoolExpr,
   val elseExpr: TinyBoolExpr
 ) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
+  override fun substitute(s: Substitution): TinyBoolExpr {
     return Make.S.ite(
-      condition.substitute(map),
-      thenExpr.substitute(map),
-      elseExpr.substitute(map)
+      condition.substitute(s),
+      thenExpr.substitute(s),
+      elseExpr.substitute(s)
     )
   }
 
@@ -175,6 +213,10 @@ class TinyITEBool(
       elseExpr.toZ3(setup)
     ) as BoolExpr
   }
+
+  override fun toString(): String {
+    return "(if $condition then $thenExpr else $elseExpr)"
+  }
 }
 
 class TinyITEMungoType(
@@ -182,11 +224,11 @@ class TinyITEMungoType(
   val thenExpr: TinyMungoTypeExpr,
   val elseExpr: TinyMungoTypeExpr
 ) : TinyMungoTypeExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyMungoTypeExpr {
+  override fun substitute(s: Substitution): TinyMungoTypeExpr {
     return Make.S.ite(
-      condition.substitute(map),
-      thenExpr.substitute(map),
-      elseExpr.substitute(map)
+      condition.substitute(s),
+      thenExpr.substitute(s),
+      elseExpr.substitute(s)
     )
   }
 
@@ -197,33 +239,45 @@ class TinyITEMungoType(
       elseExpr.toZ3(setup)
     )
   }
+
+  override fun toString(): String {
+    return "(if $condition then $thenExpr else $elseExpr)"
+  }
 }
 
-class TinyReal(val num: Int) : TinyArithExpr() {
+class TinyReal(val num: Int, val denominator: Int = 1) : TinyArithExpr() {
   override fun equals(other: Any?): Boolean {
-    return other is TinyReal && num == other.num
+    return other is TinyReal && num == other.num && denominator == other.denominator
   }
 
   override fun hashCode(): Int {
-    return num
+    return num * denominator
   }
 
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyArithExpr {
+  override fun substitute(s: Substitution): TinyArithExpr {
     return this
   }
 
   override fun toZ3(setup: ConstraintsSetup): ArithExpr {
-    return setup.ctx.mkReal(num)
+    return if (denominator == 1) setup.ctx.mkReal(num) else setup.ctx.mkReal(num, denominator)
+  }
+
+  override fun toString(): String {
+    return if (denominator == 1) "$num" else "$num/$denominator"
   }
 }
 
 class TinyNot(val bool: TinyBoolExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.not(bool.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.not(bool.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkNot(bool.toZ3(setup))
+  }
+
+  override fun toString(): String {
+    return "(not $bool)"
   }
 }
 
@@ -236,68 +290,92 @@ class TinyBool(val bool: Boolean) : TinyBoolExpr() {
     return bool.hashCode()
   }
 
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
+  override fun substitute(s: Substitution): TinyBoolExpr {
     return this
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkBool(bool)
   }
+
+  override fun toString(): String {
+    return "$bool"
+  }
 }
 
 class TinyEqArith(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.eq(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.eq(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkEq(a.toZ3(setup), b.toZ3(setup))
+  }
+
+  override fun toString(): String {
+    return "($a = $b)"
   }
 }
 
 class TinyEqBool(val a: TinyBoolExpr, val b: TinyBoolExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.eq(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.eq(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkEq(a.toZ3(setup), b.toZ3(setup))
+  }
+
+  override fun toString(): String {
+    return "($a = $b)"
   }
 }
 
 class TinyEqMungoType(val a: TinyMungoTypeExpr, val b: TinyMungoTypeExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.eq(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.eq(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkEq(a.toZ3(setup), b.toZ3(setup))
   }
+
+  override fun toString(): String {
+    return "($a = $b)"
+  }
 }
 
 class TinyAnd(val list: Collection<TinyBoolExpr>) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.and(list.map { it.substitute(map) })
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.and(list.map { it.substitute(s) })
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkAnd(*list.map { it.toZ3(setup) }.toTypedArray())
   }
+
+  override fun toString(): String {
+    return "(${list.joinToString(" && ")})"
+  }
 }
 
 class TinyOr(val list: Collection<TinyBoolExpr>) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.or(list.map { it.substitute(map) })
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.or(list.map { it.substitute(s) })
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkOr(*list.map { it.toZ3(setup) }.toTypedArray())
   }
+
+  override fun toString(): String {
+    return "(${list.joinToString(" || ")})"
+  }
 }
 
 class TinyMin(val list: Collection<TinyArithExpr>) : TinyArithExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyArithExpr {
-    return Make.S.min(list.map { it.substitute(map) })
+  override fun substitute(s: Substitution): TinyArithExpr {
+    return Make.S.min(list.map { it.substitute(s) })
   }
 
   override fun toZ3(setup: ConstraintsSetup): ArithExpr {
@@ -308,31 +386,43 @@ class TinyMin(val list: Collection<TinyArithExpr>) : TinyArithExpr() {
     }
     return expr
   }
+
+  override fun toString(): String {
+    return "(min ${list.joinToString(" ")})"
+  }
 }
 
 class TinyEquals(val assertion: SymbolicAssertion, val a: Reference, val b: Reference) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.equals(assertion, a, b)
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return s[this] as? TinyBoolExpr ?: Make.S.equals(assertion, a, b)
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.mkEquals(assertion, a, b)
   }
+
+  override fun toString(): String {
+    return "(eq_${assertion.id} $a $b)"
+  }
 }
 
 class TinySubtype(val a: TinyMungoTypeExpr, val b: TinyMungoTypeExpr) : TinyBoolExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyBoolExpr {
-    return Make.S.subtype(a.substitute(map), b.substitute(map))
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.subtype(a.substitute(s), b.substitute(s))
   }
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.mkSubtype(a.toZ3(setup), b.toZ3(setup))
   }
+
+  override fun toString(): String {
+    return "(subtype $a $b)"
+  }
 }
 
 class TinyIntersection(val list: Collection<TinyMungoTypeExpr>) : TinyMungoTypeExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyMungoTypeExpr {
-    return Make.S.intersection(list.map { it.substitute(map) })
+  override fun substitute(s: Substitution): TinyMungoTypeExpr {
+    return Make.S.intersection(list.map { it.substitute(s) })
   }
 
   override fun toZ3(setup: ConstraintsSetup): Expr {
@@ -343,11 +433,15 @@ class TinyIntersection(val list: Collection<TinyMungoTypeExpr>) : TinyMungoTypeE
     }
     return expr
   }
+
+  override fun toString(): String {
+    return "(intersection ${list.joinToString(" ")})"
+  }
 }
 
 class TinyUnion(val list: Collection<TinyMungoTypeExpr>) : TinyMungoTypeExpr() {
-  override fun substitute(map: Map<TinyExpr<*, *>, TinyExpr<*, *>>): TinyMungoTypeExpr {
-    return Make.S.union(list.map { it.substitute(map) })
+  override fun substitute(s: Substitution): TinyMungoTypeExpr {
+    return Make.S.union(list.map { it.substitute(s) })
   }
 
   override fun toZ3(setup: ConstraintsSetup): Expr {
@@ -357,6 +451,10 @@ class TinyUnion(val list: Collection<TinyMungoTypeExpr>) : TinyMungoTypeExpr() {
       expr = setup.mkUnion(expr, iterator.next().toZ3(setup))
     }
     return expr
+  }
+
+  override fun toString(): String {
+    return "(union ${list.joinToString(" ")})"
   }
 }
 
@@ -375,7 +473,10 @@ class Make private constructor() {
     return if (b == ZERO) {
       a
     } else if (a is TinyReal && b is TinyReal) {
-      TinyReal(a.num - b.num)
+      TinyReal(
+        a.num * b.denominator - b.num * a.denominator,
+        a.denominator * b.denominator
+      )
     } else {
       TinySub(a, b)
     }
@@ -383,7 +484,7 @@ class Make private constructor() {
 
   fun gt(a: TinyArithExpr, b: TinyArithExpr): TinyBoolExpr {
     return if (a is TinyReal && b is TinyReal) {
-      bool(a.num > b.num)
+      bool(a.num * b.denominator > b.num * a.denominator)
     } else {
       TinyGt(a, b)
     }
@@ -391,7 +492,7 @@ class Make private constructor() {
 
   fun lt(a: TinyArithExpr, b: TinyArithExpr): TinyBoolExpr {
     return if (a is TinyReal && b is TinyReal) {
-      bool(a.num < b.num)
+      bool(a.num * b.denominator < b.num * a.denominator)
     } else {
       TinyLt(a, b)
     }
@@ -399,7 +500,7 @@ class Make private constructor() {
 
   fun ge(a: TinyArithExpr, b: TinyArithExpr): TinyBoolExpr {
     return if (a is TinyReal && b is TinyReal) {
-      bool(a.num >= b.num)
+      bool(a.num * b.denominator >= b.num * a.denominator)
     } else {
       TinyGe(a, b)
     }
@@ -407,7 +508,7 @@ class Make private constructor() {
 
   fun le(a: TinyArithExpr, b: TinyArithExpr): TinyBoolExpr {
     return if (a is TinyReal && b is TinyReal) {
-      bool(a.num <= b.num)
+      bool(a.num * b.denominator <= b.num * a.denominator)
     } else {
       TinyLe(a, b)
     }
@@ -440,10 +541,12 @@ class Make private constructor() {
     }
   }
 
-  fun real(num: Int) = when (num) {
-    0 -> ZERO
-    1 -> ONE
-    else -> TinyReal(num)
+  fun real(num: Int, denominator: Int = 1): TinyReal {
+    return when (num) {
+      0 -> ZERO
+      denominator -> ONE
+      else -> TinyReal(num, denominator)
+    }
   }
 
   fun not(bool: TinyBoolExpr): TinyBoolExpr {
