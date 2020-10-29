@@ -9,7 +9,7 @@ import org.checkerframework.dataflow.cfg.node.ObjectCreationNode
 
 private var constraintsUUID = 1L
 
-class ConstraintsSet : Iterable<TinyBoolExpr> {
+class ConstraintsSet(val constraint: Constraint) : Iterable<TinyBoolExpr> {
 
   private val phase1 = mutableListOf<TinyBoolExpr>()
   private val phase2 = mutableListOf<TinyBoolExpr>()
@@ -442,7 +442,7 @@ private class ImpliedAssertion(val tail: SymbolicAssertion) : Constraint() {
   }
 
   override fun build(): ConstraintsSet {
-    val result = ConstraintsSet()
+    val result = ConstraintsSet(this)
     handleImplies(tail, tail.impliedBy(), result)
     return result
   }
@@ -455,7 +455,7 @@ private class NoSideEffects(val assertions: NodeAssertions) : Constraint() {
   }
 
   override fun build(): ConstraintsSet {
-    return reduce(ConstraintsSet(), assertions) { result, tail, heads ->
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
       handleImplies(tail, heads, result)
     }
   }
@@ -477,7 +477,7 @@ private class CallConstraints(
   }
 
   override fun build(): ConstraintsSet {
-    return reduce(ConstraintsSet(), assertions) { result, tail, heads ->
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
       handleCall(
         callRef,
         receiverRef,
@@ -507,7 +507,7 @@ private class ParameterAndLocalVariable(
   }
 
   override fun build(): ConstraintsSet {
-    val result = ConstraintsSet()
+    val result = ConstraintsSet(this)
 
     fun helper(parameter: Reference, local: Reference) {
       val paramInfo = assertion[parameter]
@@ -548,7 +548,7 @@ private class PassingParameter(
   }
 
   override fun build(): ConstraintsSet {
-    val result = ConstraintsSet()
+    val result = ConstraintsSet(this)
 
     fun helper(expr: SymbolicInfo, parameter: SymbolicInfo) {
       result.addAll(if (expr === this.expr) {
@@ -578,7 +578,7 @@ private class NotEqualityInAssertion(
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn1(Make.S.not(
+    return ConstraintsSet(this).addIn1(Make.S.not(
       Make.S.equals(assertion, a, b)
     ))
   }
@@ -596,7 +596,7 @@ private class EqualityInAssertion(
   }
 
   override fun build(): ConstraintsSet {
-    return reduce(ConstraintsSet(), assertions) { result, tail, heads ->
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
       handleEquality(old, target, expr, tail, heads, result)
     }
   }
@@ -610,7 +610,7 @@ private class SymFractionImpliesSymFraction(val a: SymbolicFraction, val b: Symb
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn1(Make.S.ge(a.expr, b.expr))
+    return ConstraintsSet(this).addIn1(Make.S.ge(a.expr, b.expr))
   }
 }
 
@@ -622,7 +622,7 @@ private class SymFractionEqSymFraction(val a: SymbolicFraction, val b: Collectio
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn1(Make.S.eq(a.expr, Make.S.min(b.map { it.expr })))
+    return ConstraintsSet(this).addIn1(Make.S.eq(a.expr, Make.S.min(b.map { it.expr })))
   }
 }
 
@@ -635,7 +635,7 @@ private class SymTypeImpliesSymType(val a: SymbolicType, val b: SymbolicType) : 
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn2(Make.S.subtype(a.expr, b.expr))
+    return ConstraintsSet(this).addIn2(Make.S.subtype(a.expr, b.expr))
   }
 }
 
@@ -645,7 +645,7 @@ private class SymTypeEqSymType(val a: SymbolicType, val b: SymbolicType) : Const
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn2(Make.S.eq(a.expr, b.expr))
+    return ConstraintsSet(this).addIn2(Make.S.eq(a.expr, b.expr))
   }
 }
 
@@ -655,7 +655,7 @@ private class SymTypeEqType(val a: SymbolicType, val b: MungoType) : Constraint(
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn2(Make.S.eq(a.expr, Make.S.type(b)))
+    return ConstraintsSet(this).addIn2(Make.S.eq(a.expr, Make.S.type(b)))
   }
 }
 
@@ -665,7 +665,7 @@ private class TypeImpliesSymType(val a: MungoType, val b: SymbolicType) : Constr
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn2(Make.S.subtype(Make.S.type(a), b.expr))
+    return ConstraintsSet(this).addIn2(Make.S.subtype(Make.S.type(a), b.expr))
   }
 }
 
@@ -675,7 +675,7 @@ private class SymTypeImpliesType(val a: SymbolicType, val b: MungoType) : Constr
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn2(Make.S.subtype(a.expr, Make.S.type(b)))
+    return ConstraintsSet(this).addIn2(Make.S.subtype(a.expr, Make.S.type(b)))
   }
 }
 
@@ -685,7 +685,7 @@ private class SymFractionGt(val a: SymbolicFraction, val b: Int) : Constraint() 
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn1(Make.S.gt(a.expr, Make.S.real(b)))
+    return ConstraintsSet(this).addIn1(Make.S.gt(a.expr, Make.S.real(b)))
   }
 }
 
@@ -695,7 +695,7 @@ private class SymFractionLt(val a: SymbolicFraction, val b: Int) : Constraint() 
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn1(Make.S.lt(a.expr, Make.S.real(b)))
+    return ConstraintsSet(this).addIn1(Make.S.lt(a.expr, Make.S.real(b)))
   }
 }
 
@@ -705,17 +705,17 @@ private class SymFractionEq(val a: SymbolicFraction, val b: Int) : Constraint() 
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet().addIn1(Make.S.eq(a.expr, Make.S.real(b)))
+    return ConstraintsSet(this).addIn1(Make.S.eq(a.expr, Make.S.real(b)))
   }
 }
 
-private class OtherConstraint(val fn: () -> ConstraintsSet) : Constraint() {
+private class OtherConstraint(val fn: (Constraint) -> ConstraintsSet) : Constraint() {
   override fun toString(): String {
     return "($id) other"
   }
 
   override fun build(): ConstraintsSet {
-    return fn()
+    return fn(this)
   }
 }
 
@@ -770,16 +770,16 @@ class Constraints {
     setup = ConstraintsSetup(types).start()
 
     for (constraint in constraints) {
-      val exprs = constraint.build()
+      val set = constraint.build()
 
-      for ((idx, expr) in exprs.phase1It().withIndex()) {
+      for ((idx, expr) in set.phase1It().withIndex()) {
         val label = "${constraint.id}-$idx-1"
         val z3expr = expr.toZ3(setup)
         idToConstraint[label] = Pair(constraint, z3expr)
         setup.addAssert(z3expr, label)
       }
 
-      for ((idx, expr) in exprs.phase2It().withIndex()) {
+      for ((idx, expr) in set.phase2It().withIndex()) {
         val label = "${constraint.id}-$idx-2"
         val z3expr = expr.toZ3(setup)
         idToConstraint[label] = Pair(constraint, z3expr)
@@ -793,20 +793,46 @@ class Constraints {
 
   private fun solveIn2Phases(): InferenceResult {
     setup = ConstraintsSetup(types).start()
-    val phase2Iterators = mutableListOf<Pair<Constraint, Iterator<TinyBoolExpr>>>()
+    val constraintsSets = constraints.map { it.build() }
+    val allPhase1Exprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
+    val allPhase2Exprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
 
-    for (constraint in constraints) {
-      val exprs = constraint.build()
-      val phase1 = exprs.phase1It()
-      val phase2 = exprs.phase2It()
-      phase2Iterators.add(Pair(constraint, phase2))
+    println("Simplifying...")
 
-      for ((idx, expr) in phase1.withIndex()) {
-        val label = "${constraint.id}-$idx-1"
-        val z3expr = expr.toZ3(setup)
-        idToConstraint[label] = Pair(constraint, z3expr)
-        setup.addAssert(z3expr, label)
+    // FIXME because of the simplification, the values are not showing in the solution!!!
+
+    // Track equalities
+    val allEqualities = GenericEqualityTracker<TinyExpr<*, *>> { it is TinyReal || it is TinyMungoType }
+
+    for (set in constraintsSets) {
+      for (expr in set) {
+        if (expr is TinyEqArith) {
+          allEqualities[expr.a] = expr.b
+        } else if (expr is TinyEqMungoType) {
+          allEqualities[expr.a] = expr.b
+        }
       }
+    }
+
+    // Simplify...
+
+    for (set in constraintsSets) {
+      for (expr in set.phase1It()) {
+        allPhase1Exprs.add(Pair(set.constraint, expr.substitute(allEqualities)))
+      }
+      for (expr in set.phase2It()) {
+        allPhase2Exprs.add(Pair(set.constraint, expr.substitute(allEqualities)))
+      }
+    }
+
+    // Phase 1...
+
+    for ((idx, pair) in allPhase1Exprs.withIndex()) {
+      val (constraint, expr) = pair
+      val label = "${constraint.id}-$idx-1"
+      val z3expr = expr.toZ3(setup)
+      idToConstraint[label] = Pair(constraint, z3expr)
+      setup.addAssert(z3expr, label)
     }
 
     println("Solving (phase 1)...")
@@ -817,16 +843,17 @@ class Constraints {
       return result1
     }
 
+    // Phase 2...
+
     setup.push()
 
-    for ((constraint, phase2) in phase2Iterators) {
-      for ((idx, expr) in phase2.withIndex()) {
-        val label = "${constraint.id}-$idx-2"
-        val z3expr = expr.toZ3(setup)
-        val simplified = result1.eval(z3expr)
-        idToConstraint[label] = Pair(constraint, z3expr)
-        setup.addAssert(simplified, label)
-      }
+    for ((idx, pair) in allPhase2Exprs.withIndex()) {
+      val (constraint, expr) = pair
+      val label = "${constraint.id}-$idx-2"
+      val z3expr = expr.toZ3(setup)
+      val simplified = result1.eval(z3expr)
+      idToConstraint[label] = Pair(constraint, z3expr)
+      setup.addAssert(simplified, label)
     }
 
     println("Solving (phase 2)...")
@@ -960,7 +987,7 @@ class Constraints {
     constraints.add(PassingParameter(expr, parameter))
   }
 
-  fun other(fn: () -> ConstraintsSet) {
+  fun other(fn: (Constraint) -> ConstraintsSet) {
     constraints.add(OtherConstraint(fn))
   }
 

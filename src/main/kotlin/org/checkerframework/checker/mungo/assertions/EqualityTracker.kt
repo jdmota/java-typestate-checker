@@ -93,48 +93,54 @@ class MutableEqualityTracker(
 
 class Equalities<E>(val root: E, val set: MutableSet<E> = mutableSetOf(root))
 
-class GenericEqualityTracker<E>(
-  private val data: MutableMap<E, Equalities<E>> = mutableMapOf()
-) {
+class GenericEqualityTracker<E>(private val prefer: (E) -> Boolean) : Map<E, E> {
 
-  fun getSet(ref: E): Set<E> {
-    return data.computeIfAbsent(ref) {
-      Equalities(it)
-    }.set
+  private val data: MutableMap<E, Equalities<E>> = mutableMapOf()
+
+  private fun data(ref: E): Equalities<E> {
+    return data.computeIfAbsent(ref) { Equalities(it) }
   }
 
-  operator fun get(ref: E): E {
-    return data.computeIfAbsent(ref) {
-      Equalities(it)
-    }.root
+  override operator fun get(key: E): E {
+    return data(key).root
   }
 
   operator fun set(a: E, b: E) {
     if (a == b) {
       return
     }
-    val aData = data[a]
-    val bData = data[b]
+    val aData = data(a)
+    val bData = data(b)
 
-    when {
-      aData != null && bData != null -> {
-        aData.set.addAll(bData.set)
-        data[b] = aData
-      }
-      aData != null && bData == null -> {
-        aData.set.add(b)
-        data[b] = aData
-      }
-      aData == null && bData != null -> {
-        bData.set.add(a)
-        data[a] = bData
-      }
-      else -> {
-        val aData = Equalities(a)
-        aData.set.add(b)
-        data[b] = aData
-      }
+    // If A is preferable as root
+    if (prefer(aData.root)) {
+      aData.set.addAll(bData.set)
+      data[b] = aData
+    } else {
+      bData.set.addAll(aData.set)
+      data[a] = bData
     }
+  }
+
+  override val keys: Set<E>
+    get() = data.keys
+  override val size: Int
+    get() = data.size
+  override val values: Collection<E>
+    get() = TODO("Not yet implemented")
+  override val entries: Set<Map.Entry<E, E>>
+    get() = TODO("Not yet implemented")
+
+  override fun containsKey(key: E): Boolean {
+    return data.containsKey(key)
+  }
+
+  override fun containsValue(value: E): Boolean {
+    return data[value]?.root == value ?: false
+  }
+
+  override fun isEmpty(): Boolean {
+    return data.isEmpty()
   }
 
 }
