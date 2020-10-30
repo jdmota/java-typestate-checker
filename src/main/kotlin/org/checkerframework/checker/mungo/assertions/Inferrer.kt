@@ -510,10 +510,14 @@ class Inferrer(val checker: MungoChecker) {
       is NoSolution -> {
         println("No solution!\n")
 
-        for (expr in solution.unsatCore) {
+        solution.unsatCore.map { expr ->
           val (constraint, expr, z3expr) = constraints.getConstraintByLabel(expr.toString())
-          println(constraint)
-          println(constraints.formatExpr(z3expr))
+          // println(constraints.formatExpr(z3expr, solution))
+          expr
+        }.let { list ->
+          Simplifier(true).simplifyAll(list).forEach {
+            println(it)
+          }
         }
       }
       is UnknownSolution -> {
@@ -553,21 +557,15 @@ class Inferrer(val checker: MungoChecker) {
           ).debug(solution, "--> method: ${if (ast is UnderlyingAST.CFGMethod) ast.method.name.toString() else "something"}")
         }
 
-        val newCore = mutableListOf<TinyBoolExpr>()
-
-        solution.unsatCore?.forEach { expr ->
+        solution.unsatCore?.map { expr ->
           val (constraint, expr, z3expr) = constraints.getConstraintByLabel(expr.toString())
-          // println(constraint)
-          // println(expr)
-          // println("--")
           // println(constraints.formatExpr(z3expr, solution))
-          newCore.add(expr.substitute(SolutionMap(solution)))
+          expr.substitute(SolutionMap(solution))
+        }?.let { list ->
+          Simplifier(true).simplifyAll(list).forEach {
+            println(it)
+          }
         }
-
-        Simplifier().simplifyAll(newCore).forEach {
-          println(it)
-        }
-
       }
     }
   }

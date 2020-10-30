@@ -120,6 +120,16 @@ class TinyGt(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
     return setup.ctx.mkGt(a.toZ3(setup), b.toZ3(setup))
   }
 
+  override fun equals(other: Any?): Boolean {
+    return other is TinyGt && a == other.a && b == other.b
+  }
+
+  override fun hashCode(): Int {
+    var result = a.hashCode()
+    result = 31 * result + b.hashCode()
+    return result
+  }
+
   override fun toString(): String {
     return "($a > $b)"
   }
@@ -132,6 +142,16 @@ class TinyLt(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkLt(a.toZ3(setup), b.toZ3(setup))
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return other is TinyLt && a == other.a && b == other.b
+  }
+
+  override fun hashCode(): Int {
+    var result = a.hashCode()
+    result = 31 * result + b.hashCode()
+    return result
   }
 
   override fun toString(): String {
@@ -148,6 +168,16 @@ class TinyGe(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
     return setup.ctx.mkGe(a.toZ3(setup), b.toZ3(setup))
   }
 
+  override fun equals(other: Any?): Boolean {
+    return other is TinyGe && a == other.a && b == other.b
+  }
+
+  override fun hashCode(): Int {
+    var result = a.hashCode()
+    result = 31 * result + b.hashCode()
+    return result
+  }
+
   override fun toString(): String {
     return "($a >= $b)"
   }
@@ -160,6 +190,16 @@ class TinyLe(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
 
   override fun toZ3(setup: ConstraintsSetup): BoolExpr {
     return setup.ctx.mkLe(a.toZ3(setup), b.toZ3(setup))
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return other is TinyLe && a == other.a && b == other.b
+  }
+
+  override fun hashCode(): Int {
+    var result = a.hashCode()
+    result = 31 * result + b.hashCode()
+    return result
   }
 
   override fun toString(): String {
@@ -401,6 +441,17 @@ class TinyEquals(val assertion: SymbolicAssertion, val a: Reference, val b: Refe
     return setup.mkEquals(assertion, a, b)
   }
 
+  override fun equals(other: Any?): Boolean {
+    return other is TinyEquals && assertion == other.assertion && a == other.a && b == other.b
+  }
+
+  override fun hashCode(): Int {
+    var result = assertion.hashCode()
+    result = 31 * result + a.hashCode()
+    result = 31 * result + b.hashCode()
+    return result
+  }
+
   override fun toString(): String {
     return "(eq_${assertion.id} $a $b)"
   }
@@ -560,7 +611,12 @@ class Make private constructor() {
   fun bool(bool: Boolean) = if (bool) TRUE else FALSE
 
   fun eq(a: TinyArithExpr, b: TinyArithExpr): TinyBoolExpr {
-    return if (a == b) TRUE else TinyEqArith(a, b)
+    return when {
+      a == b -> TRUE
+      a == ZERO && b is TinySub -> TinyEqArith(b.a, b.b)
+      b == ZERO && a is TinySub -> TinyEqArith(a.a, a.b)
+      else -> TinyEqArith(a, b)
+    }
   }
 
   fun eq(a: TinyBoolExpr, b: TinyBoolExpr): TinyBoolExpr {
