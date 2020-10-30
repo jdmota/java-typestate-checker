@@ -6,7 +6,6 @@ import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
-import org.checkerframework.javacutil.TypesUtils
 import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind.*
 import javax.lang.model.element.Modifier
@@ -96,23 +95,11 @@ fun getReference(tree: Tree): Reference? {
   }
 }
 
-sealed class Reference(val type: TypeMirror) {
-  abstract fun isThisField(): Boolean
-  abstract fun replace(x: Reference, by: Reference): Reference
-  abstract fun hasPrefix(prefix: Reference): Boolean
-}
-
 fun createFieldAccess(tree: VariableTree, classTree: ClassTree): FieldAccess {
   val receiverType = TreeUtils.elementFromDeclaration(classTree).asType()
   val type = TreeUtils.elementFromDeclaration(tree).asType()
   val element = TreeUtils.elementFromTree(tree) as VariableElement
   return FieldAccess(ThisReference(receiverType), type, element)
-}
-
-fun createFieldAccess(receiver: Reference, tree: VariableTree): FieldAccess {
-  val type = TreeUtils.elementFromDeclaration(tree).asType()
-  val element = TreeUtils.elementFromTree(tree) as VariableElement
-  return FieldAccess(receiver, type, element)
 }
 
 fun createLocalVariable(tree: VariableTree): LocalVariable {
@@ -123,7 +110,43 @@ fun createParameterVariable(tree: VariableTree): ParameterVariable {
   return ParameterVariable(LocalVariableNode(tree))
 }
 
-class FieldAccess(val receiver: Reference, type: TypeMirror, val field: VariableElement) : Reference(type) {
+sealed class Reference(val type: TypeMirror, val parent: Reference?) {
+  abstract fun isThisField(): Boolean
+  abstract fun withNewParent(parent: Reference): Reference
+
+  override fun equals(other: Any?): Boolean {
+    return other is Reference && parent == other.parent
+  }
+
+  override fun hashCode(): Int {
+    return parent?.hashCode() ?: 0
+  }
+
+  override fun toString(): String {
+    return if (parent == null) "" else "$parent."
+  }
+
+  fun replace(x: Reference, by: Reference): Reference {
+    if (this == x) return by
+    if (parent == null) return this
+    val newReceiver = parent.replace(x, by)
+    if (newReceiver === parent) return this
+    return withNewParent(newReceiver)
+  }
+
+  fun hasPrefix(prefix: Reference): Boolean {
+    if (this == prefix) return true
+    if (parent == null) return false
+    return parent.hasPrefix(prefix)
+  }
+
+  fun withCtx(ctx: OuterContextRef): Reference {
+    if (parent == null) return withNewParent(ctx)
+    return withNewParent(parent.withCtx(ctx))
+  }
+}
+
+class FieldAccess(val receiver: Reference, type: TypeMirror, val field: VariableElement) : Reference(type, receiver) {
 
   constructor(receiver: Reference, field: VariableElement) : this(receiver, ElementUtils.getType(field), field)
 
@@ -134,14 +157,11 @@ class FieldAccess(val receiver: Reference, type: TypeMirror, val field: Variable
   val fieldName get() = field.simpleName.toString()
 
   override fun isThisField(): Boolean {
-    return if (receiver is ThisReference) true else receiver.isThisField()
+    return if (receiver is ThisReference) receiver.parent == null else receiver.isThisField()
   }
 
-  fun getRoot(): Reference = if (receiver is FieldAccess) receiver.getRoot() else receiver
-
   override fun equals(other: Any?): Boolean {
-    if (other !is FieldAccess) return false
-    return other.field == field && other.receiver == receiver
+    return other is FieldAccess && other.field == field && other.receiver == receiver
   }
 
   override fun hashCode(): Int {
@@ -154,55 +174,40 @@ class FieldAccess(val receiver: Reference, type: TypeMirror, val field: Variable
     return "$receiver.$field"
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    val newReceiver = receiver.replace(x, by)
-    if (newReceiver === receiver) {
-      return this
-    }
-    return FieldAccess(newReceiver, type, field)
-  }
-
-  override fun hasPrefix(prefix: Reference): Boolean {
-    if (this == prefix) {
-      return true
-    }
-    return receiver.hasPrefix(prefix)
+  override fun withNewParent(parent: Reference): Reference {
+    return FieldAccess(parent, type, field)
   }
 }
 
-class ThisReference(type: TypeMirror) : Reference(type) {
+class ThisReference(parent: Reference?, type: TypeMirror) : Reference(type, parent) {
+
+  constructor(type: TypeMirror) : this(null, type)
+
   override fun isThisField(): Boolean {
     return false
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is ThisReference
+    return other is ThisReference && super.equals(other)
   }
 
   override fun hashCode(): Int {
-    return 0
+    return 31 * super.hashCode() + 1
   }
 
   override fun toString(): String {
-    return "this"
+    return super.toString() + "this"
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    return this
-  }
-
-  override fun hasPrefix(prefix: Reference): Boolean {
-    return this == prefix
+  override fun withNewParent(parent: Reference): Reference {
+    return ThisReference(parent, type)
   }
 }
 
-class ClassName(type: TypeMirror) : Reference(type) {
+class ClassName(parent: Reference?, type: TypeMirror) : Reference(type, parent) {
+
+  constructor(type: TypeMirror) : this(null, type)
+
   val typeString = type.toString()
 
   override fun isThisField(): Boolean {
@@ -210,31 +215,25 @@ class ClassName(type: TypeMirror) : Reference(type) {
   }
 
   override fun equals(other: Any?): Boolean {
-    if (other !is ClassName) return false
-    return other.typeString == typeString
+    return other is ClassName && other.typeString == typeString && super.equals(other)
   }
 
   override fun hashCode(): Int {
-    return typeString.hashCode()
+    return 31 * super.hashCode() + typeString.hashCode()
   }
 
   override fun toString(): String {
-    return "$typeString.class"
+    return super.toString() + "$typeString.class"
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    return this
-  }
-
-  override fun hasPrefix(prefix: Reference): Boolean {
-    return this == prefix
+  override fun withNewParent(parent: Reference): Reference {
+    return ClassName(parent, type)
   }
 }
 
-class LocalVariable(type: TypeMirror, val element: VarSymbol) : Reference(type) {
+class LocalVariable(parent: Reference?, type: TypeMirror, val element: VarSymbol) : Reference(type, parent) {
+
+  constructor(type: TypeMirror, element: VarSymbol) : this(null, type, element)
   constructor(node: LocalVariableNode) : this(node.type, node.element as VarSymbol)
   constructor(elem: Element) : this(ElementUtils.getType(elem), elem as VarSymbol)
 
@@ -251,39 +250,35 @@ class LocalVariable(type: TypeMirror, val element: VarSymbol) : Reference(type) 
     // different between subcheckers. The owner of a lambda parameter is the enclosing
     // method, so a local variable and a lambda parameter might have the same name and the
     // same owner. pos is used to differentiate this case.
-    return element.pos == other.element.pos && other.elementName == elementName && other.ownerName == ownerName
+    return element.pos == other.element.pos && other.elementName == elementName && other.ownerName == ownerName && super.equals(other)
   }
 
   override fun hashCode(): Int {
-    var result = elementName.hashCode()
+    var result = super.hashCode()
+    result = 31 * result + elementName.hashCode()
     result = 31 * result + ownerName.hashCode()
     return result
   }
 
   override fun toString(): String {
-    return elementName
+    return super.toString() + elementName
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    return this
-  }
-
-  override fun hasPrefix(prefix: Reference): Boolean {
-    return this == prefix
+  override fun withNewParent(parent: Reference): Reference {
+    return LocalVariable(parent, type, element)
   }
 }
 
-class ParameterVariable(type: TypeMirror, val element: VarSymbol) : Reference(type) {
+class ParameterVariable(parent: Reference?, type: TypeMirror, val element: VarSymbol) : Reference(type, parent) {
+
+  constructor(type: TypeMirror, element: VarSymbol) : this(null, type, element)
   constructor(node: LocalVariableNode) : this(node.type, node.element as VarSymbol)
   constructor(elem: Element) : this(ElementUtils.getType(elem), elem as VarSymbol)
 
   private val elementName = element.name.toString()
   private val ownerName = element.owner.toString()
 
-  fun toLocalVariable() = LocalVariable(type, element)
+  fun toLocalVariable() = LocalVariable(parent, type, element)
 
   override fun isThisField(): Boolean {
     return false
@@ -295,146 +290,152 @@ class ParameterVariable(type: TypeMirror, val element: VarSymbol) : Reference(ty
     // different between subcheckers. The owner of a lambda parameter is the enclosing
     // method, so a local variable and a lambda parameter might have the same name and the
     // same owner. pos is used to differentiate this case.
-    return element.pos == other.element.pos && other.elementName == elementName && other.ownerName == ownerName
+    return element.pos == other.element.pos && other.elementName == elementName && other.ownerName == ownerName && super.equals(other)
   }
 
   override fun hashCode(): Int {
-    var result = elementName.hashCode()
+    var result = super.hashCode()
+    result = 31 * result + elementName.hashCode()
     result = 31 * result + ownerName.hashCode()
     return result
   }
 
   override fun toString(): String {
-    return "param($elementName)"
+    return super.toString() + "param($elementName)"
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    return this
-  }
-
-  override fun hasPrefix(prefix: Reference): Boolean {
-    return this == prefix
+  override fun withNewParent(parent: Reference): Reference {
+    return ParameterVariable(parent, type, element)
   }
 }
 
-class ReturnSpecialVar(type: TypeMirror) : Reference(type) {
+class ReturnSpecialVar(parent: Reference?, type: TypeMirror) : Reference(type, parent) {
+
+  constructor(type: TypeMirror) : this(null, type)
+
   override fun isThisField(): Boolean {
     return false
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is ReturnSpecialVar
+    return other is ReturnSpecialVar && super.equals(other)
   }
 
   override fun hashCode(): Int {
-    return 1
+    return 31 * super.hashCode() + 2
   }
 
   override fun toString(): String {
-    return "#ret"
+    return super.toString() + "#ret"
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    return this
-  }
-
-  override fun hasPrefix(prefix: Reference): Boolean {
-    return this == prefix
+  override fun withNewParent(parent: Reference): Reference {
+    return ReturnSpecialVar(parent, type)
   }
 }
 
 // The "pos" distinguishes between different assignments
-class OldSpecialVar(val reference: Reference, val pos: Int) : Reference(reference.type) {
+class OldSpecialVar(parent: Reference?, val reference: Reference, val pos: Int) : Reference(reference.type, parent) {
+
+  constructor(reference: Reference, pos: Int) : this(null, reference, pos)
+
   override fun isThisField(): Boolean {
     return false
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is OldSpecialVar && reference == other.reference && pos == other.pos
+    return other is OldSpecialVar && reference == other.reference && pos == other.pos && super.equals(other)
   }
 
   override fun hashCode(): Int {
-    var result = reference.hashCode()
+    var result = super.hashCode()
+    result = 31 * result + reference.hashCode()
     result = 31 * result + pos
     return result
   }
 
   override fun toString(): String {
-    return "old($reference)[$pos]"
+    return super.toString() + "old($reference)[$pos]"
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    return this
-  }
-
-  override fun hasPrefix(prefix: Reference): Boolean {
-    return this == prefix
+  override fun withNewParent(parent: Reference): Reference {
+    return OldSpecialVar(parent, reference, pos)
   }
 }
 
-class NodeRef(val node: Node) : Reference(node.type) {
+class NodeRef(parent: Reference?, val node: Node) : Reference(node.type, parent) {
+
+  constructor(node: Node) : this(null, node)
+
   override fun isThisField(): Boolean {
     return false
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is NodeRef && node === other.node
+    return other is NodeRef && node === other.node && super.equals(other)
   }
 
   override fun hashCode(): Int {
-    return System.identityHashCode(node)
+    return 31 * super.hashCode() + System.identityHashCode(node)
   }
 
   override fun toString(): String {
-    return "node($node)[${(node.tree as? JCTree)?.pos}]"
+    return super.toString() + "node($node)[${(node.tree as? JCTree)?.pos}]"
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    return this
-  }
-
-  override fun hasPrefix(prefix: Reference): Boolean {
-    return this == prefix
+  override fun withNewParent(parent: Reference): Reference {
+    return NodeRef(parent, node)
   }
 }
 
-class UnknownRef(type: TypeMirror) : Reference(type) {
+class UnknownRef(type: TypeMirror) : Reference(type, null) {
+
   override fun isThisField(): Boolean {
     return false
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is UnknownRef
+    return other is UnknownRef && super.equals(other)
   }
 
   override fun hashCode(): Int {
-    return 0
+    return 31 * super.hashCode()
   }
 
   override fun toString(): String {
-    return "unknown"
+    return super.toString() + "unknown"
   }
 
-  override fun replace(x: Reference, by: Reference): Reference {
-    if (this == x) {
-      return by
-    }
-    return this
+  override fun withNewParent(parent: Reference): Reference {
+    return UnknownRef(type)
+  }
+}
+
+class OuterContextRef(parent: Reference?, val tree: Tree, type: TypeMirror) : Reference(type, parent) {
+
+  override fun isThisField(): Boolean {
+    return false
   }
 
-  override fun hasPrefix(prefix: Reference): Boolean {
-    return this == prefix
+  override fun equals(other: Any?): Boolean {
+    return other is OuterContextRef && tree === other.tree && super.equals(other)
+  }
+
+  override fun hashCode(): Int {
+    return 31 * super.hashCode() + System.identityHashCode(tree)
+  }
+
+  private fun treeName() = when (tree) {
+    is MethodTree -> tree.name.toString()
+    is LambdaExpressionTree -> "lambda"
+    else -> "unknown"
+  }
+
+  override fun toString(): String {
+    return super.toString() + "#outer_${treeName()}"
+  }
+
+  override fun withNewParent(parent: Reference): Reference {
+    return OuterContextRef(parent, tree, type)
   }
 }

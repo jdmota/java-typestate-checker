@@ -324,6 +324,14 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return null
   }
 
+  override fun visitLambdaResultExpression(n: LambdaResultExpressionNode, p: NodeAssertions): Void? {
+    return super.visitLambdaResultExpression(n, p)
+  }
+
+  override fun visitMemberReference(n: FunctionalInterfaceNode, p: NodeAssertions): Void? {
+    return super.visitMemberReference(n, p)
+  }
+
   override fun visitNode(n: Node?, result: NodeAssertions): Void? {
     if (n != null) {
       println("----")

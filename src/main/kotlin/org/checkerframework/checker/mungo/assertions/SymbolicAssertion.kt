@@ -134,7 +134,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
 
   fun impliedBy(): Set<SymbolicAssertion> = impliedBy
 
-  val roots = mutableMapOf<Reference, SymbolicInfo>()
+  private val roots = mutableMapOf<Reference, SymbolicInfo>()
 
   init {
     for (loc in skeleton.locations) {
@@ -143,44 +143,34 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
   }
 
   fun prepare(ref: Reference): SymbolicInfo {
-    return when (ref) {
-      is ParameterVariable,
-      is LocalVariable,
-      is ThisReference,
-      is ClassName,
-      is ReturnSpecialVar,
-      is OldSpecialVar,
-      is NodeRef -> {
+    return if (ref is UnknownRef) {
+      skeleton.unknownInfo
+    } else {
+      val parent = ref.parent
+      if (parent == null) {
         roots.computeIfAbsent(ref) { SymbolicInfo(it) }
+      } else {
+        val parentInfo = prepare(parent)
+        parentInfo.children.computeIfAbsent(ref) { SymbolicInfo(it) }
       }
-      is FieldAccess -> {
-        val parent = prepare(ref.receiver)
-        parent.children.computeIfAbsent(ref) { SymbolicInfo(it) }
-      }
-      is UnknownRef -> skeleton.unknownInfo
     }
   }
 
   operator fun get(ref: Reference): SymbolicInfo {
-    return when (ref) {
-      is ParameterVariable,
-      is LocalVariable,
-      is ThisReference,
-      is ClassName,
-      is ReturnSpecialVar,
-      is OldSpecialVar,
-      is NodeRef -> {
+    return if (ref is UnknownRef) {
+      skeleton.unknownInfo
+    } else {
+      val parent = ref.parent
+      if (parent == null) {
         roots[ref] ?: skeleton.unknownInfo // error("No info for $ref")
-      }
-      is FieldAccess -> {
-        val parent = get(ref.receiver)
-        if (parent === skeleton.unknownInfo) {
+      } else {
+        val parentInfo = this[parent]
+        if (parentInfo === skeleton.unknownInfo) {
           skeleton.unknownInfo
         } else {
-          parent.children[ref] ?: skeleton.unknownInfo // error("No info for $ref")
+          parentInfo.children[ref] ?: skeleton.unknownInfo // error("No info for $ref")
         }
       }
-      is UnknownRef -> skeleton.unknownInfo
     }
   }
 

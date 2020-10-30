@@ -16,27 +16,27 @@ public class Main {
   }
 
   /*public static void main2() {
-    Cell c = new Cell();
-    c.setItem(new Item());
+    Cell cell = new Cell();
+    cell.setItem(new Item());
 
-    Item item = c.getItem();
+    Item item = cell.getItem();
 
     Thread t = new Thread(() -> {
-      item.changeState();
+      // item.changeState();
     });
 
-    t.start();
-    t.join();
+    //t.start();
+    //t.join();
 
-    Item item2 = c.getItem();
+    Item item2 = cell.getItem();
     item2.changeState();
   }*/
 
   /*public static void main3() {
-    Cell c = new Cell();
-    c.setItem(new Item());
+    Cell cell = new Cell();
+    cell.setItem(new Item());
 
-    Item item = c.getItem();
+    Item item = cell.getItem();
 
     Thread t = new Thread(() -> {
       item.changeState();
@@ -44,7 +44,7 @@ public class Main {
 
     t.start();
 
-    Item item2 = c.getItem();
+    Item item2 = cell.getItem();
     item2.changeState();
 
     t.join();

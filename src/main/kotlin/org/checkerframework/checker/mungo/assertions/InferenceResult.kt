@@ -32,8 +32,9 @@ sealed class SomeSolution(protected val setup: ConstraintsSetup, val model: Mode
       is ParameterVariable -> false
       is ReturnSpecialVar -> false
       is OldSpecialVar -> false
-      is NodeRef -> false
+      is NodeRef -> true
       is UnknownRef -> true
+      is OuterContextRef -> true
     }
   }
 

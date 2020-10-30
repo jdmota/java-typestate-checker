@@ -193,6 +193,10 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
+  fun getCtxRef(parent: OuterContextRef?, tree: Tree): OuterContextRef {
+    return OuterContextRef(parent, tree, utils.typeUtils.nullType)
+  }
+
   fun getReference(node: Node): Reference {
     return getDirectReference(node) ?: NodeRef(node)
   }
@@ -286,6 +290,7 @@ class Inferrer(val checker: MungoChecker) {
       it is NodeRef || it is LocalVariable || (it is FieldAccess && !it.isThisField())
     }.toSet()
 
+    // FIXME replace this
     for (a in localsAndFields) {
       for (b in localsAndFields) {
         if (a !== b && a.type === b.type) {
@@ -531,13 +536,17 @@ class Inferrer(val checker: MungoChecker) {
         }
 
         for ((ast, assertions) in postAssertions) {
-          val a = preAssertions[ast]!!
-          NodeAssertions(
-            a.preThen,
-            a.preElse,
-            assertions.postThen,
-            assertions.postElse
-          ).debug(solution, "--> method: ${if (ast is UnderlyingAST.CFGMethod) ast.method.name.toString() else "something"}")
+          if (ast is UnderlyingAST.CFGMethod) {
+            val a = preAssertions[ast]!!
+            NodeAssertions(
+              a.preThen,
+              a.preElse,
+              assertions.postThen,
+              assertions.postElse
+            ).debug(solution, "--> method: ${ast.method.name}")
+          } else {
+            println("--> ${ast::class.java}")
+          }
         }
       }
       is IncompleteSolution -> {
