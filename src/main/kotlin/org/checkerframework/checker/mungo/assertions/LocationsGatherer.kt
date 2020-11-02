@@ -7,6 +7,7 @@ import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
+import javax.lang.model.element.ElementKind
 
 // TODO fix infinite recursion with recursive data types like Node.next.next.next
 class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Void?, Void?>() {
@@ -35,7 +36,7 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
     return list
   }
 
-  private val cache1 = WeakIdentityHashMap<JCTree.JCLambda, List<Reference>>()
+  private val cache1 = WeakIdentityHashMap<JCTree, List<Reference>>()
   private val cache2 = WeakIdentityHashMap<Symbol.MethodSymbol, List<Reference>>()
 
   fun getParameterLocations(method: JCTree.JCLambda): List<Reference> {
@@ -48,8 +49,9 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
     }
   }
 
-  fun getParameterLocations(sym: Symbol.MethodSymbol): List<Reference> {
-    return cache2.computeIfAbsent(sym) {
+  fun getParameterLocations(method: JCTree.JCMethodDecl): List<Reference> {
+    val sym = method.sym
+    return cache1.computeIfAbsent(method) {
       val list = mutableListOf<Reference>()
       if (!sym.isStatic) {
         getLocationsHelper(list, ThisReference(sym.enclosingElement.asType()))
@@ -62,9 +64,23 @@ class LocationsGatherer(private val checker: MungoChecker) : TreePathScanner<Voi
     }
   }
 
+  fun getParameterLocationsForCall(sym: Symbol.MethodSymbol): List<Reference> {
+    return cache2.computeIfAbsent(sym) {
+      val isConstructor = sym.getKind() == ElementKind.CONSTRUCTOR
+      val list = mutableListOf<Reference>()
+      if (!sym.isStatic && !isConstructor) {
+        list.add(ThisReference(sym.enclosingElement.asType()))
+      }
+      sym.parameters.fold(list) { l, param ->
+        l.add(ParameterVariable(param))
+        l
+      }
+    }
+  }
+
   fun getParameterLocations(ast: UnderlyingAST): List<Reference> {
     return when (ast) {
-      is UnderlyingAST.CFGMethod -> getParameterLocations((ast.method as JCTree.JCMethodDecl).sym)
+      is UnderlyingAST.CFGMethod -> getParameterLocations(ast.method as JCTree.JCMethodDecl)
       is UnderlyingAST.CFGLambda -> getParameterLocations(ast.lambdaTree as JCTree.JCLambda)
       else -> emptyList()
     }

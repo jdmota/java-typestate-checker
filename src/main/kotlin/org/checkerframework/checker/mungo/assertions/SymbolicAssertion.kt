@@ -97,6 +97,7 @@ class SymbolicInfo(val ref: Reference) {
 
 class SymbolicAssertionSkeleton(
   val unknownInfo: SymbolicInfo,
+  val ctxRef: OuterContextRef,
   val locations: Set<Reference>,
   val equalities: Set<Pair<Reference, Reference>>
 ) {

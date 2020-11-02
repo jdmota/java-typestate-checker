@@ -237,12 +237,14 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       return
     }
 
+    // TODO handle methods for which we do not have the code...
+    val pre = inferrer.getMethodPre(method) ?: return
+    val (postThen, postElse) = inferrer.getMethodPost(method) ?: return
+
     // Is this a constructor call?
     val isConstructor = method.getKind() == ElementKind.CONSTRUCTOR
     // Gather all parameters
-    val parameters = inferrer.locationsGatherer.getParameterLocations(method).filter {
-      if (isConstructor) it is ParameterVariable else it is ThisReference || it is ParameterVariable
-    }
+    val parameters = inferrer.locationsGatherer.getParameterLocationsForCall(method)
     // Is "this" one of the parameters?
     val includeThis = parameters.any { it is ThisReference }
     // Gather all arguments
@@ -255,10 +257,6 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }.map { getRef(it) }
 
     // assert(parameters.size == argExprs.size)
-
-    // TODO handle methods for which we do not have the code...
-    val pre = inferrer.getMethodPre(method) ?: return
-    val (postThen, postElse) = inferrer.getMethodPost(method) ?: return
 
     // Arguments
     val itParams = parameters.iterator()

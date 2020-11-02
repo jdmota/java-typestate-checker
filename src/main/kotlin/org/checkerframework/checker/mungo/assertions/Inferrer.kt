@@ -36,7 +36,6 @@ class Inferrer(val checker: MungoChecker) {
 
       val ref = UnknownRef(utils.typeUtils.nullType)
       unknownInfo = SymbolicInfo(ref)
-      emptySkeleton = SymbolicAssertionSkeleton(unknownInfo, emptySet(), emptySet())
     }
   }
 
@@ -48,11 +47,10 @@ class Inferrer(val checker: MungoChecker) {
   private val postAssertions = IdentityHashMap<UnderlyingAST, NodeAssertions>()
   private val constraints = Constraints()
   private lateinit var unknownInfo: SymbolicInfo
-  private lateinit var emptySkeleton: SymbolicAssertionSkeleton
 
   fun phase1(classTree: ClassTree) {
-    val classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>> = ArrayDeque()
-    classQueue.add(Pair(classTree, emptySkeleton))
+    val classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton?>> = ArrayDeque()
+    classQueue.add(Pair(classTree, null))
 
     while (!classQueue.isEmpty()) {
       val qel = classQueue.remove()
@@ -74,10 +72,10 @@ class Inferrer(val checker: MungoChecker) {
   private val symToTree = mutableMapOf<Symbol.MethodSymbol, MethodTree>()
 
   private fun phase1(
-    classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>>,
+    classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton?>>,
     classTree: JCTree.JCClassDecl,
     info: ClassInfo,
-    outerSkeleton: SymbolicAssertionSkeleton
+    outerSkeleton: SymbolicAssertionSkeleton?
   ) {
     val lambdaQueue: Queue<Pair<LambdaExpressionTree, SymbolicAssertionSkeleton>> = ArrayDeque()
 
@@ -157,27 +155,16 @@ class Inferrer(val checker: MungoChecker) {
   private lateinit var currentSkeleton: SymbolicAssertionSkeleton
 
   private fun phase1(
-    classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton>>,
+    classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton?>>,
     lambdaQueue: Queue<Pair<LambdaExpressionTree, SymbolicAssertionSkeleton>>,
     ast: UnderlyingAST,
-    outerSkeleton: SymbolicAssertionSkeleton
+    outerSkeleton: SymbolicAssertionSkeleton?
   ) {
     // Generate the CFG
     val cfg = getCFG(ast)
 
-    // Gather locations and possible equalities
-    val locations = gatherLocations(cfg).plus(outerSkeleton.locations)
-    val equalities = gatherEqualities(cfg, locations).plus(outerSkeleton.equalities)
-
-    // Debug
-    /*println("---")
-    println("Locations $locations")
-    println("Equalities $equalities")
-    println("---")*/
-
-    // Save skeleton for the creation of new assertions
-    val skeleton = SymbolicAssertionSkeleton(unknownInfo, locations, equalities)
-    currentSkeleton = skeleton
+    // Assertion's skeleton
+    val skeleton = createSkeleton(outerSkeleton, cfg)
 
     // Associate assertions before and after each node, and connect implications
     phase1(cfg)
@@ -193,7 +180,31 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
-  fun getCtxRef(parent: OuterContextRef?, tree: Tree): OuterContextRef {
+  // TODO optimize so that the assertions do not include unnecessary references (e.g. variable that are not accessible at some program points)
+  // TODO use OuterContextRef in all references
+  private fun createSkeleton(outerSkeleton: SymbolicAssertionSkeleton?, cfg: ControlFlowGraph): SymbolicAssertionSkeleton {
+    // Ref
+    val outerRef = outerSkeleton?.ctxRef
+    val ref = getCtxRef(outerRef, astToTree(cfg.underlyingAST))
+
+    // Outer locations and equalities
+    val outerLocations = outerSkeleton?.locations ?: emptySet()
+    val outerEqualities = outerSkeleton?.equalities ?: emptySet()
+
+    // fun convert(ref: Reference) = if (outerRef != null && outerLocations.contains(ref)) ref.withNewParent(outerRef) else ref
+
+    // Gather locations and possible equalities
+    val locations = gatherLocations(cfg).plus(outerLocations) //.mapTo(mutableSetOf()) { convert(it) }
+    val equalities = gatherEqualities(cfg, locations).plus(outerEqualities) //.mapTo(mutableSetOf()) { (a, b) -> Pair(convert(a), convert(b)) }
+
+    // Save skeleton for the creation of new assertions
+    val skeleton = SymbolicAssertionSkeleton(unknownInfo, ref, locations, equalities)
+    currentSkeleton = skeleton
+
+    return skeleton
+  }
+
+  private fun getCtxRef(parent: OuterContextRef?, tree: Tree): OuterContextRef {
     return OuterContextRef(parent, tree, utils.typeUtils.nullType)
   }
 
@@ -454,8 +465,15 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
+  fun symToMethod(sym: Symbol.MethodSymbol): MethodTree? {
+    return symToTree.computeIfAbsent(sym) {
+      // With "computeIfAbsent", null values are NOT saved in the map
+      checker.utils.treeUtils.getTree(sym)
+    }
+  }
+
   fun getMethodPre(sym: Symbol.MethodSymbol): SymbolicAssertion? {
-    val tree = symToTree[sym] ?: checker.utils.treeUtils.getTree(sym) ?: return null
+    val tree = symToMethod(sym) ?: return null
     return getMethodPre(tree)
   }
 
@@ -466,7 +484,7 @@ class Inferrer(val checker: MungoChecker) {
   }
 
   fun getMethodPost(sym: Symbol.MethodSymbol): Pair<SymbolicAssertion, SymbolicAssertion>? {
-    val tree = symToTree[sym] ?: checker.utils.treeUtils.getTree(sym) ?: return null
+    val tree = symToMethod(sym) ?: return null
     return getMethodPost(tree)
   }
 

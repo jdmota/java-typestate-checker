@@ -1,12 +1,21 @@
 package org.checkerframework.checker.mungo
 
+import com.sun.source.util.TreePath
+import com.sun.tools.javac.code.Source
+import com.sun.tools.javac.processing.JavacProcessingEnvironment
+import com.sun.tools.javac.util.Log
 import org.checkerframework.checker.mungo.assertions.InferenceVisitor
 import org.checkerframework.checker.mungo.typecheck.Typechecker
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.source.SourceChecker
 import org.checkerframework.framework.source.SourceVisitor
+import org.checkerframework.javacutil.BugInCF
+import org.checkerframework.javacutil.TypeSystemError
+import org.checkerframework.javacutil.UserError
 import java.io.IOException
+import java.time.Instant
 import java.util.*
+import javax.lang.model.element.TypeElement
 import javax.tools.Diagnostic
 
 const val showTypeInfoOpt = "showTypeInfo"
@@ -36,6 +45,40 @@ class MungoChecker : SourceChecker() {
     val utils = MungoUtils(this)
     utils.initFactory()
     this.utils = utils
+  }
+
+  // FIXME for some reason, there is an java.lang.InterruptedException exception when the code examples includes threads...
+  private fun typeProcess2(e: TypeElement, p: TreePath) {
+    val context = (processingEnv as JavacProcessingEnvironment).context
+    val log = Log.instance(context)
+
+    if (log.nerrors > errsOnLastExit) {
+      println("${log.nerrors} > $errsOnLastExit")
+      errsOnLastExit = log.nerrors
+      // return
+    }
+
+    if (visitor == null) {
+      return
+    }
+
+    if (p.compilationUnit !== currentRoot) {
+      setRoot(p.compilationUnit)
+    }
+
+    try {
+      visitor.visit(p)
+      warnUnneededSuppressions()
+    } catch (e: Throwable) {
+      e.printStackTrace()
+      throw e
+    }
+  }
+
+  override fun typeProcess(e: TypeElement, p: TreePath) {
+    println("TYPE PROCESS $e")
+    typeProcess2(e, p)
+    println("TYPE PROCESS END $e")
   }
 
   override fun typeProcessingOver() {
