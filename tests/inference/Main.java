@@ -2,7 +2,7 @@ import org.checkerframework.checker.mungo.MungoUtils;
 
 public class Main {
 
-  public static void main1() {
+  /*public static void main1() {
     Cell cell = new Cell();
     cell.setItem(new Item());
 
@@ -13,7 +13,7 @@ public class Main {
     Item item2 = cell.getItem();
 
     item2.changeState();
-  }
+  }*/
 
   /*public static void main2() {
     Cell cell = new Cell();
@@ -22,17 +22,17 @@ public class Main {
     Item item = cell.getItem();
 
     Thread t = new Thread(() -> {
-      // item.changeState();
+      item.changeState();
     });
 
-    //t.start();
-    //t.join();
+    t.start();
+    t.join();
 
     Item item2 = cell.getItem();
     item2.changeState();
   }*/
 
-  /*public static void main3() {
+  public static void main3() {
     Cell cell = new Cell();
     cell.setItem(new Item());
 
@@ -48,6 +48,6 @@ public class Main {
     item2.changeState();
 
     t.join();
-  }*/
+  }
 
 }

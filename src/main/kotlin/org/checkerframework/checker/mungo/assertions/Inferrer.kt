@@ -7,6 +7,8 @@ import org.checkerframework.checker.mungo.MungoChecker
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.MungoStateType
 import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
+import org.checkerframework.checker.mungo.typestate.graph.Graph
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.checker.mungo.utils.treeToType
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -48,6 +50,45 @@ class Inferrer(val checker: MungoChecker) {
   private val constraints = Constraints()
   private lateinit var unknownInfo: SymbolicInfo
 
+  private val symToTree = mutableMapOf<Symbol.MethodSymbol, MethodTree>()
+
+  fun symToMethod(sym: Symbol.MethodSymbol): MethodTree? {
+    return symToTree.computeIfAbsent(sym) {
+      // With "computeIfAbsent", null values are NOT saved in the map
+      checker.utils.treeUtils.getTree(sym)
+    }
+  }
+
+  private val lambdaThreads = mutableMapOf<JCTree.JCLambda, LambdaThread>()
+  private val graphToLambdaThread = mutableMapOf<Graph, LambdaThread>()
+
+  fun lambdaThread(lambda: JCTree.JCLambda): LambdaThread {
+    return lambdaThreads.computeIfAbsent(lambda) {
+      val l = LambdaThread.create(utils, it)
+      graphToLambdaThread[l.graph] = l
+
+      l.graph.getAllConcreteStates().forEach { state ->
+        constraints.addType(MungoStateType.create(l.graph, state))
+      }
+      l
+    }
+  }
+
+  fun analyzeMaybeThreadCreation(node: Node): LambdaThread? {
+    if (node is ObjectCreationNode) {
+      val tree = node.tree!!
+      val constructor = TreeUtils.elementFromUse(tree) as Symbol.MethodSymbol
+      val className = constructor.enclosingElement.flatName().toString()
+      if (className == "java.lang.Thread") {
+        val arg0 = tree.arguments.firstOrNull()
+        if (arg0 is JCTree.JCLambda) {
+          return lambdaThread(arg0)
+        }
+      }
+    }
+    return null
+  }
+
   fun phase1(classTree: ClassTree) {
     val classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton?>> = ArrayDeque()
     classQueue.add(Pair(classTree, null))
@@ -68,8 +109,6 @@ class Inferrer(val checker: MungoChecker) {
       phase1(classQueue, ct, info.nonStatic, outerSkeleton)
     }
   }
-
-  private val symToTree = mutableMapOf<Symbol.MethodSymbol, MethodTree>()
 
   private fun phase1(
     classQueue: Queue<Pair<ClassTree, SymbolicAssertionSkeleton?>>,
@@ -134,7 +173,7 @@ class Inferrer(val checker: MungoChecker) {
 
   private fun astToTree(ast: UnderlyingAST) = when (ast) {
     is UnderlyingAST.CFGMethod -> ast.method
-    is UnderlyingAST.CFGLambda -> ast.code
+    is UnderlyingAST.CFGLambda -> ast.lambdaTree
     is UnderlyingAST.CFGStatement -> ast.code
     else -> throw RuntimeException("unknown ast")
   }
@@ -169,6 +208,11 @@ class Inferrer(val checker: MungoChecker) {
     // Associate assertions before and after each node, and connect implications
     phase1(cfg)
 
+    // Consider threads
+    for (node in cfg.allNodes) {
+      analyzeMaybeThreadCreation(node)
+    }
+
     // Queue classes
     for (cls in cfg.declaredClasses) {
       classQueue.add(Pair(cls, skeleton))
@@ -188,14 +232,14 @@ class Inferrer(val checker: MungoChecker) {
     val ref = getCtxRef(outerRef, astToTree(cfg.underlyingAST))
 
     // Outer locations and equalities
-    val outerLocations = outerSkeleton?.locations ?: emptySet()
-    val outerEqualities = outerSkeleton?.equalities ?: emptySet()
+    // val outerLocations = outerSkeleton?.locations ?: emptySet()
+    // val outerEqualities = outerSkeleton?.equalities ?: emptySet()
 
     // fun convert(ref: Reference) = if (outerRef != null && outerLocations.contains(ref)) ref.withNewParent(outerRef) else ref
 
     // Gather locations and possible equalities
-    val locations = gatherLocations(cfg).plus(outerLocations) //.mapTo(mutableSetOf()) { convert(it) }
-    val equalities = gatherEqualities(cfg, locations).plus(outerEqualities) //.mapTo(mutableSetOf()) { (a, b) -> Pair(convert(a), convert(b)) }
+    val locations = gatherLocations(cfg) //.plus(outerLocations)//.mapTo(mutableSetOf()) { convert(it) }
+    val equalities = gatherEqualities(cfg, locations) //.plus(outerEqualities)//.mapTo(mutableSetOf()) { (a, b) -> Pair(convert(a), convert(b)) }
 
     // Save skeleton for the creation of new assertions
     val skeleton = SymbolicAssertionSkeleton(unknownInfo, ref, locations, equalities)
@@ -465,32 +509,25 @@ class Inferrer(val checker: MungoChecker) {
     }
   }
 
-  fun symToMethod(sym: Symbol.MethodSymbol): MethodTree? {
-    return symToTree.computeIfAbsent(sym) {
-      // With "computeIfAbsent", null values are NOT saved in the map
-      checker.utils.treeUtils.getTree(sym)
-    }
-  }
-
   fun getMethodPre(sym: Symbol.MethodSymbol): SymbolicAssertion? {
     val tree = symToMethod(sym) ?: return null
-    return getMethodPre(tree)
+    return getTreePre(tree)
   }
 
-  private fun getMethodPre(tree: MethodTree): SymbolicAssertion {
+  fun getTreePre(tree: Tree): SymbolicAssertion {
     val cfg = getCFG(tree)
-    val assertions = preAssertions[cfg.underlyingAST] ?: error("No assertion for method ${tree.name}")
+    val assertions = preAssertions[cfg.underlyingAST] ?: error("No assertion for this tree")
     return assertions.preThen
   }
 
   fun getMethodPost(sym: Symbol.MethodSymbol): Pair<SymbolicAssertion, SymbolicAssertion>? {
     val tree = symToMethod(sym) ?: return null
-    return getMethodPost(tree)
+    return getTreePost(tree)
   }
 
-  private fun getMethodPost(tree: MethodTree): Pair<SymbolicAssertion, SymbolicAssertion> {
+  fun getTreePost(tree: Tree): Pair<SymbolicAssertion, SymbolicAssertion> {
     val cfg = getCFG(tree)
-    val assertions = postAssertions[cfg.underlyingAST] ?: error("No assertion for method ${tree.name}")
+    val assertions = postAssertions[cfg.underlyingAST] ?: error("No assertion for this tree")
     return Pair(assertions.postThen, assertions.postElse)
   }
 
@@ -554,8 +591,8 @@ class Inferrer(val checker: MungoChecker) {
         }
 
         for ((ast, assertions) in postAssertions) {
+          val a = preAssertions[ast]!!
           if (ast is UnderlyingAST.CFGMethod) {
-            val a = preAssertions[ast]!!
             NodeAssertions(
               a.preThen,
               a.preElse,
@@ -563,7 +600,12 @@ class Inferrer(val checker: MungoChecker) {
               assertions.postElse
             ).debug(solution, "--> method: ${ast.method.name}")
           } else {
-            println("--> ${ast::class.java}")
+            NodeAssertions(
+              a.preThen,
+              a.preElse,
+              assertions.postThen,
+              assertions.postElse
+            ).debug(solution, "--> method: lambda")
           }
         }
       }
@@ -576,12 +618,21 @@ class Inferrer(val checker: MungoChecker) {
 
         for ((ast, assertions) in postAssertions) {
           val a = preAssertions[ast]!!
-          NodeAssertions(
-            a.preThen,
-            a.preElse,
-            assertions.postThen,
-            assertions.postElse
-          ).debug(solution, "--> method: ${if (ast is UnderlyingAST.CFGMethod) ast.method.name.toString() else "something"}")
+          if (ast is UnderlyingAST.CFGMethod) {
+            NodeAssertions(
+              a.preThen,
+              a.preElse,
+              assertions.postThen,
+              assertions.postElse
+            ).debug(solution, "--> method: ${ast.method.name}")
+          } else {
+            NodeAssertions(
+              a.preThen,
+              a.preElse,
+              assertions.postThen,
+              assertions.postElse
+            ).debug(solution, "--> method: lambda")
+          }
         }
 
         solution.unsatCore?.map { expr ->

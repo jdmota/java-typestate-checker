@@ -526,7 +526,7 @@ private class ParameterAndLocalVariable(
         localInfo.type.expr,
         Make.S.type(MungoUnknownType.SINGLETON)
       ))
-      paramInfo.children.map { (ref, _) ->
+      paramInfo.children.forEach { (ref, _) ->
         helper(ref, ref.replace(parameter, local))
       }
     }
@@ -558,7 +558,7 @@ private class PassingParameter(
       })
       result.addAll(SymFractionImpliesSymFraction(expr.packFraction, parameter.packFraction).build())
       result.addAll(SymTypeImpliesSymType(expr.type, parameter.type).build())
-      expr.children.map { (ref, info) ->
+      expr.children.forEach { (ref, info) ->
         helper(info, parameter.children[ref.replace(expr.ref, parameter.ref)]!!)
       }
     }
