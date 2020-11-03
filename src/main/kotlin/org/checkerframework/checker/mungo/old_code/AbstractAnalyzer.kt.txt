@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.abstract_analysis
+package org.checkerframework.checker.mungo.old_code
 
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol

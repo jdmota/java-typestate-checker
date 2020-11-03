@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.abstract_analysis
+package org.checkerframework.checker.mungo.old_code
 
 abstract class AbstractStoreInfo
 

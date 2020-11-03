@@ -1,4 +1,4 @@
-package org.checkerframework.checker.mungo.abstract_analysis
+package org.checkerframework.checker.mungo.old_code
 
 import com.sun.source.tree.CompilationUnitTree
 import com.sun.source.tree.Tree
