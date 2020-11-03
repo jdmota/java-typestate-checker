@@ -99,17 +99,13 @@ class SymbolicAssertionSkeleton(
   val unknownInfo: SymbolicInfo,
   val ctxRef: OuterContextRef,
   val locations: Set<Reference>,
-  val equalities: Set<Pair<Reference, Reference>>
+  val equalities: PossibleEqualitiesTracker
 ) {
-  private val eqTracker = MutableEqualityTracker()
+  val allEqualities = equalities.getAll()
 
-  init {
-    for ((a, b) in equalities) {
-      eqTracker.setEquality(a, b)
-    }
-  }
+  fun getPossibleEq(ref: Reference) = equalities.aliases(ref)
 
-  fun getPossibleEq(ref: Reference) = eqTracker[ref]
+  fun isPossibleEq(a: Reference, b: Reference) = allEqualities.contains(Pair(a, b))
 
   fun create() = SymbolicAssertion(this)
 }
@@ -190,7 +186,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     }
 
     var newLine = false
-    for ((a, b) in skeleton.equalities) {
+    for ((a, b) in skeleton.allEqualities) {
       val equals = solution.equals(this, a, b).toString()
       if (equals != "false") {
         str.append("eq($a,$b)${if (equals == "true") "" else " ($equals)"} && ")

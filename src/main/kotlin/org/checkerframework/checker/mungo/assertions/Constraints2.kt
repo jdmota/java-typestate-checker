@@ -680,8 +680,8 @@ class Make private constructor() {
   fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): TinyBoolExpr {
     return when {
       a == b -> TRUE
-      assertion.skeleton.equalities.contains(Pair(a, b)) -> TinyEquals(assertion, a, b)
-      assertion.skeleton.equalities.contains(Pair(b, a)) -> TinyEquals(assertion, b, a)
+      assertion.skeleton.isPossibleEq(a, b) -> TinyEquals(assertion, a, b)
+      assertion.skeleton.isPossibleEq(b, a) -> TinyEquals(assertion, b, a)
       else -> FALSE
     }
   }

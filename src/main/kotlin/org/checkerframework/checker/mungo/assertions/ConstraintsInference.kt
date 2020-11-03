@@ -153,8 +153,12 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
     }
 
-    for ((a, b) in pre.skeleton.equalities) {
-      if (a !is ParameterVariable && b !is ParameterVariable) {
+    for ((a, b) in pre.skeleton.allEqualities) {
+      if (a is ParameterVariable && b == a.toLocalVariable()) {
+        // Preserve equality
+      } else if (b is ParameterVariable && a == b.toLocalVariable()) {
+        // Preserve equality
+      } else {
         constraints.notEquality(pre, a, b)
       }
     }
@@ -448,7 +452,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
             }
 
             // FIXME
-            for ((a, b) in tail.skeleton.equalities) {
+            for ((a, b) in tail.skeleton.allEqualities) {
               set.addIn1(
                 Make.S.eq(
                   Make.S.equals(tail, a, b),
@@ -518,7 +522,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
             }
 
             // FIXME
-            for ((a, b) in tail.skeleton.equalities) {
+            for ((a, b) in tail.skeleton.allEqualities) {
               set.addIn1(
                 Make.S.eq(
                   Make.S.equals(tail, a, b),
@@ -557,7 +561,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
               }
             }
 
-            for ((a, b) in tail.skeleton.equalities) {
+            for ((a, b) in tail.skeleton.allEqualities) {
               set.addIn1(
                 Make.S.eq(
                   Make.S.equals(tail, a, b),

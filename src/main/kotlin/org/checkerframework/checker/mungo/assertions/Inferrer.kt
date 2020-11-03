@@ -17,6 +17,7 @@ import org.checkerframework.dataflow.cfg.block.*
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.javacutil.TypesUtils
 import java.util.*
 import javax.lang.model.element.ElementKind
 import javax.lang.model.type.TypeKind
@@ -311,9 +312,20 @@ class Inferrer(val checker: MungoChecker) {
     return locations
   }
 
-  private fun gatherEqualities(cfg: ControlFlowGraph, allLocations: Set<Reference>): Set<Pair<Reference, Reference>> {
-    val ast = cfg.underlyingAST
-    val equalities = mutableSetOf<Pair<Reference, Reference>>()
+  private fun gatherEqualities(cfg: ControlFlowGraph, allLocations: Set<Reference>): PossibleEqualitiesTracker {
+    val possibleEqualities = PossibleEqualitiesTracker()
+
+    fun equals(a: Reference, b: Reference) {
+      if (TypesUtils.isPrimitive(a.type) || TypesUtils.isPrimitive(b.type)) return
+      if (a.type.kind == TypeKind.VOID || b.type.kind == TypeKind.VOID) return
+      val aRoot = a.getSimpleRoot()
+      val bRoot = b.getSimpleRoot()
+      if (aRoot is ClassName || bRoot is ClassName) return
+      if (aRoot is NodeRef && bRoot is NodeRef) return
+      if (aRoot is NodeRef && aRoot.node !is MethodInvocationNode && aRoot.node !is ObjectCreationNode) return
+      if (bRoot is NodeRef && bRoot.node !is MethodInvocationNode && bRoot.node !is ObjectCreationNode) return
+      possibleEqualities[a] = b
+    }
 
     // Produce some equalities
     for (node in cfg.allNodes) {
@@ -321,48 +333,27 @@ class Inferrer(val checker: MungoChecker) {
         is AssignmentNode -> {
           val target = getDirectReference(node.target) ?: continue
           val expression = getDirectReference(node.expression) ?: continue
-          equalities.add(Pair(target, expression))
+          equals(target, expression)
         }
         is ReturnNode -> {
           val result = node.result ?: continue
           val target = getDirectReference(node) ?: continue
           val expression = getDirectReference(result) ?: continue
-          equalities.add(Pair(target, expression))
+          equals(target, expression)
         }
-        // TODO more...
-        // TODO include eq(old(var),something)
+        // TODO more? (e.g. eq(old(var),something))
       }
-    }
-
-    // Equalities between parameter variable and local variable
-    val parameters = locationsGatherer.getParameterLocations(ast).filterIsInstance<ParameterVariable>()
-    for (param in parameters) {
-      equalities.add(Pair(param, param.toLocalVariable()))
     }
 
     // Additional pairings
-    val localsAndFields = allLocations.filter {
-      it is NodeRef || it is LocalVariable || (it is FieldAccess && !it.isThisField())
-    }.toSet()
-
-    // FIXME replace this
-    for (a in localsAndFields) {
-      for (b in localsAndFields) {
+    for (a in allLocations) {
+      for (b in allLocations) {
         if (a !== b && a.type === b.type) {
-          val str = "$a $b"
-          if (
-            str == "item item2" ||
-            str == "cell.item item" ||
-            str == "cell.item item2" ||
-            (a is NodeRef && a.node.toString() == "cell.getItem()" && b.toString() == "cell.item") ||
-            (a is NodeRef && a.node.toString() == "cell.getItem()" && b.toString() == "item")
-          ) {
-            equalities.add(Pair(a, b))
-          }
+          equals(a, b)
         }
       }
     }
-    return equalities
+    return possibleEqualities
   }
 
   private fun phase1(cfg: ControlFlowGraph) {

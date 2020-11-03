@@ -66,15 +66,10 @@ fun reduce(
 
 // TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
 // TODO if the fraction is zero, the type should be Unknown instead
+// TODO packedFraction only holds if fraction holds
 // TODO equalities only hold with enough permission
 
 // TODO handle primitives, since they can be copied many times
-
-// TODO is it possible that Z3 assigns an equality to true, even without support?
-// eq(a,b) && eq(b,c) ==> eq(a,c)
-// but even though eq(a,b) && eq(b,c) is false, Z3 makes eq(a,c) true, allowing undesirable transferring of permissions?
-// Answer: no, since mkEquals() will default to False if we talk about an equality that is not in the assertion skeleton
-// TODO but this means that the transitivity is not useful...
 
 fun fractionsAccumulation(ref: FieldAccess, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): TinyBoolExpr {
   val parent = ref.receiver
@@ -165,7 +160,7 @@ fun handleImplies(
   }
 
   // TODO equality of fields!
-  for ((a, b) in tail.skeleton.equalities) {
+  for ((a, b) in tail.skeleton.allEqualities) {
     // Equality is true in assertion "tail" if present in the other assertions
     // and with read access to the variables
     result.addIn1(
@@ -254,7 +249,7 @@ fun handleEquality(
     ))
   }
 
-  val equalities = tail.skeleton.equalities
+  val equalities = tail.skeleton.allEqualities
 
   for ((a, b) in equalities) {
     val c = equalsReplace(a)
@@ -286,6 +281,8 @@ fun handleCall(
   val changedRefs = arguments.toSet().plus(callRef)
 
   // TODO what if use(cell, cell.item) ??
+  // FIXME use(cell, cell)
+  // FIXME this might need a refactoring to make sure it is actually correct
 
   fun replace(p: Reference): Reference {
     return if (p.hasPrefix(callRef)) {
@@ -320,39 +317,61 @@ fun handleCall(
       // newFraction = prevFraction - stolenFraction
       // newFraction = prevFraction - ( fractionInPre - fractionInPost )
 
-      val stolenFraction = if (ref === otherRef || changedRefs.contains(ref)) {
-        Make.ZERO
+      if (ref === otherRef || changedRefs.contains(ref)) {
+        result.addIn1(Make.S.eq(
+          info.fraction.expr,
+          Make.S.min(heads.map { it[ref].fraction.expr })
+        ))
       } else {
-        Make.S.sub(
-          methodPre[otherRef].fraction.expr,
-          Make.S.min(methodPost.map { it[otherRef].fraction.expr })
-        )
+        result.addIn1(Make.S.eq(
+          info.fraction.expr,
+          Make.S.sub(
+            Make.S.min(heads.map { it[ref].fraction.expr }),
+            Make.S.sub(
+              methodPre[otherRef].fraction.expr,
+              Make.S.min(methodPost.map { it[otherRef].fraction.expr })
+            )
+          )
+        ))
       }
 
-      result.addIn1(Make.S.eq(
-        info.fraction.expr,
-        Make.S.sub(
-          Make.S.min(heads.map { it[ref].fraction.expr }),
-          stolenFraction
-        )
-      ))
-
-      val stolenPackedFraction = if (ref === otherRef) {
-        Make.ZERO
-      } else {
-        Make.S.sub(
-          methodPre[otherRef].packFraction.expr,
-          Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
-        )
+      when {
+        ref === otherRef -> {
+          result.addIn1(Make.S.eq(
+            info.packFraction.expr,
+            Make.S.min(heads.map { it[ref].packFraction.expr })
+          ))
+        }
+        changedRefs.contains(ref) -> {
+          result.addIn1(Make.S.eq(
+            info.packFraction.expr,
+            Make.S.sub(
+              Make.S.min(heads.map { it[ref].packFraction.expr }),
+              Make.S.sub(
+                methodPre[otherRef].packFraction.expr,
+                Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
+              )
+            )
+          ))
+        }
+        else -> {
+          result.addIn1(Make.S.eq(
+            info.packFraction.expr,
+            Make.S.ite(
+              Make.S.lt(methodPre[otherRef].fraction.expr, Make.ONE),
+              Make.S.sub(
+                Make.S.min(heads.map { it[ref].packFraction.expr }),
+                Make.S.sub(
+                  methodPre[otherRef].packFraction.expr,
+                  Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
+                )
+              ),
+              // If the reference was modified, we can only ensure the permission available in the post-condition
+              Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
+            )
+          ))
+        }
       }
-
-      result.addIn1(Make.S.eq(
-        info.packFraction.expr,
-        Make.S.sub(
-          Make.S.min(heads.map { it[ref].packFraction.expr }),
-          stolenPackedFraction
-        )
-      ))
     }
 
     if (overrideType != null) {
@@ -373,28 +392,36 @@ fun handleCall(
     } else {
       result.addIn2(Make.S.eq(
         info.type.expr,
-        Make.S.union(methodPost.map { it[otherRef].type.expr })
+        Make.S.ite(
+          Make.S.lt(methodPre[otherRef].packFraction.expr, Make.ONE),
+          Make.S.union(heads.map { it[ref].type.expr }),
+          Make.S.union(methodPost.map { it[otherRef].type.expr })
+        )
       ))
     }
   }
 
   // TODO am I able to track equalities of old values? like after this.item = newItem ??
 
+  fun isPassed(ref: Reference): Boolean {
+    return ref.hasPrefix(callRef) || arguments.any { ref.hasPrefix(it) }
+  }
+
   fun isMaybeModified(ref: Reference): Boolean {
     return ref.hasPrefix(callRef) || arguments.any { it != ref && ref.hasPrefix(it) }
   }
 
-  for ((a, b) in tail.skeleton.equalities) {
+  for ((a, b) in tail.skeleton.allEqualities) {
     val c = replace(a)
     val d = replace(b)
 
-    val aWasPassed = isMaybeModified(a)
-    val bWasPassed = isMaybeModified(b)
+    val aWasPassed = isPassed(a)
+    val bWasPassed = isPassed(b)
 
-    val aIsNotModified = if (aWasPassed) Make.S.lt(methodPre[c].fraction.expr, Make.ONE) else Make.TRUE
-    val bIsNotModified = if (bWasPassed) Make.S.lt(methodPre[d].fraction.expr, Make.ONE) else Make.TRUE
+    val aIsNotModified = if (isMaybeModified(a)) Make.S.lt(methodPre[c].fraction.expr, Make.ONE) else Make.TRUE
+    val bIsNotModified = if (isMaybeModified(b)) Make.S.lt(methodPre[d].fraction.expr, Make.ONE) else Make.TRUE
 
-    result.addIn1(Make.S.eq(
+    val expr = Make.S.eq(
       Make.S.equals(tail, a, b),
       Make.S.ite(
         Make.S.and(listOf(aIsNotModified, bIsNotModified)),
@@ -431,7 +458,9 @@ fun handleCall(
           )
         )
       )
-    ))
+    )
+
+    result.addIn1(expr)
   }
 }
 

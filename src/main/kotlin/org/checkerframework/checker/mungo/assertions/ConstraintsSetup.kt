@@ -51,10 +51,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
 
   private val setup = object {
     val Bool = ctx.boolSort
-    val True = ctx.mkTrue()
-    val False = ctx.mkFalse()
     val Real = ctx.realSort
-    val Location = ctx.mkUninterpretedSort("Location")
 
     val typeSymbols = typesWithUnions.map { Pair(it, typeToSymbol(it)) }.toMap()
     val typesArray = typeSymbols.values.toTypedArray()
@@ -167,11 +164,12 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
 
   fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
 
+  private var equalsUuid = 1L
+  private val equalsToExpr = mutableMapOf<Triple<SymbolicAssertion, Reference, Reference>, BoolExpr>()
   fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference): BoolExpr =
-    if (a === b) {
-      setup.True
-    } else {
-      ctx.mkApp(assertionToEq(assertion), refToExpr(a), refToExpr(b)) as BoolExpr
+    equalsToExpr.computeIfAbsent(Triple(assertion, a, b)) {
+      val key = "eq${equalsUuid++}"
+      ctx.mkConst(key, setup.Bool) as BoolExpr
     }
 
   fun mkMin(a: ArithExpr, b: ArithExpr) =
@@ -197,48 +195,6 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
 
   val keyToSomething = mutableMapOf<String, Any>()
 
-  private var eqUuid = 1L
-  private val assertionToEq = mutableMapOf<SymbolicAssertion, FuncDecl>()
-
-  // Get "eq" function for a certain assertion
-  private fun assertionToEq(a: SymbolicAssertion): FuncDecl {
-    return assertionToEq.computeIfAbsent(a) {
-      val key = "eq${eqUuid++}"
-      // keyToSomething[key] = a
-
-      val fn = ctx.mkFuncDecl(key, arrayOf(setup.Location, setup.Location), setup.Bool)
-
-      // Reflexive
-      // (assert (forall ((x Loc)) (eq x x)))
-      addAssert(ctx.mkForall(arrayOf(setup.Location)) { args ->
-        ctx.mkApp(fn, args[0], args[0]) as BoolExpr
-      })
-
-      // Symmetric
-      // (assert (forall ((x Loc) (y Loc)) (= (eq x y) (eq y x))))
-      addAssert(ctx.mkForall(arrayOf(setup.Location, setup.Location)) { args ->
-        ctx.mkEq(
-          ctx.mkApp(fn, args[0], args[1]) as BoolExpr,
-          ctx.mkApp(fn, args[1], args[0]) as BoolExpr
-        )
-      })
-
-      // Transitive
-      // (assert (forall ((x Loc) (y Loc) (z Loc)) (=> (and (eq x y) (eq y z)) (eq x z))))
-      addAssert(ctx.mkForall(arrayOf(setup.Location, setup.Location, setup.Location)) { args ->
-        ctx.mkImplies(
-          ctx.mkAnd(
-            ctx.mkApp(fn, args[0], args[1]) as BoolExpr,
-            ctx.mkApp(fn, args[1], args[2]) as BoolExpr
-          ),
-          ctx.mkApp(fn, args[0], args[2]) as BoolExpr
-        )
-      })
-
-      fn
-    }
-  }
-
   private val fractionKeyToExpr = mutableMapOf<String, ArithExpr>()
   fun mkFraction(key: String): ArithExpr {
     return fractionKeyToExpr.computeIfAbsent(key) {
@@ -260,16 +216,6 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
   }
 
   fun mkType(t: MungoType): Expr = setup.TypeExprs[t] ?: error("No expression for $t")
-
-  private var refUuid = 1L
-  private val refToExpr = mutableMapOf<Reference, Expr>()
-  private fun refToExpr(ref: Reference): Expr {
-    return refToExpr.computeIfAbsent(ref) {
-      val key = "ref${refUuid++}"
-      keyToSomething[key] = ref
-      ctx.mkConst(key, setup.Location)
-    }
-  }
 
   private lateinit var solver: Solver
 

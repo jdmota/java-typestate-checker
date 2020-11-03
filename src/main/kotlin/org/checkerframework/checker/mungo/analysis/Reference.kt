@@ -111,6 +111,8 @@ fun createParameterVariable(tree: VariableTree): ParameterVariable {
 }
 
 sealed class Reference(val type: TypeMirror, val parent: Reference?) {
+  val typeString get() = type.toString()
+
   abstract fun isThisField(): Boolean
   abstract fun withNewParent(parent: Reference): Reference
 
@@ -141,8 +143,19 @@ sealed class Reference(val type: TypeMirror, val parent: Reference?) {
   }
 
   fun withCtx(ctx: OuterContextRef): Reference {
-    if (parent == null) return withNewParent(ctx)
-    return withNewParent(parent.withCtx(ctx))
+    return if (parent == null) {
+      withNewParent(ctx)
+    } else {
+      withNewParent(parent.withCtx(ctx))
+    }
+  }
+
+  fun getSimpleRoot(): Reference {
+    return if (this is FieldAccess) {
+      receiver.getSimpleRoot()
+    } else {
+      this
+    }
   }
 }
 
@@ -208,8 +221,6 @@ class ClassName(parent: Reference?, type: TypeMirror) : Reference(type, parent) 
 
   constructor(type: TypeMirror) : this(null, type)
 
-  val typeString = type.toString()
-
   override fun isThisField(): Boolean {
     return false
   }
@@ -237,8 +248,8 @@ class LocalVariable(parent: Reference?, type: TypeMirror, val element: VarSymbol
   constructor(node: LocalVariableNode) : this(node.type, node.element as VarSymbol)
   constructor(elem: Element) : this(ElementUtils.getType(elem), elem as VarSymbol)
 
-  private val elementName = element.name.toString()
-  private val ownerName = element.owner.toString()
+  val elementName = element.name.toString()
+  val ownerName = element.owner.toString()
 
   override fun isThisField(): Boolean {
     return false
@@ -275,8 +286,8 @@ class ParameterVariable(parent: Reference?, type: TypeMirror, val element: VarSy
   constructor(node: LocalVariableNode) : this(node.type, node.element as VarSymbol)
   constructor(elem: Element) : this(ElementUtils.getType(elem), elem as VarSymbol)
 
-  private val elementName = element.name.toString()
-  private val ownerName = element.owner.toString()
+  val elementName = element.name.toString()
+  val ownerName = element.owner.toString()
 
   fun toLocalVariable() = LocalVariable(parent, type, element)
 
