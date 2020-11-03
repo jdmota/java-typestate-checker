@@ -8,7 +8,6 @@ import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.MungoStateType
 import org.checkerframework.checker.mungo.typecheck.MungoUnknownType
 import org.checkerframework.checker.mungo.typestate.graph.Graph
-import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.checker.mungo.utils.treeToType
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -19,6 +18,7 @@ import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.javacutil.TypesUtils
 import java.util.*
+import javax.annotation.processing.ProcessingEnvironment
 import javax.lang.model.element.ElementKind
 import javax.lang.model.type.TypeKind
 import org.checkerframework.checker.mungo.analysis.getReference as getBasicReference
@@ -26,7 +26,7 @@ import org.checkerframework.checker.mungo.analysis.getReference as getBasicRefer
 class Inferrer(val checker: MungoChecker) {
 
   val utils get() = checker.utils
-  val processingEnv = checker.processingEnvironment
+  val processingEnv: ProcessingEnvironment = checker.processingEnvironment
   lateinit var root: JCTree.JCCompilationUnit
 
   private var firstTime = true

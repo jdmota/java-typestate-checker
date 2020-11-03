@@ -209,8 +209,7 @@ object MungoTypecheck {
   private fun refine(utils: MungoUtils, type: MungoStateType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): List<MungoType> {
     val env = type.graph.getEnv()
     // Given a current state, produce a set of possible destination states
-    val dest = type.state.transitions.entries.find { utils.methodUtils.sameMethod(env, method, it.key) }?.value
-    return when (dest) {
+    return when (val dest = type.state.transitions.entries.find { utils.methodUtils.sameMethod(env, method, it.key) }?.value) {
       is State -> listOf(MungoStateType.create(type.graph, dest))
       is DecisionState -> dest.transitions.entries.filter { predicate(it.key.label) }.map { MungoStateType.create(type.graph, it.value) }
       // The method call is not allowed in this state,

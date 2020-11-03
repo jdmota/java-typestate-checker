@@ -44,7 +44,7 @@ class DecisionState(node: TDecisionStateNode) : AbstractState<TDecisionStateNode
   }
 }
 
-class EndState() : State("end") {
+class EndState : State("end") {
   override fun addTransition(transition: TMethodNode, destination: AbstractState<*>) {
     throw AssertionError("end state should have no transitions")
   }

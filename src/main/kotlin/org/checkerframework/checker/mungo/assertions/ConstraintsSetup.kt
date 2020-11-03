@@ -61,7 +61,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       Pair(type, ctx.mkApp(Type.getConstDecl(typesArray.indexOf(sym))))
     }.toMap()
 
-    val UnknownExpr = TypeExprs[MungoUnknownType.SINGLETON]!!
+    val UnknownExpr = TypeExprs[MungoUnknownType.SINGLETON] ?: error("")
 
     val subtype = ctx.mkRecFuncDecl(ctx.mkSymbol("subtype"), arrayOf(Type, Type), Bool) { _, args ->
       val a = args[0]

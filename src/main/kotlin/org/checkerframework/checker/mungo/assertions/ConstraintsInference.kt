@@ -319,7 +319,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
           require.type(receiver, result, union)
 
-          overrideType = MungoTypecheck.refine(inferrer.utils, union, method) { _ -> true }
+          overrideType = MungoTypecheck.refine(inferrer.utils, union, method) { true }
           // TODO improve computing of destination (e.g. create a Z3 function that takes a type, etc...)
         }
       }
@@ -373,7 +373,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     when (methodName) {
       "start" -> {
         val requiredType = MungoUnionType.create(MungoTypecheck.available(inferrer.utils, lambdaThread.graph, method))
-        val ensuredType = MungoTypecheck.refine(inferrer.utils, requiredType, method) { _ -> true }
+        val ensuredType = MungoTypecheck.refine(inferrer.utils, requiredType, method) { true }
         preconditionToCall(receiverRef!!, requiredType)
 
         constraints.other { c ->
@@ -465,7 +465,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
       "join" -> {
         val requiredType = MungoUnionType.create(MungoTypecheck.available(inferrer.utils, lambdaThread.graph, method))
-        val ensuredType = MungoTypecheck.refine(inferrer.utils, requiredType, method) { _ -> true }
+        val ensuredType = MungoTypecheck.refine(inferrer.utils, requiredType, method) { true }
         preconditionToCall(receiverRef!!, requiredType)
 
         constraints.other { c ->

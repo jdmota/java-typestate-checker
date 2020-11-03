@@ -47,7 +47,7 @@ class SymbolicType {
   override fun toString() = z3Symbol()
 }
 
-class SymbolicPacked {}
+class SymbolicPacked
 
 class SymbolicInfo(val ref: Reference) {
   val fraction = SymbolicFraction() // access(x, f1)

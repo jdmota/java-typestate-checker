@@ -3,12 +3,11 @@ package org.checkerframework.checker.mungo.typecheck
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.MungoChecker
+import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.checker.mungo.utils.isSelfAccess
 import org.checkerframework.checker.mungo.utils.lowerBound
 import org.checkerframework.checker.mungo.utils.upperBound
-import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.type.AnnotatedTypeMirror
-import org.checkerframework.framework.util.AnnotatedTypes
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils

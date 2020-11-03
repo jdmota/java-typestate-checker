@@ -1,11 +1,10 @@
 package org.checkerframework.checker.mungo.utils
 
-import com.sun.source.tree.*
+import com.sun.source.tree.ClassTree
+import com.sun.source.tree.MethodTree
 import com.sun.tools.javac.code.Symbol
-import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
-import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.nio.file.Path

@@ -1,7 +1,6 @@
 package org.checkerframework.checker.mungo
 
 import com.sun.source.util.TreePath
-import com.sun.tools.javac.code.Source
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Log
 import org.checkerframework.checker.mungo.assertions.InferenceVisitor
@@ -9,11 +8,7 @@ import org.checkerframework.checker.mungo.typecheck.Typechecker
 import org.checkerframework.checker.mungo.utils.MungoUtils
 import org.checkerframework.framework.source.SourceChecker
 import org.checkerframework.framework.source.SourceVisitor
-import org.checkerframework.javacutil.BugInCF
-import org.checkerframework.javacutil.TypeSystemError
-import org.checkerframework.javacutil.UserError
 import java.io.IOException
-import java.time.Instant
 import java.util.*
 import javax.lang.model.element.TypeElement
 import javax.tools.Diagnostic
