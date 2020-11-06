@@ -566,7 +566,7 @@ class Inferrer(val checker: MungoChecker) {
           // println(constraints.formatExpr(z3expr, solution))
           expr
         }.let { list ->
-          Simplifier(true).simplifyAll(list).forEach {
+          Simplifier(true, setEqualsToFalse = true).simplifyAll(list).forEach {
             println(it)
           }
         }
@@ -578,6 +578,7 @@ class Inferrer(val checker: MungoChecker) {
         println("Correct!\n")
 
         for ((node, assertions) in assertionsList) {
+          if (solution.skipNode(node)) continue
           assertions.debug(solution, "--> $node")
         }
 
@@ -604,6 +605,7 @@ class Inferrer(val checker: MungoChecker) {
         println("Found SAT access permissions but no types match\n")
 
         for ((node, assertions) in assertionsList) {
+          if (solution.skipNode(node)) continue
           assertions.debug(solution, "--> $node")
         }
 

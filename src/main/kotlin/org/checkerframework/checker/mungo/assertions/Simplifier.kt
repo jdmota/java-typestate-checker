@@ -41,7 +41,7 @@ class GatherSymbols(val symbols: MutableSet<TinyExpr<*, *>> = mutableSetOf()) : 
   }
 }
 
-class Simplifier(experimental: Boolean = false) : Substitution {
+class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Boolean = false) : Substitution {
 
   private val allEqualities = GenericEqualityTracker<TinyExpr<*, *>> { it is TinyReal || it is TinyMungoType || it is TinyBool }
 
@@ -52,10 +52,11 @@ class Simplifier(experimental: Boolean = false) : Substitution {
   }
 
   override operator fun get(expr: TinyExpr<*, *>): TinyExpr<*, *>? {
-    return allEqualities[expr]
+    val replacement = allEqualities[expr]
+    return if (replacement === expr && setEqualsToFalse && expr is TinyEquals) Make.FALSE else replacement
   }
 
-  fun track(expr: TinyBoolExpr): TinyBoolExpr? {
+  private fun track(expr: TinyBoolExpr): TinyBoolExpr? {
     if (expr === Make.TRUE) {
       return null
     }

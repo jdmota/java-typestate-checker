@@ -2,6 +2,10 @@ package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.analysis.*
+import org.checkerframework.dataflow.cfg.node.AssignmentNode
+import org.checkerframework.dataflow.cfg.node.MethodInvocationNode
+import org.checkerframework.dataflow.cfg.node.Node
+import org.checkerframework.dataflow.cfg.node.ObjectCreationNode
 
 sealed class InferenceResult
 
@@ -35,6 +39,15 @@ sealed class SomeSolution(protected val setup: ConstraintsSetup, val model: Mode
       is NodeRef -> true
       is UnknownRef -> true
       is OuterContextRef -> true
+    }
+  }
+
+  fun skipNode(node: Node): Boolean {
+    return when(node) {
+      is AssignmentNode -> false
+      is MethodInvocationNode -> false
+      is ObjectCreationNode -> false
+      else -> true
     }
   }
 
