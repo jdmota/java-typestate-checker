@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.dataflow.cfg.UnderlyingAST
@@ -78,14 +79,41 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       return
     }
 
-    fun newVar(info: SymbolicInfo, type: MungoType = MungoNullType.SINGLETON) {
-      constraints.one(info.fraction)
-      constraints.one(info.packFraction)
-      constraints.same(info.type, type)
-      // TODO fields?
+    val isConstructor = inferrer.isConstructor(ast)
+    val isPure = !isConstructor && inferrer.isPure(ast)
+
+    val isReadableMethod = isPure && run {
+      val method = ((ast as UnderlyingAST.CFGMethod).method as JCTree.JCMethodDecl).sym
+      val receiverType = method.enclosingElement.asType()
+
+      val graph = inferrer.utils.classUtils.visitClassTypeMirror(receiverType)
+      if (graph != null) {
+        val states = MungoTypecheck.available(inferrer.utils, graph, method)
+        val requiredStates = MungoUnionType.create(states)
+        val ensuredStates = MungoTypecheck.refine(inferrer.utils, requiredStates, method) { true }
+        requiredStates == ensuredStates
+      } else {
+        false
+      }
     }
 
-    val isPure = inferrer.isPure(ast)
+    fun newUnknown(info: SymbolicInfo) {
+      constraints.same(info.fraction, 0)
+      constraints.same(info.packFraction, 0)
+      constraints.same(info.type, MungoUnknownType.SINGLETON)
+      info.forEach { _, childInfo ->
+        newUnknown(childInfo)
+      }
+    }
+
+    fun newVar(info: SymbolicInfo, type: MungoType = MungoUnknownType.SINGLETON) {
+      constraints.same(info.fraction, 1)
+      constraints.same(info.packFraction, 1)
+      constraints.same(info.type, type)
+      info.forEach { _, childInfo ->
+        newUnknown(childInfo)
+      }
+    }
 
     pre.forEach { ref, info ->
       when (ref) {
@@ -94,29 +122,24 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
           constraints.paramAndLocalVars(pre, ref, ref.toLocalVariable())
         }
         is LocalVariable -> {
-          if (ref.element.getKind() != ElementKind.PARAMETER) {
-            // Prepare local variable declarations
-            newVar(info)
-          } else {
+          if (ref.element.getKind() == ElementKind.PARAMETER) {
             constraints.one(info.fraction)
+          } else {
+            newUnknown(info)
           }
         }
         is ThisReference -> {
           constraints.one(info.fraction)
           constraints.same(info.type, MungoObjectType.SINGLETON)
-          // TODO only require 1 of packFraction if the method performs a state change
-          // or mutates fields or is constructor
-          constraints.other { c ->
-            ConstraintsSet(c).addIn1(
-              Make.S.eq(
-                info.packFraction.expr,
-                Make.ONE
-              )
-            )
+          if (isReadableMethod) {
+            constraints.notZero(info.packFraction)
+            constraints.notOne(info.packFraction)
+          } else {
+            constraints.one(info.packFraction)
           }
         }
         is FieldAccess -> {
-          if (inferrer.isConstructor(ast) && ref.isThisField()) {
+          if (isConstructor && ref.isThisField()) {
             constraints.one(info.fraction)
           } else if (isPure) {
             // Force pure methods to require less fractions
@@ -189,8 +212,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitVariableDeclaration(n: VariableDeclarationNode, result: NodeAssertions): Void? {
-    // Full permission is already given at the beginning of the method
-    ensures.noSideEffects(result)
+    constraints.newVariable(result, getDirectRef(n), MungoUnknownType.SINGLETON)
     return null
   }
 

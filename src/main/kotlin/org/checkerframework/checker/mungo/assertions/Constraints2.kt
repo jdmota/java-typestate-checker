@@ -17,13 +17,13 @@ sealed class TinyArithExpr : TinyExpr<TinyArithExpr, ArithExpr>()
 
 sealed class TinyMungoTypeExpr : TinyExpr<TinyMungoTypeExpr, Expr>()
 
-class TinySomeFraction(val key: String) : TinyArithExpr() {
+class TinySomeFraction(val sym: SymbolicFraction) : TinyArithExpr() {
   override fun equals(other: Any?): Boolean {
-    return other is TinySomeFraction && key == other.key
+    return other is TinySomeFraction && sym == other.sym
   }
 
   override fun hashCode(): Int {
-    return key.hashCode()
+    return sym.hashCode()
   }
 
   override fun substitute(s: Substitution): TinyArithExpr {
@@ -31,21 +31,21 @@ class TinySomeFraction(val key: String) : TinyArithExpr() {
   }
 
   override fun toZ3(setup: ConstraintsSetup): ArithExpr {
-    return setup.mkFraction(key)
+    return setup.mkFraction(sym.z3Symbol())
   }
 
   override fun toString(): String {
-    return key
+    return sym.toString()
   }
 }
 
-class TinySomeType(val key: String) : TinyMungoTypeExpr() {
+class TinySomeType(val sym: SymbolicType) : TinyMungoTypeExpr() {
   override fun equals(other: Any?): Boolean {
-    return other is TinySomeType && key == other.key
+    return other is TinySomeType && sym == other.sym
   }
 
   override fun hashCode(): Int {
-    return key.hashCode()
+    return sym.hashCode()
   }
 
   override fun substitute(s: Substitution): TinyMungoTypeExpr {
@@ -53,11 +53,11 @@ class TinySomeType(val key: String) : TinyMungoTypeExpr() {
   }
 
   override fun toZ3(setup: ConstraintsSetup): Expr {
-    return setup.mkType(key)
+    return setup.mkType(sym.z3Symbol())
   }
 
   override fun toString(): String {
-    return key
+    return sym.toString()
   }
 }
 
@@ -735,9 +735,9 @@ class Make private constructor() {
     })
   }
 
-  fun fraction(key: String) = TinySomeFraction(key)
+  fun fraction(sym: SymbolicFraction) = TinySomeFraction(sym)
 
-  fun type(key: String) = TinySomeType(key)
+  fun type(sym: SymbolicType) = TinySomeType(sym)
 
   fun type(type: MungoType) = TinyMungoType(type)
 

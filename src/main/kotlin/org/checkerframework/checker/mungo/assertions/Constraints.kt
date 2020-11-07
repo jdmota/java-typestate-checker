@@ -115,7 +115,6 @@ fun packFractionsAccumulation(ref: Reference, pres: Collection<SymbolicAssertion
   return Make.S.eq(addition, Make.ZERO)
 }
 
-// TODO remember that packFraction > 0 only holds if fraction > 0 also holds!
 fun typesAccumulation(ref: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): TinyMungoTypeExpr {
   // "others" includes "ref"
   val others = post.skeleton.getPossibleEq(ref)
@@ -127,12 +126,26 @@ fun typesAccumulation(ref: Reference, pres: Collection<SymbolicAssertion>, post:
     )
   })
   return Make.S.ite(
-    Make.S.gt(
-      post[ref].packFraction.expr,
-      Make.ZERO
-    ),
-    typeExpr,
-    Make.S.type(MungoUnknownType.SINGLETON)
+    Make.S.eq(post[ref].fraction.expr, Make.ZERO),
+    // Without permission to the variable/field, nothing can be said
+    Make.S.type(MungoUnknownType.SINGLETON),
+    if (ref.isPrimitive()) {
+      Make.S.type(MungoPrimitiveType.SINGLETON)
+    } else {
+      Make.S.ite(
+        Make.S.eq(post[ref].packFraction.expr, Make.ZERO),
+        // Without permission to the object itself, we can only assert it is an object or null
+        Make.S.ite(
+          Make.S.subtype(
+            Make.S.type(MungoNullType.SINGLETON),
+            Make.S.union(pres.map { it[ref].type.expr })
+          ),
+          Make.S.type(MungoUnionType.create(listOf(MungoObjectType.SINGLETON, MungoNullType.SINGLETON))),
+          Make.S.type(MungoObjectType.SINGLETON)
+        ),
+        typeExpr
+      )
+    }
   )
 }
 
@@ -162,7 +175,6 @@ fun handleImplies(
   // TODO equality of fields!
   for ((a, b) in tail.skeleton.allEqualities) {
     // Equality is true in assertion "tail" if present in the other assertions
-    // and with read access to the variables
     result.addIn1(
       Make.S.eq(
         Make.S.equals(tail, a, b),
@@ -464,6 +476,71 @@ fun handleCall(
   }
 }
 
+fun handleNewVariable(
+  tail: SymbolicAssertion,
+  heads: Set<SymbolicAssertion>,
+  variable: Reference?,
+  type: MungoType?,
+  result: ConstraintsSet
+) {
+  tail.forEach { ref, info ->
+    if (variable != null && type != null && ref.hasPrefix(variable)) {
+      if (ref == variable) {
+        result.addIn1(Make.S.eq(
+          info.fraction.expr,
+          Make.S.real(1)
+        ))
+        result.addIn1(Make.S.eq(
+          info.packFraction.expr,
+          Make.S.real(1)
+        ))
+        result.addIn2(Make.S.eq(
+          info.type.expr,
+          Make.S.type(type)
+        ))
+      } else {
+        result.addIn1(Make.S.eq(
+          info.fraction.expr,
+          Make.S.real(0)
+        ))
+        result.addIn1(Make.S.eq(
+          info.packFraction.expr,
+          Make.S.real(0)
+        ))
+        result.addIn2(Make.S.eq(
+          info.type.expr,
+          Make.S.type(MungoUnknownType.SINGLETON)
+        ))
+      }
+    } else {
+      result.addIn1(Make.S.eq(
+        info.fraction.expr,
+        Make.S.min(heads.map { it[ref].fraction.expr })
+      ))
+      result.addIn1(Make.S.eq(
+        info.packFraction.expr,
+        Make.S.min(heads.map { it[ref].packFraction.expr })
+      ))
+      result.addIn2(Make.S.eq(
+        info.type.expr,
+        Make.S.union(heads.map { it[ref].type.expr })
+      ))
+    }
+  }
+
+  for ((a, b) in tail.skeleton.allEqualities) {
+    // Equality is true in assertion "tail" if present in the other assertions
+    result.addIn1(
+      Make.S.eq(
+        Make.S.equals(tail, a, b),
+        Make.S.and(heads.map {
+          Make.S.equals(it, a, b)
+        })
+      )
+    )
+  }
+}
+
 private class ImpliedAssertion(val tail: SymbolicAssertion) : Constraint() {
 
   override fun toString(): String {
@@ -485,7 +562,20 @@ private class NoSideEffects(val assertions: NodeAssertions) : Constraint() {
 
   override fun build(): ConstraintsSet {
     return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
-      handleImplies(tail, heads, result)
+      handleNewVariable(tail, heads, null, null, result)
+    }
+  }
+}
+
+private class NewVariable(val assertions: NodeAssertions, val variable: Reference, val type: MungoType) : Constraint() {
+
+  override fun toString(): String {
+    return "($id) $variable: $type"
+  }
+
+  override fun build(): ConstraintsSet {
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
+      handleNewVariable(tail, heads, variable, type, result)
     }
   }
 }
@@ -760,7 +850,8 @@ class Constraints {
     MungoNullType.SINGLETON,
     MungoPrimitiveType.SINGLETON,
     MungoMovedType.SINGLETON,
-    MungoBottomType.SINGLETON
+    MungoBottomType.SINGLETON,
+    MungoUnionType.create(listOf(MungoObjectType.SINGLETON, MungoNullType.SINGLETON))
   )
 
   fun addType(type: MungoType) {
@@ -939,6 +1030,10 @@ class Constraints {
 
   fun noSideEffects(assertions: NodeAssertions) {
     constraints.add(NoSideEffects(assertions))
+  }
+
+  fun newVariable(assertions: NodeAssertions, variable: Reference, type: MungoType) {
+    constraints.add(NewVariable(assertions, variable, type))
   }
 
   fun one(a: SymbolicFraction) {

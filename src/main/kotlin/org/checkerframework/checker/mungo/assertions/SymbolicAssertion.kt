@@ -3,10 +3,10 @@ package org.checkerframework.checker.mungo.assertions
 import org.checkerframework.checker.mungo.analysis.*
 import java.lang.StringBuilder
 
-class SymbolicFraction {
+class SymbolicFraction(val info: SymbolicInfo) {
 
   val id = uuid++
-  val expr = Make.S.fraction(z3Symbol())
+  val expr = Make.S.fraction(this)
 
   companion object {
     private var uuid = 1L
@@ -25,10 +25,10 @@ class SymbolicFraction {
   override fun toString() = z3Symbol()
 }
 
-class SymbolicType {
+class SymbolicType(val info: SymbolicInfo) {
 
   val id = uuid++
-  val expr = Make.S.type(z3Symbol())
+  val expr = Make.S.type(this)
 
   companion object {
     private var uuid = 1L
@@ -47,13 +47,12 @@ class SymbolicType {
   override fun toString() = z3Symbol()
 }
 
-class SymbolicPacked
+class SymbolicInfo(val ref: Reference, private val assertion: SymbolicAssertion?) {
+  val fraction = SymbolicFraction(this) // access(x, f1)
+  val type = SymbolicType(this) // typeof(x, t1)
 
-class SymbolicInfo(val ref: Reference) {
-  val fraction = SymbolicFraction() // access(x, f1)
-  val type = SymbolicType() // typeof(x, t1)
-  val packed = SymbolicPacked() // packed(x) or unpacked(x)
-  val packFraction = SymbolicFraction() // access(x.0, f2)
+  // val packed = SymbolicPacked() // packed(x) or unpacked(x)
+  val packFraction = SymbolicFraction(this) // access(x.0, f2)
   val children = mutableMapOf<Reference, SymbolicInfo>()
 
   fun forEach(fn: (Reference, SymbolicInfo) -> Unit) {
@@ -62,6 +61,8 @@ class SymbolicInfo(val ref: Reference) {
       info.forEach(fn)
     }
   }
+
+  fun debugWhere() = "$ref in ${assertion?.where}"
 
   fun toString(str: StringBuilder, ref: Reference, solution: SomeSolution) {
     val access = solution.get(fraction)
@@ -110,7 +111,7 @@ class SymbolicAssertionSkeleton(
   fun create() = SymbolicAssertion(this)
 }
 
-class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
+class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton, var where: String? = null) {
 
   val id = uuid++
 
@@ -145,10 +146,10 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton) {
     } else {
       val parent = ref.parent
       if (parent == null) {
-        roots.computeIfAbsent(ref) { SymbolicInfo(it) }
+        roots.computeIfAbsent(ref) { SymbolicInfo(it, this) }
       } else {
         val parentInfo = prepare(parent)
-        parentInfo.children.computeIfAbsent(ref) { SymbolicInfo(it) }
+        parentInfo.children.computeIfAbsent(ref) { SymbolicInfo(it, this) }
       }
     }
   }
@@ -218,8 +219,18 @@ class NodeAssertions(
   val preThen: SymbolicAssertion,
   val preElse: SymbolicAssertion,
   val postThen: SymbolicAssertion,
-  val postElse: SymbolicAssertion
+  val postElse: SymbolicAssertion,
+  val where: String?
 ) {
+
+  init {
+    if (where != null) {
+      preThen.where = "pre($where)"
+      preElse.where = "pre($where)"
+      postThen.where = "post($where)"
+      postElse.where = "post($where)"
+    }
+  }
 
   fun debug(middle: String) {
     println("----")

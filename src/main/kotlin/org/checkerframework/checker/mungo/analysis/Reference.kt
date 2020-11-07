@@ -6,10 +6,12 @@ import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.javacutil.TypesUtils
 import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind.*
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.VariableElement
+import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
 // Adapted from https://github.com/typetools/checker-framework/blob/master/dataflow/src/main/java/org/checkerframework/dataflow/analysis/FlowExpressions.java
@@ -156,6 +158,10 @@ sealed class Reference(val type: TypeMirror, val parent: Reference?) {
     } else {
       this
     }
+  }
+
+  fun isPrimitive(): Boolean {
+    return TypesUtils.isPrimitive(type) || type.kind == TypeKind.VOID
   }
 }
 

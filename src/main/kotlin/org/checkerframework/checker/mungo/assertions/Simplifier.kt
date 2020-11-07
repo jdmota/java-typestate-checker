@@ -56,6 +56,16 @@ class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Bo
     return if (replacement === expr && setEqualsToFalse && expr is TinyEquals) Make.FALSE else replacement
   }
 
+  fun getSame(expr: TinyExpr<*, *>): Set<TinyExpr<*, *>> {
+    return allEqualities.aliases(expr)
+  }
+
+  fun getSymbols(expr: TinyExpr<*, *>): Set<TinyExpr<*, *>> {
+    val gatherer = GatherSymbols()
+    expr.substitute(gatherer)
+    return gatherer.symbols
+  }
+
   private fun track(expr: TinyBoolExpr): TinyBoolExpr? {
     if (expr === Make.TRUE) {
       return null
@@ -111,9 +121,7 @@ class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Bo
     result.remove(Make.FALSE)
 
     for (expr in falseExprs) {
-      val gatherer = GatherSymbols()
-      expr.substitute(gatherer)
-      for (sym in gatherer.symbols) {
+      for (sym in getSymbols(expr)) {
         when (sym) {
           is TinyArithExpr -> result.add(Make.S.eq(sym, allEqualities[sym] as TinyArithExpr))
           is TinyMungoTypeExpr -> result.add(Make.S.eq(sym, allEqualities[sym] as TinyMungoTypeExpr))

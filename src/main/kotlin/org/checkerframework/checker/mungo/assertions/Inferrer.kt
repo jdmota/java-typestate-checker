@@ -38,7 +38,7 @@ class Inferrer(val checker: MungoChecker) {
       firstTime = false
 
       val ref = UnknownRef(utils.typeUtils.nullType)
-      unknownInfo = SymbolicInfo(ref)
+      unknownInfo = SymbolicInfo(ref, null)
     }
   }
 
@@ -179,6 +179,13 @@ class Inferrer(val checker: MungoChecker) {
     else -> throw RuntimeException("unknown ast")
   }
 
+  private fun astToName(ast: UnderlyingAST) = when (ast) {
+    is UnderlyingAST.CFGMethod -> ast.method.name.toString()
+    is UnderlyingAST.CFGLambda -> "lambda"
+    is UnderlyingAST.CFGStatement -> "statement"
+    else -> throw RuntimeException("unknown ast")
+  }
+
   private val cfgCache = IdentityHashMap<Tree, ControlFlowGraph>()
 
   private fun getCFG(ast: UnderlyingAST): ControlFlowGraph {
@@ -316,8 +323,7 @@ class Inferrer(val checker: MungoChecker) {
     val possibleEqualities = PossibleEqualitiesTracker()
 
     fun equals(a: Reference, b: Reference) {
-      if (TypesUtils.isPrimitive(a.type) || TypesUtils.isPrimitive(b.type)) return
-      if (a.type.kind == TypeKind.VOID || b.type.kind == TypeKind.VOID) return
+      if (a.isPrimitive() || b.isPrimitive()) return
       val aRoot = a.getSimpleRoot()
       val bRoot = b.getSimpleRoot()
       if (aRoot is ClassName || bRoot is ClassName) return
@@ -361,13 +367,13 @@ class Inferrer(val checker: MungoChecker) {
 
     // Entry
     val preAndPost = currentSkeleton.create()
-    val entry = NodeAssertions(preAndPost, preAndPost, preAndPost, preAndPost)
+    val entry = NodeAssertions(preAndPost, preAndPost, preAndPost, preAndPost, "entry_${astToName(ast)}")
     preAssertions[ast] = entry
 
     // Exits
     val preThen = currentSkeleton.create()
     val preElse = preThen // TODO different assertion when the method returns a boolean
-    postAssertions[ast] = NodeAssertions(preThen, preElse, preThen, preElse)
+    postAssertions[ast] = NodeAssertions(preThen, preElse, preThen, preElse, "exit_${astToName(ast)}")
 
     // Traverse
     traverse(ast, entry, cfg.entryBlock, Store.FlowRule.EACH_TO_EACH)
@@ -432,7 +438,7 @@ class Inferrer(val checker: MungoChecker) {
         postElse = postThen
       }
 
-      val nodeAssertions = NodeAssertions(preThen, preElse, postThen, postElse)
+      val nodeAssertions = NodeAssertions(preThen, preElse, postThen, postElse, node.toString())
       assertions[node] = nodeAssertions
       assertionsList.add(Pair(node, nodeAssertions))
 
@@ -561,11 +567,12 @@ class Inferrer(val checker: MungoChecker) {
       is NoSolution -> {
         println("No solution!\n")
 
-        solution.unsatCore.map { expr ->
-          val (constraint, expr, z3expr) = constraints.getConstraintByLabel(expr.toString())
+        solution.unsatCore.map { z3exprLabel ->
+          val (constraint, expr, z3expr) = constraints.getConstraintByLabel(z3exprLabel.toString())
           // println(constraints.formatExpr(z3expr, solution))
           expr
         }.let { list ->
+          list.forEach { println(it) }
           Simplifier(true, setEqualsToFalse = true).simplifyAll(list).forEach {
             println(it)
           }
@@ -584,21 +591,13 @@ class Inferrer(val checker: MungoChecker) {
 
         for ((ast, assertions) in postAssertions) {
           val a = preAssertions[ast]!!
-          if (ast is UnderlyingAST.CFGMethod) {
-            NodeAssertions(
-              a.preThen,
-              a.preElse,
-              assertions.postThen,
-              assertions.postElse
-            ).debug(solution, "--> method: ${ast.method.name}")
-          } else {
-            NodeAssertions(
-              a.preThen,
-              a.preElse,
-              assertions.postThen,
-              assertions.postElse
-            ).debug(solution, "--> method: lambda")
-          }
+          NodeAssertions(
+            a.preThen,
+            a.preElse,
+            assertions.postThen,
+            assertions.postElse,
+            null
+          ).debug(solution, "--> method: ${astToName(ast)}")
         }
       }
       is IncompleteSolution -> {
@@ -611,30 +610,37 @@ class Inferrer(val checker: MungoChecker) {
 
         for ((ast, assertions) in postAssertions) {
           val a = preAssertions[ast]!!
-          if (ast is UnderlyingAST.CFGMethod) {
-            NodeAssertions(
-              a.preThen,
-              a.preElse,
-              assertions.postThen,
-              assertions.postElse
-            ).debug(solution, "--> method: ${ast.method.name}")
-          } else {
-            NodeAssertions(
-              a.preThen,
-              a.preElse,
-              assertions.postThen,
-              assertions.postElse
-            ).debug(solution, "--> method: lambda")
-          }
+          NodeAssertions(
+            a.preThen,
+            a.preElse,
+            assertions.postThen,
+            assertions.postElse,
+            null
+          ).debug(solution, "--> method: ${astToName(ast)}")
         }
 
-        solution.unsatCore?.map { expr ->
-          val (constraint, expr, z3expr) = constraints.getConstraintByLabel(expr.toString())
+        solution.unsatCore?.map { z3exprLabel ->
+          val (constraint, expr, z3expr) = constraints.getConstraintByLabel(z3exprLabel.toString())
           // println(constraints.formatExpr(z3expr, solution))
           expr.substitute(SolutionMap(solution))
         }?.let { list ->
-          Simplifier(true).simplifyAll(list).forEach {
+          val simplifier = Simplifier(true)
+          val simplifiedExprs = simplifier.simplifyAll(list)
+          simplifiedExprs.forEach {
             println(it)
+            for (symbol in simplifier.getSymbols(it)) {
+              println("Symbol $symbol")
+              val aliases = simplifier.getSame(symbol)
+              for (alias in aliases) {
+                // println("Alias $alias")
+                when (alias) {
+                  is TinySomeFraction -> println(alias.sym.info.debugWhere())
+                  is TinySomeType -> println(alias.sym.info.debugWhere())
+                  else -> {
+                  }
+                }
+              }
+            }
           }
         }
       }

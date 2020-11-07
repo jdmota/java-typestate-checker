@@ -2,10 +2,7 @@ package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.analysis.*
-import org.checkerframework.dataflow.cfg.node.AssignmentNode
-import org.checkerframework.dataflow.cfg.node.MethodInvocationNode
-import org.checkerframework.dataflow.cfg.node.Node
-import org.checkerframework.dataflow.cfg.node.ObjectCreationNode
+import org.checkerframework.dataflow.cfg.node.*
 
 sealed class InferenceResult
 
@@ -47,6 +44,8 @@ sealed class SomeSolution(protected val setup: ConstraintsSetup, val model: Mode
       is AssignmentNode -> false
       is MethodInvocationNode -> false
       is ObjectCreationNode -> false
+      is ThisLiteralNode -> false
+      is FieldAccessNode -> false
       else -> true
     }
   }
