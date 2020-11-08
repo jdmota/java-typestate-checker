@@ -71,6 +71,14 @@ class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Bo
       return null
     }
     return when (expr) {
+      is TinyGe -> if (expr.a is TinySomeFraction && expr.b == Make.ONE) {
+        allEqualities[expr.a] = expr.b
+        null
+      } else expr
+      is TinyLe -> if (expr.a == Make.ONE && expr.b is TinySomeFraction) {
+        allEqualities[expr.b] = expr.a
+        null
+      } else expr
       is TinyEqArith -> if (shouldTrack(expr.a) && shouldTrack(expr.b)) {
         allEqualities[expr.a] = expr.b
         null

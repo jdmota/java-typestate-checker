@@ -572,7 +572,6 @@ class Inferrer(val checker: MungoChecker) {
           // println(constraints.formatExpr(z3expr, solution))
           expr
         }.let { list ->
-          list.forEach { println(it) }
           Simplifier(true, setEqualsToFalse = true).simplifyAll(list).forEach {
             println(it)
           }

@@ -11,6 +11,7 @@ private var constraintsUUID = 1L
 class ConstraintsSet(val constraint: Constraint) : Iterable<TinyBoolExpr> {
 
   private val phase1 = mutableListOf<TinyBoolExpr>()
+  private val phase1Enforce = mutableListOf<TinyBoolExpr>()
   private val phase2 = mutableListOf<TinyBoolExpr>()
   private val all = mutableListOf<TinyBoolExpr>()
 
@@ -26,15 +27,15 @@ class ConstraintsSet(val constraint: Constraint) : Iterable<TinyBoolExpr> {
     return this
   }
 
-  fun addAll(result: ConstraintsSet): ConstraintsSet {
-    phase1.addAll(result.phase1)
-    phase2.addAll(result.phase2)
-    all.addAll(result.phase1)
-    all.addAll(result.phase2)
+  fun addIn1Enforce(expr: TinyBoolExpr): ConstraintsSet {
+    phase1Enforce.add(expr)
+    all.add(expr)
     return this
   }
 
   fun phase1It() = phase1.iterator()
+
+  fun phase1EnforceIt() = phase1Enforce.iterator()
 
   fun phase2It() = phase2.iterator()
 
@@ -63,18 +64,13 @@ fun reduce(
   return result
 }
 
-// TODO after enforcing the well-formedness properties, the solving became very slow...
-// TODO handle primitives, since they can be copied many times
-
-private const val ENFORCE_WELL_FORMEDNESS = false // Should be true, but it takes us through the slower path...
-
 private fun equals(heads: Collection<SymbolicAssertion>, first: Reference, second: Reference): TinyBoolExpr {
   val list = mutableListOf<TinyBoolExpr>()
   var a: Reference? = first
   var b: Reference? = second
   while (a != null && b != null) {
     list.add(Make.S.and(heads.map { Make.S.equals(it, a!!, b!!) }))
-    if (ENFORCE_WELL_FORMEDNESS) {
+    if (false && a is FieldAccess && b is FieldAccess && a.fieldName == b.fieldName) {
       a = a.parent
       b = b.parent
     } else break
@@ -109,17 +105,14 @@ fun fractionsAccumulation(ref: Reference, heads: Collection<SymbolicAssertion>, 
     }
   )
 
-  if (ENFORCE_WELL_FORMEDNESS) {
-    result.addIn1(Make.S.ite(
-      Make.S.eq(tail[parent].fraction.expr, Make.ZERO),
-      Make.S.eq(tail[ref].fraction.expr, Make.ZERO),
-      Make.TRUE
-    ))
-  }
-
   result.addIn1(Make.S.eq(
     tail[ref].fraction.expr,
     addition
+  ))
+
+  result.addIn1Enforce(Make.S.implies(
+    Make.S.eq(tail[parent].fraction.expr, Make.ZERO),
+    Make.S.eq(tail[ref].fraction.expr, Make.ZERO)
   ))
 }
 
@@ -144,17 +137,14 @@ fun packFractionsAccumulation(ref: Reference, heads: Collection<SymbolicAssertio
     }
   )
 
-  if (ENFORCE_WELL_FORMEDNESS) {
-    result.addIn1(Make.S.ite(
-      Make.S.eq(tail[ref].fraction.expr, Make.ZERO),
-      Make.S.eq(tail[ref].packFraction.expr, Make.ZERO),
-      Make.TRUE
-    ))
-  }
-
   result.addIn1(Make.S.eq(
     tail[ref].packFraction.expr,
-    addition // if (ref.isPrimitive()) Make.ONE else addition
+    addition
+  ))
+
+  result.addIn1Enforce(Make.S.implies(
+    Make.S.eq(tail[ref].fraction.expr, Make.ZERO),
+    Make.S.eq(tail[ref].packFraction.expr, Make.ZERO)
   ))
 }
 
@@ -979,31 +969,21 @@ class Constraints {
   private fun solveIn2Phases(): InferenceResult {
     setup = ConstraintsSetup(types).start()
     val constraintsSets = constraints.map { it.build() }
-    val allPhase1Exprs = mutableListOf<Triple<Constraint, TinyBoolExpr, TinyBoolExpr>>()
-    val allPhase2Exprs = mutableListOf<Triple<Constraint, TinyBoolExpr, TinyBoolExpr>>()
-
-    // println("Simplifying...")
-    /*val simplifier = Simplifier()
-    for (set in constraintsSets) {
-      for (expr in set) {
-        simplifier.track(expr)
-      }
-    }*/
+    val allPhase1Exprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
+    val allPhase1EnforcedExprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
+    val allPhase2Exprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
 
     // Simplify...
     for (set in constraintsSets) {
-      for (expr in set.phase1It()) {
-        allPhase1Exprs.add(Triple(set.constraint, expr, expr /*simplifier.simplify(expr)*/))
-      }
-      for (expr in set.phase2It()) {
-        allPhase2Exprs.add(Triple(set.constraint, expr, expr /*simplifier.simplify(expr)*/))
-      }
+      for (expr in set.phase1It()) allPhase1Exprs.add(Pair(set.constraint, expr))
+      for (expr in set.phase1EnforceIt()) allPhase1EnforcedExprs.add(Pair(set.constraint, expr))
+      for (expr in set.phase2It()) allPhase2Exprs.add(Pair(set.constraint, expr))
     }
 
     // Phase 1...
 
-    for ((idx, triple) in allPhase1Exprs.withIndex()) {
-      val (constraint, expr, simplifiedExpr) = triple
+    for ((idx, pair) in allPhase1Exprs.withIndex()) {
+      val (constraint, expr) = pair
       val label = "${constraint.id}-$idx-1"
       val z3expr = expr.toZ3(setup)
       idToConstraint[label] = Triple(constraint, expr, z3expr)
@@ -1021,12 +1001,42 @@ class Constraints {
       }
     }
 
+    // Phase 1 enforcements...
+
+    // setup.push()
+
+    for ((idx, pair) in allPhase1EnforcedExprs.withIndex()) {
+      val (constraint, expr) = pair
+      // val label = "${constraint.id}-$idx-1.1"
+      val z3expr = expr.toZ3(setup)
+      val simplified = result1.model.eval(z3expr, false).simplify() as BoolExpr
+      if (simplified.toString() != "true") {
+        println("---")
+        println(expr)
+        println(simplified)
+        println("---")
+      }
+      // idToConstraint[label] = Triple(constraint, expr, z3expr)
+      // setup.addAssert(z3expr, label)
+    }
+
+    /*println("Solving (phase 1 enforcements)...")
+    result1 = setup.solve()
+    println("Phase 1 enforcements done")
+
+    when (result1) {
+      is MiniNoSolution -> return NoSolution(result1.unsatCore)
+      is MiniUnknownSolution -> return UnknownSolution(result1.reason)
+      is MiniSolution -> {
+      }
+    }*/
+
     // Phase 2...
 
     setup.push()
 
-    for ((idx, triple) in allPhase2Exprs.withIndex()) {
-      val (constraint, expr, simplifiedExpr) = triple
+    for ((idx, pair) in allPhase2Exprs.withIndex()) {
+      val (constraint, expr) = pair
       val label = "${constraint.id}-$idx-2"
       val z3expr = expr.toZ3(setup)
       val simplified = result1.model.eval(z3expr, false).simplify() as BoolExpr

@@ -108,11 +108,18 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
     fun newVar(info: SymbolicInfo, type: MungoType = MungoUnknownType.SINGLETON) {
       constraints.same(info.fraction, 1)
-      constraints.same(info.packFraction, 1)
+      constraints.same(info.packFraction, if (type.isSubtype(MungoObjectType.SINGLETON)) 1 else 0)
       constraints.same(info.type, type)
       info.forEach { _, childInfo ->
         newUnknown(childInfo)
       }
+      // For now, packed permissions of primitives is zero.
+      // This is important so that we do not need to worry about the transferring of those permissions
+      // in a way that preserves well-formedness,
+      // together with the fact that the implementation does not track equalities between variables/fields that store primitives.
+      // For example, what would happen is that the fraction permission would get transferred, but the packed permissions would not,
+      // breaking the well-formedness properties (i.e. if fraction is zero, packed fraction needs to be zero),
+      // raising a contradiction in the constraints and making the problem unsat.
     }
 
     pre.forEach { ref, info ->

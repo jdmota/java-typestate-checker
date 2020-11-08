@@ -207,6 +207,20 @@ class TinyLe(val a: TinyArithExpr, val b: TinyArithExpr) : TinyBoolExpr() {
   }
 }
 
+class TinyImplies(val a: TinyBoolExpr, val b: TinyBoolExpr) : TinyBoolExpr() {
+  override fun substitute(s: Substitution): TinyBoolExpr {
+    return Make.S.implies(a.substitute(s), b.substitute(s))
+  }
+
+  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+    return setup.ctx.mkImplies(a.toZ3(setup), b.toZ3(setup))
+  }
+
+  override fun toString(): String {
+    return "($a ==> $b)"
+  }
+}
+
 class TinyITEArith(
   val condition: TinyBoolExpr,
   val thenExpr: TinyArithExpr,
@@ -630,6 +644,7 @@ class Make private constructor() {
       a == b -> TRUE
       a == ZERO && b is TinySub -> TinyEqArith(b.a, b.b)
       b == ZERO && a is TinySub -> TinyEqArith(a.a, a.b)
+      a is TinyReal && b is TinyReal -> bool(a.num * b.denominator == b.num * a.denominator)
       else -> TinyEqArith(a, b)
     }
   }
@@ -646,6 +661,14 @@ class Make private constructor() {
 
   fun eq(a: TinyMungoTypeExpr, b: TinyMungoTypeExpr): TinyBoolExpr {
     return if (a == b) TRUE else TinyEqMungoType(a, b)
+  }
+
+  fun implies(a: TinyBoolExpr, b: TinyBoolExpr): TinyBoolExpr {
+    return when (a) {
+      TRUE -> b
+      FALSE -> TRUE
+      else -> TinyImplies(a, b)
+    }
   }
 
   fun and(list: Collection<TinyBoolExpr>): TinyBoolExpr {
