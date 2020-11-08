@@ -88,10 +88,10 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
       val graph = inferrer.utils.classUtils.visitClassTypeMirror(receiverType)
       if (graph != null) {
-        val states = MungoTypecheck.available(inferrer.utils, graph, method)
-        val requiredStates = MungoUnionType.create(states)
-        val ensuredStates = MungoTypecheck.refine(inferrer.utils, requiredStates, method) { true }
-        requiredStates == ensuredStates
+        // If this method always leaves the object in the same state
+        MungoTypecheck.available(inferrer.utils, graph, method).all {
+          it == MungoTypecheck.refine(inferrer.utils, it, method) { true }
+        }
       } else {
         false
       }
@@ -299,6 +299,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     val isConstructor = method.getKind() == ElementKind.CONSTRUCTOR
     // Gather all parameters
     val parameters = inferrer.locationsGatherer.getParameterLocationsForCall(method)
+    val parameterFields = parameters.map { inferrer.locationsGatherer.getLocations(it) }
     // Is "this" one of the parameters?
     val includeThis = parameters.any { it is ThisReference }
     // Gather all arguments
@@ -309,20 +310,9 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       it.addAll(argNodes)
       it
     }.map { getRef(it) }
+    val argumentFields = arguments.map { inferrer.locationsGatherer.getLocations(it) }
 
     // assert(parameters.size == argExprs.size)
-
-    // Arguments
-    val itParams = parameters.iterator()
-    val itArgs = arguments.iterator()
-    while (itParams.hasNext()) {
-      val param = itParams.next()
-      val expr = itArgs.next()
-      constraints.passingParameter(result.preThen[expr], pre[param])
-      if (result.preThen !== result.preElse) {
-        constraints.passingParameter(result.preElse[expr], pre[param])
-      }
-    }
 
     var overrideType: MungoType? = null
 
@@ -352,8 +342,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       getRef(call),
       receiver?.let { getRef(it) },
       overrideType,
-      arguments,
-      parameters,
+      argumentFields,
+      parameterFields,
       methodPre = pre,
       methodPost = setOf(postThen, postElse)
     )

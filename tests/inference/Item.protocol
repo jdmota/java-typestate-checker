@@ -1,10 +1,12 @@
 typestate Item {
   S0 = {
     void changeState(): S1,
+    int getState(): S0,
     drop: end
   }
   S1 = {
     void changeState(): S1,
+    int getState(): S1,
     drop: end
   }
 }

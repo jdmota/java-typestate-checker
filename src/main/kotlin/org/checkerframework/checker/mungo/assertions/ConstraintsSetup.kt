@@ -243,16 +243,16 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     solver.push()
   }
 
-  fun solve(): InferenceResult {
+  fun solve(): MiniInferenceResult {
     val result = solver.check()
     val hasModel = result == Status.SATISFIABLE
     if (hasModel) {
-      return Solution(this, solver.model)
+      return MiniSolution(solver.model)
     }
     return if (result == Status.UNSATISFIABLE) {
-      NoSolution(solver.unsatCore)
+      MiniNoSolution(solver.unsatCore)
     } else {
-      UnknownSolution(solver.reasonUnknown)
+      MiniUnknownSolution(solver.reasonUnknown)
     }
   }
 

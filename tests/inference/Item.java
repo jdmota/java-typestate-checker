@@ -9,6 +9,10 @@ public class Item {
     this.state = 0;
   }
 
+  public int getState() {
+    return this.state;
+  }
+
   public void changeState() {
     this.state = 1;
   }

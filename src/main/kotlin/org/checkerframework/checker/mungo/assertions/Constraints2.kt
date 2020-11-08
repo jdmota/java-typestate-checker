@@ -511,6 +511,21 @@ class TinyUnion(val list: Collection<TinyMungoTypeExpr>) : TinyMungoTypeExpr() {
 
 class Make private constructor() {
 
+  fun add(a: TinyArithExpr, b: TinyArithExpr): TinyArithExpr {
+    return if (a == ZERO) {
+      b
+    } else if (b == ZERO) {
+      a
+    } else if (a is TinyReal && b is TinyReal) {
+      TinyReal(
+        a.num * b.denominator + b.num * a.denominator,
+        a.denominator * b.denominator
+      )
+    } else {
+      TinyAdd(listOf(a, b))
+    }
+  }
+
   fun add(list: Collection<TinyArithExpr>): TinyArithExpr {
     val l = list.filterNot { it == ZERO }
     return when {
@@ -691,6 +706,16 @@ class Make private constructor() {
       bool(a.type.isSubtype(b.type))
     } else {
       TinySubtype(a, b)
+    }
+  }
+
+  fun intersection(a: TinyMungoTypeExpr, b: TinyMungoTypeExpr): TinyMungoTypeExpr {
+    return when {
+      a == UNKNOWN -> b
+      b == UNKNOWN -> a
+      a == BOTTOM || b == BOTTOM -> BOTTOM
+      a is TinyMungoType && b is TinyMungoType -> TinyMungoType(a.type.intersect(b.type))
+      else -> TinyIntersection(listOf(a, b))
     }
   }
 

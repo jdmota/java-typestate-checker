@@ -1,7 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.BoolExpr
-import com.microsoft.z3.Expr
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -64,86 +63,150 @@ fun reduce(
   return result
 }
 
-// TODO ensure that certain facts are only asserted with enough permission (i.e. isValid)
-// TODO if the fraction is zero, the type should be Unknown instead
-// TODO packedFraction only holds if fraction holds
-// TODO equalities only hold with enough permission
-
+// TODO after enforcing the well-formedness properties, the solving became very slow...
 // TODO handle primitives, since they can be copied many times
 
-fun fractionsAccumulation(ref: FieldAccess, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): TinyBoolExpr {
-  val parent = ref.receiver
+private const val ENFORCE_WELL_FORMEDNESS = false // Should be true, but it takes us through the slower path...
+
+private fun equals(heads: Collection<SymbolicAssertion>, first: Reference, second: Reference): TinyBoolExpr {
+  val list = mutableListOf<TinyBoolExpr>()
+  var a: Reference? = first
+  var b: Reference? = second
+  while (a != null && b != null) {
+    list.add(Make.S.and(heads.map { Make.S.equals(it, a!!, b!!) }))
+    if (ENFORCE_WELL_FORMEDNESS) {
+      a = a.parent
+      b = b.parent
+    } else break
+  }
+  return Make.S.or(list)
+}
+
+fun fractionsAccumulation(ref: Reference, heads: Collection<SymbolicAssertion>, tail: SymbolicAssertion, result: ConstraintsSet) {
+  val parent = ref.parent
+  if (parent == null) {
+    result.addIn1(Make.S.eq(
+      tail[ref].fraction.expr,
+      Make.S.min(heads.map { it[ref].fraction.expr })
+    ))
+    return
+  }
+
   // "otherParents" includes "parent"
-  val otherParents = post.skeleton.getPossibleEq(parent)
+  val otherParents = tail.skeleton.getPossibleEq(parent)
   val addition = Make.S.add(
     otherParents.map { otherParent ->
       val otherRef = ref.replace(parent, otherParent)
       val sub = Make.S.sub(
-        Make.S.min(pres.map { it[otherRef].fraction.expr }),
-        post[otherRef].fraction.expr
+        Make.S.min(heads.map { it[otherRef].fraction.expr }),
+        if (ref == otherRef) Make.ZERO else tail[otherRef].fraction.expr
       )
       Make.S.ite(
-        Make.S.equals(post, parent, otherParent),
+        equals(heads, parent, otherParent),
         sub,
         Make.ZERO
       )
     }
   )
-  return Make.S.eq(addition, Make.ZERO)
+
+  if (ENFORCE_WELL_FORMEDNESS) {
+    result.addIn1(Make.S.ite(
+      Make.S.eq(tail[parent].fraction.expr, Make.ZERO),
+      Make.S.eq(tail[ref].fraction.expr, Make.ZERO),
+      Make.TRUE
+    ))
+  }
+
+  result.addIn1(Make.S.eq(
+    tail[ref].fraction.expr,
+    addition
+  ))
 }
 
 // Example:
 // x y z
 // f1 + f2 + f3 = f4 + f5 + f6
 // (f1 - f4) + (f2 - f5) + (f3 - f6) = 0
-fun packFractionsAccumulation(ref: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): TinyBoolExpr {
+fun packFractionsAccumulation(ref: Reference, heads: Collection<SymbolicAssertion>, tail: SymbolicAssertion, result: ConstraintsSet) {
   // "others" includes "ref"
-  val others = post.skeleton.getPossibleEq(ref)
+  val others = tail.skeleton.getPossibleEq(ref)
   val addition = Make.S.add(
     others.map { other ->
       val sub = Make.S.sub(
-        Make.S.min(pres.map { it[other].packFraction.expr }),
-        post[other].packFraction.expr
+        Make.S.min(heads.map { it[other].packFraction.expr }),
+        if (ref == other) Make.ZERO else tail[other].packFraction.expr
       )
       Make.S.ite(
-        Make.S.equals(post, ref, other),
+        equals(heads, ref, other),
         sub,
         Make.ZERO
       )
     }
   )
-  return Make.S.eq(addition, Make.ZERO)
+
+  if (ENFORCE_WELL_FORMEDNESS) {
+    result.addIn1(Make.S.ite(
+      Make.S.eq(tail[ref].fraction.expr, Make.ZERO),
+      Make.S.eq(tail[ref].packFraction.expr, Make.ZERO),
+      Make.TRUE
+    ))
+  }
+
+  result.addIn1(Make.S.eq(
+    tail[ref].packFraction.expr,
+    addition // if (ref.isPrimitive()) Make.ONE else addition
+  ))
 }
 
-fun typesAccumulation(ref: Reference, pres: Collection<SymbolicAssertion>, post: SymbolicAssertion): TinyMungoTypeExpr {
+fun typesAccumulation(ref: Reference, heads: Collection<SymbolicAssertion>, tail: SymbolicAssertion, result: ConstraintsSet) {
   // "others" includes "ref"
-  val others = post.skeleton.getPossibleEq(ref)
+  val others = tail.skeleton.getPossibleEq(ref)
   val typeExpr = Make.S.intersection(others.map { other ->
     Make.S.ite(
-      Make.S.equals(post, ref, other),
-      Make.S.union(pres.map { it[other].type.expr }),
+      equals(heads, ref, other),
+      Make.S.union(heads.map { it[other].type.expr }),
       Make.S.type(MungoUnknownType.SINGLETON)
     )
   })
+
+  result.addIn2(Make.S.eq(
+    tail[ref].type.expr,
+    typeOrUnknown(
+      ref,
+      tail[ref].fraction.expr,
+      tail[ref].packFraction.expr,
+      Make.S.union(heads.map { it[ref].type.expr }),
+      typeExpr
+    )
+  ))
+}
+
+fun typeOrUnknown(
+  ref: Reference,
+  fraction: TinyArithExpr,
+  packFraction: TinyArithExpr,
+  typeBefore: TinyMungoTypeExpr,
+  typeAfter: TinyMungoTypeExpr
+): TinyMungoTypeExpr {
   return Make.S.ite(
-    Make.S.eq(post[ref].fraction.expr, Make.ZERO),
+    Make.S.eq(fraction, Make.ZERO),
     // Without permission to the variable/field, nothing can be said
     Make.S.type(MungoUnknownType.SINGLETON),
     if (ref.isPrimitive()) {
       Make.S.type(MungoPrimitiveType.SINGLETON)
     } else {
       Make.S.ite(
-        Make.S.eq(post[ref].packFraction.expr, Make.ZERO),
+        Make.S.eq(packFraction, Make.ZERO),
         // Without permission to the object itself, we can only assert it is an object or null
         Make.S.ite(
           Make.S.subtype(
             Make.S.type(MungoNullType.SINGLETON),
-            Make.S.union(pres.map { it[ref].type.expr })
+            typeBefore
           ),
           Make.S.type(MungoUnionType.create(listOf(MungoObjectType.SINGLETON, MungoNullType.SINGLETON))),
           Make.S.type(MungoObjectType.SINGLETON)
         ),
-        typeExpr
+        typeAfter
       )
     }
   )
@@ -154,33 +217,26 @@ fun handleImplies(
   heads: Set<SymbolicAssertion>,
   result: ConstraintsSet
 ) {
-  tail.forEach { ref, info ->
-    if (ref is FieldAccess) {
-      result.addIn1(fractionsAccumulation(ref, heads, tail))
-    } else {
-      result.addIn1(Make.S.eq(
-        info.fraction.expr,
-        Make.S.min(heads.map { it[ref].fraction.expr })
-      ))
-    }
-
-    result.addIn1(packFractionsAccumulation(ref, heads, tail))
-
-    result.addIn2(Make.S.eq(
-      info.type.expr,
-      typesAccumulation(ref, heads, tail)
-    ))
+  tail.forEach { ref, _ ->
+    fractionsAccumulation(ref, heads, tail, result)
+    packFractionsAccumulation(ref, heads, tail, result)
+    typesAccumulation(ref, heads, tail, result)
   }
 
-  // TODO equality of fields!
   for ((a, b) in tail.skeleton.allEqualities) {
     // Equality is true in assertion "tail" if present in the other assertions
+    // and if there is enough permissions
     result.addIn1(
       Make.S.eq(
         Make.S.equals(tail, a, b),
-        Make.S.and(heads.map {
-          Make.S.equals(it, a, b)
-        })
+        Make.S.ite(
+          Make.S.or(listOf(
+            Make.S.eq(tail[a].fraction.expr, Make.ZERO),
+            Make.S.eq(tail[b].fraction.expr, Make.ZERO)
+          )),
+          Make.FALSE,
+          Make.S.and(heads.map { Make.S.equals(it, a, b) })
+        )
       )
     )
   }
@@ -275,12 +331,26 @@ fun handleEquality(
   }
 }
 
+private class ForSureMap<K, V>(private val default: (K) -> V) {
+  private val map = mutableMapOf<K, V>()
+  operator fun get(key: K) = map.computeIfAbsent(key, default)
+  operator fun set(key: K, value: V) {
+    map[key] = value
+  }
+
+  fun debug() {
+    for ((key, value) in map) {
+      println("$key = $value")
+    }
+  }
+}
+
 fun handleCall(
   callRef: Reference,
   receiverRef: Reference?,
   overrideType: MungoType?,
-  arguments: List<Reference>,
-  parameters: List<Reference>,
+  arguments: List<List<Reference>>,
+  parameters: List<List<Reference>>,
   methodPre: SymbolicAssertion,
   methodPost: Set<SymbolicAssertion>,
   tail: SymbolicAssertion,
@@ -290,32 +360,90 @@ fun handleCall(
   val isConstructor = callRef is NodeRef && callRef.node is ObjectCreationNode
   val returnRef = ReturnSpecialVar(callRef.type)
   val thisRef = ThisReference(callRef.type)
-  val changedRefs = arguments.toSet().plus(callRef)
 
-  // TODO what if use(cell, cell.item) ??
-  // FIXME use(cell, cell)
-  // FIXME this might need a refactoring to make sure it is actually correct
+  /*println("----")
+  println(callRef)
+  println(arguments)
+  println(parameters)*/
 
-  fun replace(p: Reference): Reference {
-    return if (p.hasPrefix(callRef)) {
-      when {
-        isConstructor -> p.replace(callRef, thisRef)
-        else -> p.replace(callRef, returnRef)
-      }
-    } else {
-      val idx = arguments.indexOfFirst { p.hasPrefix(it) }
-      if (idx < 0) {
-        p
-      } else {
-        p.replace(arguments[idx], parameters[idx])
-      }
+  val requiredFractions = ForSureMap<Reference, TinyArithExpr> { Make.ZERO }
+  val requiredPackFractions = ForSureMap<Reference, TinyArithExpr> { Make.ZERO }
+  val requiredTypes = ForSureMap<Reference, TinyMungoTypeExpr> { Make.UNKNOWN }
+
+  // Build requirements
+  for ((idx, argAndFields) in arguments.withIndex()) {
+    for (arg in argAndFields) {
+      val argRoot = arguments[idx].first()
+      val paramRoot = parameters[idx].first()
+      val param = arg.replace(argRoot, paramRoot)
+      val requiredInfo = methodPre[param]
+      // println("argRoot: $argRoot; paramRoot: $paramRoot; arg: $arg; param: $param")
+
+      requiredFractions[arg] = Make.S.add(requiredFractions[arg], if (arg == argRoot) Make.ZERO else requiredInfo.fraction.expr)
+      requiredPackFractions[arg] = Make.S.add(requiredPackFractions[arg], requiredInfo.packFraction.expr)
+      requiredTypes[arg] = Make.S.intersection(requiredTypes[arg], requiredInfo.type.expr)
+    }
+  }
+
+  /*println("Requires")
+  requiredFractions.debug()
+  requiredPackFractions.debug()
+  requiredTypes.debug()*/
+
+  val ensuredFractions = ForSureMap<Reference, TinyArithExpr> { Make.ZERO }
+  val ensuredPackFractions = ForSureMap<Reference, TinyArithExpr> { Make.ZERO }
+  val ensuredTypes = ForSureMap<Reference, TinyMungoTypeExpr> { Make.UNKNOWN }
+
+  // Build ensures
+  for ((idx, argAndFields) in arguments.withIndex()) {
+    for (arg in argAndFields) {
+      val argRoot = arguments[idx].first()
+      val paramRoot = parameters[idx].first()
+      val param = arg.replace(argRoot, paramRoot)
+
+      ensuredFractions[arg] = Make.S.add(
+        ensuredFractions[arg],
+        if (arg == argRoot) Make.ZERO else Make.S.min(methodPost.map { it[param].fraction.expr })
+      )
+      ensuredPackFractions[arg] = Make.S.add(
+        ensuredPackFractions[arg],
+        Make.S.min(methodPost.map { it[param].packFraction.expr })
+      )
+      ensuredTypes[arg] = Make.S.intersection(
+        ensuredTypes[arg],
+        Make.S.union(methodPost.map { it[param].type.expr })
+      )
+    }
+  }
+
+  /*println("Ensures")
+  ensuredFractions.debug()
+  ensuredPackFractions.debug()
+  ensuredTypes.debug()*/
+
+  /*println("Pre")
+  println(methodPre)
+
+  println("Post")
+  println(methodPost)*/
+
+  val fractions = ForSureMap<Reference, TinyArithExpr> { arg -> Make.S.min(heads.map { it[arg].fraction.expr }) }
+  val packFractions = ForSureMap<Reference, TinyArithExpr> { arg -> Make.S.min(heads.map { it[arg].packFraction.expr }) }
+  val types = ForSureMap<Reference, TinyMungoTypeExpr> { arg -> Make.S.union(heads.map { it[arg].type.expr }) }
+
+  // Add constraints
+  for (argAndFields in arguments) {
+    for (arg in argAndFields) {
+      result.addIn1(Make.S.ge(fractions[arg], requiredFractions[arg]))
+      result.addIn1(Make.S.ge(packFractions[arg], requiredPackFractions[arg]))
+      result.addIn2(Make.S.subtype(types[arg], requiredTypes[arg]))
     }
   }
 
   tail.forEach { ref, info ->
-    val otherRef = replace(ref)
-
     if (ref.hasPrefix(callRef)) {
+      val otherRef = if (isConstructor) ref.replace(callRef, thisRef) else ref.replace(callRef, returnRef)
+
       result.addIn1(Make.S.eq(
         info.fraction.expr,
         Make.S.min(methodPost.map { it[otherRef].fraction.expr })
@@ -325,154 +453,124 @@ fun handleCall(
         info.packFraction.expr,
         Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
       ))
-    } else {
-      // newFraction = prevFraction - stolenFraction
-      // newFraction = prevFraction - ( fractionInPre - fractionInPost )
 
-      if (ref === otherRef || changedRefs.contains(ref)) {
-        result.addIn1(Make.S.eq(
-          info.fraction.expr,
-          Make.S.min(heads.map { it[ref].fraction.expr })
-        ))
+      if (isConstructor && ref == callRef && overrideType != null) {
+        result.addIn2(Make.S.eq(info.type.expr, Make.S.type(overrideType)))
       } else {
-        result.addIn1(Make.S.eq(
-          info.fraction.expr,
-          Make.S.sub(
-            Make.S.min(heads.map { it[ref].fraction.expr }),
-            Make.S.sub(
-              methodPre[otherRef].fraction.expr,
-              Make.S.min(methodPost.map { it[otherRef].fraction.expr })
-            )
+        result.addIn2(Make.S.eq(
+          info.type.expr,
+          Make.S.union(methodPost.map { it[otherRef].type.expr })
+        ))
+      }
+    } else {
+      fun fractionModified(ref: Reference, list: MutableList<TinyBoolExpr> = mutableListOf()): List<TinyBoolExpr> {
+        var parent = ref.parent
+        while (parent != null) {
+          list.add(Make.S.eq(requiredFractions[parent], Make.ONE))
+          parent = parent.parent
+        }
+        return list
+      }
+
+      fun packFractionModified(ref: Reference, list: MutableList<TinyBoolExpr> = mutableListOf()): List<TinyBoolExpr> {
+        list.add(Make.S.eq(requiredFractions[ref], Make.ONE))
+        return fractionModified(ref, list)
+      }
+
+      fun typeModified(ref: Reference, list: MutableList<TinyBoolExpr> = mutableListOf()): List<TinyBoolExpr> {
+        list.add(Make.S.eq(requiredPackFractions[ref], Make.ONE))
+        return packFractionModified(ref, list)
+      }
+
+      result.addIn1(Make.S.eq(
+        info.fraction.expr,
+        Make.S.ite(
+          Make.S.or(fractionModified(ref)),
+          ensuredFractions[ref],
+          Make.S.add(Make.S.sub(fractions[ref], requiredFractions[ref]), ensuredFractions[ref])
+        )
+      ))
+      result.addIn1(Make.S.eq(
+        info.packFraction.expr,
+        Make.S.ite(
+          Make.S.or(packFractionModified(ref)),
+          ensuredPackFractions[ref],
+          Make.S.add(Make.S.sub(packFractions[ref], requiredPackFractions[ref]), ensuredPackFractions[ref])
+        )
+      ))
+      if (ref == receiverRef && overrideType != null) {
+        result.addIn2(Make.S.eq(info.type.expr, Make.S.type(overrideType)))
+      } else {
+        result.addIn2(Make.S.eq(
+          info.type.expr,
+          Make.S.ite(
+            Make.S.or(typeModified(ref)),
+            ensuredTypes[ref],
+            types[ref]
           )
         ))
       }
-
-      when {
-        ref === otherRef -> {
-          result.addIn1(Make.S.eq(
-            info.packFraction.expr,
-            Make.S.min(heads.map { it[ref].packFraction.expr })
-          ))
-        }
-        changedRefs.contains(ref) -> {
-          result.addIn1(Make.S.eq(
-            info.packFraction.expr,
-            Make.S.sub(
-              Make.S.min(heads.map { it[ref].packFraction.expr }),
-              Make.S.sub(
-                methodPre[otherRef].packFraction.expr,
-                Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
-              )
-            )
-          ))
-        }
-        else -> {
-          result.addIn1(Make.S.eq(
-            info.packFraction.expr,
-            Make.S.ite(
-              Make.S.lt(methodPre[otherRef].fraction.expr, Make.ONE),
-              Make.S.sub(
-                Make.S.min(heads.map { it[ref].packFraction.expr }),
-                Make.S.sub(
-                  methodPre[otherRef].packFraction.expr,
-                  Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
-                )
-              ),
-              // If the reference was modified, we can only ensure the permission available in the post-condition
-              Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
-            )
-          ))
-        }
-      }
-    }
-
-    if (overrideType != null) {
-      if (
-        (ref == callRef && isConstructor) ||
-        (ref == receiverRef)
-      ) {
-        result.addAll(SymTypeEqType(info.type, overrideType).build())
-        return@forEach
-      }
-    }
-
-    if (ref === otherRef) {
-      result.addIn2(Make.S.eq(
-        info.type.expr,
-        Make.S.union(heads.map { it[ref].type.expr })
-      ))
-    } else {
-      result.addIn2(Make.S.eq(
-        info.type.expr,
-        Make.S.ite(
-          Make.S.lt(methodPre[otherRef].packFraction.expr, Make.ONE),
-          Make.S.union(heads.map { it[ref].type.expr }),
-          Make.S.union(methodPost.map { it[otherRef].type.expr })
-        )
-      ))
     }
   }
 
   // TODO am I able to track equalities of old values? like after this.item = newItem ??
 
-  fun isPassed(ref: Reference): Boolean {
-    return ref.hasPrefix(callRef) || arguments.any { ref.hasPrefix(it) }
-  }
-
-  fun isMaybeModified(ref: Reference): Boolean {
-    return ref.hasPrefix(callRef) || arguments.any { it != ref && ref.hasPrefix(it) }
+  fun replace(p: Reference): Reference {
+    return if (p.hasPrefix(callRef)) {
+      when {
+        isConstructor -> p.replace(callRef, thisRef)
+        else -> p.replace(callRef, returnRef)
+      }
+    } else {
+      val idx = arguments.indexOfFirst { p.hasPrefix(it.first()) }
+      if (idx < 0) {
+        p
+      } else {
+        p.replace(arguments[idx].first(), parameters[idx].first())
+      }
+    }
   }
 
   for ((a, b) in tail.skeleton.allEqualities) {
     val c = replace(a)
     val d = replace(b)
 
-    val aWasPassed = isPassed(a)
-    val bWasPassed = isPassed(b)
+    val aNotModified = if (a.hasPrefix(callRef)) Make.FALSE else Make.S.lt(requiredFractions[a], Make.ONE)
+    val bNotModified = if (b.hasPrefix(callRef)) Make.FALSE else Make.S.lt(requiredFractions[b], Make.ONE)
 
-    val aIsNotModified = if (isMaybeModified(a)) Make.S.lt(methodPre[c].fraction.expr, Make.ONE) else Make.TRUE
-    val bIsNotModified = if (isMaybeModified(b)) Make.S.lt(methodPre[d].fraction.expr, Make.ONE) else Make.TRUE
-
-    val expr = Make.S.eq(
+    result.addIn1(Make.S.eq(
       Make.S.equals(tail, a, b),
       Make.S.ite(
-        Make.S.and(listOf(aIsNotModified, bIsNotModified)),
-        // None is modified, equality holds if it holds before
+        Make.S.and(listOf(aNotModified, bNotModified)),
+        // Nothing was modified, equality holds if it holds before
         Make.S.and(heads.map {
           Make.S.equals(it, a, b)
         }),
         Make.S.ite(
-          Make.S.and(listOf(aIsNotModified)),
-          // Only b is modified...
-          if (aWasPassed) {
+          aNotModified,
+          // B was modified
+          Make.S.or(listOf(
+            Make.S.equalsTransitive(tail, a, b),
             Make.S.and(methodPost.map {
               Make.S.equals(it, c, d)
             })
-          } else {
-            // This means that "a" did not even go into the method
-            Make.S.equalsTransitive(tail, a, b)
-          },
+          )),
           Make.S.ite(
-            Make.S.and(listOf(bIsNotModified)),
-            // Only a is modified...
-            if (bWasPassed) {
+            bNotModified,
+            // A was modified
+            Make.S.or(listOf(
+              Make.S.equalsTransitive(tail, a, b),
               Make.S.and(methodPost.map {
                 Make.S.equals(it, c, d)
               })
-            } else {
-              // This means that "b" did not even go into the method
-              Make.S.equalsTransitive(tail, a, b)
-            },
-            // Both are modified, equality only holds if present in the method post-condition
+            )),
             Make.S.and(methodPost.map {
               Make.S.equals(it, c, d)
             })
           )
         )
       )
-    )
-
-    result.addIn1(expr)
+    ))
   }
 }
 
@@ -529,15 +627,24 @@ fun handleNewVariable(
   }
 
   for ((a, b) in tail.skeleton.allEqualities) {
-    // Equality is true in assertion "tail" if present in the other assertions
-    result.addIn1(
-      Make.S.eq(
-        Make.S.equals(tail, a, b),
-        Make.S.and(heads.map {
-          Make.S.equals(it, a, b)
-        })
+    if (variable != null && (a.hasPrefix(variable) || b.hasPrefix(variable))) {
+      // Although we believe a previous equality would never be true
+      // (even if the declaration was in a loop)
+      // We invalidate it anyway to be sure
+      result.addIn1(
+        Make.S.not(Make.S.equals(tail, a, b))
       )
-    )
+    } else {
+      // Equality is true in assertion "tail" if present in the other assertions
+      result.addIn1(
+        Make.S.eq(
+          Make.S.equals(tail, a, b),
+          Make.S.and(heads.map {
+            Make.S.equals(it, a, b)
+          })
+        )
+      )
+    }
   }
 }
 
@@ -585,8 +692,8 @@ private class CallConstraints(
   val callRef: Reference,
   val receiverRef: Reference?,
   val receiverType: MungoType?,
-  val arguments: List<Reference>,
-  val parameters: List<Reference>,
+  val arguments: List<List<Reference>>,
+  val parameters: List<List<Reference>>,
   val methodPre: SymbolicAssertion,
   val methodPost: Set<SymbolicAssertion>
 ) : Constraint() {
@@ -653,36 +760,6 @@ private class ParameterAndLocalVariable(
     result.addIn1(Make.S.equals(assertion, parameter, local))
 
     helper(parameter, local)
-    return result
-  }
-}
-
-private class PassingParameter(
-  val expr: SymbolicInfo,
-  val parameter: SymbolicInfo
-) : Constraint() {
-
-  override fun toString(): String {
-    return "($id) param passing $expr -> $parameter"
-  }
-
-  override fun build(): ConstraintsSet {
-    val result = ConstraintsSet(this)
-
-    fun helper(expr: SymbolicInfo, parameter: SymbolicInfo) {
-      result.addAll(if (expr === this.expr) {
-        SymFractionGt(expr.fraction, 0).build()
-      } else {
-        SymFractionImpliesSymFraction(expr.fraction, parameter.fraction).build()
-      })
-      result.addAll(SymFractionImpliesSymFraction(expr.packFraction, parameter.packFraction).build())
-      result.addAll(SymTypeImpliesSymType(expr.type, parameter.type).build())
-      expr.children.forEach { (ref, info) ->
-        helper(info, parameter.children[ref.replace(expr.ref, parameter.ref)]!!)
-      }
-    }
-
-    helper(expr, parameter)
     return result
   }
 }
@@ -868,48 +945,7 @@ class Constraints {
     return idToConstraint[label.subSequence(1, label.lastIndex)]!!
   }
 
-  fun formatExpr(expr: Expr, solution: IncompleteSolution? = null): String {
-    val initial = expr.toString().replace("(", "( ").replace(")", " )")
-    return initial.split(' ').joinToString(" ") {
-      when (val something = setup.keyToSomething[it]) {
-        is Reference -> something.toString()
-        is String -> if (something.startsWith('f')) {
-          solution?.eval(setup.mkFraction(something))?.toString() ?: it
-        } else {
-          it
-        }
-        else -> it
-      }
-    }
-  }
-
-  private val splitIn2Phases = true
   private lateinit var setup: ConstraintsSetup
-
-  private fun solveIn1Phase(): InferenceResult {
-    setup = ConstraintsSetup(types).start()
-
-    for (constraint in constraints) {
-      val set = constraint.build()
-
-      for ((idx, expr) in set.phase1It().withIndex()) {
-        val label = "${constraint.id}-$idx-1"
-        val z3expr = expr.toZ3(setup)
-        idToConstraint[label] = Triple(constraint, expr, z3expr)
-        setup.addAssert(z3expr, label)
-      }
-
-      for ((idx, expr) in set.phase2It().withIndex()) {
-        val label = "${constraint.id}-$idx-2"
-        val z3expr = expr.toZ3(setup)
-        idToConstraint[label] = Triple(constraint, expr, z3expr)
-        setup.addAssert(z3expr, label)
-      }
-    }
-
-    println("Solving...")
-    return setup.solve()
-  }
 
   /*
   Goal g4 = ctx.mkGoal(true, false, false);
@@ -978,8 +1014,11 @@ class Constraints {
     val result1 = setup.solve()
     println("Phase 1 done")
 
-    if (result1 !is Solution) {
-      return result1
+    when (result1) {
+      is MiniNoSolution -> return NoSolution(result1.unsatCore)
+      is MiniUnknownSolution -> return UnknownSolution(result1.reason)
+      is MiniSolution -> {
+      }
     }
 
     // Phase 2...
@@ -990,7 +1029,7 @@ class Constraints {
       val (constraint, expr, simplifiedExpr) = triple
       val label = "${constraint.id}-$idx-2"
       val z3expr = expr.toZ3(setup)
-      val simplified = result1.eval(z3expr)
+      val simplified = result1.model.eval(z3expr, false).simplify() as BoolExpr
       idToConstraint[label] = Triple(constraint, expr, z3expr)
       setup.addAssert(simplified, label)
     }
@@ -999,19 +1038,16 @@ class Constraints {
     val result2 = setup.solve()
     println("Phase 2 done")
 
-    if (result2 !is Solution) {
-      return IncompleteSolution(setup, result1.model, if (result2 is NoSolution) result2.unsatCore else null)
+    return when (result2) {
+      is MiniNoSolution -> IncompleteSolution(setup, result1.model, result2.unsatCore)
+      is MiniUnknownSolution -> IncompleteSolution(setup, result1.model, null)
+      is MiniSolution -> Solution(setup, result1.model, result2.model)
     }
-    return result2
   }
 
   fun solve(): InferenceResult {
     started = true
-    return if (splitIn2Phases) {
-      solveIn2Phases()
-    } else {
-      solveIn1Phase()
-    }
+    return solveIn2Phases()
   }
 
   // Inferred constraints
@@ -1108,8 +1144,8 @@ class Constraints {
     callRef: Reference,
     receiverRef: Reference?,
     overrideType: MungoType?,
-    arguments: List<Reference>,
-    parameters: List<Reference>,
+    arguments: List<List<Reference>>,
+    parameters: List<List<Reference>>,
     methodPre: SymbolicAssertion,
     methodPost: Set<SymbolicAssertion>
   ) {
@@ -1124,10 +1160,6 @@ class Constraints {
       methodPre,
       methodPost
     ))
-  }
-
-  fun passingParameter(expr: SymbolicInfo, parameter: SymbolicInfo) {
-    constraints.add(PassingParameter(expr, parameter))
   }
 
   fun other(fn: (Constraint) -> ConstraintsSet) {

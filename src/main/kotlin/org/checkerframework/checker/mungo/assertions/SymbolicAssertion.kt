@@ -92,7 +92,7 @@ class SymbolicInfo(val ref: Reference, private val assertion: SymbolicAssertion?
   }
 
   override fun toString(): String {
-    return "Info{ref=$ref, f=$fraction, t=$type, pf=$packFraction}"
+    return "Info{ref=$ref, f=$fraction, pf=$packFraction, t=$type}"
   }
 }
 
@@ -204,7 +204,7 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton, var where: Stri
   override fun toString(): String {
     val str = StringBuilder()
     for ((ref, info) in roots) {
-      if (ref is ThisReference || ref is LocalVariable) {
+      if (ref is ThisReference || ref is LocalVariable || ref is ParameterVariable) {
         str.append(info.toString())
         for ((_, child) in info.children) {
           str.append(child.toString())
