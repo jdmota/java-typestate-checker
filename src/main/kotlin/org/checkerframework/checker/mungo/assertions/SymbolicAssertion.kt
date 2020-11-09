@@ -47,6 +47,8 @@ class SymbolicType(val info: SymbolicInfo) {
   override fun toString() = z3Symbol()
 }
 
+private const val DEBUG = false
+
 class SymbolicInfo(val ref: Reference, private val assertion: SymbolicAssertion?) {
   val fraction = SymbolicFraction(this) // access(x, f1)
   val type = SymbolicType(this) // typeof(x, t1)
@@ -68,22 +70,51 @@ class SymbolicInfo(val ref: Reference, private val assertion: SymbolicAssertion?
     val access = solution.get(fraction)
     val accessDotZero = solution.get(packFraction)
     val type = solution.get(type)
-    var newLine = false
+    
+    if (DEBUG) {
+      val hasAccess = access != "0"
+      val hasDotZeroAccess = accessDotZero != "0"
+      val hasRelevantType = type != "Unknown"
+      val strings = mutableListOf<String>()
 
-    if (access != "0") {
-      str.append("acc($ref,$access) && ")
-      newLine = true
-    }
-    if (accessDotZero != "0") {
-      str.append("acc($ref.0,$accessDotZero) && ")
-      newLine = true
-    }
-    if (type != "Unknown") {
-      str.append("typeof($ref,$type)")
-      newLine = true
-    }
-    if (newLine) {
-      str.append("\n")
+      if (hasAccess) {
+        strings.add("access($ref,$access)")
+      }
+      if (hasDotZeroAccess) {
+        strings.add("access($ref.0,$accessDotZero)")
+      }
+      if (hasRelevantType) {
+        strings.add("typeof($ref,$type)")
+      }
+
+      if (strings.isNotEmpty()) {
+        str.appendLine("// ${strings.joinToString(" $\\wedge$ ")}")
+      }
+    } else {
+      val hasAccess = access != "0"
+      val hasDotZeroAccess = accessDotZero != "0"
+      val hasRelevantType =
+        type != "Unknown" &&
+        type != "Object" &&
+        type != "Object | Null" &&
+        (ref !is ReturnSpecialVar || type != "Primitive") &&
+        (ref !is NodeRef || type != "Primitive")
+      val showAccesses = (hasRelevantType || (ref !is ReturnSpecialVar && ref !is NodeRef))
+      val strings = mutableListOf<String>()
+
+      if (hasAccess && showAccesses) {
+        strings.add("access($ref,$access)")
+      }
+      if (hasDotZeroAccess && showAccesses) {
+        strings.add("access($ref.0,$accessDotZero)")
+      }
+      if (hasRelevantType) {
+        strings.add("typeof($ref,$type)")
+      }
+
+      if (strings.isNotEmpty()) {
+        str.appendLine("// ${strings.joinToString(" $\\wedge$ ")}")
+      }
     }
 
     for ((child, info) in children) {
@@ -186,16 +217,11 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton, var where: Stri
       info.toString(str, ref, solution)
     }
 
-    var newLine = false
     for ((a, b) in skeleton.allEqualities) {
       val equals = solution.equals(this, a, b).toString()
       if (equals != "false") {
-        str.append("eq($a,$b)${if (equals == "true") "" else " ($equals)"} && ")
-        newLine = true
+        str.appendLine("// eq($a,$b)${if (equals == "true") "" else " ($equals)"}")
       }
-    }
-    if (newLine) {
-      str.append("\n")
     }
 
     return str.toString()

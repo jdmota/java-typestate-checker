@@ -572,8 +572,23 @@ class Inferrer(val checker: MungoChecker) {
           // println(constraints.formatExpr(z3expr, solution))
           expr
         }.let { list ->
+          // list.forEach { println(it) }
+          println("--- Simplified ---")
           Simplifier(true, setEqualsToFalse = true).simplifyAll(list).forEach {
+            println("")
             println(it)
+            val a = when(it) {
+              is TinyEqArith -> it.a
+              is TinyLe -> it.a
+              is TinyGe -> it.a
+              is TinyLt -> it.a
+              is TinyGt -> it.a
+              else -> null
+            }
+            if(a is TinySomeFraction) {
+              println(a.sym.info)
+              println(a.sym.info.debugWhere())
+            }
           }
         }
       }

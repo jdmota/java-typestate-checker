@@ -52,9 +52,9 @@ sealed class SomeSolution(protected val setup: ConstraintsSetup, val model1: Mod
       is AssignmentNode -> false
       is MethodInvocationNode -> false
       is ObjectCreationNode -> false
-      is ThisLiteralNode -> false
-      is FieldAccessNode -> false
-      else -> false
+      is ThisLiteralNode -> true
+      is FieldAccessNode -> true
+      else -> true
     }
   }
 

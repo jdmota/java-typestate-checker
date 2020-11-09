@@ -173,7 +173,7 @@ class MungoStateType private constructor(val graph: Graph, val state: State) : M
 
   override fun hashCode() = 31 * graph.hashCode() + state.name.hashCode()
   override fun toString() = "MungoStateType$state"
-  override fun format() = "${graph.typestateName}{${state.name}}"
+  override fun format() = "State \"${state.name}\"" // "${graph.typestateName}{${state.name}}"
 }
 
 sealed class MungoTypeSingletons(private val hashCode: Int) : MungoType() {
