@@ -402,9 +402,9 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
             set.addIn1(Make.S.ge(from.fraction.expr, to.fraction.expr))
             set.addIn1(Make.S.ge(from.packFraction.expr, to.packFraction.expr))
             set.addIn2(Make.S.subtype(from.type.expr, to.type.expr))
-            from.children.forEach { (ref, info) ->
+            /*from.children.forEach { (ref, info) ->
               helper(info, to.children[ref.replace(from.ref, to.ref)]!!)
-            }
+            }*/
           }
 
           for (head in setOf(result.preThen, result.preElse)) {
@@ -556,23 +556,24 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         constraints.other { c ->
           reduce(ConstraintsSet(c), result) { set, tail, heads ->
             tail.forEach { ref, info ->
-              set.addIn1(Make.S.eq(
-                info.fraction.expr,
-                Make.S.min(heads.map { it[ref].fraction.expr }))
-              )
-
-              set.addIn1(Make.S.eq(
-                info.packFraction.expr,
-                Make.S.min(heads.map { it[ref].packFraction.expr }))
-              )
-
               if (ref == callRef && isConstructor) {
-                val initialType = MungoStateType.create(lambdaThread.graph, lambdaThread.graph.getInitialState())
+                set.addIn1(Make.S.eq(info.fraction.expr, Make.ONE))
+                set.addIn1(Make.S.eq(info.packFraction.expr,Make.ONE))
                 set.addIn2(Make.S.eq(
                   info.type.expr,
-                  Make.S.type(initialType)
+                  Make.S.type(
+                    MungoStateType.create(lambdaThread.graph, lambdaThread.graph.getInitialState())
+                  )
                 ))
               } else {
+                set.addIn1(Make.S.eq(
+                  info.fraction.expr,
+                  Make.S.min(heads.map { it[ref].fraction.expr }))
+                )
+                set.addIn1(Make.S.eq(
+                  info.packFraction.expr,
+                  Make.S.min(heads.map { it[ref].packFraction.expr }))
+                )
                 set.addIn2(Make.S.eq(
                   info.type.expr,
                   Make.S.union(heads.map { it[ref].type.expr })
