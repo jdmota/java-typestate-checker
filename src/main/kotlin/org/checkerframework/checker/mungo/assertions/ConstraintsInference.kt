@@ -292,6 +292,21 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return false
   }
 
+  private fun constructTransitions(
+    initialStates: Collection<MungoType>,
+    method: Symbol.MethodSymbol,
+    predicate: (String) -> Boolean
+  ): Map<MungoType, MungoType> {
+    val map = mutableMapOf<MungoType, MungoType>()
+    val allInitialStates = initialStates.toMutableSet()
+    allInitialStates.add(MungoUnionType.create(initialStates))
+    // TODO include more combinations
+    for (state in allInitialStates) {
+      map[state] = MungoTypecheck.refine(inferrer.utils, state, method, predicate)
+    }
+    return map
+  }
+
   private fun call(call: Node, receiver: Node?, argNodes: Collection<Node>, method: Symbol.MethodSymbol, result: NodeAssertions) {
     if (isObjectConstructor(method)) {
       ensures.noSideEffects(result)
@@ -321,11 +336,11 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
     // assert(parameters.size == argExprs.size)
 
-    var overrideType: MungoType? = null
+    var typeAfterCall: TypeAfterCall? = null
 
     if (isConstructor) {
       val objType = method.enclosingElement.asType()
-      overrideType = MungoTypecheck.objectCreation(inferrer.utils, objType)
+      typeAfterCall = TypeAfterCallSpecific(MungoTypecheck.objectCreation(inferrer.utils, objType))
     } else {
       // Required and ensured states
       if (receiver != null) {
@@ -335,11 +350,8 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         if (graph != null) {
           val states = MungoTypecheck.available(inferrer.utils, graph, method)
           val union = MungoUnionType.create(states)
-
           require.type(receiver, result, union)
-
-          overrideType = MungoTypecheck.refine(inferrer.utils, union, method) { true }
-          // TODO improve computing of destination (e.g. create a Z3 function that takes a type, etc...)
+          typeAfterCall = TypeAfterCallTransition(method, constructTransitions(states, method) { true })
         }
       }
     }
@@ -348,7 +360,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       result,
       getRef(call),
       receiver?.let { getRef(it) },
-      overrideType,
+      typeAfterCall,
       argumentFields,
       parameterFields,
       methodPre = pre,
@@ -558,7 +570,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
             tail.forEach { ref, info ->
               if (ref == callRef && isConstructor) {
                 set.addIn1(Make.S.eq(info.fraction.expr, Make.ONE))
-                set.addIn1(Make.S.eq(info.packFraction.expr,Make.ONE))
+                set.addIn1(Make.S.eq(info.packFraction.expr, Make.ONE))
                 set.addIn2(Make.S.eq(
                   info.type.expr,
                   Make.S.type(

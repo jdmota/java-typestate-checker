@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.BoolExpr
+import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.analysis.*
 import org.checkerframework.checker.mungo.typecheck.*
 import org.checkerframework.checker.mungo.utils.MungoUtils
@@ -335,10 +336,26 @@ private class ForSureMap<K, V>(private val default: (K) -> V) {
   }
 }
 
+sealed class TypeAfterCall {
+  abstract fun toExpr(initial: TinyMungoTypeExpr): TinyMungoTypeExpr
+}
+
+class TypeAfterCallSpecific(val type: MungoType) : TypeAfterCall() {
+  override fun toExpr(initial: TinyMungoTypeExpr): TinyMungoTypeExpr {
+    return Make.S.type(type)
+  }
+}
+
+class TypeAfterCallTransition(val method: Symbol.MethodSymbol, val map: Map<MungoType, MungoType>) : TypeAfterCall() {
+  override fun toExpr(initial: TinyMungoTypeExpr): TinyMungoTypeExpr {
+    return Make.S.transition(initial, method, map)
+  }
+}
+
 fun handleCall(
   callRef: Reference,
   receiverRef: Reference?,
-  overrideType: MungoType?,
+  typeAfterCall: TypeAfterCall?,
   arguments: List<List<Reference>>,
   parameters: List<List<Reference>>,
   methodPre: SymbolicAssertion,
@@ -444,8 +461,11 @@ fun handleCall(
         Make.S.min(methodPost.map { it[otherRef].packFraction.expr })
       ))
 
-      if (isConstructor && ref == callRef && overrideType != null) {
-        result.addIn2(Make.S.eq(info.type.expr, Make.S.type(overrideType)))
+      if (isConstructor && ref == callRef && typeAfterCall != null) {
+        result.addIn2(Make.S.eq(
+          info.type.expr,
+          typeAfterCall.toExpr(types[ref])
+        ))
       } else {
         result.addIn2(Make.S.eq(
           info.type.expr,
@@ -488,8 +508,11 @@ fun handleCall(
           Make.S.add(Make.S.sub(packFractions[ref], requiredPackFractions[ref]), ensuredPackFractions[ref])
         )
       ))
-      if (ref == receiverRef && overrideType != null) {
-        result.addIn2(Make.S.eq(info.type.expr, Make.S.type(overrideType)))
+      if (ref == receiverRef && typeAfterCall != null) {
+        result.addIn2(Make.S.eq(
+          info.type.expr,
+          typeAfterCall.toExpr(types[ref])
+        ))
       } else {
         result.addIn2(Make.S.eq(
           info.type.expr,
@@ -681,7 +704,7 @@ private class CallConstraints(
   val assertions: NodeAssertions,
   val callRef: Reference,
   val receiverRef: Reference?,
-  val receiverType: MungoType?,
+  val typeAfterCall: TypeAfterCall?,
   val arguments: List<List<Reference>>,
   val parameters: List<List<Reference>>,
   val methodPre: SymbolicAssertion,
@@ -697,7 +720,7 @@ private class CallConstraints(
       handleCall(
         callRef,
         receiverRef,
-        receiverType,
+        typeAfterCall,
         arguments,
         parameters,
         methodPre,
@@ -1153,18 +1176,30 @@ class Constraints {
     assertions: NodeAssertions,
     callRef: Reference,
     receiverRef: Reference?,
-    overrideType: MungoType?,
+    typeAfterCall: TypeAfterCall?,
     arguments: List<List<Reference>>,
     parameters: List<List<Reference>>,
     methodPre: SymbolicAssertion,
     methodPost: Set<SymbolicAssertion>
   ) {
-    overrideType?.let { addType(it) }
+    when (typeAfterCall) {
+      is TypeAfterCallSpecific -> {
+        addType(typeAfterCall.type)
+      }
+      is TypeAfterCallTransition -> {
+        for ((a, b) in typeAfterCall.map) {
+          addType(a)
+          addType(b)
+        }
+      }
+      null -> {
+      }
+    }
     constraints.add(CallConstraints(
       assertions,
       callRef,
       receiverRef,
-      overrideType,
+      typeAfterCall,
       arguments,
       parameters,
       methodPre,

@@ -1,6 +1,7 @@
 package org.checkerframework.checker.mungo.assertions
 
 import com.microsoft.z3.*
+import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.MungoBottomType
 import org.checkerframework.checker.mungo.typecheck.MungoType
@@ -523,6 +524,24 @@ class TinyUnion(val list: Collection<TinyMungoTypeExpr>) : TinyMungoTypeExpr() {
   }
 }
 
+class TinyTransition(
+  val initial: TinyMungoTypeExpr,
+  val method: Symbol.MethodSymbol,
+  val map: Map<MungoType, MungoType>
+) : TinyMungoTypeExpr() {
+  override fun substitute(s: Substitution): TinyMungoTypeExpr {
+    return Make.S.transition(initial.substitute(s), method, map)
+  }
+
+  override fun toZ3(setup: ConstraintsSetup): Expr {
+    return setup.ctx.mkApp(setup.methodToTransitionFunc(method, map), initial.toZ3(setup))
+  }
+
+  override fun toString(): String {
+    return "(transition $initial ${map.entries.joinToString(", ") { (a, b) -> "${a.format()}->${b.format()}" }})"
+  }
+}
+
 class Make private constructor() {
 
   fun add(a: TinyArithExpr, b: TinyArithExpr): TinyArithExpr {
@@ -768,6 +787,13 @@ class Make private constructor() {
       l.size == 1 -> l.first()
       else -> TinyUnion(l)
     }
+  }
+
+  fun transition(initial: TinyMungoTypeExpr, method: Symbol.MethodSymbol, map: Map<MungoType, MungoType>): TinyMungoTypeExpr {
+    if (initial is TinyMungoType) {
+      return type(map[initial.type] ?: MungoUnknownType.SINGLETON)
+    }
+    return TinyTransition(initial, method, map)
   }
 
   // exists x :: eq(a, x) && eq(x, b)

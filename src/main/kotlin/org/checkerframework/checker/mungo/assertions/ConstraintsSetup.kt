@@ -1,5 +1,6 @@
 package org.checkerframework.checker.mungo.assertions
 
+import com.sun.tools.javac.code.Symbol as JavacSymbol
 import com.microsoft.z3.*
 import org.checkerframework.checker.mungo.analysis.Reference
 import org.checkerframework.checker.mungo.typecheck.*
@@ -16,7 +17,7 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     val allTypes = mutableListOf<MungoType>()
     usedTypes.forEach { a ->
       usedTypes.forEach { b ->
-        // TODo do not create unions for now...
+        // TODO do not create more unions for now...
         // if (a !== b) allTypes.add(MungoUnionType.create(listOf(a, b)))
       }
     }
@@ -162,7 +163,32 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
     }
   }
 
-  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
+  private var transitionUuid = 1L
+  private val methodToTransitionFunc = mutableMapOf<JavacSymbol.MethodSymbol, FuncDecl>()
+  fun methodToTransitionFunc(method: JavacSymbol.MethodSymbol, map: Map<MungoType, MungoType>): FuncDecl {
+    return methodToTransitionFunc.computeIfAbsent(method) {
+      val key = "trans${transitionUuid++}"
+      ctx.mkRecFuncDecl(ctx.mkSymbol(key), arrayOf(setup.Type), setup.Type) { _, args ->
+        val a = args[0]
+
+        fun helper(it: Iterator<Map.Entry<MungoType, MungoType>>): Expr {
+          if (it.hasNext()) {
+            val (initial, destination) = it.next()
+            return ctx.mkITE(
+              ctx.mkEq(a, setup.TypeExprs[initial]!!),
+              setup.TypeExprs[destination]!!,
+              helper(it)
+            )
+          }
+          return setup.UnknownExpr
+        }
+
+        val code = helper(map.iterator())
+        // println(code)
+        code
+      }
+    }
+  }
 
   private var equalsUuid = 1L
   private val equalsToExpr = mutableMapOf<Triple<SymbolicAssertion, Reference, Reference>, BoolExpr>()
@@ -171,6 +197,8 @@ class ConstraintsSetup(usedTypes: Set<MungoType>) {
       val key = "eq${equalsUuid++}"
       ctx.mkConst(key, setup.Bool) as BoolExpr
     }
+
+  fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
 
   fun mkMin(a: ArithExpr, b: ArithExpr) =
     if (a === b) {
