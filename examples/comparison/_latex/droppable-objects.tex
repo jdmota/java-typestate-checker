@@ -2,7 +2,8 @@
 \begin{code}
 typestate MyComparatorProtocol {
   Start = {
-    int compare(int, int): Start
+    int compare(int, int): Start,
+    drop: end
   }
 }\end{code}
 
@@ -26,16 +27,18 @@ public class Ok {
 	}
 }\end{code}
 
-\lstset{language=,caption=Original Mungo output}
+\lstset{language=,caption=Mungo's output}
 \begin{code}
 
-Ok.java: 0-0: Semantic Error
-		Object created at Ok.java: 3. Typestate mismatch. Found: end. Expected: int compare(int, int).\end{code}
+MyComparator.java: 0-0: Semantic Error
+		Cannot find typestate MyComparatorProtocol defined for class MyComparator.
 
-\lstset{language=,caption=New Mungo output}
+MyComparator.java: 0-0: Semantic Error
+		Cannot find typestate MyComparatorProtocol defined for class MyComparator.
+MyComparatorProtocol.protocol:4,9: error: unexpected token ":"\end{code}
+
+\lstset{language=,caption=Our tool's output}
 \begin{code}
-Ok.java:3: error: [Object did not complete its protocol. Type: MyComparatorProtocol{Start}] (Object did not complete its protocol. Type: MyComparatorProtocol{Start})
-		MyComparator comparator = new MyComparator();
-		             ^
-1 error\end{code}
+None
+\end{code}
 

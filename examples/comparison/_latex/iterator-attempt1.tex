@@ -1,3 +1,15 @@
+\lstset{language=,caption=\textit{JavaIterator.protocol}}
+\begin{code}
+typestate JavaIterator {
+    HasNext = {
+        boolean hasNext(): <true: Next, false: end>
+    }
+    Next = {
+        boolean hasNext(): <true: Next, false: end>,
+        Object next(): HasNext
+    }
+}\end{code}
+
 \lstset{language=Java,caption=\textit{Main.java}}
 \begin{code}
 import java.util.*;
@@ -9,17 +21,20 @@ public class Main {
 	}
 }\end{code}
 
-\lstset{language=,caption=Original Mungo output}
+\lstset{language=,caption=Mungo's output}
 \begin{code}
 None
 \end{code}
 
-\lstset{language=,caption=New Mungo output}
+\lstset{language=,caption=Our tool's output}
 \begin{code}
 Main.java:6: error: [argument.type.incompatible] incompatible types in argument.
     System.out.println(it.next());
                               ^
   found   : NoProtocol | Null /*INFERENCE FAILED for:*/ ? extends String
   required: NoProtocol String
-1 error\end{code}
+Main.java:6: error: [Cannot call next on state HasNext (got: HasNext)] (Cannot call next on state HasNext (got: HasNext))
+    System.out.println(it.next());
+                              ^
+2 errors\end{code}
 
