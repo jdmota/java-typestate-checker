@@ -63,14 +63,14 @@ public class NotOk {
   }
 }\end{code}
 
-\lstset{language=,caption=Original Mungo output}
+\lstset{language=,caption=Mungo's output}
 \begin{code}
 None
 \end{code}
 
-\lstset{language=,caption=New Mungo output}
+\lstset{language=,caption=Our tool's output}
 \begin{code}
-NotOk.java:3: error: [Object did not complete its protocol. Type: FileProtocol{Close} | Ended] (Object did not complete its protocol. Type: FileProtocol{Close} | Ended)
+NotOk.java:3: error: [Object did not complete its protocol. Type: State "Close" | Ended] (Object did not complete its protocol. Type: State "Close" | Ended)
     File f = new File();
          ^
 1 error\end{code}

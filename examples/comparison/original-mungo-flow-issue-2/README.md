@@ -1,12 +1,12 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 ```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
-NotOk.java:3: error: [Object did not complete its protocol. Type: FileProtocol{Close} | Ended] (Object did not complete its protocol. Type: FileProtocol{Close} | Ended)
+NotOk.java:3: error: [Object did not complete its protocol. Type: State "Close" | Ended] (Object did not complete its protocol. Type: State "Close" | Ended)
     File f = new File();
          ^
 1 error```

@@ -25,11 +25,11 @@ class File {
 
 \lstset{language=Java,caption=\textit{NotOkFileWrapper4.java}}
 \begin{code}
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 class NotOkFileWrapper4 {
 
-  private @MungoNullable File file = null;
+  private @Nullable File file = null;
 
   public void init(File file) {
     this.file = file;
@@ -45,7 +45,7 @@ class NotOkFileWrapper4 {
 
 }\end{code}
 
-\lstset{language=,caption=Original Mungo output}
+\lstset{language=,caption=Mungo's output}
 \begin{code}
 Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.ast.MethodDecl.getGraph(MethodDecl.java:2186)
@@ -60,12 +60,12 @@ Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.TypestateChecker.run(TypestateChecker.java:32)
 	at org.extendj.TypestateChecker.main(TypestateChecker.java:18)\end{code}
 
-\lstset{language=,caption=New Mungo output}
+\lstset{language=,caption=Our tool's output}
 \begin{code}
-NotOkFileWrapper4.java:5: error: [Object did not complete its protocol. Type: FileProtocol{Read} | Null] (Object did not complete its protocol. Type: FileProtocol{Read} | Null)
-  private @MungoNullable File file = null;
-                              ^
-NotOkFileWrapper4.java:8: error: [Cannot override because object has not ended its protocol. Type: FileProtocol{Read} | Null] (Cannot override because object has not ended its protocol. Type: FileProtocol{Read} | Null)
+NotOkFileWrapper4.java:5: error: [Object did not complete its protocol. Type: State "Read" | Null] (Object did not complete its protocol. Type: State "Read" | Null)
+  private @Nullable File file = null;
+                         ^
+NotOkFileWrapper4.java:8: error: [Cannot override because object has not ended its protocol. Type: State "Read" | Null] (Cannot override because object has not ended its protocol. Type: State "Read" | Null)
     this.file = file;
         ^
 NotOkFileWrapper4.java:12: error: [Cannot call read on null] (Cannot call read on null)

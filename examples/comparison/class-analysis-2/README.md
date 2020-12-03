@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 Exception in thread "main" java.lang.NullPointerException
@@ -14,13 +14,13 @@ Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.TypestateChecker.run(TypestateChecker.java:32)
 	at org.extendj.TypestateChecker.main(TypestateChecker.java:18)```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
-NotOkFileWrapper4.java:5: error: [Object did not complete its protocol. Type: FileProtocol{Read} | Null] (Object did not complete its protocol. Type: FileProtocol{Read} | Null)
-  private @MungoNullable File file = null;
-                              ^
-NotOkFileWrapper4.java:8: error: [Cannot override because object has not ended its protocol. Type: FileProtocol{Read} | Null] (Cannot override because object has not ended its protocol. Type: FileProtocol{Read} | Null)
+NotOkFileWrapper4.java:5: error: [Object did not complete its protocol. Type: State "Read" | Null] (Object did not complete its protocol. Type: State "Read" | Null)
+  private @Nullable File file = null;
+                         ^
+NotOkFileWrapper4.java:8: error: [Cannot override because object has not ended its protocol. Type: State "Read" | Null] (Cannot override because object has not ended its protocol. Type: State "Read" | Null)
     this.file = file;
         ^
 NotOkFileWrapper4.java:12: error: [Cannot call read on null] (Cannot call read on null)

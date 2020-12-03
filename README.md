@@ -80,16 +80,16 @@ Since annotations are only able to store some types of values, not arbitrary obj
 More details: [Manual - How to create a Checker plugin](https://checkerframework.org/manual/#creating-a-checker)
 -->
 
-## Experiment version 1
+## Experiment
 
 Run the following command from the `dist` folder:
 
-`java -jar checker-3.3.0/checker.jar -classpath mungo-checker-v1.jar -processor org.checkerframework.checker.mungo.MungoChecker *.java`
+`java -jar checker-3.8.0/checker.jar -classpath jtc-checker.jar -processor org.checkerframework.checker.jtc.JavaTypestateChecker *.java`
 
 ## Preparation
 
 - Download and extract the Checker Framework to `examples` such that `examples/checker-framework-VERSION/checker/dist/checker.jar` exists.
-- Download and extract Z3 such that `z3/bin/com.microsoft.z3.jar` exists.
+- Download and extract Z3 such that `z3/bin/com.microsoft.z3.jar` and the other libraries exist.
 
 ## Build and test
 

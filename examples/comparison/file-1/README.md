@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 
@@ -19,7 +19,7 @@ FileProtocol.protocol: 8-20: Semantic Error
 FileProtocol.protocol:8,21: error: unexpected token "true"
 FileProtocol.protocol:8,34: error: unexpected token "false"```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
 ```

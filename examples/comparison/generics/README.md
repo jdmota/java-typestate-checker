@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 MyComparator.java:5,22: error: no visible type named T
@@ -18,7 +18,7 @@ Ok.java:3: error: MyComparator is not a generic type but used as one in MyCompar
 MyComparatorProtocol.protocol:1,31: error: unexpected token "<"
 MyComparatorProtocol.protocol:6,1: error: unexpected token ""```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
 MyComparatorProtocol.protocol:1: error: (mismatched input '<' expecting '{')

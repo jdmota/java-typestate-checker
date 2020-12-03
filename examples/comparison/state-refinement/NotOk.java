@@ -1,9 +1,9 @@
-import org.checkerframework.checker.mungo.lib.MungoRequires;
-import org.checkerframework.checker.mungo.lib.MungoEnsures;
-import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.jtc.lib.Requires;
+import org.checkerframework.checker.jtc.lib.Ensures;
+import org.checkerframework.checker.jtc.lib.State;
 
 public class NotOk {
-  
+
   public static void main() {
     File f = createFile();
 
@@ -17,12 +17,12 @@ public class NotOk {
         break;
     }
   }
-  
-  public static @MungoState("Init") File createFile() {
+
+  public static @State("Init") File createFile() {
     return new File();
   }
 
-  public static void read(@MungoRequires("Read") @MungoEnsures("Close") File f) {
+  public static void read(@Requires("Read") @Ensures("Close") File f) {
     f.read();
   }
 

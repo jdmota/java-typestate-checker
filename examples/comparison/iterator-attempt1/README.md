@@ -11,7 +11,4 @@ Main.java:6: error: [argument.type.incompatible] incompatible types in argument.
                               ^
   found   : NoProtocol | Null /*INFERENCE FAILED for:*/ ? extends String
   required: NoProtocol String
-Main.java:6: error: [Cannot call next on state HasNext (got: HasNext)] (Cannot call next on state HasNext (got: HasNext))
-    System.out.println(it.next());
-                              ^
-2 errors```
+1 error```

@@ -6,15 +6,15 @@ if [[ "$CD" =~ ^\/cygdrive.* ]]; then
 	CD=`cygpath -w "$CD"`
 fi
 
-originalMungo="$CD/mungo-73dd8ae.jar"
+mungoJar="$CD/mungo-73dd8ae.jar"
 
-mungoChecker="$CD/mungo-checker.jar"
-mungoCheckerLib="$CD/mungo-checker-lib.jar"
-mungoCheckerClass="org.checkerframework.checker.mungo.MungoChecker"
+javaTypestateChecker="$CD/jtc-checker.jar"
+javaTypestateCheckerLib="$CD/jtc-checker-lib.jar"
+javaTypestateCheckerClass="org.checkerframework.checker.jtc.JavaTypestateChecker"
 
-checkerVersion="3.6.1"
+checkerVersion="3.8.0"
+
 checker="$CD/checker-framework-$checkerVersion/checker/dist/checker.jar"
-
 latexFolder="$CD/comparison/_latex"
 
 if [ ! -f "$checker" ]; then
@@ -69,12 +69,12 @@ do
   cd "comparison/$testName"
   echo "Running test: $testName"
 
-  output1=`java -jar "$originalMungo" -classpath "$originalMungo;$mungoCheckerLib" *.java 2>&1`
+  output1=`java -jar "$mungoJar" -classpath "$mungoJar;$javaTypestateCheckerLib" *.java 2>&1`
 
   if [[ "$testName" == "iterator-attempt1" ]]; then
-    output2=`java -jar "$checker" -classpath "$mungoChecker" -processor "$mungoCheckerClass" -AconfigFile=mungo.config -Astubs=stubs -AstubWarnIfNotFound -Aignorejdkastub *.java 2>&1`
+    output2=`java -jar "$checker" -classpath "$javaTypestateChecker" -processor "$javaTypestateCheckerClass" -AconfigFile=jtc.config -Astubs=stubs -AstubWarnIfNotFound -Aignorejdkastub *.java 2>&1`
   else
-    output2=`java -jar "$checker" -classpath "$mungoChecker" -processor "$mungoCheckerClass" *.java 2>&1`
+    output2=`java -jar "$checker" -classpath "$javaTypestateChecker" -processor "$javaTypestateCheckerClass" *.java 2>&1`
   fi
 
   printf "## Mungo's output\n\n\`\`\`\n%s\`\`\`\n\n" "$output1" > README.md

@@ -1,9 +1,9 @@
-import org.checkerframework.checker.mungo.lib.MungoNullable;
-import org.checkerframework.checker.mungo.lib.MungoRequires;
+import org.checkerframework.checker.jtc.lib.Nullable;
+import org.checkerframework.checker.jtc.lib.Requires;
 
 public class NotOk {
   public static void main1(String args[]) {
-    @MungoNullable File f = new File();
+    @Nullable File f = new File();
 
     switch (f.open()) {
       case OK:
@@ -20,7 +20,7 @@ public class NotOk {
     use(null);
   }
 
-  public static void use(@MungoRequires("Init") File f) {
+  public static void use(@Requires("Init") File f) {
     switch (f.open()) {
       case OK:
         System.out.println(f.read());

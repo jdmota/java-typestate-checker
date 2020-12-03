@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 
@@ -14,7 +14,7 @@ NotOk.java: 18-15: Semantic Error
 NotOk.java: 25-15: Semantic Error
 		Object reference is used uninitialised.```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
 NotOk.java:7: error: [Cannot call read on moved value] (Cannot call read on moved value)
@@ -24,7 +24,7 @@ NotOk.java:13: error: [argument.type.incompatible] incompatible types in argumen
     use(f);
         ^
   found   : Moved File
-  required: FileProtocol{Read} File
+  required: State "Read" File
 NotOk.java:20: error: [Cannot call read on moved value] (Cannot call read on moved value)
     f.read();
           ^
@@ -32,7 +32,7 @@ NotOk.java:27: error: [argument.type.incompatible] incompatible types in argumen
     use(f);
         ^
   found   : Moved File
-  required: FileProtocol{Read} File
+  required: State "Read" File
 NotOk.java:33: error: [f was moved to a different closure] (f was moved to a different closure)
       return f.read();
              ^

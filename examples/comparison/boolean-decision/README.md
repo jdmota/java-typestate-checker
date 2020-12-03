@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 
@@ -22,10 +22,10 @@ JavaIteratorProtocol.protocol: 3-24: Semantic Error
 JavaIteratorProtocol.protocol:3,25: error: unexpected token "true"
 JavaIteratorProtocol.protocol:3,37: error: unexpected token "false"```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
-NotOk.java:5: error: [Object did not complete its protocol. Type: JavaIteratorProtocol{Next}] (Object did not complete its protocol. Type: JavaIteratorProtocol{Next})
+NotOk.java:5: error: [Object did not complete its protocol. Type: State "Next"] (Object did not complete its protocol. Type: State "Next")
     JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
                  ^
 NotOk.java:8: error: [Cannot call next on ended protocol] (Cannot call next on ended protocol)

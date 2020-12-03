@@ -6,8 +6,7 @@ if [[ "$CD" =~ ^\/cygdrive.* ]]; then
 	CD=`cygpath -w "$CD"`
 fi
 
-#originalMungo="$CD/mungo-73dd8ae.jar"
-originalMungo="$CD/mungo-tools-4d05a7.jar"
+mungoJar="$CD/mungo-73dd8ae.jar"
 
 testsFolder="$CD/to_mungo_devs"
 
@@ -30,9 +29,9 @@ for testName in "${tests[@]}"
 do
   cd "$testsFolder/$testName"
   echo "Running test: $testName"
-  output=`java -jar "$originalMungo" -classpath "$originalMungo" *.java 2>&1`
-  
+  output=`java -jar "$mungoJar" -classpath "$mungoJar" *.java 2>&1`
+
   printf "## Current Mungo's output\n\n\`\`\`\n%s\`\`\`\n\n" "$output" > README.md
-  
+
   cd "$CD"
 done

@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 Exception in thread "main" java.lang.NullPointerException
@@ -19,7 +19,7 @@ Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.TypestateChecker.run(TypestateChecker.java:32)
 	at org.extendj.TypestateChecker.main(TypestateChecker.java:18)```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
 NotOk.java:6: error: [Passing an object with protocol to a method that cannot be analyzed] (Passing an object with protocol to a method that cannot be analyzed)
@@ -28,13 +28,13 @@ NotOk.java:6: error: [Passing an object with protocol to a method that cannot be
 NotOk.java:7: error: [assignment.type.incompatible] incompatible types in assignment.
     File f1 = list.get(0);
                       ^
-  found   : FileProtocol{Read} | Ended | Moved File
-  required: FileProtocol{Read} File
+  found   : State "Read" | Ended | Moved File
+  required: State "Read" File
 NotOk.java:8: error: [assignment.type.incompatible] incompatible types in assignment.
     File f2 = list.get(0);
                       ^
-  found   : FileProtocol{Read} | Ended | Moved File
-  required: FileProtocol{Read} File
+  found   : State "Read" | Ended | Moved File
+  required: State "Read" File
 NotOk.java:9: error: [Cannot call read on ended protocol, on moved value] (Cannot call read on ended protocol, on moved value)
     f1.read();
            ^

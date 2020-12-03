@@ -71,13 +71,13 @@ public class Ok {
   }
 }\end{code}
 
-\lstset{language=,caption=Original Mungo output}
+\lstset{language=,caption=Mungo's output}
 \begin{code}
 
 NotOk.java: 3-14: Semantic Error
 		Object created at NotOk.java: 3. Typestate mismatch. Found: String read(). Expected: FileStatus open().\end{code}
 
-\lstset{language=,caption=New Mungo output}
+\lstset{language=,caption=Our tool's output}
 \begin{code}
 NotOk.java:5: error: [Cannot call read on state Init (got: Init)] (Cannot call read on state Init (got: Init))
     System.out.println(f.read());

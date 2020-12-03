@@ -38,12 +38,12 @@ class File {
 \lstset{language=Java,caption=\textit{NotOkFileWrapper1.java}}
 \begin{code}
 import mungo.lib.Typestate;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class NotOkFileWrapper1 {
 
-  private @MungoNullable File file = null;
+  private @Nullable File file = null;
 
   public void init(File file) {}
 
@@ -60,12 +60,12 @@ class NotOkFileWrapper1 {
 \lstset{language=Java,caption=\textit{NotOkFileWrapper2.java}}
 \begin{code}
 import mungo.lib.Typestate;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class NotOkFileWrapper2 {
 
-  private @MungoNullable File file = null;
+  private @Nullable File file = null;
 
   public void init(File file) {
     this.file = file;
@@ -84,12 +84,12 @@ class NotOkFileWrapper2 {
 \lstset{language=Java,caption=\textit{NotOkFileWrapper3.java}}
 \begin{code}
 import mungo.lib.Typestate;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class NotOkFileWrapper3 {
 
-  private @MungoNullable File file = null;
+  private @Nullable File file = null;
 
   public void init(File file) {
     this.file = file;
@@ -109,12 +109,12 @@ class NotOkFileWrapper3 {
 \lstset{language=Java,caption=\textit{OkFileWrapper.java}}
 \begin{code}
 import mungo.lib.Typestate;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class OkFileWrapper {
 
-  private @MungoNullable File file = null;
+  private @Nullable File file = null;
 
   public void init(File file) {
     this.file = file;
@@ -130,15 +130,15 @@ class OkFileWrapper {
 
 }\end{code}
 
-\lstset{language=,caption=Original Mungo output}
+\lstset{language=,caption=Mungo's output}
 \begin{code}
 
-NotOkFileWrapper1.java: 7-31: Semantic Error
+NotOkFileWrapper1.java: 7-26: Semantic Error
 		Object reference is used uninitialised.\end{code}
 
-\lstset{language=,caption=New Mungo output}
+\lstset{language=,caption=Our tool's output}
 \begin{code}
-NotOkFileWrapper1.java:9: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+NotOkFileWrapper1.java:9: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
   public void init(File file) {}
                         ^
 NotOkFileWrapper1.java:12: error: [Cannot call read on null] (Cannot call read on null)
@@ -147,12 +147,12 @@ NotOkFileWrapper1.java:12: error: [Cannot call read on null] (Cannot call read o
 NotOkFileWrapper1.java:16: error: [Cannot call close on null] (Cannot call close on null)
     file.close();
               ^
-NotOkFileWrapper2.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
-  private @MungoNullable File file = null;
-                              ^
-NotOkFileWrapper3.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
-  private @MungoNullable File file = null;
-                              ^
+NotOkFileWrapper2.java:7: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
+  private @Nullable File file = null;
+                         ^
+NotOkFileWrapper3.java:7: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
+  private @Nullable File file = null;
+                         ^
 NotOkFileWrapper3.java:14: error: [Cannot call close on ended protocol] (Cannot call close on ended protocol)
     file.close();
               ^

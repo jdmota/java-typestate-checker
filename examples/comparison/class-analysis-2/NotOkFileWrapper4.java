@@ -1,8 +1,8 @@
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 class NotOkFileWrapper4 {
 
-  private @MungoNullable File file = null;
+  private @Nullable File file = null;
 
   public void init(File file) {
     this.file = file;

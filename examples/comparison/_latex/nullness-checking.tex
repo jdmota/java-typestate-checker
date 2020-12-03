@@ -45,12 +45,12 @@ public enum FileStatus {
 
 \lstset{language=Java,caption=\textit{NotOk.java}}
 \begin{code}
-import org.checkerframework.checker.mungo.lib.MungoNullable;
-import org.checkerframework.checker.mungo.lib.MungoRequires;
+import org.checkerframework.checker.jtc.lib.Nullable;
+import org.checkerframework.checker.jtc.lib.Requires;
 
 public class NotOk {
   public static void main1(String args[]) {
-    @MungoNullable File f = new File();
+    @Nullable File f = new File();
 
     switch (f.open()) {
       case OK:
@@ -67,7 +67,7 @@ public class NotOk {
     use(null);
   }
 
-  public static void use(@MungoRequires("Init") File f) {
+  public static void use(@Requires("Init") File f) {
     switch (f.open()) {
       case OK:
         System.out.println(f.read());
@@ -81,19 +81,19 @@ public class NotOk {
 
 \lstset{language=Java,caption=\textit{Ok.java}}
 \begin{code}
-import org.checkerframework.checker.mungo.lib.MungoNullable;
-import org.checkerframework.checker.mungo.lib.MungoRequires;
+import org.checkerframework.checker.jtc.lib.Nullable;
+import org.checkerframework.checker.jtc.lib.Requires;
 
 public class Ok {
   public static void main(String args[]) {
-    @MungoNullable File f = args.length == 0 ? null : new File();
+    @Nullable File f = args.length == 0 ? null : new File();
 
     if (f != null) {
       use(f);
     }
   }
 
-  public static void use(@MungoRequires("Init") File f) {
+  public static void use(@Requires("Init") File f) {
     switch (f.open()) {
       case OK:
         System.out.println(f.read());
@@ -105,7 +105,7 @@ public class Ok {
   }
 }\end{code}
 
-\lstset{language=,caption=Original Mungo output}
+\lstset{language=,caption=Mungo's output}
 \begin{code}
 
 NotOk.java: 11-13: Semantic Error
@@ -114,12 +114,12 @@ NotOk.java: 11-13: Semantic Error
 NotOk.java: 0-0: Semantic Error
 		Object created at NotOk.java: 6. Typestate mismatch. Found: end. Expected: void close().
 
-Ok.java: 6-25: Semantic Error
+Ok.java: 6-20: Semantic Error
 		Object reference is used uninitialised.\end{code}
 
-\lstset{language=,caption=New Mungo output}
+\lstset{language=,caption=Our tool's output}
 \begin{code}
-NotOk.java:11: error: [Cannot override because object has not ended its protocol. Type: FileProtocol{Close}] (Cannot override because object has not ended its protocol. Type: FileProtocol{Close})
+NotOk.java:11: error: [Cannot override because object has not ended its protocol. Type: State "Close"] (Cannot override because object has not ended its protocol. Type: State "Close")
         f = null;
         ^
 NotOk.java:12: error: [Cannot call close on null] (Cannot call close on null)
@@ -129,6 +129,6 @@ NotOk.java:20: error: [argument.type.incompatible] incompatible types in argumen
     use(null);
         ^
   found   : Null null
-  required: FileProtocol{Init} File
+  required: State "Init" File
 3 errors\end{code}
 

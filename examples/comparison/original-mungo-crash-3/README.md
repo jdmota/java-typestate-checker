@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 Exception in thread "main" java.lang.NullPointerException
@@ -19,10 +19,10 @@ Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.TypestateChecker.run(TypestateChecker.java:32)
 	at org.extendj.TypestateChecker.main(TypestateChecker.java:18)```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
-Main.java:7: error: [Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved] (Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved)
+Main.java:7: error: [Object did not complete its protocol. Type: State "Read" | Ended | Moved] (Object did not complete its protocol. Type: State "Read" | Ended | Moved)
     File f1 = list.get(0);
          ^
 Main.java:6: error: [Passing an object with protocol to a method that cannot be analyzed] (Passing an object with protocol to a method that cannot be analyzed)
@@ -31,6 +31,6 @@ Main.java:6: error: [Passing an object with protocol to a method that cannot be 
 Main.java:7: error: [assignment.type.incompatible] incompatible types in assignment.
     File f1 = list.get(0);
                       ^
-  found   : FileProtocol{Read} | Ended | Moved File
-  required: FileProtocol{Read} File
+  found   : State "Read" | Ended | Moved File
+  required: State "Read" File
 3 errors```

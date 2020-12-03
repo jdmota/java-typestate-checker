@@ -1,9 +1,9 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 ```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
 ```

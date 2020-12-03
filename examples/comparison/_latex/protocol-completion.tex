@@ -62,7 +62,7 @@ public class Ok {
   }
 }\end{code}
 
-\lstset{language=,caption=Original Mungo output}
+\lstset{language=,caption=Mungo's output}
 \begin{code}
 
 NotOk.java: 5-14: Semantic Error
@@ -71,12 +71,12 @@ NotOk.java: 5-14: Semantic Error
 NotOk.java: 9-14: Semantic Error
 		Object created at NotOk.java: 9. Typestate mismatch. Found: end. Expected: String read(), void close().\end{code}
 
-\lstset{language=,caption=New Mungo output}
+\lstset{language=,caption=Our tool's output}
 \begin{code}
-NotOk.java:5: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+NotOk.java:5: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
     File f = new File();
          ^
-NotOk.java:13: error: [Object did not complete its protocol. Type: FileProtocol{Read}] (Object did not complete its protocol. Type: FileProtocol{Read})
+NotOk.java:13: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
   public static void use(File f) {
                               ^
 2 errors\end{code}

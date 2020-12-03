@@ -1,7 +1,7 @@
-import org.checkerframework.checker.mungo.lib.MungoState;
+import org.checkerframework.checker.jtc.lib.State;
 
 package java.util;
 
 public interface List<E> {
-  @MungoState("HasNext") Iterator<E> iterator();
+  @State("HasNext") Iterator<E> iterator();
 }

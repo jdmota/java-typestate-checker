@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 
@@ -19,7 +19,7 @@ JavaIteratorProtocol.protocol: 3-24: Semantic Error
 JavaIteratorProtocol.protocol:3,25: error: unexpected token "true"
 JavaIteratorProtocol.protocol:3,37: error: unexpected token "false"```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
 ```

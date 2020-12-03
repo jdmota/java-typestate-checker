@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 
@@ -11,24 +11,29 @@ Auction.java: 29-17: Semantic Error
 Auction.java: 29-17: Semantic Error
 		Object reference is used uninitialised.```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
-Auction.java:13: error: [Cannot override because object has not ended its protocol. Type: ClientProtocol{Running} | Ended | Moved] (Cannot override because object has not ended its protocol. Type: ClientProtocol{Running} | Ended | Moved)
+Auction.java:13: error: [Cannot override because object has not ended its protocol. Type: State "Running" | Ended | Moved] (Cannot override because object has not ended its protocol. Type: State "Running" | Ended | Moved)
       clients[i] = new Client(i);
              ^
+Auction.java:18: error: [return.type.incompatible] incompatible types in return.
+           (hBidder != clientId && val > clients[hBidder].getBid())) ?
+                                                                     ^
+  type of expression: Unknown Boolean
+  method return type: NoProtocol Boolean
 Auction.java:18: error: [Cannot call getBid on ended protocol, on moved value] (Cannot call getBid on ended protocol, on moved value)
            (hBidder != clientId && val > clients[hBidder].getBid())) ?
                                                                 ^
 Auction.java:23: error: [Cannot call bid on ended protocol, on moved value] (Cannot call bid on ended protocol, on moved value)
     clients[clientId].bid(val);
                          ^
-Auction.java:29: error: [Object did not complete its protocol. Type: ClientProtocol{Running}] (Object did not complete its protocol. Type: ClientProtocol{Running})
+Auction.java:29: error: [Object did not complete its protocol. Type: State "Running"] (Object did not complete its protocol. Type: State "Running")
     for (Client client : clients) {
                 ^
 Auction.java:29: error: [enhancedfor.type.incompatible] incompatible types in enhanced for loop.
     for (Client client : clients) {
                          ^
   found   : NoProtocol Client
-  required: ClientProtocol{Running} Client
-5 errors```
+  required: State "Running" Client
+6 errors```

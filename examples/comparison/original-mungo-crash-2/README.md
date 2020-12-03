@@ -1,4 +1,4 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 Exception in thread "main" java.lang.NullPointerException
@@ -15,10 +15,10 @@ Exception in thread "main" java.lang.NullPointerException
 	at org.extendj.TypestateChecker.run(TypestateChecker.java:32)
 	at org.extendj.TypestateChecker.main(TypestateChecker.java:18)```
 
-## Mungo Checker's output
+## Our tool's output
 
 ```
-FileWrapper.java:2: error: [Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved] (Object did not complete its protocol. Type: FileProtocol{Read} | Ended | Moved)
+FileWrapper.java:2: error: [Object did not complete its protocol. Type: State "Read" | Ended | Moved] (Object did not complete its protocol. Type: State "Read" | Ended | Moved)
   public File file = new File();
               ^
 1 error```
