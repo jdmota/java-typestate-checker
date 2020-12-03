@@ -8,7 +8,7 @@ repositories {
 
 ext {
     versions = [
-        checkerFramework: "3.3.0",
+        checkerFramework: "3.8.0",
     ]
 }
 

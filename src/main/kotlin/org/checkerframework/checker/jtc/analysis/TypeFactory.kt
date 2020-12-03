@@ -10,12 +10,11 @@ import org.checkerframework.framework.stub.StubTypes
 import org.checkerframework.framework.type.*
 import org.checkerframework.framework.util.AnnotatedTypes
 import org.checkerframework.framework.util.DefaultAnnotationFormatter
-import org.checkerframework.framework.util.GraphQualifierHierarchy
-import org.checkerframework.framework.util.MultiGraphQualifierHierarchy
 import org.checkerframework.javacutil.AnnotationBuilder
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 import javax.lang.model.type.TypeMirror
+import javax.lang.model.util.Elements
 
 private class FakeBasicTypeChecker(myChecker: SourceChecker) : BaseTypeChecker() {
   init {
@@ -33,11 +32,7 @@ private class FakeAnnotatedTypeFactory(myChecker: SourceChecker) : AnnotatedType
 
   init {
     typesFromStubFilesField.isAccessible = true
-    qualHierarchy = createQualifierHierarchy()
-    typeHierarchy = createTypeHierarchy()
-    typeVarSubstitutor = createTypeVariableSubstitutor()
-    typeArgumentInference = createTypeArgumentInference()
-    qualifierUpperBounds = createQualifierUpperBounds()
+    postInit()
     parseStubFiles()
   }
 
@@ -65,16 +60,17 @@ private class FakeAnnotatedTypeFactory(myChecker: SourceChecker) : AnnotatedType
     return setOf(BottomAnno::class.java, InternalInfoAnno::class.java, UnknownAnno::class.java)
   }
 
-  override fun createQualifierHierarchy(factory: MultiGraphQualifierHierarchy.MultiGraphFactory): QualifierHierarchy {
-    return FakeQualifierHierarchy(factory, bottomAnnotation)
+  override fun createQualifierHierarchy(): QualifierHierarchy {
+    return FakeQualifierHierarchy(supportedTypeQualifiers, elements)
   }
 
-  private inner class FakeQualifierHierarchy(f: MultiGraphFactory, bottom: AnnotationMirror) : GraphQualifierHierarchy(f, bottom) {
-    override fun findTops(supertypes: MutableMap<AnnotationMirror, MutableSet<AnnotationMirror>>?): MutableSet<AnnotationMirror> {
+  private inner class FakeQualifierHierarchy(qualifierClasses: MutableSet<Class<out Annotation>>, elements: Elements) : NoElementQualifierHierarchy(qualifierClasses, elements) {
+
+    override fun createTops(): MutableSet<AnnotationMirror> {
       return mutableSetOf(topAnnotation)
     }
 
-    override fun findBottoms(supertypes: MutableMap<AnnotationMirror, MutableSet<AnnotationMirror>>?): MutableSet<AnnotationMirror> {
+    override fun createBottoms(): MutableSet<AnnotationMirror> {
       return mutableSetOf(bottomAnnotation)
     }
 
@@ -84,6 +80,10 @@ private class FakeAnnotatedTypeFactory(myChecker: SourceChecker) : AnnotatedType
 
     override fun isSubtype(subAnno: AnnotationMirror, superAnno: AnnotationMirror): Boolean {
       return true
+    }
+
+    override fun findAnnotationInSameHierarchy(annos: MutableCollection<out AnnotationMirror>, annotationMirror: AnnotationMirror): AnnotationMirror? {
+      return annos.firstOrNull()
     }
   }
 
@@ -143,7 +143,7 @@ class TypeFactory(private val checker: SourceChecker) {
   fun getTypeFromStub(elt: Element) = fake.getTypeFromStub(elt)
 
   fun getAnnotatedType(tree: Tree) = fake.getAnnotatedType(tree)
-  fun getIteratedType(iterableType: AnnotatedTypeMirror): AnnotatedTypeMirror = AnnotatedTypes.getIteratedType(checker.processingEnvironment, fake, iterableType)
+  fun getIteratedType(expr: ExpressionTree): AnnotatedTypeMirror = fake.getIterableElementType(expr)
   fun getFunctionTypeFromTree(node: LambdaExpressionTree): AnnotatedTypeMirror.AnnotatedExecutableType = fake.getFunctionTypeFromTree(node)
   fun getMethodReturnType(method: MethodTree, returnTree: ReturnTree): AnnotatedTypeMirror = fake.getMethodReturnType(method, returnTree)
 

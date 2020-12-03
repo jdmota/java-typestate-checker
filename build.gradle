@@ -27,7 +27,7 @@ ext {
     versions = [
         kotlin: "1.4.0",
         antlr4: "4.8",
-        checkerFramework: "3.6.1",
+        checkerFramework: "3.8.0",
         errorproneJavacVersion: "9+181-r4173-1",
         junit: "4.13",
     ]

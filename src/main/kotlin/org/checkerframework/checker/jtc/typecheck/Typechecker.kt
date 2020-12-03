@@ -101,8 +101,7 @@ class Typechecker(checker: JavaTypestateChecker) : TypecheckerHelpers(checker) {
 
     // Performs a subtype check, to test whether the node expression iterable type is a subtype of the variable type in the enhanced for loop
     val variable = utils.factory.getAnnotatedType(node.variable)
-    val iterableType = utils.factory.getAnnotatedType(node.expression)
-    val iteratedType = utils.factory.getIteratedType(iterableType)
+    val iteratedType = utils.factory.getIteratedType(node.expression)
     commonAssignmentCheck(
       variable,
       node.variable,
