@@ -24,35 +24,35 @@ if [ ! -f "$checker" ]; then
 fi
 
 tests=(
-  #"basic-checking"
-  #"boolean-decision"
+  "basic-checking"
+  "boolean-decision"
   "state-refinement"
-  #"nullness-checking"
-  #"linearity-checking"
-  #"linearity-checking-corner-cases"
-  #"protocol-completion"
-  #"protocol-completion-corner-cases"
-  #"class-analysis"
-  #"class-analysis-2"
+  "nullness-checking"
+  "linearity-checking"
+  "linearity-checking-corner-cases"
+  "protocol-completion"
+  "protocol-completion-corner-cases"
+  "class-analysis"
+  "class-analysis-2"
   "droppable-objects"
-  #"generics"
-  #"auction"
-  #"file-1"
+  "generics"
+  "auction"
+  "file-1"
   "iterator-attempt1"
-  #"iterator-attempt2"
-  #"iterator-attempt3"
-  #"iterator-attempt4"
-  #"iterator-attempt5"
-  #"iterator-attempt6"
-  #"iterator-attempt7"
-  #"original-mungo-flow-issue-1"
-  #"original-mungo-flow-issue-2"
-  #"original-mungo-crash-1"
-  #"original-mungo-crash-2"
-  #"original-mungo-crash-3"
-  #"original-mungo-crash-1-adapted"
-  #"original-mungo-crash-2-adapted"
-  #"original-mungo-crash-3-adapted"
+  "iterator-attempt2"
+  "iterator-attempt3"
+  "iterator-attempt4"
+  "iterator-attempt5"
+  "iterator-attempt6"
+  "iterator-attempt7"
+  "original-mungo-flow-issue-1"
+  "original-mungo-flow-issue-2"
+  "original-mungo-crash-1"
+  "original-mungo-crash-2"
+  "original-mungo-crash-3"
+  "original-mungo-crash-1-adapted"
+  "original-mungo-crash-2-adapted"
+  "original-mungo-crash-3-adapted"
 )
 
 mkdir -p "$latexFolder"
@@ -62,7 +62,7 @@ latexJavaCode="\\\\lstset{language=Java,caption=\\\\textit{%s}}\n\\\\begin{code}
 latexOutput1="\\\\lstset{language=,caption=Mungo's output}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
 latexOutput2="\\\\lstset{language=,caption=Our tool's output}\n\\\\begin{code}\n%s\\\\end{code}\n\n"
 
-#-AconfigFile=mungo.config -Astubs=stubs -AstubWarnIfNotFound -Aignorejdkastub
+#-AconfigFile=jtc.config -Astubs=stubs -AstubWarnIfNotFound -Aignorejdkastub
 
 for testName in "${tests[@]}"
 do
@@ -70,43 +70,43 @@ do
   echo "Running test: $testName"
 
   output1=`java -jar "$originalMungo" -classpath "$originalMungo;$mungoCheckerLib" *.java 2>&1`
-  
+
   if [[ "$testName" == "iterator-attempt1" ]]; then
     output2=`java -jar "$checker" -classpath "$mungoChecker" -processor "$mungoCheckerClass" -AconfigFile=mungo.config -Astubs=stubs -AstubWarnIfNotFound -Aignorejdkastub *.java 2>&1`
   else
     output2=`java -jar "$checker" -classpath "$mungoChecker" -processor "$mungoCheckerClass" *.java 2>&1`
   fi
-  
+
   printf "## Mungo's output\n\n\`\`\`\n%s\`\`\`\n\n" "$output1" > README.md
   printf "## Our tool's output\n\n\`\`\`\n%s\`\`\`\n" "$output2" >> README.md
 
   latexFile="$latexFolder/$testName.tex"
   printf "" > "$latexFile"
-  
+
   shopt -s nullglob
   for file in *.protocol
   do
     contents=`cat "$file"`
     printf "$latexCode" "$file" "$contents" >> "$latexFile"
   done
-  
+
   shopt -s nullglob
   for file in *.java
   do
     contents=`cat "$file"`
     printf "$latexJavaCode" "$file" "$contents" >> "$latexFile"
   done
-  
+
   if [[ "$output1" == "" ]]; then
     output1=$'None\n'
   fi
-  
+
   if [[ "$output2" == "" ]]; then
     output2=$'None\n'
   fi
-  
+
   printf "$latexOutput1" "$output1" >> "$latexFile"
   printf "$latexOutput2" "$output2" >> "$latexFile"
-  
+
   cd "$CD"
 done

@@ -1,10 +1,10 @@
-import org.checkerframework.checker.mungo.lib.MungoTypestate;
-import org.checkerframework.checker.mungo.lib.MungoRequires;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Typestate;
+import org.checkerframework.checker.jtc.lib.Requires;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 import java.util.function.Supplier;
 
-@MungoTypestate("JavaIteratorDroppable.protocol")
+@Typestate("JavaIteratorDroppable.protocol")
 public class JavaIteratorDroppable {
 
   public boolean hasNext() {

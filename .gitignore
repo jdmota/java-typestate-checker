@@ -12,7 +12,7 @@ out
 # Emacs backups
 *~
 
-mungo-checker-lib/src
+jtc-checker-lib/src
 
 # Dist
 

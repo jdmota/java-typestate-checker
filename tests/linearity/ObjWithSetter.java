@@ -1,10 +1,10 @@
 import mungo.lib.Typestate;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 @Typestate("ObjWithSetter")
 public class ObjWithSetter {
 
-  private @MungoNullable ObjWithSetter f = null;
+  private @Nullable ObjWithSetter f = null;
 
   public void setF(ObjWithSetter f) {
     this.f = f;
@@ -95,7 +95,7 @@ public class ObjWithSetter {
     createChainOk(new ObjWithSetter(), 10);
     createChainNotOk(new ObjWithSetter(), 10);
   }
-  
+
   public static void createChainOk(ObjWithSetter o2, int len) {
     if (len > 0) {
       ObjWithSetter o1 = new ObjWithSetter();
@@ -105,10 +105,10 @@ public class ObjWithSetter {
       o2.finish();
     }
   }
-  
+
   public static void createChainNotOk(ObjWithSetter o2, int len) {
     if (len > 0) {
-      // :: error: (Object did not complete its protocol. Type: ObjWithSetter{Set})
+      // :: error: (Object did not complete its protocol. Type: State "Set")
       ObjWithSetter o1 = new ObjWithSetter();
       o1.setF(o2);
       // :: error: (argument.type.incompatible)

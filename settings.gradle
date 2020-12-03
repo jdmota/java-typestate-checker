@@ -7,5 +7,5 @@
  * in the user guide at https://docs.gradle.org/5.0/userguide/multi_project_builds.html
  */
 
-rootProject.name = 'mungo-checker'
-include 'mungo-checker-lib'
+rootProject.name = 'jtc-checker'
+include 'jtc-checker-lib'

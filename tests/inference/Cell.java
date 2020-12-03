@@ -1,6 +1,6 @@
-import org.checkerframework.checker.mungo.lib.MungoTypestate;
+import org.checkerframework.checker.jtc.lib.Typestate;
 
-@MungoTypestate("Cell.protocol")
+@Typestate("Cell.protocol")
 public class Cell {
 
   private Item item;

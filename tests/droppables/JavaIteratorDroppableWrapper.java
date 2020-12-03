@@ -1,40 +1,40 @@
-import org.checkerframework.checker.mungo.lib.MungoTypestate;
-import org.checkerframework.checker.mungo.lib.MungoRequires;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Typestate;
+import org.checkerframework.checker.jtc.lib.Requires;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 import java.util.function.Supplier;
 
-@MungoTypestate("JavaIteratorDroppableWrapper.protocol")
+@Typestate("JavaIteratorDroppableWrapper.protocol")
 class JavaIteratorDroppableWrapper1 {
 
   private JavaIteratorDroppable iterator = new JavaIteratorDroppable();
 
   public boolean hasNext() {
-    // :: warning: (iterator: JavaIteratorDroppable{HasNext|Next})
+    // :: warning: (iterator: State "HasNext" | State "Next")
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: JavaIteratorDroppable{Next})
+    // :: warning: (iterator: State "Next")
     return iterator.next();
   }
 
 }
 
-@MungoTypestate("JavaIteratorDroppableWrapper.protocol")
+@Typestate("JavaIteratorDroppableWrapper.protocol")
 class JavaIteratorDroppableWrapper2 {
 
-  // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
-  // :: error: (Object did not complete its protocol. Type: JavaIterator{Next})
+  // :: error: (Object did not complete its protocol. Type: State "HasNext")
+  // :: error: (Object did not complete its protocol. Type: State "Next")
   private JavaIterator iterator = new JavaIterator();
 
   public boolean hasNext() {
-    // :: warning: (iterator: JavaIterator{HasNext|Next})
+    // :: warning: (iterator: State "HasNext" | State "Next")
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: JavaIterator{Next})
+    // :: warning: (iterator: State "Next")
     return iterator.next();
   }
 

@@ -1,14 +1,33 @@
-# Java Typestate Checker plugin for Checker Framework
-
-*Work in progress...*
+# Java Typestate Checker plugin for the Checker Framework
 
 ## How it works
 
-Adding a `@mungo.lib.Typestate("ProtocolFile")` annotation to the top of a class enforces that instances of that class follow the protocol defined by the protocol file. Every time a method call on a object is encountered, we make sure that object is in a state that allows that invocation. The type of the object then changes to conform to the new state reached after that method call. We also make sure protocols are completed.
+Adding a `@Typestate("ProtocolFile")` annotation to the top of a class enforces that instances of that class follow the protocol defined by the protocol file. Every time a method call on an object is encountered, we make sure that the object is in a state that allows that invocation. The type of the object then changes to conform to the new state reached after that method call. We also make sure protocols are completed.
 
-### Type system
+## Features
+
+- checking that **methods are called in the correct order** specified by the protocol;
+- checking that **protocols of objects are completed**;
+- checking the **absence of null pointer errors**;
+- a **language of assertions** that focuses in allowing a program that uses typestates to be type-checked even in the presence of aliasing;
+- an **inference algorithm** which analyzes the code statically and infers all the required assertions;
+- support for **protocols to be associated with classes** from the standard Java library or from third-party libraries;
+- support for **"droppable" states**, which allow one to specify states in which an object may be "dropped" (i.e. stop being used) without having to reach the final state;
+- support for **transitions of state to depend on boolean values or enumeration values** returned by methods.
+- invalid sequences of method calls are ignored when analyzing the use of objects stored inside other objects by taking into account that the methods of the outer object will only be called in the order specified by the corresponding protocol, thus **avoiding false positives**.
+
+The tool has two modes:
+
+- Linear mode: where objects must be used in a linear way;
+- Not linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**).
 
 <!-- http://www.plantuml.com/plantuml/uml/NSqn2i9048NXVayHKgcG6rW4mT8O40yGirEixix0-YOs7bx8Wc6sUl0Lx-_Vc38qHNVd5yk7c-EtwvhhuqapN9b2xGqJQ7VOjuRFxCaR6MJC0fcb-XmqLZBca0B2GfOlif1tMw_eIG19RkqPsNgMDLhuruokCICziTSKVm00 -->
+
+<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyr14r4ABaaiITNGqbJYGZ2XKcwPEQdL_WMfUJeAGQc9ARLAN1X264e9AeAQ1789HDWflwGaFvSBsGWK2OGsD0c7rBmKe0y1 -->
+
+<!--
+
+### Type system
 
 ![Type system](./type_system.svg)
 
@@ -28,8 +47,6 @@ The type of files that are only in the `Open` state is also a subtype of the typ
 
 The type of files that are in the `Open` state and the type of files that are in the `Read` state are not subtypes of each other, since one is not contained in the other and vice-versa.
 
-<!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyr14r4ABaaiITNGqbJYGZ2XKcwPEQdL_WMfUJeAGQc9ARLAN1X264e9AeAQ1789HDWflwGaFvSBsGWK2OGsD0c7rBmKe0y1 -->
-
 ![Type system example](./type_system_example.svg)
 
 ### Checking
@@ -39,7 +56,6 @@ The type of files that are in the `Open` state and the type of files that are in
 - If a variable declaration is encountered, for example in a method argument, it is assumed that the object might be in any of its states. That can be refined with the use of `@MungoState({"Open"})`.
 - When a method invocation is encountered, considering all possible states, the type checker creates a set with all the possible destination states via that method invocation. If that method invocation happened on the condition of a `if/while` statement or in the expression of a `switch` statement, the possible states are properly refined: if the transition leads to a decision state, only the destination state associated with the relevant label is added to the set of possible states.
 
-<!--
 ### Architecture
 
 Plugins for the Checker Framework usually extend the `BaseTypeChecker` and then override some aspects of it if necessary. To understand how plugins work it is important to understand how information is stored:
@@ -64,7 +80,7 @@ Since annotations are only able to store some types of values, not arbitrary obj
 More details: [Manual - How to create a Checker plugin](https://checkerframework.org/manual/#creating-a-checker)
 -->
 
-## Run version 1
+## Experiment version 1
 
 Run the following command from the `dist` folder:
 
@@ -101,8 +117,4 @@ The produced jar file goes into the `examples` folder.
 
 ## Comparison
 
-[Comparison table between this version of Mungo and other versions](https://github.com/jdmota/abcd-mungo/wiki/Comparison)
-
-## Roadmap and TODO's
-
-[Roadmap and TODO's](https://github.com/jdmota/abcd-mungo/wiki/Roadmap-and-TODOs)
+[Comparison table between Mungo and this tool](https://github.com/jdmota/abcd-mungo/wiki/Comparison)

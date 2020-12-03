@@ -1,4 +1,4 @@
-The following examples test if the new implementation of Mungo currently enforces linearity. All these examples are available here: [tests/linearity](https://github.com/jdmota/abcd-mungo/tree/jdmota/tests/linearity).
+The following examples test if the Java Typestate Checker currently enforces linearity. All these examples are available here: [tests/linearity](https://github.com/jdmota/java-typestate-checker/tree/master/tests/linearity).
 
 ## Contents:
 
@@ -15,7 +15,7 @@ The code examples in this section make use of objects from the class `ObjWithSet
 ```java
 @Typestate("ObjWithSetter")
 public class ObjWithSetter {
-  private @MungoNullable ObjWithSetter f = null;
+  private @Nullable ObjWithSetter f = null;
 
   public void setF(ObjWithSetter f) {
     this.f = f;
@@ -149,7 +149,7 @@ public static void main(String[] args) {
 
 public static void createChainNotOk(ObjWithSetter o2, int len) {
   if (len > 0) {
-    // :: error: (Object did not complete its protocol. Type: ObjWithSetter{Set})
+    // :: error: (Object did not complete its protocol. Type: State "Set")
     ObjWithSetter o1 = new ObjWithSetter();
     o1.setF(o2);
     // :: error: (argument.type.incompatible)
@@ -169,7 +169,7 @@ The following code examples make use of objects from the class `ObjWithPrivField
 ```java
 @Typestate("ObjWithPrivField")
 public class ObjWithPrivField {
-  private @MungoNullable ObjWithPrivField f = null;
+  private @Nullable ObjWithPrivField f = null;
 
   public void finish() {
     if (f != null) f.finish();
@@ -200,10 +200,10 @@ o1.finish();
 ObjWithPrivField o1 = new ObjWithPrivField();
 ObjWithPrivField o2 = new ObjWithPrivField();
 ObjWithPrivField o3 = new ObjWithPrivField();
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o1.f = o2;
 // :: error: (Cannot access f on moved value)
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o2.f = o3;
 o1.finish();
 ```
@@ -213,9 +213,9 @@ o1.finish();
 ObjWithPrivField o1 = new ObjWithPrivField();
 ObjWithPrivField o2 = new ObjWithPrivField();
 ObjWithPrivField o3 = new ObjWithPrivField();
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o2.f = o3;
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o1.f = o2;
 o1.finish();
 ```
@@ -223,7 +223,7 @@ o1.finish();
 ```
 // o1 -> o1
 ObjWithPrivField o1 = new ObjWithPrivField();
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o1.f = o1;
 // :: error: (Cannot call finish on moved value)
 o1.finish();
@@ -233,9 +233,9 @@ o1.finish();
 // o1 -> o2 -> o1
 ObjWithPrivField o1 = new ObjWithPrivField();
 ObjWithPrivField o2 = new ObjWithPrivField();
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o1.f = o2;
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 // :: error: (Cannot access f on moved value)
 o2.f = o1;
 ```
@@ -245,12 +245,12 @@ o2.f = o1;
 ObjWithPrivField o1 = new ObjWithPrivField();
 ObjWithPrivField o2 = new ObjWithPrivField();
 ObjWithPrivField o3 = new ObjWithPrivField();
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o1.f = o2;
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 // :: error: (Cannot access f on moved value)
 o2.f = o3;
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 // :: error: (Cannot access f on moved value)
 o3.f = o1;
 ```
@@ -260,11 +260,11 @@ o3.f = o1;
 ObjWithPrivField o1 = new ObjWithPrivField();
 ObjWithPrivField o2 = new ObjWithPrivField();
 ObjWithPrivField o3 = new ObjWithPrivField();
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o3.f = o1;
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 o2.f = o3;
-// :: error: (Cannot override because object has not ended its protocol. Type: ObjWithPrivField{Start} | Ended | Moved | Null)
+// :: error: (Cannot override because object has not ended its protocol. Type: State "Start" | Ended | Moved | Null)
 // :: error: (Cannot access f on moved value)
 o1.f = o2;
 ```
@@ -317,7 +317,7 @@ Public fields accessed from "outside" or "inside" the class have all the possibl
 ```java
 @Typestate("Obj")
 public class PublicAccess {
-  
+
   // :: error: (Object did not complete its protocol. Type: Obj{Start} | Ended | Moved)
   public Obj o = new Obj();
 

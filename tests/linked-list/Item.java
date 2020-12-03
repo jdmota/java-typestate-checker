@@ -1,6 +1,6 @@
-import org.checkerframework.checker.mungo.lib.MungoTypestate;
+import org.checkerframework.checker.jtc.lib.Typestate;
 
-@MungoTypestate("Item")
+@Typestate("Item")
 public class Item {
 
   public void a() {

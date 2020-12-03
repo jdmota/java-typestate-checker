@@ -1,24 +1,24 @@
-import org.checkerframework.checker.mungo.lib.MungoTypestate;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Typestate;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 public class LinkedList {
 
   private static class Node {
 
-    // :: error: (Object did not complete its protocol. Type: Item{State0|State1} | Ended | Null | Moved)
-    public @MungoNullable Item value = null;
-    public @MungoNullable Node next;
+    // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Null | Moved)
+    public @Nullable Item value = null;
+    public @Nullable Node next;
 
     private Node(Item value) {
-      // :: warning: (value: Item{State0|State1})
+      // :: warning: (value: State "State0" | State "State1")
       this.value = value;
       this.next = null;
     }
 
   }
 
-  private @MungoNullable Node head;
-  private @MungoNullable Node tail;
+  private @Nullable Node head;
+  private @Nullable Node tail;
 
   public LinkedList() {
     this.head = null;
@@ -26,7 +26,7 @@ public class LinkedList {
   }
 
   public void add(Item value) {
-    // :: warning: (value: Item{State0|State1})
+    // :: warning: (value: State "State0" | State "State1")
     Node n = new Node(value);
     // :: warning: (tail: NoProtocol | Null)
     if (tail == null) {
@@ -40,14 +40,14 @@ public class LinkedList {
     }
   }
 
-  public @MungoNullable Item get(int idx) {
-    @MungoNullable Node node = this.head;
+  public @Nullable Item get(int idx) {
+    @Nullable Node node = this.head;
     // :: warning: (node: NoProtocol | Null)
     for (int i = 0; node != null && i < idx; i++) {
       node = node.next;
     }
-    // type of expression: Item{State0|State1} | Null | Ended | Moved
-    // method return type: Item{State0|State1} | Null
+    // type of expression: State "State0" | State "State1" | Null | Ended | Moved
+    // method return type: State "State0" | State "State1" | Null
     // :: warning: (node: NoProtocol | Null)
     // :: error: (return.type.incompatible)
     return node == null ? null : node.value;

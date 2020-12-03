@@ -1,10 +1,10 @@
-import org.checkerframework.checker.mungo.lib.MungoTypestate;
-import org.checkerframework.checker.mungo.lib.MungoRequires;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Typestate;
+import org.checkerframework.checker.jtc.lib.Requires;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 import java.util.function.Supplier;
 
-@MungoTypestate("JavaIterator.protocol")
+@Typestate("JavaIterator.protocol")
 public class JavaIterator {
 
   public boolean hasNext() {
@@ -16,7 +16,7 @@ public class JavaIterator {
   }
 
   public static void main() {
-    // :: error: (Object did not complete its protocol. Type: JavaIterator{HasNext})
+    // :: error: (Object did not complete its protocol. Type: State "HasNext")
     JavaIterator it = new JavaIterator();
   }
 

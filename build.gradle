@@ -101,7 +101,7 @@ publishing {
     publications {
         maven(MavenPublication) {
             groupId = 'org.checkerframework'
-            artifactId = 'mungo-checker'
+            artifactId = 'jtc-checker'
             version = '0.1-SNAPSHOT'
 
             from components.java

@@ -7,16 +7,16 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import mungo.lib.Typestate;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
+import org.checkerframework.checker.jtc.lib.Nullable;
 
 @Typestate("CProtocol")
 public class CRole {
-  private @MungoNullable BufferedReader socketSIn = null;
-  private @MungoNullable PrintWriter socketSOut = null;
+  private @Nullable BufferedReader socketSIn = null;
+  private @Nullable PrintWriter socketSOut = null;
 
   public CRole() {
     InetAddress addr;
-    @MungoNullable Socket socket = null;
+    @Nullable Socket socket = null;
 
     try {
       addr = InetAddress.getByName("www.google.co.uk");

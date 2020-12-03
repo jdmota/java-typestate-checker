@@ -1,5 +1,4 @@
 import mungo.lib.Typestate;
-import org.checkerframework.checker.mungo.lib.MungoNullable;
 
 @Typestate("ObjProtocol")
 public class PrivateAccess {
