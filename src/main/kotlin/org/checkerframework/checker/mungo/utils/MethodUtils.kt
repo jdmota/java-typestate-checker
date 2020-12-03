@@ -4,9 +4,9 @@ import com.sun.tools.javac.code.*
 import com.sun.tools.javac.comp.AttrContext
 import com.sun.tools.javac.comp.Env
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
-import com.sun.tools.javac.util.List as JavacList
 import com.sun.tools.javac.util.Names
 import org.checkerframework.checker.mungo.typestate.TMethodNode
+import com.sun.tools.javac.util.List as JavacList
 
 class MethodUtils(private val utils: MungoUtils) {
 
@@ -50,7 +50,7 @@ class MethodUtils(private val utils: MungoUtils) {
       } else resolved
     }
 
-    val flags = Flags.PUBLIC.toLong();
+    val flags = Flags.PUBLIC.toLong()
     val name = names.fromString(node.name)
     val argtypes = JavacList.from(node.args.map { resolve(it.stringName()) })
     val restype = resolve(node.returnType.stringName())
@@ -83,8 +83,8 @@ class MethodUtils(private val utils: MungoUtils) {
     return name == node.name &&
       utils.isSameType(type.returnType, resolver.resolve(env, node.returnType.stringName())) &&
       utils.isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it.stringName()) }) // &&
-      // TODO ignore exceptions while we do not support them in typestates
-      // utils.isSameTypes(type.thrownTypes, listOf())
+    // TODO ignore exceptions while we do not support them in typestates
+    // utils.isSameTypes(type.thrownTypes, listOf())
   }
 
   fun sameMethod(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {

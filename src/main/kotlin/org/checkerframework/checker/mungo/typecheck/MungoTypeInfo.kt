@@ -16,6 +16,7 @@ sealed class MungoType {
   open fun isSubtype(other: MungoType): Boolean = isSubtype(this, other)
 
   open fun intersect(other: MungoType): MungoType = intersect(this, other)
+  open fun union(other: MungoType) = MungoUnionType.create(listOf(this, other))
 
   open fun mostSpecific(other: MungoType) = when {
     this.isSubtype(other) -> this
@@ -29,7 +30,7 @@ sealed class MungoType {
 private fun isObjectType(a: MungoType) = a is MungoStateType || a is MungoEndedType || a is MungoNoProtocolType
 private fun isNotObjectType(a: MungoType) = a is MungoNullType || a is MungoPrimitiveType || a is MungoMovedType
 
-// pre: isObjectType(a)
+// Returns true iff a <: b assuming that isObjectType(a)
 private fun isObjectSubtype(a: MungoType, b: MungoType) = when (b) {
   is MungoUnknownType -> true
   is MungoObjectType -> true
@@ -38,6 +39,7 @@ private fun isObjectSubtype(a: MungoType, b: MungoType) = when (b) {
 }
 
 // pre: isNotObjectType(a)
+// Returns true iff a <: b assuming that isNotObjectType(a)
 private fun isNotObjectSubtype(a: MungoType, b: MungoType) = when (b) {
   is MungoUnknownType -> true
   is MungoUnionType -> b.types.any { it == a }
@@ -71,6 +73,7 @@ private fun intersect(a: MungoType, b: MungoType): MungoType = when (a) {
   is MungoUnknownType -> b
   is MungoObjectType -> when (b) {
     is MungoUnknownType -> a
+    is MungoObjectType -> a
     is MungoUnionType -> MungoUnionType.create(b.types.map { intersect(a, it) })
     else -> if (isObjectType(b)) b else MungoBottomType.SINGLETON
   }
@@ -170,7 +173,7 @@ class MungoStateType private constructor(val graph: Graph, val state: State) : M
 
   override fun hashCode() = 31 * graph.hashCode() + state.name.hashCode()
   override fun toString() = "MungoStateType$state"
-  override fun format() = "${graph.typestateName}{${state.name}}"
+  override fun format() = "State \"${state.name}\"" // "${graph.typestateName}{${state.name}}"
 }
 
 sealed class MungoTypeSingletons(private val hashCode: Int) : MungoType() {

@@ -9,7 +9,7 @@ import java.io.File
 import java.util.*
 
 val ignore = emptyList<String>()
-val only = emptyList<String>()
+val only = listOf("inference")
 
 abstract class MungoPerDirectoryTest(val originalTestDir: String, testFiles: List<File>, opts: Array<String>) : CheckerFrameworkPerDirectoryTest(
   testFiles,

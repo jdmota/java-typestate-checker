@@ -1,22 +1,29 @@
 import org.checkerframework.checker.mungo.lib.MungoRequires;
+import org.checkerframework.checker.mungo.lib.MungoEnsures;
+import org.checkerframework.checker.mungo.lib.MungoState;
 
 public class NotOk {
-
+  
   public static void main() {
-    File f = new File();
+    File f = createFile();
 
     switch (f.open()) {
       case OK:
-        use(f);
+        f.read();
+        read(f);
+        f.close();
         break;
       case ERROR:
         break;
     }
   }
+  
+  public static @MungoState("Init") File createFile() {
+    return new File();
+  }
 
-  public static void use(@MungoRequires("Close") File f) {
+  public static void read(@MungoRequires("Read") @MungoEnsures("Close") File f) {
     f.read();
-    f.close();
   }
 
 }

@@ -67,6 +67,18 @@ class TypestateProcessor(private val utils: MungoUtils) {
       return validateGraph(utils, graph)
     }
 
+    fun fromString(utils: MungoUtils, protocol: String, file: Path): Graph? {
+      val stream = CharStreams.fromString(protocol)
+      val lexer = TypestateLexer(stream)
+      val tokens = CommonTokenStream(lexer)
+      val parser = TypestateParser(tokens)
+      parser.errorHandler = BailErrorStrategy()
+      val ast = parser.start().ast
+      // println(Dot.fromGraph(graph))
+      val graph = Graph.fromTypestate(utils, file, ast)
+      return validateGraph(utils, graph)
+    }
+
     // Validate typestate by itself
     private fun validateGraph(utils: MungoUtils, graph: Graph): Graph? {
       var hasErrors = false

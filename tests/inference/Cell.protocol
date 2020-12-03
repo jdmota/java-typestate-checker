@@ -1,0 +1,11 @@
+typestate Cell {
+  NoItem = {
+    void setItem(Item): OneItem,
+    drop: end
+  }
+  OneItem = {
+    Item getItem(): OneItem,
+    void setItem(Item): OneItem,
+    drop: end
+  }
+}

@@ -2,16 +2,23 @@ package org.checkerframework.checker.mungo.utils
 
 import com.sun.source.tree.*
 import org.checkerframework.javacutil.TreeUtils
+import javax.lang.model.element.Element
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.type.TypeVariable
 import javax.lang.model.type.WildcardType
 
-// TODO maybe for the future
-private fun treeToType(tree: Tree) = when (tree) {
+fun treeToType(tree: Tree): TypeMirror = when (tree) {
   is ClassTree -> TreeUtils.elementFromDeclaration(tree).asType()
   is MethodTree -> TreeUtils.elementFromDeclaration(tree).asType()
   is VariableTree -> TreeUtils.elementFromDeclaration(tree).asType()
   is ExpressionTree -> TreeUtils.typeOf(TreeUtils.withoutParens(tree))
+  else -> throw RuntimeException("unknown kind ${tree.kind}")
+}
+
+fun treeToElement(tree: Tree): Element = when (tree) {
+  is ClassTree -> TreeUtils.elementFromDeclaration(tree)
+  is MethodTree -> TreeUtils.elementFromDeclaration(tree)
+  is VariableTree -> TreeUtils.elementFromDeclaration(tree)
   else -> throw RuntimeException("unknown kind ${tree.kind}")
 }
 

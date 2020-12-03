@@ -1,0 +1,47 @@
+package org.checkerframework.checker.mungo.old_code
+
+abstract class AbstractStoreInfo
+
+abstract class AbstractStoreInfoUtils<StoreInfo : AbstractStoreInfo> {
+  abstract fun merge(a: StoreInfo, b: StoreInfo): StoreInfo
+  abstract fun intersect(a: StoreInfo, b: StoreInfo): StoreInfo
+}
+
+abstract class AbstractStore<Store : AbstractStore<Store, MutableStore>, MutableStore : AbstractMutableStore<Store, MutableStore>> {
+  abstract fun toMutable(): MutableStore
+  abstract fun toImmutable(): Store
+}
+
+abstract class AbstractMutableStore<Store : AbstractStore<Store, MutableStore>, MutableStore : AbstractMutableStore<Store, MutableStore>> {
+  abstract fun toMutable(): MutableStore
+  abstract fun toImmutable(): Store
+  abstract fun merge(other: Store)
+  abstract fun mergeFields(other: Store)
+  abstract fun merge(other: MutableStore)
+  abstract fun mergeFields(other: MutableStore)
+  abstract fun toBottom(): MutableStore
+  abstract fun invalidate(analyzer: AbstractAnalyzerBase): MutableStore
+  abstract fun invalidateFields(analyzer: AbstractAnalyzerBase): MutableStore
+  abstract fun invalidatePublicFields(analyzer: AbstractAnalyzerBase): MutableStore
+}
+
+abstract class AbstractStoreUtils<Store : AbstractStore<Store, MutableStore>, MutableStore : AbstractMutableStore<Store, MutableStore>> {
+  abstract fun emptyStore(): Store
+  abstract fun mutableEmptyStore(): MutableStore
+
+  fun merge(a: Store?, b: Store): Store {
+    if (a == null) return b
+    if (a === b) return a
+    val newStore = a.toMutable()
+    newStore.merge(b)
+    return newStore.toImmutable()
+  }
+
+  fun mutableMergeFields(a: Store, b: Store): MutableStore {
+    val newStore = mutableEmptyStore()
+    newStore.mergeFields(a)
+    newStore.mergeFields(b)
+    return newStore
+  }
+}
+

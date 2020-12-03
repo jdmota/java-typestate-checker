@@ -4,12 +4,14 @@ import com.sun.source.tree.CompilationUnitTree
 import com.sun.source.tree.IdentifierTree
 import com.sun.source.tree.Tree
 import com.sun.source.util.TreePath
+import com.sun.source.util.Trees
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Symtab
 import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.file.JavacFileManager
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
+import com.sun.tools.javac.util.Context
 import com.sun.tools.javac.util.JCDiagnostic
 import com.sun.tools.javac.util.Log
 import org.checkerframework.checker.mungo.analysis.TypeFactory
@@ -17,8 +19,10 @@ import org.checkerframework.checker.mungo.lib.*
 import org.checkerframework.checker.mungo.typestate.TypestateProcessor
 import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.framework.source.SourceChecker
-import org.checkerframework.framework.type.AnnotatedTypeMirror
-import org.checkerframework.javacutil.*
+import org.checkerframework.javacutil.AnnotationUtils
+import org.checkerframework.javacutil.BugInCF
+import org.checkerframework.javacutil.TreeUtils
+import org.checkerframework.javacutil.TypesUtils
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -26,18 +30,22 @@ import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
+import javax.lang.model.util.Elements
+import javax.lang.model.util.Types
 import javax.tools.JavaFileManager
 
 class MungoUtils(val checker: SourceChecker) {
 
   val env = (checker.processingEnvironment as JavacProcessingEnvironment)
-  val ctx = env.context
-  val symtab = Symtab.instance(ctx)
-  val log = Log.instance(ctx)
+  val ctx: Context = env.context
+  val symtab: Symtab = Symtab.instance(ctx)
+  val log: Log = Log.instance(ctx)
+  // val maker: TreeMaker = TreeMaker.instance(ctx)
   val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
 
-  val treeUtils = checker.treeUtils
-  val typeUtils = checker.typeUtils
+  val treeUtils: Trees = checker.treeUtils
+  val typeUtils: Types = checker.typeUtils
+  val elementUtils: Elements = checker.elementUtils
 
   val resolver = Resolver(checker)
   val classUtils = ClassUtils(this)

@@ -27,10 +27,9 @@ class Dot private constructor(private val graph: Graph) {
       return name
     }
     if (s is State) {
-      val state = s
-      name = state.name
+      name = s.name
       names[s] = name
-      for ((key, value) in state.transitions) {
+      for ((key, value) in s.transitions) {
         val dest = handleState(value)
         builder.append(name).append(" -> ").append(dest).append("[label=\"").append(key.name).append("\\(...\\)\"]\n")
       }

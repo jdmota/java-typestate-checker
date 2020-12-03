@@ -1,14 +1,15 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
 
-Ok.java: 0-0: Semantic Error
-		Object created at Ok.java: 3. Typestate mismatch. Found: end. Expected: int compare(int, int).```
+MyComparator.java: 0-0: Semantic Error
+		Cannot find typestate MyComparatorProtocol defined for class MyComparator.
 
-## Mungo Checker's output
+MyComparator.java: 0-0: Semantic Error
+		Cannot find typestate MyComparatorProtocol defined for class MyComparator.
+MyComparatorProtocol.protocol:4,9: error: unexpected token ":"```
+
+## Our tool's output
 
 ```
-Ok.java:3: error: [Object did not complete its protocol. Type: MyComparatorProtocol{Start}] (Object did not complete its protocol. Type: MyComparatorProtocol{Start})
-		MyComparator comparator = new MyComparator();
-		             ^
-1 error```
+```

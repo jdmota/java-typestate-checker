@@ -109,7 +109,7 @@ private class FakeAnnotatedTypeFactory(myChecker: SourceChecker) : AnnotatedType
     return true
   }
 
-  private lateinit var analyzer: Analyzer
+  private var analyzer: Analyzer? = null
 
   fun setAnalyzer(analyzer: Analyzer) {
     this.analyzer = analyzer
@@ -117,7 +117,7 @@ private class FakeAnnotatedTypeFactory(myChecker: SourceChecker) : AnnotatedType
 
   override fun getAnnotatedType(tree: Tree): AnnotatedTypeMirror {
     val type = super.getAnnotatedType(tree)
-    val info = analyzer.getInferredInfoOptional(tree)
+    val info = analyzer?.getInferredInfoOptional(tree)
     if (info != null) {
       if (info.type is AnnotatedTypeMirror.AnnotatedDeclaredType) {
         return info.type

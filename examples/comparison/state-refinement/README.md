@@ -1,17 +1,23 @@
-## Original Mungo's output
+## Mungo's output
 
 ```
-```
+NotOk.java:21: error: annotation type org.checkerframework.checker.mungo.lib.MungoState is not applicable to this kind of declaration
+Ok.java:20: error: annotation type org.checkerframework.checker.mungo.lib.MungoState is not applicable to this kind of declaration
 
-## Mungo Checker's output
+NotOk.java: 13-14: Semantic Error
+		Object reference is used uninitialised.
+
+Ok.java: 12-14: Semantic Error
+		Object reference is used uninitialised.
+NotOk.java:21: error: annotation type org.checkerframework.checker.mungo.lib.MungoState is not applicable to this kind of declaration
+Ok.java:20: error: annotation type org.checkerframework.checker.mungo.lib.MungoState is not applicable to this kind of declaration```
+
+## Our tool's output
 
 ```
-NotOk.java:10: error: [argument.type.incompatible] incompatible types in argument.
-        use(f);
-            ^
-  found   : FileProtocol{Read} File
-  required: FileProtocol{Close} File
-NotOk.java:18: error: [Cannot call read on state Close (got: Close)] (Cannot call read on state Close (got: Close))
-    f.read();
-          ^
-2 errors```
+NotOk.java:13: error: [argument.type.incompatible] incompatible types in argument.
+        read(f);
+             ^
+  found   : FileProtocol{Close} File
+  required: FileProtocol{Read} File
+1 error```

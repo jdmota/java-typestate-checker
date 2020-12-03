@@ -2,21 +2,26 @@ package org.checkerframework.checker.mungo.typecheck
 
 import com.sun.source.tree.MemberSelectTree
 import com.sun.source.tree.MethodInvocationTree
-import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
-import com.sun.tools.javac.code.Type
 import org.checkerframework.checker.mungo.typestate.graph.DecisionState
+import org.checkerframework.checker.mungo.typestate.graph.Graph
 import org.checkerframework.checker.mungo.typestate.graph.State
 import org.checkerframework.checker.mungo.utils.ClassUtils
 import org.checkerframework.checker.mungo.utils.MungoUtils
-import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.TreeUtils
-import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
 object MungoTypecheck {
+  fun available(utils: MungoUtils, graph: Graph, method: Symbol.MethodSymbol): List<MungoType> {
+    val env = graph.getEnv()
+    return graph.getAllConcreteStates().filter { state ->
+      // TODO with generics support, replace sameErasedMethod for sameMethod
+      state.transitions.entries.any { utils.methodUtils.sameErasedMethod(env, method, it.key) }
+    }.map { MungoStateType.create(graph, it) }
+  }
+
   fun check(
     utils: MungoUtils,
     info: MungoType,
@@ -34,7 +39,7 @@ object MungoTypecheck {
       is MungoMovedType -> createErrorMsg(node, isMoved = true)
       is MungoStateType -> {
         val env = info.graph.getEnv()
-        // TODO use sameMethod instead of sameErasedMethod
+        // TODO with generics support, replace sameErasedMethod for sameMethod
         if (info.state.transitions.entries.any { utils.methodUtils.sameErasedMethod(env, method, it.key) }) {
           null
         } else {
@@ -177,7 +182,7 @@ object MungoTypecheck {
     return "Cannot access $fieldName ${items.joinToString(", ")}"
   }
 
-  fun refine(utils: MungoUtils, tree: TreePath, type: MungoType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): MungoType {
+  fun refine(utils: MungoUtils, type: MungoType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): MungoType {
     return when (type) {
       // Unknown stays Unknown
       is MungoUnknownType -> MungoUnknownType.SINGLETON
@@ -196,7 +201,7 @@ object MungoTypecheck {
       // Objects with no protocol, stay like that
       is MungoNoProtocolType -> MungoNoProtocolType.SINGLETON
       // Refine...
-      is MungoUnionType -> MungoUnionType.create(type.types.map { refine(utils, tree, it, method, predicate) })
+      is MungoUnionType -> MungoUnionType.create(type.types.map { refine(utils, it, method, predicate) })
       is MungoStateType -> MungoUnionType.create(refine(utils, type, method, predicate))
     }
   }
@@ -204,8 +209,7 @@ object MungoTypecheck {
   private fun refine(utils: MungoUtils, type: MungoStateType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): List<MungoType> {
     val env = type.graph.getEnv()
     // Given a current state, produce a set of possible destination states
-    val dest = type.state.transitions.entries.find { utils.methodUtils.sameMethod(env, method, it.key) }?.value
-    return when (dest) {
+    return when (val dest = type.state.transitions.entries.find { utils.methodUtils.sameMethod(env, method, it.key) }?.value) {
       is State -> listOf(MungoStateType.create(type.graph, dest))
       is DecisionState -> dest.transitions.entries.filter { predicate(it.key.label) }.map { MungoStateType.create(type.graph, it.value) }
       // The method call is not allowed in this state,
