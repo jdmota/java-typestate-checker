@@ -14,9 +14,4 @@ JavaIteratorProtocol.protocol: 5-5: Semantic Error
 ## Our tool's output
 
 ```
-JavaIterator.java:15: error: [return.type.incompatible] incompatible types in return.
-    return it.hasNext() ? Boolean.True : Boolean.False;
-                        ^
-  type of expression: Unknown Boolean
-  method return type: NoProtocol Boolean
-1 error```
+```

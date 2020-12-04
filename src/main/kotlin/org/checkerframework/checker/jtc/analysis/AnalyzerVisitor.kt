@@ -4,9 +4,7 @@ import com.sun.source.tree.*
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.jtc.JavaTypestateChecker
-import org.checkerframework.checker.jtc.typecheck.JTCBottomType
-import org.checkerframework.checker.jtc.typecheck.JTCMovedType
-import org.checkerframework.checker.jtc.typecheck.TypecheckUtils
+import org.checkerframework.checker.jtc.typecheck.*
 import org.checkerframework.checker.jtc.utils.MethodUtils
 import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -76,27 +74,9 @@ class AnalyzerVisitor(private val checker: JavaTypestateChecker, private val ana
     store.intersect(receiver, StoreInfo(prevValue, newInfo))
   }
 
-  override fun visitNode(n: Node, result: MutableAnalyzerResultWithValue): Void? {
+  override fun visitNode(node: Node, result: MutableAnalyzerResultWithValue): Void? {
     return null
   }
-
-  override fun visitClassName(n: ClassNameNode, input: MutableAnalyzerResultWithValue): Void? {
-    // The tree underlying a class name is a type tree.
-    /*val tree = n.tree
-    if (tree != null) {
-      if (TreeUtils.canHaveTypeAnnotation(tree)) {
-        // val at = factory.getAnnotatedTypeFromTypeTree(tree)
-        // TODO
-        return MutableAnalyzerResult(getInitialInfo(tree, n), input.thenStore, input.elseStore)
-      }
-    }
-    return MutableAnalyzerResult(null, input.thenStore, input.elseStore)*/
-    return null
-  }
-
-  /*fun visitArrayAccess(n: ArrayAccessNode, res: MutableAnalyzerResult): MutableAnalyzerResult {
-    return super.visitArrayAccess(n, res)
-  }*/
 
   override fun visitThisLiteral(n: ThisLiteralNode, res: MutableAnalyzerResultWithValue): Void? {
     res.value = getCurrentInfo(res, n, res.value)

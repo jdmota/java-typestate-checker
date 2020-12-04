@@ -595,6 +595,26 @@ class Analyzer(private val checker: JavaTypestateChecker) {
         succ,
         currentInput.elseStore,
         StoreKind.ELSE)
+      FlowRule.BOTH_TO_THEN -> {
+        addStoreBefore(
+          succ,
+          currentInput.thenStore,
+          StoreKind.THEN)
+        addStoreBefore(
+          succ,
+          currentInput.elseStore,
+          StoreKind.THEN)
+      }
+      FlowRule.BOTH_TO_ELSE -> {
+        addStoreBefore(
+          succ,
+          currentInput.thenStore,
+          StoreKind.ELSE)
+        addStoreBefore(
+          succ,
+          currentInput.elseStore,
+          StoreKind.ELSE)
+      }
     }
   }
 

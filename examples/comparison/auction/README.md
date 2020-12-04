@@ -17,11 +17,6 @@ Auction.java: 29-17: Semantic Error
 Auction.java:13: error: [Cannot override because object has not ended its protocol. Type: State "Running" | Ended | Moved] (Cannot override because object has not ended its protocol. Type: State "Running" | Ended | Moved)
       clients[i] = new Client(i);
              ^
-Auction.java:18: error: [return.type.incompatible] incompatible types in return.
-           (hBidder != clientId && val > clients[hBidder].getBid())) ?
-                                                                     ^
-  type of expression: Unknown Boolean
-  method return type: NoProtocol Boolean
 Auction.java:18: error: [Cannot call getBid on ended protocol, on moved value] (Cannot call getBid on ended protocol, on moved value)
            (hBidder != clientId && val > clients[hBidder].getBid())) ?
                                                                 ^
@@ -36,4 +31,4 @@ Auction.java:29: error: [enhancedfor.type.incompatible] incompatible types in en
                          ^
   found   : NoProtocol Client
   required: State "Running" Client
-6 errors```
+5 errors```

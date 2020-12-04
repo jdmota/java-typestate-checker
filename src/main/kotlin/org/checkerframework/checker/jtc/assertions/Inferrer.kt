@@ -469,6 +469,14 @@ class Inferrer(val checker: JavaTypestateChecker) {
       Store.FlowRule.ELSE_TO_ELSE -> {
         constraints.implies(prev.postElse, next.preElse)
       }
+      Store.FlowRule.BOTH_TO_THEN -> {
+        constraints.implies(prev.postThen, next.preThen)
+        constraints.implies(prev.postElse, next.preThen)
+      }
+      Store.FlowRule.BOTH_TO_ELSE -> {
+        constraints.implies(prev.postThen, next.preElse)
+        constraints.implies(prev.postElse, next.preElse)
+      }
     }
   }
 
