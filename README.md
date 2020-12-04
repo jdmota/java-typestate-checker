@@ -1,8 +1,8 @@
 # Java Typestate Checker plugin for the Checker Framework
 
-## How it works
+The Java Typestate Checker is a plugin for the Checker Framework. This plugin allows one to statically ensure that method calls are called in the correct order. The sequences of method calls allowed are specified in a protocol file which is associated with a Java class by adding a `@Typestate` annotation to the class. You can find an example in the [demo folder](https://github.com/jdmota/java-typestate-checker/tree/master/demo) of this project.
 
-Adding a `@Typestate("ProtocolFile")` annotation to the top of a class enforces that instances of that class follow the protocol defined by the protocol file. Every time a method call on an object is encountered, we make sure that the object is in a state that allows that invocation. The type of the object then changes to conform to the new state reached after that method call. We also make sure protocols are completed.
+This tool in inspired in the [Mungo tool](http://www.dcs.gla.ac.uk/research/mungo/index.html). It is a new implementation which includes new features and improvements over the current version of Mungo. A comparison table between Mungo and this tool is available [here](https://github.com/jdmota/abcd-mungo/wiki/Comparison).
 
 ## Features
 
@@ -20,6 +20,18 @@ The tool has two modes:
 
 - Linear mode: where objects must be used in a linear way;
 - Not linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**).
+
+## Experiment (linear mode)
+
+Run the following command from the `demo` folder:
+
+`java -jar checker-3.8.0/checker.jar -classpath jtc-checker.jar -processor org.checkerframework.checker.jtc.JavaTypestateChecker *.java`
+
+## Resources
+
+- Tutorial *upcoming*
+- Paper *upcoming*
+- Thesis *upcoming*
 
 <!-- http://www.plantuml.com/plantuml/uml/NSqn2i9048NXVayHKgcG6rW4mT8O40yGirEixix0-YOs7bx8Wc6sUl0Lx-_Vc38qHNVd5yk7c-EtwvhhuqapN9b2xGqJQ7VOjuRFxCaR6MJC0fcb-XmqLZBca0B2GfOlif1tMw_eIG19RkqPsNgMDLhuruokCICziTSKVm00 -->
 
@@ -80,41 +92,33 @@ Since annotations are only able to store some types of values, not arbitrary obj
 More details: [Manual - How to create a Checker plugin](https://checkerframework.org/manual/#creating-a-checker)
 -->
 
-## Experiment
+## Developer information
 
-Run the following command from the `dist` folder:
-
-`java -jar checker-3.8.0/checker.jar -classpath jtc-checker.jar -processor org.checkerframework.checker.jtc.JavaTypestateChecker *.java`
-
-## Preparation
+### Preparation
 
 - Download and extract the Checker Framework to `examples` such that `examples/checker-framework-VERSION/checker/dist/checker.jar` exists.
 - Download and extract Z3 such that `z3/bin/com.microsoft.z3.jar` and the other libraries exist.
 
-## Build and test
+### Build and test
 
 - Unix: `./gradlew build`
 - Windows: `gradlew.bat build`
 
-## Build jar file
+### Build jar file
 
 - Unix: `./gradlew buildJar`
 - Windows: `gradlew.bat buildJar`
 
 The produced jar file goes into the `examples` folder.
 
-## Remote testing
+### Remote testing
 
 - Unix: `./gradlew test --debug-jvm`
 - Windows: `gradlew.bat test --debug-jvm`
 
-## Running comparison tests
+### Running comparison tests
 
 1. Extract [Checker Framework](https://checkerframework.org/) into the `examples` folder.
 1. Build jar file.
 1. Run `cd examples && bash run` on Unix or Cygwin.
 1. Check `examples/comparison` and nested folders for results.
-
-## Comparison
-
-[Comparison table between Mungo and this tool](https://github.com/jdmota/abcd-mungo/wiki/Comparison)
