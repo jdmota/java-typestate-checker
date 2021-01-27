@@ -1,0 +1,16 @@
+typestate LineReaderProtocol {
+  Init = {
+    Status open(String): <OK: Open, ERROR: end>
+  }
+  Open = {
+    boolean eof(): <true: Close, false: Read>,
+    void close(): end
+  }
+  Read = {
+    String read(): Open,
+    void close(): end
+  }
+  Close = {
+     void close(): end
+  }
+}
