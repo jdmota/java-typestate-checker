@@ -141,13 +141,13 @@ class JavaIteratorWrapper5 {
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
+    // :: warning: (iterator: Moved)
+    // :: error: (Cannot call hasNext on moved value)
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (iterator: Bottom)
     return iterator.next();
   }
 
@@ -234,9 +234,7 @@ class JavaIteratorWrapper8 {
   }
 
   public boolean hasNext() {
-    // This error exists because the "use" call invalidates information
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
+    // :: warning: (iterator: State "HasNext" | State "Next")
     return iterator.hasNext();
   }
 
@@ -269,9 +267,7 @@ class JavaIteratorWrapper9 {
   }
 
   public boolean hasNext() {
-    // This error exists because the "use" call invalidates information
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
+    // :: warning: (iterator: State "HasNext" | State "Next")
     return iterator.hasNext();
   }
 

@@ -252,17 +252,22 @@ class AnalyzerVisitor(private val checker: JavaTypestateChecker, private val ana
   override fun visitMethodInvocation(n: MethodInvocationNode, result: MutableAnalyzerResultWithValue): Void? {
     val method = n.target.method as Symbol.MethodSymbol
     val args = n.arguments
+    val receiver = getReference(n.target.receiver) ?: return null
 
     // Invalidate
-    // TODO improve?
+    // TODO improve
     if (!isSideEffectFree(method)) {
-      result.thenStore.invalidateFields(analyzer)
-      result.elseStore.invalidateFields(analyzer)
+      if (receiver is ThisReference) {
+        result.thenStore.invalidateFields(analyzer)
+        result.elseStore.invalidateFields(analyzer)
+      } else {
+        result.thenStore.invalidatePublicFields(analyzer)
+        result.elseStore.invalidatePublicFields(analyzer)
+      }
     }
 
     // Apply type refinements
 
-    val receiver = getReference(n.target.receiver) ?: return null
     val returnsBool = MethodUtils.returnsBoolean(method)
     val predicateThen = if (returnsBool) ifTrue else allLabels
     val predicateElse = if (returnsBool) ifFalse else allLabels

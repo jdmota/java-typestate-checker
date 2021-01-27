@@ -19,6 +19,7 @@ import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.UnderlyingAST.*
 import org.checkerframework.dataflow.cfg.block.*
 import org.checkerframework.dataflow.cfg.node.*
+import org.checkerframework.dataflow.util.NodeUtils
 import org.checkerframework.framework.flow.CFCFGBuilder
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.ElementUtils
@@ -738,19 +739,39 @@ class Analyzer(private val checker: JavaTypestateChecker) {
 
       for ((method, destState) in methodToStates) {
         val entryStore = mergeMethodStore(method, store) ?: continue
-        val result = run(classQueue, lambdaQueue, CFGMethod(method, classTree), entryStore)
-        val constantReturn = getConstantReturn(returnStatementStores[method]!!.map { it.first })
+        val generalResult = run(classQueue, lambdaQueue, CFGMethod(method, classTree), entryStore)
+        val returns = returnStatementStores[method]!!
 
         // Merge new exit store with the stores of each destination state
-        when (destState) {
-          is State -> mergeStateStore(destState, result.regularStore)
-          is DecisionState -> {
-            // TODO handle enumeration values as well
-            for ((label, dest) in destState.transitions) {
-              when (label.label) {
-                "true" -> mergeStateStore(dest, if (constantReturn != false) result.thenStore else emptyStore)
-                "false" -> mergeStateStore(dest, if (constantReturn != true) result.elseStore else emptyStore)
-                else -> mergeStateStore(dest, result.regularStore)
+        // Taking into account the possible return values
+        if (returns.isEmpty()) {
+          val result = generalResult
+          when (destState) {
+            is State -> mergeStateStore(destState, result.regularStore)
+            is DecisionState -> {
+              for ((_, dest) in destState.transitions) {
+                mergeStateStore(dest, result.regularStore)
+              }
+            }
+          }
+        } else {
+          for (pair in returns) {
+            val returnNode = pair.first
+            val result = pair.second!!
+            when (destState) {
+              is State -> mergeStateStore(destState, result.regularStore)
+              is DecisionState -> {
+                for ((label, dest) in destState.transitions) {
+                  if (mayGoToLabel(returnNode, label.label)) {
+                    when (label.label) {
+                      "true" -> mergeStateStore(dest, result.thenStore)
+                      "false" -> mergeStateStore(dest, result.elseStore)
+                      else -> mergeStateStore(dest, result.regularStore)
+                    }
+                  } else {
+                    mergeStateStore(dest, emptyStore)
+                  }
+                }
               }
             }
           }
@@ -801,22 +822,21 @@ class Analyzer(private val checker: JavaTypestateChecker) {
     storeClassResult(classTree, globalStore)
   }
 
-  private fun getConstantReturn(returnStores: List<ReturnNode>): Boolean? {
-    var sawTrue = false
-    var sawFalse = false
-    for (ret in returnStores) {
-      when (val result = ret.result) {
-        is BooleanLiteralNode -> if (result.value!!) {
-          if (sawFalse) return null
-          sawTrue = true
-        } else {
-          if (sawTrue) return null
-          sawFalse = true
-        }
-        else -> return null
+  private fun mayGoToLabel(node: ReturnNode, label: String): Boolean {
+    val result = node.result
+    if (NodeUtils.isConstantBoolean(result, true)) {
+      return label == "true"
+    }
+    if (NodeUtils.isConstantBoolean(result, false)) {
+      return label == "false"
+    }
+    // Handle enumeration values
+    if (result is FieldAccessNode) {
+      if (result.receiver is ClassNameNode) {
+        return label == result.fieldName
       }
     }
-    return sawTrue
+    return true
   }
 
 }

@@ -28,11 +28,11 @@ public class CRole {
     }
 
     try {
-      // :: warning: (socketSIn: NoProtocol | Null)
+      // :: warning: (socketSIn: Null)
       // :: warning: (socket: NoProtocol | Null)
       // :: error: (Cannot call getInputStream on null)
       socketSIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-      // :: warning: (socketSOut: NoProtocol | Null)
+      // :: warning: (socketSOut: Null)
       socketSOut = new PrintWriter(socket.getOutputStream(), true);
     } catch (IOException e) {
       System.out.println("Read failed");
