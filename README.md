@@ -19,13 +19,15 @@ This tool in inspired in the [Mungo tool](http://www.dcs.gla.ac.uk/research/mung
 The tool has two modes:
 
 - Linear mode: where objects must be used in a linear way;
-- Not linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**).
+- Non linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**). It is experimental and has some limitations.
 
-## Experiment (linear mode)
+## Demo
 
 Run the following command from the `demo` folder:
 
 `java -jar checker-3.8.0/checker.jar -classpath jtc-checker.jar -processor org.checkerframework.checker.jtc.JavaTypestateChecker *.java`
+
+Non linear mode (which enables the inference algorithm), may be experimented with by adding the flag `-AperformInference`, setting the environment key `JAVA_OPTS` to `-Djava.library.path=Z3_BIN`, and extending `PATH` with `Z3_BIN`, where `Z3_BIN` is a folder containing `com.microsoft.z3.jar` and the other Z3 libraries.
 
 ## Resources
 
