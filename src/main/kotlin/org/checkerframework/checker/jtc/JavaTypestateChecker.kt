@@ -48,7 +48,7 @@ class JavaTypestateChecker : SourceChecker() {
     val log = Log.instance(context)
 
     if (log.nerrors > errsOnLastExit) {
-      println("${log.nerrors} > $errsOnLastExit")
+      // println("${log.nerrors} > $errsOnLastExit")
       errsOnLastExit = log.nerrors
       // return
     }

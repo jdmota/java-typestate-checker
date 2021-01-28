@@ -6,8 +6,13 @@ import org.checkerframework.checker.jtc.lib.Nullable;
 
 @Typestate("LineReader.protocol")
 public class LineReader {
-  private @Nullable FileReader file = null;
+  private @Nullable FileReader file;
   private int curr;
+
+  public LineReader() {
+    this.file = null;
+    this.curr = 0;
+  }
 
   public Status open(String filename) {
     try {

@@ -98,6 +98,11 @@ class Inferrer(val checker: JavaTypestateChecker) {
       val ct = qel.first as JCTree.JCClassDecl
       val outerSkeleton = qel.second
 
+      if (ct.sym.isEnum) {
+        // FIXME analyze enumeration classes
+        continue
+      }
+
       utils.classUtils.visitClassSymbol(ct.sym)?.let { graph ->
         graph.getAllConcreteStates().forEach {
           constraints.addType(JTCStateType.create(graph, it))
@@ -126,12 +131,15 @@ class Inferrer(val checker: JavaTypestateChecker) {
         field.init = nullTree
       }*/
       if (field.initializer != null) {
-        phase1(
+        /*phase1(
           classQueue,
           lambdaQueue,
           UnderlyingAST.CFGStatement(field, classTree),
           outerSkeleton
-        )
+        )*/
+        // FIXME it seems that the receiver of the assignment does not appear in the list of nodes
+        // FIXME e.g. with private FileReader file = null; "this.file" and "this" do not appear in cfg.allNodes
+        throw RuntimeException("Field initializers are not supported yet")
       }
     }
 
@@ -251,6 +259,14 @@ class Inferrer(val checker: JavaTypestateChecker) {
     // Save skeleton for the creation of new assertions
     val skeleton = SymbolicAssertionSkeleton(unknownInfo, ref, locations, equalities)
     currentSkeleton = skeleton
+
+    println("-----")
+    println("Method")
+    println(cfg.underlyingAST.code)
+    println("Locations")
+    println(locations)
+    println("Equalities")
+    println(equalities)
 
     return skeleton
   }
@@ -393,6 +409,12 @@ class Inferrer(val checker: JavaTypestateChecker) {
         val last = traverse(prev, block.node, flowRule) ?: return
         block.successor?.let { traverse(ast, last, it, block.flowRule) }
         // TODO handle possible exceptions
+        for ((cause, value) in block.exceptionalSuccessors) {
+          for (exceptionSucc in value) {
+            traverse(ast, last, exceptionSucc, Store.FlowRule.BOTH_TO_THEN)
+            traverse(ast, last, exceptionSucc, Store.FlowRule.BOTH_TO_ELSE)
+          }
+        }
       }
       is ConditionalBlock -> {
         block.thenSuccessor?.let { traverse(ast, prev, it, block.thenFlowRule) }
@@ -437,7 +459,7 @@ class Inferrer(val checker: JavaTypestateChecker) {
         postElse = postThen
       }
 
-      val nodeAssertions = NodeAssertions(preThen, preElse, postThen, postElse, node.toString())
+      val nodeAssertions = NodeAssertions(preThen, preElse, postThen, postElse, node.toStringDebug())
       assertions[node] = nodeAssertions
       assertionsList.add(Pair(node, nodeAssertions))
 
@@ -556,8 +578,8 @@ class Inferrer(val checker: JavaTypestateChecker) {
   fun phase2() {
     println("Inferring constraints...")
 
-    constraints.same(unknownInfo.fraction, 0)
-    constraints.same(unknownInfo.packFraction, 0)
+    constraints.same(unknownInfo.fraction, 1)
+    constraints.same(unknownInfo.packFraction, 1)
     constraints.same(unknownInfo.type, JTCUnknownType.SINGLETON)
 
     val visitor = ConstraintsInference(this, constraints)
@@ -575,16 +597,34 @@ class Inferrer(val checker: JavaTypestateChecker) {
         println("No solution!\n")
 
         solution.unsatCore.map { z3exprLabel ->
-          val (constraint, expr, z3expr) = constraints.getConstraintByLabel(z3exprLabel.toString())
+          val (expr, z3expr) = constraints.getConstraintByLabel(z3exprLabel.toString())
           // println(constraints.formatExpr(z3expr, solution))
           expr
         }.let { list ->
-          // list.forEach { println(it) }
-          println("--- Simplified ---")
-          Simplifier(true, setEqualsToFalse = true).simplifyAll(list).forEach {
+          println("---UNSAT CORE---")
+          list.forEach {
+            var expr = it
+            println(expr)
+            while (true) {
+              val origin = expr.origin
+              val mainOrigin = expr.mainOrigin
+              if (origin != null) {
+                println("Origin: $origin")
+                expr = origin
+              } else {
+                println("Main origin: $mainOrigin")
+                if (mainOrigin != null) {
+
+                }
+                break
+              }
+            }
+            println("---")
+          }
+          /*Simplifier(true, setEqualsToFalse = true).simplifyAll(list).forEach {
             println("")
             println(it)
-            val a = when(it) {
+            val a = when (it) {
               is TinyEqArith -> it.a
               is TinyLe -> it.a
               is TinyGe -> it.a
@@ -592,11 +632,11 @@ class Inferrer(val checker: JavaTypestateChecker) {
               is TinyGt -> it.a
               else -> null
             }
-            if(a is TinySomeFraction) {
+            if (a is TinySomeFraction) {
               println(a.sym.info)
               println(a.sym.info.debugWhere())
             }
-          }
+          }*/
         }
       }
       is UnknownSolution -> {
@@ -641,7 +681,7 @@ class Inferrer(val checker: JavaTypestateChecker) {
         }
 
         solution.unsatCore?.map { z3exprLabel ->
-          val (constraint, expr, z3expr) = constraints.getConstraintByLabel(z3exprLabel.toString())
+          val (expr, z3expr) = constraints.getConstraintByLabel(z3exprLabel.toString())
           // println(constraints.formatExpr(z3expr, solution))
           expr.substitute(SolutionMap(solution))
         }?.let { list ->

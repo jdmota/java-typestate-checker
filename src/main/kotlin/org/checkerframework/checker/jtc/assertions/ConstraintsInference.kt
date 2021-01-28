@@ -631,11 +631,12 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
 
   override fun visitNode(n: Node?, result: NodeAssertions): Void? {
     if (n != null) {
-      println("----")
+      /*println("----")
       println("NOT ANALYZED")
       println(n)
       println(n::class.java)
-      println("----")
+      println("----")*/
+      ensures.noSideEffects(result)
     }
     return null
   }

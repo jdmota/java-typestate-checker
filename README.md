@@ -19,7 +19,7 @@ This tool in inspired in the [Mungo tool](http://www.dcs.gla.ac.uk/research/mung
 The tool has two modes:
 
 - Linear mode: where objects must be used in a linear way;
-- Non linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**). It is experimental and has some limitations.
+- Non linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**). It is highly experimental, including several limitations, and may not provide the same guarantees that the linear mode is able to provide.
 
 ## Demo
 

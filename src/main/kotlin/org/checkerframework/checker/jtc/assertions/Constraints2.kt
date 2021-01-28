@@ -12,7 +12,11 @@ sealed class TinyExpr<E : TinyExpr<E, Z>, Z : Expr> {
   abstract fun toZ3(setup: ConstraintsSetup): Z
 }
 
-sealed class TinyBoolExpr : TinyExpr<TinyBoolExpr, BoolExpr>()
+sealed class TinyBoolExpr : TinyExpr<TinyBoolExpr, BoolExpr>() {
+  var mainOrigin: Constraint? = null
+  var phase: Int? = null
+  var origin: TinyBoolExpr? = null
+}
 
 sealed class TinyArithExpr : TinyExpr<TinyArithExpr, ArithExpr>()
 

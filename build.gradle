@@ -87,8 +87,16 @@ jar {
 }
 
 task buildJar(type: Copy) {
-    from jar
-    into "examples"
+    into "."
+    into("examples") {
+      from jar
+    }
+    into("examples/line-reader-example") {
+      from jar
+    }
+    into("demo") {
+      from jar
+    }
 }
 
 tasks.withType(JavaCompile).all {

@@ -19,18 +19,24 @@ class ConstraintsSet(val constraint: Constraint) : Iterable<TinyBoolExpr> {
   fun addIn1(expr: TinyBoolExpr): ConstraintsSet {
     phase1.add(expr)
     all.add(expr)
-    return this
-  }
-
-  fun addIn2(expr: TinyBoolExpr): ConstraintsSet {
-    phase2.add(expr)
-    all.add(expr)
+    expr.mainOrigin = constraint
+    expr.phase = 1
     return this
   }
 
   fun addIn1Enforce(expr: TinyBoolExpr): ConstraintsSet {
     phase1Enforce.add(expr)
     all.add(expr)
+    expr.mainOrigin = constraint
+    expr.phase = 2
+    return this
+  }
+
+  fun addIn2(expr: TinyBoolExpr): ConstraintsSet {
+    phase2.add(expr)
+    all.add(expr)
+    expr.mainOrigin = constraint
+    expr.phase = 3
     return this
   }
 
@@ -879,6 +885,7 @@ private class TypeImpliesSymType(val a: JTCType, val b: SymbolicType) : Constrai
 }
 
 private class SymTypeImpliesType(val a: SymbolicType, val b: JTCType) : Constraint() {
+
   override fun toString(): String {
     return "($id) $a ==> $b"
   }
@@ -952,10 +959,10 @@ class Constraints {
     types.add(type)
   }
 
-  private val idToConstraint = mutableMapOf<String, Triple<Constraint, TinyBoolExpr, BoolExpr>>()
+  private val labelToOrigin = mutableMapOf<String, Pair<TinyBoolExpr, BoolExpr>>()
 
-  fun getConstraintByLabel(label: String): Triple<Constraint, TinyBoolExpr, BoolExpr> {
-    return idToConstraint[label.subSequence(1, label.lastIndex)]!!
+  fun getConstraintByLabel(label: String): Pair<TinyBoolExpr, BoolExpr> {
+    return labelToOrigin[label.subSequence(1, label.lastIndex)]!!
   }
 
   private lateinit var setup: ConstraintsSetup
@@ -989,28 +996,55 @@ class Constraints {
       throw new TestFailedException();
   */
 
+  private fun buildAllExprs(): Collection<TinyBoolExpr> {
+    val constraintsSets = constraints.map { it.build() }
+    val allExprs = mutableListOf<TinyBoolExpr>()
+    for (set in constraintsSets) {
+      for (expr in set) {
+        allExprs.add(expr)
+      }
+    }
+    return Simplifier(experimental = true, setEqualsToFalse = false).simplifyAll(allExprs)
+  }
+
+  private fun solveIn1Phase(): InferenceResult {
+    setup = ConstraintsSetup(types).start()
+    val exprs = buildAllExprs()
+
+    for ((idx, expr) in exprs.withIndex()) {
+      val label = "$idx"
+      val z3expr = expr.toZ3(setup)
+      println(expr)
+      labelToOrigin[label] = Pair(expr, z3expr)
+      setup.addAssert(z3expr, label)
+    }
+
+    println("Solving...")
+    val result = setup.solve()
+    println("Done")
+
+    return when (result) {
+      is MiniNoSolution -> NoSolution(result.unsatCore)
+      is MiniUnknownSolution -> UnknownSolution(result.reason)
+      is MiniSolution -> Solution(setup, result.model, result.model)
+    }
+  }
+
   private fun solveIn2Phases(): InferenceResult {
     setup = ConstraintsSetup(types).start()
-    val constraintsSets = constraints.map { it.build() }
-    val allPhase1Exprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
-    val allPhase1EnforcedExprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
-    val allPhase2Exprs = mutableListOf<Pair<Constraint, TinyBoolExpr>>()
-
-    // Simplify...
-    for (set in constraintsSets) {
-      for (expr in set.phase1It()) allPhase1Exprs.add(Pair(set.constraint, expr))
-      for (expr in set.phase1EnforceIt()) allPhase1EnforcedExprs.add(Pair(set.constraint, expr))
-      for (expr in set.phase2It()) allPhase2Exprs.add(Pair(set.constraint, expr))
-    }
+    val exprs = buildAllExprs()
 
     // Phase 1...
 
-    for ((idx, pair) in allPhase1Exprs.withIndex()) {
-      val (constraint, expr) = pair
-      val label = "${constraint.id}-$idx-1"
-      val z3expr = expr.toZ3(setup)
-      idToConstraint[label] = Triple(constraint, expr, z3expr)
-      setup.addAssert(z3expr, label)
+    for ((idx, expr) in exprs.withIndex()) {
+      if (expr.phase == null) throw AssertionError("Bool expr without phase?")
+      if (expr.phase == 1) {
+        val label = "$idx"
+        val z3expr = expr.toZ3(setup)
+        println(expr)
+        labelToOrigin[label] = Pair(expr, z3expr)
+        setup.addAssert(z3expr, label)
+      }
     }
 
     println("Solving (phase 1)...")
@@ -1028,19 +1062,20 @@ class Constraints {
 
     // setup.push()
 
-    for ((idx, pair) in allPhase1EnforcedExprs.withIndex()) {
-      val (constraint, expr) = pair
-      // val label = "${constraint.id}-$idx-1.1"
-      val z3expr = expr.toZ3(setup)
-      val simplified = result1.model.eval(z3expr, false).simplify() as BoolExpr
-      if (simplified.toString() != "true") {
-        println("---")
-        println(expr)
-        println(simplified)
-        println("---")
+    for ((idx, expr) in exprs.withIndex()) {
+      if (expr.phase == 2) {
+        // val label = "$idx"
+        val z3expr = expr.toZ3(setup)
+        val simplified = result1.model.eval(z3expr, false).simplify() as BoolExpr
+        if (simplified.toString() != "true") {
+          println("---")
+          println(expr)
+          println(simplified)
+          println("---")
+        }
+        // idToConstraint[label] = Triple(constraint, expr, z3expr)
+        // setup.addAssert(z3expr, label)
       }
-      // idToConstraint[label] = Triple(constraint, expr, z3expr)
-      // setup.addAssert(z3expr, label)
     }
 
     /*println("Solving (phase 1 enforcements)...")
@@ -1058,13 +1093,14 @@ class Constraints {
 
     setup.push()
 
-    for ((idx, pair) in allPhase2Exprs.withIndex()) {
-      val (constraint, expr) = pair
-      val label = "${constraint.id}-$idx-2"
-      val z3expr = expr.toZ3(setup)
-      val simplified = result1.model.eval(z3expr, false).simplify() as BoolExpr
-      idToConstraint[label] = Triple(constraint, expr, z3expr)
-      setup.addAssert(simplified, label)
+    for ((idx, expr) in exprs.withIndex()) {
+      if (expr.phase == 3) {
+        val label = "$idx"
+        val z3expr = expr.toZ3(setup)
+        val simplified = result1.model.eval(z3expr, false).simplify() as BoolExpr
+        labelToOrigin[label] = Pair(expr, z3expr)
+        setup.addAssert(simplified, label)
+      }
     }
 
     println("Solving (phase 2)...")
@@ -1080,6 +1116,7 @@ class Constraints {
 
   fun solve(): InferenceResult {
     started = true
+    // return solveIn1Phase()
     return solveIn2Phases()
   }
 

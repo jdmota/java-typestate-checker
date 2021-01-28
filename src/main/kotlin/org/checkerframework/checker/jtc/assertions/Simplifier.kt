@@ -106,8 +106,6 @@ class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Bo
     }
   }
 
-  fun simplify(expr: TinyBoolExpr) = expr.substitute(this)
-
   fun simplifyAll(exprs: Collection<TinyBoolExpr>): Collection<TinyBoolExpr> {
     val falseExprs = mutableSetOf<TinyBoolExpr>()
     var prev = exprs
@@ -116,6 +114,8 @@ class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Bo
       prev = next
       next = prev.mapNotNull { track(it) }.map {
         val s = it.substitute(this)
+        s.origin = it
+        s.phase = it.phase
         if (it != Make.FALSE && s == Make.FALSE) falseExprs.add(it)
         s
       }

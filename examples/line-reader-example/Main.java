@@ -35,7 +35,7 @@ public class Main {
   }*/
 
   // No errors
-  public static void ok() throws Exception {
+  /*public static void ok() throws Exception {
     LineReader reader = new LineReader();
 
     switch (reader.open("LineReader.java")) {
@@ -49,7 +49,7 @@ public class Main {
         System.err.println("Could not open file");
         break;
     }
-  }
+  }*/
 
   // java.lang.NullPointerException
   /*public static void nullPointer() throws Exception {
@@ -60,9 +60,9 @@ public class Main {
     }
     reader.close();
   }*/
-  
+
   // Errors
-  public static void mistakes() throws Exception {
+  /*public static void mistakes() throws Exception {
     LineReader reader = new LineReader();
 
     switch (reader.open("LineReader.java")) {
@@ -75,10 +75,10 @@ public class Main {
         System.err.println("Could not open file");
         break;
     }
-  }
+  }*/
 
   // java.io.IOException: Stream closed
-  public static void closeError() throws Exception {
+  /*public static void closeError() throws Exception {
     LineReader reader = new LineReader();
 
     switch (reader.open("LineReader.java")) {
@@ -92,7 +92,7 @@ public class Main {
         System.err.println("Could not open file");
         break;
     }
-  }
+  }*/
 
   // java.io.IOException: Stream closed
   /*public static void dataRace() throws Exception {

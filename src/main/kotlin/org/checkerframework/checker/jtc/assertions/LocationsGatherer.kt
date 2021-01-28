@@ -5,6 +5,7 @@ import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.jtc.JavaTypestateChecker
 import org.checkerframework.checker.jtc.analysis.*
+import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import javax.lang.model.element.ElementKind
@@ -28,8 +29,14 @@ class LocationsGatherer(private val checker: JavaTypestateChecker) : TreePathSca
       val pkg = utils.elementUtils.getPackageOf(element).qualifiedName.toString()
       // Avoid recursion...
       if (!pkg.startsWith("java.")) {
-        element.members_field?.symbols?.filterIsInstance(Symbol.VarSymbol::class.java)?.forEach {
-          getLocationsHelper(list, FieldAccess(ref, it))
+        if (JTCUtils.isEnum(ref.type)) {
+          element.members_field?.symbols?.filterIsInstance(Symbol.VarSymbol::class.java)?.forEach {
+            list.add(FieldAccess(ref, it))
+          }
+        } else {
+          element.members_field?.symbols?.filterIsInstance(Symbol.VarSymbol::class.java)?.forEach {
+            getLocationsHelper(list, FieldAccess(ref, it))
+          }
         }
       }
     }
