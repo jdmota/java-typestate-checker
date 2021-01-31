@@ -164,9 +164,9 @@ class ConstraintsSetup(usedTypes: Set<JTCType>) {
   }
 
   private var transitionUuid = 1L
-  private val methodToTransitionFunc = mutableMapOf<JavacSymbol.MethodSymbol, FuncDecl>()
-  fun methodToTransitionFunc(method: JavacSymbol.MethodSymbol, map: Map<JTCType, JTCType>): FuncDecl {
-    return methodToTransitionFunc.computeIfAbsent(method) {
+  private val methodToTransitionFunc = mutableMapOf<Pair<JavacSymbol.MethodSymbol, CHOICE>, FuncDecl>()
+  fun methodToTransitionFunc(method: JavacSymbol.MethodSymbol, choice: CHOICE, map: Map<JTCType, JTCType>): FuncDecl {
+    return methodToTransitionFunc.computeIfAbsent(Pair(method, choice)) {
       val key = "trans${transitionUuid++}"
       ctx.mkRecFuncDecl(ctx.mkSymbol(key), arrayOf(setup.Type), setup.Type) { _, args ->
         val a = args[0]

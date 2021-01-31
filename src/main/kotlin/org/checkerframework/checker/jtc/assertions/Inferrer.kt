@@ -685,11 +685,12 @@ class Inferrer(val checker: JavaTypestateChecker) {
           // println(constraints.formatExpr(z3expr, solution))
           expr.substitute(SolutionMap(solution))
         }?.let { list ->
+          println("---UNSAT CORE---")
           val simplifier = Simplifier(true)
           val simplifiedExprs = simplifier.simplifyAll(list)
           simplifiedExprs.forEach {
             println(it)
-            for (symbol in simplifier.getSymbols(it)) {
+            /*for (symbol in simplifier.getSymbols(it)) {
               println("Symbol $symbol")
               val aliases = simplifier.getSame(symbol)
               for (alias in aliases) {
@@ -701,7 +702,7 @@ class Inferrer(val checker: JavaTypestateChecker) {
                   }
                 }
               }
-            }
+            }*/
           }
         }
       }

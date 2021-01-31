@@ -4,6 +4,7 @@ import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.jtc.analysis.*
 import org.checkerframework.checker.jtc.typecheck.*
+import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.javacutil.TreeUtils
@@ -292,21 +293,6 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     return false
   }
 
-  private fun constructTransitions(
-    initialStates: Collection<JTCType>,
-    method: Symbol.MethodSymbol,
-    predicate: (String) -> Boolean
-  ): Map<JTCType, JTCType> {
-    val map = mutableMapOf<JTCType, JTCType>()
-    val allInitialStates = initialStates.toMutableSet()
-    allInitialStates.add(JTCUnionType.create(initialStates))
-    // TODO include more combinations
-    for (state in allInitialStates) {
-      map[state] = TypecheckUtils.refine(inferrer.utils, state, method, predicate)
-    }
-    return map
-  }
-
   private fun call(call: Node, receiver: Node?, argNodes: Collection<Node>, method: Symbol.MethodSymbol, result: NodeAssertions) {
     if (isObjectConstructor(method)) {
       ensures.noSideEffects(result)
@@ -351,7 +337,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
           val states = TypecheckUtils.available(inferrer.utils, graph, method)
           val union = JTCUnionType.create(states)
           require.type(receiver, result, union)
-          typeAfterCall = TypeAfterCallTransition(method, constructTransitions(states, method) { true })
+          typeAfterCall = TypeAfterCallTransition(inferrer.utils, states, method)
         }
       }
     }
@@ -430,7 +416,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         }
 
         constraints.other { c ->
-          reduce(ConstraintsSet(c), result) { set, tail, heads ->
+          reduce(ConstraintsSet(c), result) { set, tail, heads, choice ->
             tail.forEach { ref, info ->
               if (usedInLambda(ref)) {
                 set.addIn1(Make.S.eq(
@@ -500,7 +486,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
         preconditionToCall(receiverRef!!, requiredType)
 
         constraints.other { c ->
-          reduce(ConstraintsSet(c), result) { set, tail, heads ->
+          reduce(ConstraintsSet(c), result) { set, tail, heads, choice ->
             tail.forEach { ref, info ->
               if (usedInLambda(ref)) {
                 set.addIn1(Make.S.eq(
@@ -566,7 +552,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       }
       else -> {
         constraints.other { c ->
-          reduce(ConstraintsSet(c), result) { set, tail, heads ->
+          reduce(ConstraintsSet(c), result) { set, tail, heads, choice ->
             tail.forEach { ref, info ->
               if (ref == callRef && isConstructor) {
                 set.addIn1(Make.S.eq(info.fraction.expr, Make.ONE))
@@ -625,6 +611,46 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
   }
 
   override fun visitMemberReference(n: FunctionalInterfaceNode, result: NodeAssertions): Void? {
+    ensures.noSideEffects(result)
+    return null
+  }
+
+  override fun visitConditionalNot(n: ConditionalNotNode, result: NodeAssertions): Void? {
+    constraints.implies(result.preThen, result.postElse)
+    constraints.implies(result.preElse, result.postThen)
+    return null
+  }
+
+  private fun getBooleanValue(node: Node): Boolean? = when (node) {
+    is BooleanLiteralNode -> node.value!!
+    is ConditionalNotNode -> getBooleanValue(node.operand)?.not()
+    else -> null
+  }
+
+  private fun getLabel(node: Node) = when (node) {
+    is FieldAccessNode -> if (JTCUtils.isEnum(node.type)) node.fieldName else null
+    else -> getBooleanValue(node)?.let { if (it) "true" else "false" }
+  }
+
+  override fun visitEqualTo(n: EqualToNode, result: NodeAssertions): Void? {
+    val left = n.leftOperand
+    val right = n.rightOperand
+    val label = getLabel(right)
+    if (left is MethodInvocationNode && label != null) {
+      val receiver = left.target.receiver
+      val method = left.target.method
+      if (receiver != null && method is Symbol.MethodSymbol) {
+        val graph = inferrer.utils.classUtils.visitClassTypeMirror(receiver.type)
+        if (graph != null) {
+          val preStates = TypecheckUtils.available(inferrer.utils, graph, method)
+          // TODO improve this to be more precise
+          val thenType = TypecheckUtils.refine(inferrer.utils, JTCUnionType.create(preStates), method) { it == label }
+          val elseType = TypecheckUtils.refine(inferrer.utils, JTCUnionType.create(preStates), method) { it != label }
+          constraints.refinedType(result, getRef(receiver), thenType, elseType)
+          return null
+        }
+      }
+    }
     ensures.noSideEffects(result)
     return null
   }

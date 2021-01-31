@@ -547,18 +547,19 @@ class TinyUnion(val list: Collection<TinyJTCTypeExpr>) : TinyJTCTypeExpr() {
 class TinyTransition(
   val initial: TinyJTCTypeExpr,
   val method: Symbol.MethodSymbol,
+  val choice: CHOICE,
   val map: Map<JTCType, JTCType>
 ) : TinyJTCTypeExpr() {
   override fun substitute(s: Substitution): TinyJTCTypeExpr {
-    return Make.S.transition(initial.substitute(s), method, map)
+    return Make.S.transition(initial.substitute(s), method, choice, map)
   }
 
   override fun toZ3(setup: ConstraintsSetup): Expr {
-    return setup.ctx.mkApp(setup.methodToTransitionFunc(method, map), initial.toZ3(setup))
+    return setup.ctx.mkApp(setup.methodToTransitionFunc(method, choice, map), initial.toZ3(setup))
   }
 
   override fun toString(): String {
-    return "(transition $initial ${map.entries.joinToString(", ") { (a, b) -> "${a.format()}->${b.format()}" }})"
+    return "(transition $choice $initial ${map.entries.joinToString(", ") { (a, b) -> "${a.format()}->${b.format()}" }})"
   }
 }
 
@@ -846,11 +847,11 @@ class Make private constructor() {
     }
   }
 
-  fun transition(initial: TinyJTCTypeExpr, method: Symbol.MethodSymbol, map: Map<JTCType, JTCType>): TinyJTCTypeExpr {
+  fun transition(initial: TinyJTCTypeExpr, method: Symbol.MethodSymbol, choice: CHOICE, map: Map<JTCType, JTCType>): TinyJTCTypeExpr {
     if (initial is TinyJTCType) {
       return type(map[initial.type] ?: JTCUnknownType.SINGLETON)
     }
-    return TinyTransition(initial, method, map)
+    return TinyTransition(initial, method, choice, map)
   }
 
   // exists x :: eq(a, x) && eq(x, b)

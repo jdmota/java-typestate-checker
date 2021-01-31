@@ -57,16 +57,20 @@ sealed class Constraint {
   abstract fun build(): ConstraintsSet
 }
 
+enum class CHOICE {
+  BOTH, THEN, ELSE
+}
+
 fun reduce(
   result: ConstraintsSet,
   assertions: NodeAssertions,
-  fn: (result: ConstraintsSet, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>) -> Unit
+  fn: (result: ConstraintsSet, tail: SymbolicAssertion, heads: Set<SymbolicAssertion>, choice: CHOICE) -> Unit
 ): ConstraintsSet {
   if (assertions.postThen === assertions.postElse) {
-    fn(result, assertions.postThen, setOf(assertions.preThen, assertions.preElse))
+    fn(result, assertions.postThen, setOf(assertions.preThen, assertions.preElse), CHOICE.BOTH)
   } else {
-    fn(result, assertions.postThen, setOf(assertions.preThen))
-    fn(result, assertions.postElse, setOf(assertions.preElse))
+    fn(result, assertions.postThen, setOf(assertions.preThen), CHOICE.THEN)
+    fn(result, assertions.postElse, setOf(assertions.preElse), CHOICE.ELSE)
   }
   return result
 }
@@ -341,18 +345,52 @@ private class ForSureMap<K, V>(private val default: (K) -> V) {
 }
 
 sealed class TypeAfterCall {
-  abstract fun toExpr(initial: TinyJTCTypeExpr): TinyJTCTypeExpr
+  abstract fun toExpr(initial: TinyJTCTypeExpr, choice: CHOICE): TinyJTCTypeExpr
+  abstract fun getAllTypes(fn: (JTCType) -> Unit)
 }
 
 class TypeAfterCallSpecific(val type: JTCType) : TypeAfterCall() {
-  override fun toExpr(initial: TinyJTCTypeExpr): TinyJTCTypeExpr {
+  override fun toExpr(initial: TinyJTCTypeExpr, choice: CHOICE): TinyJTCTypeExpr {
     return Make.S.type(type)
+  }
+
+  override fun getAllTypes(fn: (JTCType) -> Unit): Unit {
+    fn(type)
   }
 }
 
-class TypeAfterCallTransition(val method: Symbol.MethodSymbol, val map: Map<JTCType, JTCType>) : TypeAfterCall() {
-  override fun toExpr(initial: TinyJTCTypeExpr): TinyJTCTypeExpr {
-    return Make.S.transition(initial, method, map)
+private fun constructTransitions(
+  utils: JTCUtils,
+  initialStates: Collection<JTCType>,
+  method: Symbol.MethodSymbol,
+  predicate: (String) -> Boolean
+): Map<JTCType, JTCType> {
+  val map = mutableMapOf<JTCType, JTCType>()
+  val allInitialStates = initialStates.toMutableSet()
+  allInitialStates.add(JTCUnionType.create(initialStates))
+  // TODO account for more more combinations
+  for (state in allInitialStates) {
+    map[state] = TypecheckUtils.refine(utils, state, method, predicate)
+  }
+  return map
+}
+
+class TypeAfterCallTransition(val utils: JTCUtils, val initialStates: Collection<JTCType>, val method: Symbol.MethodSymbol) : TypeAfterCall() {
+  override fun toExpr(initial: TinyJTCTypeExpr, choice: CHOICE): TinyJTCTypeExpr {
+    return Make.S.transition(initial, method, choice, constructTransitions(utils, initialStates, method) { label ->
+      when (choice) {
+        CHOICE.THEN -> label != "false"
+        CHOICE.ELSE -> label != "true"
+        else -> true
+      }
+    })
+  }
+
+  override fun getAllTypes(fn: (JTCType) -> Unit) {
+    for (type in constructTransitions(utils, initialStates, method) { true }) {
+      fn(type.key)
+      fn(type.value)
+    }
   }
 }
 
@@ -366,7 +404,8 @@ fun handleCall(
   methodPost: Set<SymbolicAssertion>,
   tail: SymbolicAssertion,
   heads: Set<SymbolicAssertion>,
-  result: ConstraintsSet
+  result: ConstraintsSet,
+  choice: CHOICE
 ) {
   val isConstructor = callRef is NodeRef && callRef.node is ObjectCreationNode
   val returnRef = ReturnSpecialVar(callRef.type)
@@ -468,7 +507,7 @@ fun handleCall(
       if (isConstructor && ref == callRef && typeAfterCall != null) {
         result.addIn2(Make.S.eq(
           info.type.expr,
-          typeAfterCall.toExpr(types[ref])
+          typeAfterCall.toExpr(types[ref], choice)
         ))
       } else {
         result.addIn2(Make.S.eq(
@@ -515,7 +554,7 @@ fun handleCall(
       if (ref == receiverRef && typeAfterCall != null) {
         result.addIn2(Make.S.eq(
           info.type.expr,
-          typeAfterCall.toExpr(types[ref])
+          typeAfterCall.toExpr(types[ref], choice)
         ))
       } else {
         result.addIn2(Make.S.eq(
@@ -588,6 +627,89 @@ fun handleCall(
         )
       )
     ))
+  }
+}
+
+fun handleNoSideEffects(
+  tail: SymbolicAssertion,
+  heads: Set<SymbolicAssertion>,
+  result: ConstraintsSet
+) {
+  tail.forEach { ref, info ->
+    result.addIn1(Make.S.eq(
+      info.fraction.expr,
+      Make.S.min(heads.map { it[ref].fraction.expr })
+    ))
+    result.addIn1(Make.S.eq(
+      info.packFraction.expr,
+      Make.S.min(heads.map { it[ref].packFraction.expr })
+    ))
+    result.addIn2(Make.S.eq(
+      info.type.expr,
+      Make.S.union(heads.map { it[ref].type.expr })
+    ))
+  }
+
+  for ((a, b) in tail.skeleton.allEqualities) {
+    // Equality is true in assertion "tail" if present in the other assertions
+    result.addIn1(
+      Make.S.eq(
+        Make.S.equals(tail, a, b),
+        Make.S.mult(heads.map {
+          Make.S.equals(it, a, b)
+        })
+      )
+    )
+  }
+}
+
+fun handleRefinedType(
+  tail: SymbolicAssertion,
+  heads: Set<SymbolicAssertion>,
+  variable: Reference,
+  type: JTCType,
+  result: ConstraintsSet
+) {
+  tail.forEach { ref, info ->
+    if (ref == variable) {
+      result.addIn1(Make.S.eq(
+        info.fraction.expr,
+        Make.S.min(heads.map { it[ref].fraction.expr })
+      ))
+      result.addIn1(Make.S.eq(
+        info.packFraction.expr,
+        Make.S.min(heads.map { it[ref].packFraction.expr })
+      ))
+      result.addIn2(Make.S.eq(
+        info.type.expr,
+        Make.S.type(type)
+      ))
+    } else {
+      result.addIn1(Make.S.eq(
+        info.fraction.expr,
+        Make.S.min(heads.map { it[ref].fraction.expr })
+      ))
+      result.addIn1(Make.S.eq(
+        info.packFraction.expr,
+        Make.S.min(heads.map { it[ref].packFraction.expr })
+      ))
+      result.addIn2(Make.S.eq(
+        info.type.expr,
+        Make.S.union(heads.map { it[ref].type.expr })
+      ))
+    }
+  }
+
+  for ((a, b) in tail.skeleton.allEqualities) {
+    // Equality is true in assertion "tail" if present in the other assertions
+    result.addIn1(
+      Make.S.eq(
+        Make.S.equals(tail, a, b),
+        Make.S.mult(heads.map {
+          Make.S.equals(it, a, b)
+        })
+      )
+    )
   }
 }
 
@@ -685,8 +807,8 @@ private class NoSideEffects(val assertions: NodeAssertions) : Constraint() {
   }
 
   override fun build(): ConstraintsSet {
-    return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
-      handleNewVariable(tail, heads, null, null, result)
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads, choice ->
+      handleNoSideEffects(tail, heads, result)
     }
   }
 }
@@ -694,12 +816,29 @@ private class NoSideEffects(val assertions: NodeAssertions) : Constraint() {
 private class NewVariable(val assertions: NodeAssertions, val variable: Reference, val type: JTCType) : Constraint() {
 
   override fun toString(): String {
-    return "($id) $variable: $type"
+    return "($id) var $variable: $type"
   }
 
   override fun build(): ConstraintsSet {
-    return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads, choice ->
       handleNewVariable(tail, heads, variable, type, result)
+    }
+  }
+}
+
+private class RefinedType(val assertions: NodeAssertions, val variable: Reference, val thenType: JTCType, val elseType: JTCType) : Constraint() {
+
+  override fun toString(): String {
+    return "($id) $variable: thenType $thenType; elseType $elseType"
+  }
+
+  override fun build(): ConstraintsSet {
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads, choice ->
+      handleRefinedType(tail, heads, variable, when (choice) {
+        CHOICE.THEN -> thenType
+        CHOICE.ELSE -> elseType
+        CHOICE.BOTH -> thenType.union(elseType)
+      }, result)
     }
   }
 }
@@ -720,7 +859,7 @@ private class CallConstraints(
   }
 
   override fun build(): ConstraintsSet {
-    return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads, choice ->
       handleCall(
         callRef,
         receiverRef,
@@ -731,7 +870,8 @@ private class CallConstraints(
         methodPost,
         tail,
         heads,
-        result
+        result,
+        choice
       )
     }
   }
@@ -813,7 +953,7 @@ private class EqualityInAssertion(
   }
 
   override fun build(): ConstraintsSet {
-    return reduce(ConstraintsSet(this), assertions) { result, tail, heads ->
+    return reduce(ConstraintsSet(this), assertions) { result, tail, heads, choice ->
       handleEquality(old, target, expr, tail, heads, result)
     }
   }
@@ -1144,6 +1284,10 @@ class Constraints {
     constraints.add(NewVariable(assertions, variable, type))
   }
 
+  fun refinedType(assertions: NodeAssertions, variable: Reference, thenType: JTCType, elseType: JTCType) {
+    constraints.add(RefinedType(assertions, variable, thenType, elseType))
+  }
+
   fun one(a: SymbolicFraction) {
     // a == 1
     constraints.add(SymFractionEq(a, 1))
@@ -1221,19 +1365,7 @@ class Constraints {
     methodPre: SymbolicAssertion,
     methodPost: Set<SymbolicAssertion>
   ) {
-    when (typeAfterCall) {
-      is TypeAfterCallSpecific -> {
-        addType(typeAfterCall.type)
-      }
-      is TypeAfterCallTransition -> {
-        for ((a, b) in typeAfterCall.map) {
-          addType(a)
-          addType(b)
-        }
-      }
-      null -> {
-      }
-    }
+    typeAfterCall?.getAllTypes { addType(it) }
     constraints.add(CallConstraints(
       assertions,
       callRef,
