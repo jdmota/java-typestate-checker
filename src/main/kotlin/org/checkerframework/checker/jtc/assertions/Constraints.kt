@@ -71,18 +71,18 @@ fun reduce(
   return result
 }
 
-private fun equals(heads: Collection<SymbolicAssertion>, first: Reference, second: Reference): TinyBoolExpr {
-  val list = mutableListOf<TinyBoolExpr>()
+private fun equals(heads: Collection<SymbolicAssertion>, first: Reference, second: Reference): TinyArithExpr {
+  val list = mutableListOf<TinyArithExpr>()
   var a: Reference? = first
   var b: Reference? = second
   while (a != null && b != null) {
-    list.add(Make.S.and(heads.map { Make.S.equals(it, a!!, b!!) }))
+    list.add(Make.S.mult(heads.map { Make.S.equals(it, a!!, b!!) }))
     if (false && a is FieldAccess && b is FieldAccess && a.fieldName == b.fieldName) {
       a = a.parent
       b = b.parent
     } else break
   }
-  return Make.S.or(list)
+  return Make.S.addBool(list)
 }
 
 fun fractionsAccumulation(ref: Reference, heads: Collection<SymbolicAssertion>, tail: SymbolicAssertion, result: ConstraintsSet) {
@@ -104,10 +104,9 @@ fun fractionsAccumulation(ref: Reference, heads: Collection<SymbolicAssertion>, 
         Make.S.min(heads.map { it[otherRef].fraction.expr }),
         if (ref == otherRef) Make.ZERO else tail[otherRef].fraction.expr
       )
-      Make.S.ite(
+      Make.S.mult(
         equals(heads, parent, otherParent),
-        sub,
-        Make.ZERO
+        sub
       )
     }
   )
@@ -136,10 +135,9 @@ fun packFractionsAccumulation(ref: Reference, heads: Collection<SymbolicAssertio
         Make.S.min(heads.map { it[other].packFraction.expr }),
         if (ref == other) Make.ZERO else tail[other].packFraction.expr
       )
-      Make.S.ite(
+      Make.S.mult(
         equals(heads, ref, other),
-        sub,
-        Make.ZERO
+        sub
       )
     }
   )
@@ -160,7 +158,7 @@ fun typesAccumulation(ref: Reference, heads: Collection<SymbolicAssertion>, tail
   val others = tail.skeleton.getPossibleEq(ref)
   val typeExpr = Make.S.intersection(others.map { other ->
     Make.S.ite(
-      equals(heads, ref, other),
+      Make.S.gt(equals(heads, ref, other), Make.ZERO),
       Make.S.union(heads.map { it[other].type.expr }),
       Make.S.type(JTCUnknownType.SINGLETON)
     )
@@ -231,8 +229,8 @@ fun handleImplies(
             Make.S.eq(tail[a].fraction.expr, Make.ZERO),
             Make.S.eq(tail[b].fraction.expr, Make.ZERO)
           )),
-          Make.FALSE,
-          Make.S.and(heads.map { Make.S.equals(it, a, b) })
+          Make.ZERO,
+          Make.S.mult(heads.map { Make.S.equals(it, a, b) })
         )
       )
     )
@@ -321,7 +319,7 @@ fun handleEquality(
     val d = equalsReplace(b)
     result.addIn1(Make.S.eq(
       Make.S.equals(tail, a, b),
-      Make.S.and(heads.map {
+      Make.S.mult(heads.map {
         Make.S.equals(it, c, d)
       })
     ))
@@ -562,28 +560,28 @@ fun handleCall(
       Make.S.ite(
         Make.S.and(listOf(aNotModified, bNotModified)),
         // Nothing was modified, equality holds if it holds before
-        Make.S.and(heads.map {
+        Make.S.mult(heads.map {
           Make.S.equals(it, a, b)
         }),
         Make.S.ite(
           aNotModified,
           // B was modified
-          Make.S.or(listOf(
+          Make.S.addBool(listOf(
             Make.S.equalsTransitive(tail, a, b),
-            Make.S.and(methodPost.map {
+            Make.S.mult(methodPost.map {
               Make.S.equals(it, c, d)
             })
           )),
           Make.S.ite(
             bNotModified,
             // A was modified
-            Make.S.or(listOf(
+            Make.S.addBool(listOf(
               Make.S.equalsTransitive(tail, a, b),
-              Make.S.and(methodPost.map {
+              Make.S.mult(methodPost.map {
                 Make.S.equals(it, c, d)
               })
             )),
-            Make.S.and(methodPost.map {
+            Make.S.mult(methodPost.map {
               Make.S.equals(it, c, d)
             })
           )
@@ -651,14 +649,14 @@ fun handleNewVariable(
       // (even if the declaration was in a loop)
       // We invalidate it anyway to be sure
       result.addIn1(
-        Make.S.not(Make.S.equals(tail, a, b))
+        Make.S.eq(Make.S.equals(tail, a, b), Make.ZERO)
       )
     } else {
       // Equality is true in assertion "tail" if present in the other assertions
       result.addIn1(
         Make.S.eq(
           Make.S.equals(tail, a, b),
-          Make.S.and(heads.map {
+          Make.S.mult(heads.map {
             Make.S.equals(it, a, b)
           })
         )
@@ -776,7 +774,7 @@ private class ParameterAndLocalVariable(
       }
     }
 
-    result.addIn1(Make.S.equals(assertion, parameter, local))
+    result.addIn1(Make.S.eq(Make.S.equals(assertion, parameter, local), Make.ONE))
 
     helper(parameter, local)
     return result
@@ -793,8 +791,12 @@ private class NotEqualityInAssertion(
   }
 
   override fun build(): ConstraintsSet {
-    return ConstraintsSet(this).addIn1(Make.S.not(
+    /*return ConstraintsSet(this).addIn1(Make.S.not(
       Make.S.equals(assertion, a, b)
+    ))*/
+    return ConstraintsSet(this).addIn1(Make.S.eq(
+      Make.S.equals(assertion, a, b),
+      Make.ZERO
     ))
   }
 }
@@ -1038,7 +1040,7 @@ class Constraints {
 
     for ((idx, expr) in exprs.withIndex()) {
       if (expr.phase == null) throw AssertionError("Bool expr without phase?")
-      if (expr.phase == 1) {
+      if (expr.phase == 1 || expr.phase == 2) {
         val label = "$idx"
         val z3expr = expr.toZ3(setup)
         println(expr)
@@ -1062,7 +1064,7 @@ class Constraints {
 
     // setup.push()
 
-    for ((idx, expr) in exprs.withIndex()) {
+    /*for ((idx, expr) in exprs.withIndex()) {
       if (expr.phase == 2) {
         // val label = "$idx"
         val z3expr = expr.toZ3(setup)
@@ -1076,7 +1078,7 @@ class Constraints {
         // idToConstraint[label] = Triple(constraint, expr, z3expr)
         // setup.addAssert(z3expr, label)
       }
-    }
+    }*/
 
     /*println("Solving (phase 1 enforcements)...")
     result1 = setup.solve()

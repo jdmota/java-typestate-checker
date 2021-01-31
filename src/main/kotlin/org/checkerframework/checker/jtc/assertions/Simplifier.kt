@@ -91,10 +91,10 @@ class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Bo
         allEqualities[expr.a] = expr.b
         null
       } else expr
-      is TinyEquals -> if (shouldTrack(expr)) {
+      /*is TinyEquals -> if (shouldTrack(expr)) {
         allEqualities[expr] = Make.TRUE
         null
-      } else expr
+      } else expr*/
       is TinyNot -> if (shouldTrack(expr.bool)) {
         allEqualities[expr.bool] = Make.FALSE
         null

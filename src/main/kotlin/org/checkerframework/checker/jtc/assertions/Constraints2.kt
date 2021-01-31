@@ -18,6 +18,8 @@ sealed class TinyBoolExpr : TinyExpr<TinyBoolExpr, BoolExpr>() {
   var origin: TinyBoolExpr? = null
 }
 
+// TODO create TinyBoolArithExpr
+
 sealed class TinyArithExpr : TinyExpr<TinyArithExpr, ArithExpr>()
 
 sealed class TinyJTCTypeExpr : TinyExpr<TinyJTCTypeExpr, Expr>()
@@ -113,6 +115,20 @@ class TinySub(val a: TinyArithExpr, val b: TinyArithExpr) : TinyArithExpr() {
 
   override fun toString(): String {
     return "($a - $b)"
+  }
+}
+
+class TinyMult(val list: Collection<TinyArithExpr>) : TinyArithExpr() {
+  override fun substitute(s: Substitution): TinyArithExpr {
+    return Make.S.mult(list.map { it.substitute(s) })
+  }
+
+  override fun toZ3(setup: ConstraintsSetup): ArithExpr {
+    return setup.ctx.mkMul(*list.map { it.toZ3(setup) }.toTypedArray())
+  }
+
+  override fun toString(): String {
+    return "(${list.joinToString(" * ")})"
   }
 }
 
@@ -451,12 +467,12 @@ class TinyMin(val list: Collection<TinyArithExpr>) : TinyArithExpr() {
   }
 }
 
-class TinyEquals(val assertion: SymbolicAssertion, val a: Reference, val b: Reference) : TinyBoolExpr() {
-  override fun substitute(s: Substitution): TinyBoolExpr {
-    return s[this] as? TinyBoolExpr ?: Make.S.equals(assertion, a, b)
+class TinyEquals(val assertion: SymbolicAssertion, val a: Reference, val b: Reference) : TinyArithExpr() {
+  override fun substitute(s: Substitution): TinyArithExpr {
+    return s[this] as? TinyArithExpr ?: Make.S.equals(assertion, a, b)
   }
 
-  override fun toZ3(setup: ConstraintsSetup): BoolExpr {
+  override fun toZ3(setup: ConstraintsSetup): ArithExpr {
     return setup.mkEquals(assertion, a, b)
   }
 
@@ -583,6 +599,43 @@ class Make private constructor() {
     } else {
       TinySub(a, b)
     }
+  }
+
+  fun mult(a: TinyArithExpr, b: TinyArithExpr): TinyArithExpr {
+    return if (a == ZERO || b == ZERO) {
+      ZERO
+    } else if (a == ONE) {
+      b
+    } else if (b == ONE) {
+      a
+    } else if (a is TinyReal && b is TinyReal) {
+      TinyReal(
+        a.num * b.num,
+        a.denominator * b.denominator
+      )
+    } else {
+      TinyMult(listOf(a, b))
+    }
+  }
+
+  fun mult(list: Collection<TinyArithExpr>): TinyArithExpr {
+    if (list.contains(ZERO)) {
+      return ZERO
+    }
+    val l = list.filterNot { it == ONE }
+    return when {
+      l.isEmpty() -> ONE
+      l.size == 1 -> l.first()
+      else -> TinyMult(l)
+    }
+  }
+
+  fun addBool(list: Collection<TinyArithExpr>): TinyArithExpr {
+    return ite(
+      eq(add(list), ZERO),
+      ZERO,
+      ONE
+    )
   }
 
   fun gt(a: TinyArithExpr, b: TinyArithExpr): TinyBoolExpr {
@@ -738,12 +791,12 @@ class Make private constructor() {
     }
   }
 
-  fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): TinyBoolExpr {
+  fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): TinyArithExpr {
     return when {
-      a == b -> TRUE
+      a == b -> ONE
       assertion.skeleton.isPossibleEq(a, b) -> TinyEquals(assertion, a, b)
       assertion.skeleton.isPossibleEq(b, a) -> TinyEquals(assertion, b, a)
-      else -> FALSE
+      else -> ZERO
     }
   }
 
@@ -801,16 +854,24 @@ class Make private constructor() {
   }
 
   // exists x :: eq(a, x) && eq(x, b)
-  fun equalsTransitive(assertion: SymbolicAssertion, a: Reference, b: Reference): TinyBoolExpr {
+  fun equalsTransitive(assertion: SymbolicAssertion, a: Reference, b: Reference): TinyArithExpr {
     // "a" and "b" are in this set
     val possibleEqualities = assertion.skeleton.getPossibleEq(a)
     val others = possibleEqualities.filterNot { it == a || it == b }
+    return addBool(others.map {
+      mult(
+        equals(assertion, a, it),
+        equals(assertion, it, b)
+      )
+    })
+    /*
     return or(others.map {
       and(listOf(
         equals(assertion, a, it),
         equals(assertion, it, b)
       ))
     })
+    */
   }
 
   fun fraction(sym: SymbolicFraction) = TinySomeFraction(sym)

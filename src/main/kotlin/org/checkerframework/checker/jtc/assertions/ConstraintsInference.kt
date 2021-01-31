@@ -487,7 +487,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
               set.addIn1(
                 Make.S.eq(
                   Make.S.equals(tail, a, b),
-                  Make.S.and(heads.map { Make.S.equals(it, a, b) })
+                  Make.S.mult(heads.map { Make.S.equals(it, a, b) })
                 )
               )
             }
@@ -557,7 +557,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
               set.addIn1(
                 Make.S.eq(
                   Make.S.equals(tail, a, b),
-                  Make.S.and(heads.map { Make.S.equals(it, a, b) })
+                  Make.S.mult(heads.map { Make.S.equals(it, a, b) })
                 )
               )
             }
@@ -597,7 +597,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
               set.addIn1(
                 Make.S.eq(
                   Make.S.equals(tail, a, b),
-                  Make.S.and(heads.map { Make.S.equals(it, a, b) })
+                  Make.S.mult(heads.map { Make.S.equals(it, a, b) })
                 )
               )
             }

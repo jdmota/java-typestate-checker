@@ -88,17 +88,17 @@ class SymbolicInfo(val ref: Reference, private val assertion: SymbolicAssertion?
       }
 
       if (strings.isNotEmpty()) {
-        str.appendLine("// ${strings.joinToString(" $\\wedge$ ")}")
+        str.appendLine("// ${strings.joinToString(" && ")}") // $\wedge$
       }
     } else {
       val hasAccess = access != "0"
       val hasDotZeroAccess = accessDotZero != "0"
       val hasRelevantType =
         type != "Unknown" &&
-        type != "Object" &&
-        type != "Object | Null" &&
-        (ref !is ReturnSpecialVar || type != "Primitive") &&
-        (ref !is NodeRef || type != "Primitive")
+          type != "Object" &&
+          type != "Object | Null" &&
+          (ref !is ReturnSpecialVar || type != "Primitive") &&
+          (ref !is NodeRef || type != "Primitive")
       val showAccesses = (hasRelevantType || (ref !is ReturnSpecialVar && ref !is NodeRef))
       val strings = mutableListOf<String>()
 
@@ -113,7 +113,7 @@ class SymbolicInfo(val ref: Reference, private val assertion: SymbolicAssertion?
       }
 
       if (strings.isNotEmpty()) {
-        str.appendLine("// ${strings.joinToString(" $\\wedge$ ")}")
+        str.appendLine("// ${strings.joinToString(" && ")}") // $\wedge$
       }
     }
 
@@ -219,8 +219,8 @@ class SymbolicAssertion(val skeleton: SymbolicAssertionSkeleton, var where: Stri
 
     for ((a, b) in skeleton.allEqualities) {
       val equals = solution.equals(this, a, b).toString()
-      if (equals != "false") {
-        str.appendLine("// eq($a,$b)${if (equals == "true") "" else " ($equals)"}")
+      if (equals != "false" && equals != "0") {
+        str.appendLine("// eq($a,$b)${if (equals == "true" || equals == "1") "" else " ($equals)"}")
       }
     }
 

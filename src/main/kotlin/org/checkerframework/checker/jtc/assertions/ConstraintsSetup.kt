@@ -190,14 +190,6 @@ class ConstraintsSetup(usedTypes: Set<JTCType>) {
     }
   }
 
-  private var equalsUuid = 1L
-  private val equalsToExpr = mutableMapOf<Triple<SymbolicAssertion, Reference, Reference>, BoolExpr>()
-  fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference): BoolExpr =
-    equalsToExpr.computeIfAbsent(Triple(assertion, a, b)) {
-      val key = "eq${equalsUuid++}"
-      ctx.mkConst(key, setup.Bool) as BoolExpr
-    }
-
   fun mkSubtype(a: Expr, b: Expr) = ctx.mkApp(setup.subtype, a, b) as BoolExpr
 
   fun mkMin(a: ArithExpr, b: ArithExpr) =
@@ -222,6 +214,16 @@ class ConstraintsSetup(usedTypes: Set<JTCType>) {
     }
 
   val keyToSomething = mutableMapOf<String, Any>()
+
+  private var equalsUuid = 1L
+  private val equalsToExpr = mutableMapOf<Triple<SymbolicAssertion, Reference, Reference>, ArithExpr>()
+  fun mkEquals(assertion: SymbolicAssertion, a: Reference, b: Reference): ArithExpr =
+    equalsToExpr.computeIfAbsent(Triple(assertion, a, b)) {
+      val key = "eq${equalsUuid++}"
+      val expr = ctx.mkConst(key, setup.Real) as ArithExpr
+      addAssert(ctx.mkOr(ctx.mkEq(expr, ctx.mkReal(0)), ctx.mkEq(expr, ctx.mkReal(1))))
+      expr
+    }
 
   private val fractionKeyToExpr = mutableMapOf<String, ArithExpr>()
   fun mkFraction(key: String): ArithExpr {
