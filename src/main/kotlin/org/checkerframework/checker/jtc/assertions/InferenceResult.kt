@@ -26,7 +26,7 @@ sealed class SomeSolution(protected val setup: ConstraintsSetup, val model1: Mod
 
   abstract fun get(x: SymbolicType): String
 
-  abstract fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): Expr
+  abstract fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): String
 
   fun skipRef(ref: Reference): Boolean {
     return when (ref) {
@@ -66,20 +66,39 @@ class IncompleteSolution(setup: ConstraintsSetup, model: Model, val unsatCore: A
 
   override fun get(x: SymbolicType): String = "Unknown"
 
-  override fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): Expr {
-    return model1.eval(setup.mkEquals(assertion, a, b), false)
+  override fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): String {
+    return model1.eval(setup.mkEquals(assertion, a, b), false).toString()
   }
 
 }
 
-class Solution(setup: ConstraintsSetup, model1: Model, model2: Model) : SomeSolution(setup, model1, model2) {
+class Solution(setup: ConstraintsSetup, model1: Model, model2: Model, val simplifier: Simplifier) : SomeSolution(setup, model1, model2) {
 
-  override fun get(x: SymbolicFraction): String = model1.eval(setup.mkFraction(x.z3Symbol()), true).toString()
+  override fun get(x: SymbolicFraction): String {
+    val fraction = Make.S.fraction(x)
+    val maybeResult = simplifier[fraction]
+    if (maybeResult is TinyReal) {
+      return maybeResult.toString()
+    }
+    return model1.eval(maybeResult.toZ3(setup), true).toString()
+  }
 
-  override fun get(x: SymbolicType): String = setup.labelToType(model2!!.eval(setup.mkType(x.z3Symbol()), true).toString()).format()
+  override fun get(x: SymbolicType): String {
+    val type = Make.S.type(x)
+    val maybeResult = simplifier[type]
+    if (maybeResult is TinyJTCType) {
+      return maybeResult.toString()
+    }
+    return setup.labelToType(model2!!.eval(maybeResult.toZ3(setup), true).toString()).format()
+  }
 
-  override fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): Expr {
-    return model1.eval(setup.mkEquals(assertion, a, b), false)
+  override fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): String {
+    val equals = Make.S.equals(assertion, a, b)
+    val maybeResult = simplifier[equals]
+    if (maybeResult is TinyReal) {
+      return maybeResult.toString()
+    }
+    return model1.eval(maybeResult.toZ3(setup), false).toString()
   }
 
 }

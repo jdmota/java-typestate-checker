@@ -51,9 +51,9 @@ class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Bo
     it is TinySomeFraction || it is TinySomeType
   }
 
-  override operator fun get(expr: TinyExpr<*, *>): TinyExpr<*, *>? {
+  override operator fun get(expr: TinyExpr<*, *>): TinyExpr<*, *> {
     val replacement = allEqualities[expr]
-    return if (replacement === expr && setEqualsToFalse && expr is TinyEquals) Make.FALSE else replacement
+    return if (replacement === expr && setEqualsToFalse && expr is TinyEquals) Make.ZERO else replacement
   }
 
   fun getSame(expr: TinyExpr<*, *>): Set<TinyExpr<*, *>> {

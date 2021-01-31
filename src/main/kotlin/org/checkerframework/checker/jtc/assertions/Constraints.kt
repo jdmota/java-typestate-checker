@@ -1138,7 +1138,7 @@ class Constraints {
       throw new TestFailedException();
   */
 
-  private fun buildAllExprs(): Collection<TinyBoolExpr> {
+  private fun buildAllExprs(): Pair<Simplifier, Collection<TinyBoolExpr>> {
     val constraintsSets = constraints.map { it.build() }
     val allExprs = mutableListOf<TinyBoolExpr>()
     for (set in constraintsSets) {
@@ -1146,12 +1146,13 @@ class Constraints {
         allExprs.add(expr)
       }
     }
-    return Simplifier(experimental = true, setEqualsToFalse = false).simplifyAll(allExprs)
+    val simplifier = Simplifier(experimental = true, setEqualsToFalse = false)
+    return Pair(simplifier, simplifier.simplifyAll(allExprs))
   }
 
   private fun solveIn1Phase(): InferenceResult {
     setup = ConstraintsSetup(types).start()
-    val exprs = buildAllExprs()
+    val (simplifier, exprs) = buildAllExprs()
 
     for ((idx, expr) in exprs.withIndex()) {
       val label = "$idx"
@@ -1168,13 +1169,13 @@ class Constraints {
     return when (result) {
       is MiniNoSolution -> NoSolution(result.unsatCore)
       is MiniUnknownSolution -> UnknownSolution(result.reason)
-      is MiniSolution -> Solution(setup, result.model, result.model)
+      is MiniSolution -> Solution(setup, result.model, result.model, simplifier)
     }
   }
 
   private fun solveIn2Phases(): InferenceResult {
     setup = ConstraintsSetup(types).start()
-    val exprs = buildAllExprs()
+    val (simplifier, exprs) = buildAllExprs()
 
     // Phase 1...
 
@@ -1252,7 +1253,7 @@ class Constraints {
     return when (result2) {
       is MiniNoSolution -> IncompleteSolution(setup, result1.model, result2.unsatCore)
       is MiniUnknownSolution -> IncompleteSolution(setup, result1.model, null)
-      is MiniSolution -> Solution(setup, result1.model, result2.model)
+      is MiniSolution -> Solution(setup, result1.model, result2.model, simplifier)
     }
   }
 
