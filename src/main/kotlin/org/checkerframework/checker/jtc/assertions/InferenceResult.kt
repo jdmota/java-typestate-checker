@@ -72,11 +72,11 @@ class IncompleteSolution(setup: ConstraintsSetup, model: Model, val unsatCore: A
 
 }
 
-class Solution(setup: ConstraintsSetup, model1: Model, model2: Model, val simplifier: Simplifier) : SomeSolution(setup, model1, model2) {
+class Solution(setup: ConstraintsSetup, model1: Model, model2: Model, val simplifier: Simplifier?) : SomeSolution(setup, model1, model2) {
 
   override fun get(x: SymbolicFraction): String {
     val fraction = Make.S.fraction(x)
-    val maybeResult = simplifier[fraction]
+    val maybeResult = simplifier?.get(fraction) ?: fraction
     if (maybeResult is TinyReal) {
       return maybeResult.toString()
     }
@@ -85,7 +85,7 @@ class Solution(setup: ConstraintsSetup, model1: Model, model2: Model, val simpli
 
   override fun get(x: SymbolicType): String {
     val type = Make.S.type(x)
-    val maybeResult = simplifier[type]
+    val maybeResult = simplifier?.get(type) ?: type
     if (maybeResult is TinyJTCType) {
       return maybeResult.toString()
     }
@@ -94,7 +94,7 @@ class Solution(setup: ConstraintsSetup, model1: Model, model2: Model, val simpli
 
   override fun equals(assertion: SymbolicAssertion, a: Reference, b: Reference): String {
     val equals = Make.S.equals(assertion, a, b)
-    val maybeResult = simplifier[equals]
+    val maybeResult = simplifier?.get(equals) ?: equals
     if (maybeResult is TinyReal) {
       return maybeResult.toString()
     }

@@ -80,9 +80,9 @@ class Inferrer(val checker: JavaTypestateChecker) {
       val constructor = TreeUtils.elementFromUse(tree) as Symbol.MethodSymbol
       val className = constructor.enclosingElement.flatName().toString()
       if (className == "java.lang.Thread") {
-        val arg0 = tree.arguments.firstOrNull()
-        if (arg0 is JCTree.JCLambda) {
-          return lambdaThread(arg0)
+        val arg0 = node.arguments.firstOrNull()
+        if (arg0 is FunctionalInterfaceNode) {
+          return lambdaThread(arg0.tree as JCTree.JCLambda)
         }
       }
     }
@@ -260,13 +260,13 @@ class Inferrer(val checker: JavaTypestateChecker) {
     val skeleton = SymbolicAssertionSkeleton(unknownInfo, ref, locations, equalities)
     currentSkeleton = skeleton
 
-    println("-----")
+    /*println("-----")
     println("Method")
     println(cfg.underlyingAST.code)
     println("Locations")
     println(locations)
     println("Equalities")
-    println(equalities)
+    println(equalities)*/
 
     return skeleton
   }
@@ -609,13 +609,12 @@ class Inferrer(val checker: JavaTypestateChecker) {
               val origin = expr.origin
               val mainOrigin = expr.mainOrigin
               if (origin != null) {
-                println("Origin: $origin")
+                if (expr.toString() != origin.toString()) {
+                  println("Origin: $origin")
+                }
                 expr = origin
               } else {
                 println("Main origin: $mainOrigin")
-                if (mainOrigin != null) {
-
-                }
                 break
               }
             }

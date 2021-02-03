@@ -1138,7 +1138,7 @@ class Constraints {
       throw new TestFailedException();
   */
 
-  private fun buildAllExprs(): Pair<Simplifier, Collection<TinyBoolExpr>> {
+  private fun buildAllExprs(): Pair<Simplifier?, Collection<TinyBoolExpr>> {
     val constraintsSets = constraints.map { it.build() }
     val allExprs = mutableListOf<TinyBoolExpr>()
     for (set in constraintsSets) {
@@ -1146,6 +1146,7 @@ class Constraints {
         allExprs.add(expr)
       }
     }
+    // return Pair(null, allExprs)
     val simplifier = Simplifier(experimental = true, setEqualsToFalse = false)
     return Pair(simplifier, simplifier.simplifyAll(allExprs))
   }
@@ -1157,7 +1158,7 @@ class Constraints {
     for ((idx, expr) in exprs.withIndex()) {
       val label = "$idx"
       val z3expr = expr.toZ3(setup)
-      println(expr)
+      // println(expr)
       labelToOrigin[label] = Pair(expr, z3expr)
       setup.addAssert(z3expr, label)
     }
@@ -1177,6 +1178,10 @@ class Constraints {
     setup = ConstraintsSetup(types).start()
     val (simplifier, exprs) = buildAllExprs()
 
+    if (false) {
+      return UnknownSolution("TESTING")
+    }
+
     // Phase 1...
 
     for ((idx, expr) in exprs.withIndex()) {
@@ -1184,7 +1189,7 @@ class Constraints {
       if (expr.phase == 1 || expr.phase == 2) {
         val label = "$idx"
         val z3expr = expr.toZ3(setup)
-        println(expr)
+        // println(expr)
         labelToOrigin[label] = Pair(expr, z3expr)
         setup.addAssert(z3expr, label)
       }
