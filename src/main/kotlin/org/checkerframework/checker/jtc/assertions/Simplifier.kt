@@ -131,8 +131,16 @@ class Simplifier(experimental: Boolean = false, private val setEqualsToFalse: Bo
     for (expr in falseExprs) {
       for (sym in getSymbols(expr)) {
         when (sym) {
-          is TinyArithExpr -> result.add(Make.S.eq(sym, allEqualities[sym] as TinyArithExpr))
-          is TinyJTCTypeExpr -> result.add(Make.S.eq(sym, allEqualities[sym] as TinyJTCTypeExpr))
+          is TinyArithExpr -> {
+            val expr = Make.S.eq(sym, allEqualities[sym] as TinyArithExpr)
+            expr.phase = 1
+            result.add(expr)
+          }
+          is TinyJTCTypeExpr -> {
+            val expr = Make.S.eq(sym, allEqualities[sym] as TinyJTCTypeExpr)
+            expr.phase = 3
+            result.add(expr)
+          }
           else -> {
           }
         }
