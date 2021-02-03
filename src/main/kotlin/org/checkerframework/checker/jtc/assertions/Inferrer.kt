@@ -578,8 +578,8 @@ class Inferrer(val checker: JavaTypestateChecker) {
   fun phase2() {
     println("Inferring constraints...")
 
-    constraints.same(unknownInfo.fraction, 1)
-    constraints.same(unknownInfo.packFraction, 1)
+    constraints.same(unknownInfo.fraction, 0)
+    constraints.same(unknownInfo.packFraction, 0)
     constraints.same(unknownInfo.type, JTCUnknownType.SINGLETON)
 
     val visitor = ConstraintsInference(this, constraints)
