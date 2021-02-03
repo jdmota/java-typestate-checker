@@ -1,3 +1,5 @@
+import java.lang.Thread;
+
 public class Main {
 
   /*public static void main1() {
@@ -11,7 +13,7 @@ public class Main {
     item2.changeState();
   }*/
 
-  /*public static void main2() {
+  /*public static void main2() throws InterruptedException {
     Cell cell = new Cell();
     cell.setItem(new Item());
 
@@ -28,7 +30,7 @@ public class Main {
     item2.changeState();
   }*/
 
-  /*public static void main3() {
+  /*public static void main3() throws InterruptedException {
     Cell cell = new Cell();
     cell.setItem(new Item());
 
@@ -46,7 +48,7 @@ public class Main {
     t.join();
   }*/
 
-  /*public static void main4() {
+  /*public static void main4() throws InterruptedException {
     Cell cell = new Cell();
     cell.setItem(new Item());
 
@@ -67,7 +69,7 @@ public class Main {
     t2.join();
   }*/
 
-  /*public static void main5() {
+  public static void main5() throws InterruptedException {
     Cell cell = new Cell();
     cell.setItem(new Item());
 
@@ -79,27 +81,6 @@ public class Main {
 
     Thread t2 = new Thread(() -> {
       item.changeState();
-    });
-
-    t1.start();
-    t2.start();
-
-    t1.join();
-    t2.join();
-  }*/
-
-  public static void main6() {
-    Cell cell = new Cell();
-    cell.setItem(new Item());
-
-    Item item = cell.getItem();
-
-    Thread t1 = new Thread(() -> {
-      item.getState();
-    });
-
-    Thread t2 = new Thread(() -> {
-      item.getState();
     });
 
     t1.start();
@@ -108,5 +89,26 @@ public class Main {
     t1.join();
     t2.join();
   }
+
+  /*public static void main6() throws InterruptedException {
+    Cell cell = new Cell();
+    cell.setItem(new Item());
+
+    Item item = cell.getItem();
+
+    Thread t1 = new Thread(() -> {
+      item.getState();
+    });
+
+    Thread t2 = new Thread(() -> {
+      item.getState();
+    });
+
+    t1.start();
+    t2.start();
+
+    t1.join();
+    t2.join();
+  }*/
 
 }
