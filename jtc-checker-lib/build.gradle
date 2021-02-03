@@ -45,7 +45,7 @@ compileJava {
 
 task buildJar(type: Copy) {
     from jar
-    into "../examples"
+    into "../dist"
 }
 
 clean {

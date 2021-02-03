@@ -8,13 +8,13 @@ fi
 
 mungoJar="$CD/mungo-73dd8ae.jar"
 
-javaTypestateChecker="$CD/jtc-checker.jar"
-javaTypestateCheckerLib="$CD/jtc-checker-lib.jar"
+javaTypestateChecker="$CD/../dist/jtc-checker.jar"
+javaTypestateCheckerLib="$CD/../dist/jtc-checker-lib.jar"
 javaTypestateCheckerClass="org.checkerframework.checker.jtc.JavaTypestateChecker"
 
 checkerVersion="3.8.0"
 
-checker="$CD/checker-framework-$checkerVersion/checker/dist/checker.jar"
+checker="$CD/../dist/checker-framework-$checkerVersion/checker/dist/checker.jar"
 
 if [ ! -f "$checker" ]; then
   echo "Comparison tests depend on the Checker Framework"

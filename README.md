@@ -23,11 +23,7 @@ The tool has two modes:
 
 ## Demo
 
-Run the following command from the `demo` folder:
-
-`java -jar checker-3.8.0/checker.jar -classpath jtc-checker.jar -processor org.checkerframework.checker.jtc.JavaTypestateChecker *.java`
-
-Non linear mode (which enables the inference algorithm), may be experimented with by adding the flag `-AperformInference`, setting the environment key `JAVA_OPTS` to `-Djava.library.path=Z3_BIN`, and extending `PATH` with `Z3_BIN`, where `Z3_BIN` is a folder containing `com.microsoft.z3.jar` and the other Z3 libraries.
+You can find an example with instructions on how to experiment with the tool in the folder [examples/line-reader-example](examples/line-reader-example).
 
 ## Resources
 
@@ -96,11 +92,6 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 
 ## Developer information
 
-### Preparation
-
-- Download and extract the Checker Framework to `examples` such that `examples/checker-framework-VERSION/checker/dist/checker.jar` exists.
-- Download and extract Z3 such that `z3/bin/com.microsoft.z3.jar` and the other libraries exist.
-
 ### Build and test
 
 - Unix: `./gradlew build`
@@ -111,7 +102,7 @@ More details: [Manual - How to create a Checker plugin](https://checkerframework
 - Unix: `./gradlew buildJar`
 - Windows: `gradlew.bat buildJar`
 
-The produced jar file goes into the `examples` folder.
+The produced jar file goes into the `dist` folder.
 
 ### Remote testing
 
@@ -120,7 +111,6 @@ The produced jar file goes into the `examples` folder.
 
 ### Running comparison tests
 
-1. Extract [Checker Framework](https://checkerframework.org/) into the `examples` folder.
 1. Build jar file.
 1. Run `cd examples && bash run` on Unix or Cygwin.
 1. Check `examples/comparison` and nested folders for results.

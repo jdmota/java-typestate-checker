@@ -14,15 +14,6 @@ out
 
 jtc-checker-lib/src
 
-# Dist
-
-dist/**/*.class
-
 # Examples
 
 examples/**/*.class
-examples/checker-framework-*
-
-# Z3
-
-z3/

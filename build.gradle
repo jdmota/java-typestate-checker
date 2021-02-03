@@ -70,7 +70,7 @@ dependencies {
 
     compileOnly "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
 
-    compile files("z3/bin/com.microsoft.z3.jar")
+    compile files("dist/z3/bin/com.microsoft.z3.jar")
 
     // Testing
     testImplementation "junit:junit:${versions.junit}"
@@ -87,16 +87,8 @@ jar {
 }
 
 task buildJar(type: Copy) {
-    into "."
-    into("examples") {
-      from jar
-    }
-    into("examples/line-reader-example") {
-      from jar
-    }
-    into("demo") {
-      from jar
-    }
+    from jar
+    into "dist"
 }
 
 tasks.withType(JavaCompile).all {
