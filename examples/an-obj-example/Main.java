@@ -1,7 +1,7 @@
 import java.lang.Thread;
 
 public class Main {
-  public static void ok() throws InterruptedException {
+  /*public static void ok() throws InterruptedException {
     Obj obj = new Obj();
     obj.init("Hello World!");
 
@@ -20,9 +20,9 @@ public class Main {
     t2.join();
 
     obj.close();
-  }
+  }*/
 
-  /*public static void notOk() throws InterruptedException {
+  public static void notOk() throws InterruptedException {
     Obj obj = new Obj();
     obj.init("Hello World!");
 
@@ -42,5 +42,5 @@ public class Main {
 
     t1.join();
     t2.join();
-  }*/
+  }
 }
