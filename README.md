@@ -29,7 +29,7 @@ You can find an example with instructions on how to experiment with the tool in 
 
 - Tutorial *upcoming*
 - Paper *upcoming*
-- Thesis *upcoming*
+- [Thesis](./docs/msc-thesis.pdf)
 
 <!-- http://www.plantuml.com/plantuml/uml/NSqn2i9048NXVayHKgcG6rW4mT8O40yGirEixix0-YOs7bx8Wc6sUl0Lx-_Vc38qHNVd5yk7c-EtwvhhuqapN9b2xGqJQ7VOjuRFxCaR6MJC0fcb-XmqLZBca0B2GfOlif1tMw_eIG19RkqPsNgMDLhuruokCICziTSKVm00 -->
 
