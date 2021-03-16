@@ -1,0 +1,11 @@
+typestate BaseProtocol {
+  Init = {
+    Status offer1(): <OK: S1, Status.OK: S1>,
+    void done(): end
+  }
+
+  S1 = {
+    Status offer2(): <Status.OK: Init, Status.OK: Init>,
+    void done(): end
+  }
+}

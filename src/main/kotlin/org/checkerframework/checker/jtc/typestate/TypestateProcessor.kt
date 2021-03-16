@@ -4,6 +4,7 @@ import com.sun.tools.javac.code.Symbol
 import org.antlr.v4.runtime.BailErrorStrategy
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
+import org.checkerframework.checker.jtc.subtyping.syncronous_subtyping.Subtyper
 import org.checkerframework.checker.jtc.typestate.graph.Graph
 import org.checkerframework.checker.jtc.typestate.graph.State
 import org.checkerframework.checker.jtc.typestate.graph.DecisionState
@@ -156,6 +157,16 @@ class TypestateProcessor(private val utils: JTCUtils) {
             }
           }
         }
+      }
+
+      val superGraph = utils.classUtils.visitClassSymbol(element.superclass.asElement())
+      if (superGraph != null) {
+        val subtyper = Subtyper()
+        subtyper.subtyping(graph, superGraph, Pair(graph.getInitialState(), superGraph.getInitialState()))
+        for (error in subtyper.errors) {
+          utils.err(error, element)
+        }
+        hasErrors = hasErrors || subtyper.errors.isNotEmpty()
       }
 
       return if (hasErrors) null else graph

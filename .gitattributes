@@ -1,1 +1,8 @@
 * text=auto eol=lf
+*.kt eof=lf
+*.java eof=lf
+*.protocol eof=lf
+*.tex eof=lf
+*.md eof=lf
+*.sh eof=lf
+*.properties eof=lf

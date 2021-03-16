@@ -83,6 +83,7 @@ class ClassUtils(private val utils: JTCUtils) {
           processTypestateAnnotation(file, it, sym)
         }
       } ?: protocolFromConfig?.let { getGraph(it, sym) }
+
       // "computeIfAbsent" does not store null values, store an Optional instead
       Optional.ofNullable(graph?.let {
         TypestateProcessor.validateClassAndGraph(utils, sym, it)
@@ -108,7 +109,6 @@ class ClassUtils(private val utils: JTCUtils) {
     private fun isJavaLangObject(element: Element) = element is Symbol.ClassSymbol && element.qualifiedName.contentEquals("java.lang.Object")
 
     fun isJavaLangObject(type: TypeMirror) = if (type is DeclaredType) isJavaLangObject(type.asElement()) else false
-
   }
 
 }

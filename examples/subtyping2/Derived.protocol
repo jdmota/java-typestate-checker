@@ -1,0 +1,13 @@
+typestate DerivedProtocol {
+  Init = {
+    RestrictedStatus offer1(): <NO: S1>,
+    void done(): end
+  }
+
+  S1 = {
+    Status offer2(): <OK: Init, NO: Init>,
+    void done(): end
+  }
+}
+
+

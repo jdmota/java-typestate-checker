@@ -4,6 +4,7 @@ sealed class TNode(val pos: Position)
 
 sealed class TRefNode(pos: Position) : TNode(pos) {
   abstract fun stringName(): String
+  override fun toString() = stringName()
 }
 
 class TMemberNode(pos: Position, val ref: TRefNode, val id: TIdNode) : TRefNode(pos) {
@@ -27,7 +28,6 @@ class TMethodNode(pos: Position, val returnType: TRefNode, val name: String, val
   }
 
   fun format() = "$returnType $name(${args.joinToString(", ")})"
-
 }
 
 class TStateNode(pos: Position, val name: String?, val methods: List<TMethodNode>, val isDroppable: Boolean) : TNode(pos)
