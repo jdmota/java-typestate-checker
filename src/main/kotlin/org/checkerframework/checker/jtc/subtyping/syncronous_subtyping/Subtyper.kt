@@ -16,6 +16,13 @@ class Subtyper {
       first is State && second is State && first !is EndState && second !is EndState -> {
         val t1 = first.normalizedTransitions
         val t2 = second.normalizedTransitions
+
+        // If "second" is droppable, "first" needs to be droppable
+        // (second.isDroppable ==> first.isDroppable) <=> (!second.isDroppable || first.isDroppable)
+        if (!(!second.isDroppable || first.isDroppable)) {
+          errors.add(inputErrorMsg(g1, g2, currentStates, listOf("drop: end")))
+        }
+
         if (!t1.keys.containsAll(t2.keys)) { // Input contravariance
           val common = t2.keys.intersect(t1.keys)
           common.forEach {
