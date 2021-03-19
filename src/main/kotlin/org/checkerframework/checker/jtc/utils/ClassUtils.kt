@@ -14,6 +14,7 @@ import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 import javax.lang.model.element.Modifier
 import javax.lang.model.type.DeclaredType
+import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
 class ClassUtils(private val utils: JTCUtils) {
@@ -25,7 +26,7 @@ class ClassUtils(private val utils: JTCUtils) {
     return result.graph
   }
 
-  private fun processTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationMirror, src: Element): Graph? {
+  private fun processTypestateAnnotation(sourceFilePath: Path, annotation: AnnotationMirror, src: Element): Path? {
     val args = annotation.elementValues.values
     val file = try {
       args.firstOrNull()?.value as String
@@ -41,9 +42,7 @@ class ClassUtils(private val utils: JTCUtils) {
       return null
     }
     // Get the path of the protocol file relative to the source file
-    val protocolFilePath = sourceFilePath.resolveSibling(file).normalize()
-    // Parse and process typestate
-    return getGraph(protocolFilePath, src)
+    return sourceFilePath.resolveSibling(file).normalize()
   }
 
   private fun getJTCTypestateAnnotation(annotationMirrors: Collection<AnnotationMirror>): AnnotationMirror? {
@@ -74,15 +73,25 @@ class ClassUtils(private val utils: JTCUtils) {
         }
       }
 
-      // Process
-      val graph = classFile?.let { file -> // File where the class is
+      val protocolFile = classFile?.let { file -> // File where the class is
         getJTCTypestateAnnotation(sym.annotationMirrors)?.let {
           if (protocolFromConfig != null) {
             utils.err("Protocol for this class is also defined in the config file", sym)
           }
           processTypestateAnnotation(file, it, sym)
         }
-      } ?: protocolFromConfig?.let { getGraph(it, sym) }
+      } ?: protocolFromConfig
+
+      val graph = if (protocolFile == null) {
+        val superclass = element.superclass
+        if (superclass.kind == TypeKind.NONE) {
+          null
+        } else {
+          visitClassSymbol(element.superclass.asElement())
+        }
+      } else {
+        getGraph(protocolFile, sym)
+      }
 
       // "computeIfAbsent" does not store null values, store an Optional instead
       Optional.ofNullable(graph?.let {
