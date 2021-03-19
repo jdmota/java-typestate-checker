@@ -236,13 +236,68 @@ open class TypecheckerHelpers(val checker: JavaTypestateChecker) : SourceVisitor
     if (isPrimitiveAndBoxedPrimitive(varJTCType, valJTCType, valueType.underlyingType)) return
     if (isPrimitiveAndBoxedPrimitive(valJTCType, varJTCType, varType.underlyingType)) return
 
-    if (!valJTCType.isSubtype(varJTCType)) {
-      checker.reportError(
-        valueTree,
-        errorKey,
-        "${valJTCType.format()} $valueType",
-        "${varJTCType.format()} $varType"
-      )
+    val leftGraph = utils.classUtils.visitClassTypeMirror(varType.underlyingType)
+    val rightGraph = utils.classUtils.visitClassTypeMirror(valueType.underlyingType)
+
+    when {
+      leftGraph != null && rightGraph != null -> {
+        if (leftGraph !== rightGraph) {
+          val initialState = rightGraph.getInitialState()
+          val allowedType = JTCUnionType.create(listOf(
+            JTCStateType.create(rightGraph, initialState),
+            JTCEndedType.SINGLETON
+          ))
+          if (!valJTCType.isSubtype(allowedType)) {
+            checker.reportError(
+              valueTree,
+              "Up-casting not allowed. Expected ${allowedType.format()} but got ${valJTCType.format()}"
+            )
+          }
+        } else {
+          if (!valJTCType.isSubtype(varJTCType)) {
+            checker.reportError(
+              valueTree,
+              errorKey,
+              "${valJTCType.format()} $valueType",
+              "${varJTCType.format()} $varType"
+            )
+          }
+        }
+      }
+      leftGraph == null && rightGraph == null -> {
+        if (!valJTCType.isSubtype(varJTCType)) {
+          checker.reportError(
+            valueTree,
+            errorKey,
+            "${valJTCType.format()} $valueType",
+            "${varJTCType.format()} $varType"
+          )
+        }
+      }
+      leftGraph != null && rightGraph == null -> {
+        if (!valJTCType.isSubtype(JTCNullType.SINGLETON)) {
+          // Not possible
+          checker.reportError(
+            valueTree,
+            "INTERNAL ERROR"
+          )
+        } else {
+          if (!valJTCType.isSubtype(varJTCType)) {
+            checker.reportError(
+              valueTree,
+              errorKey,
+              "${valJTCType.format()} $valueType",
+              "${varJTCType.format()} $varType"
+            )
+          }
+        }
+      }
+      leftGraph == null && rightGraph != null -> {
+        checker.reportError(
+          valueTree,
+          "Up-casting not allowed. Left-hand-side has no protocol."
+        )
+      }
     }
   }
 

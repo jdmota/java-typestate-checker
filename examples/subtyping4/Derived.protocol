@@ -1,0 +1,16 @@
+typestate Iterator {
+  HasNext = {
+    boolean hasNext(): <true: Next, false: end>
+  }
+  Next = {
+    void next(): Remove
+  }
+  Remove = {
+    void remove(): HasNext,
+    boolean hasNext(): <true: NextRemove, false: end>
+  }
+  NextRemove = {
+    void remove(): Next,
+    void next(): Remove
+  }
+}

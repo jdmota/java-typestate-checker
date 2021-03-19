@@ -260,6 +260,7 @@ public class JavaIterator {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State "HasNext")
     // :: error: (Object did not complete its protocol. Type: State "HasNext")
+    // :: error: (Up-casting not allowed. Left-hand-side has no protocol.)
     Object alias = it;
   }
 
@@ -518,6 +519,7 @@ public class JavaIterator {
     Supplier<String> fn = () -> {
       // :: warning: (it: Bottom)
       // :: error: (it was moved to a different closure)
+      // :: error: (Up-casting not allowed. Left-hand-side has no protocol.)
       System.out.println(it);
       return "";
     };

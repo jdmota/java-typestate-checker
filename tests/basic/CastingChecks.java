@@ -3,6 +3,7 @@ public class CastingChecks {
   public void main1() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State "HasNext")
+    // :: error: (Up-casting not allowed. Left-hand-side has no protocol.)
     Object obj = it;
     // :: warning: (obj: State "HasNext")
     JavaIterator it2 = (JavaIterator) obj;
@@ -21,6 +22,7 @@ public class CastingChecks {
       it.next();
     }
     // :: warning: (it: Ended)
+    // :: error: (Up-casting not allowed. Left-hand-side has no protocol.)
     Object obj = it;
     // :: warning: (cast.unsafe)
     // :: warning: (obj: Ended)
