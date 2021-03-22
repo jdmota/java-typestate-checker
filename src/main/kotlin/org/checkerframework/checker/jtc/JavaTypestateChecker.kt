@@ -1,5 +1,6 @@
 package org.checkerframework.checker.jtc
 
+import com.sun.source.tree.Tree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Log
@@ -8,8 +9,10 @@ import org.checkerframework.checker.jtc.typecheck.Typechecker
 import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.framework.source.SourceChecker
 import org.checkerframework.framework.source.SourceVisitor
+import org.checkerframework.javacutil.BugInCF
 import java.io.IOException
 import java.util.*
+import javax.lang.model.element.Element
 import javax.lang.model.element.TypeElement
 import javax.tools.Diagnostic
 
@@ -102,6 +105,105 @@ class JavaTypestateChecker : SourceChecker() {
       messagesProperties.putAll(getProperties())
       messagesProperties
     }
+  }
+
+  private fun shouldFixErrorMsg(): Boolean {
+    val opts = processingEnv.options ?: return true
+    return !opts.containsKey("nomsgtext") && !opts.containsKey("detailedmsgtext")
+  }
+
+  override fun reportError(source: Any, messageKey: String, vararg args: Any?) {
+    if (shouldFixErrorMsg()) {
+      report(source, Diagnostic.Kind.ERROR, messageKey, *args)
+    } else {
+      super.reportError(source, messageKey, *args)
+    }
+  }
+
+  override fun reportWarning(source: Any, messageKey: String, vararg args: Any?) {
+    if (shouldFixErrorMsg()) {
+      report(source, Diagnostic.Kind.MANDATORY_WARNING, messageKey, *args)
+    } else {
+      super.reportWarning(source, messageKey, *args)
+    }
+  }
+
+  // Adapted from SourceChecker
+  private fun report(source: Any, _kind: Diagnostic.Kind, messageKey: String, vararg _args: Any?) {
+    if (shouldSuppressWarnings(source, messageKey)) {
+      return
+    }
+
+    var kind = _kind
+    val args = _args.map { processArg(it) }.toTypedArray()
+
+    val defaultFormat = "($messageKey)"
+    val part1 = suppressWarningsString(messageKey)
+    val part2 = fullMessageOf(messageKey, defaultFormat)
+    val fmtString = if ("($part1)" == part2) part1 else "[$part1] $part2"
+
+    val messageText = try {
+      String.format(fmtString, *args)
+    } catch (e: Exception) {
+      throw BugInCF("Invalid format string: \"$fmtString", e)
+    }
+
+    if (kind == Diagnostic.Kind.ERROR && hasOption("warns")) {
+      kind = Diagnostic.Kind.MANDATORY_WARNING
+    }
+
+    when (source) {
+      is Element -> messager.printMessage(kind, messageText, source)
+      is Tree -> printOrStoreMessage(kind, messageText, source, currentRoot)
+      else -> throw BugInCF("invalid position source, class=" + source.javaClass)
+    }
+  }
+
+  // From SourceChecker
+  private fun shouldSuppressWarnings(src: Any?, errKey: String): Boolean {
+    return when (src) {
+      is Element -> shouldSuppressWarnings(src, errKey)
+      is Tree -> shouldSuppressWarnings(src, errKey)
+      null -> false
+      else -> throw BugInCF("Unexpected source $src")
+    }
+  }
+
+  // From SourceChecker
+  private fun suppressWarningsString(messageKey: String): String {
+    val prefixes: MutableCollection<String> = this.suppressWarningsPrefixes
+    prefixes.remove(SUPPRESS_ALL_PREFIX)
+    return if (hasOption("showSuppressWarningsStrings")) {
+      val list: MutableList<String> = ArrayList(prefixes)
+      // Make sure "allcheckers" is at the end of the list.
+      if (useAllcheckersPrefix) {
+        list.add(SUPPRESS_ALL_PREFIX)
+      }
+      "$list:$messageKey"
+    } else if (hasOption("requirePrefixInWarningSuppressions")) {
+      // If the warning key must be prefixed with a prefix (a checker name), then add that to
+      // the SuppressWarnings string that is printed.
+      val defaultPrefix = getDefaultSuppressWarningsPrefix()
+      if (prefixes.contains(defaultPrefix)) {
+        "$defaultPrefix:$messageKey"
+      } else {
+        val firstKey = prefixes.iterator().next()
+        "$firstKey:$messageKey"
+      }
+    } else {
+      messageKey
+    }
+  }
+
+  // From SourceChecker
+  private fun getDefaultSuppressWarningsPrefix(): String {
+    val className = this.javaClass.simpleName
+    var indexOfChecker = className.lastIndexOf("Checker")
+    if (indexOfChecker == -1) {
+      indexOfChecker = className.lastIndexOf("Subchecker")
+    }
+    val result = if (indexOfChecker == -1) className else className.substring(0, indexOfChecker)
+    return result.toLowerCase()
   }
 
 }
