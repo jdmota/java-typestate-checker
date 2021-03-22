@@ -14,8 +14,7 @@ public class NullnessChecks {
   public static void main2() {
     @Nullable NullnessChecks n = null;
     // :: warning: (n: Null)
-    // :: warning: (cast.unsafe)
-    // :: error: (Object did not complete its protocol. Type: Object)
+    // :: error: (cast.unsafe)
     Object obj = (Object) n;
   }
 

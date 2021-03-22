@@ -40,6 +40,7 @@ class JTCUtils(val checker: SourceChecker) {
   val ctx: Context = env.context
   val symtab: Symtab = Symtab.instance(ctx)
   val log: Log = Log.instance(ctx)
+
   // val maker: TreeMaker = TreeMaker.instance(ctx)
   val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
 
@@ -133,6 +134,22 @@ class JTCUtils(val checker: SourceChecker) {
       TypesUtils.isErasedSubtype(a, b, typeUtils) -> a
       TypesUtils.isErasedSubtype(b, a, typeUtils) -> b
       else -> a
+    }
+  }
+
+  enum class CastType { INVALID, UPCAST, DOWNCAST }
+
+  fun checkCastType(a: TypeMirror, b: TypeMirror): CastType {
+    if (a.kind == TypeKind.EXECUTABLE || b.kind == TypeKind.EXECUTABLE) {
+      // Avoid java.lang.IllegalArgumentException exception
+      return CastType.INVALID
+    }
+    return when {
+      typeUtils.isSubtype(a, b) -> CastType.DOWNCAST
+      typeUtils.isSubtype(b, a) -> CastType.UPCAST
+      TypesUtils.isErasedSubtype(a, b, typeUtils) -> CastType.DOWNCAST
+      TypesUtils.isErasedSubtype(b, a, typeUtils) -> CastType.UPCAST
+      else -> CastType.INVALID
     }
   }
 

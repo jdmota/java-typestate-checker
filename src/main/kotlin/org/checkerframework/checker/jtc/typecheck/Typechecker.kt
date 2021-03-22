@@ -308,11 +308,11 @@ class Typechecker(checker: JavaTypestateChecker) : TypecheckerHelpers(checker) {
   }
 
   private fun checkTypecastSafety(typeCastTree: TypeCastTree) {
-    val castType = analyzer.getInferredType(typeCastTree)
-    val exprType = analyzer.getInferredType(typeCastTree.expression)
-    if (!exprType.isSubtype(castType)) {
-      checker.reportWarning(typeCastTree, "cast.unsafe", exprType.format(), castType.format())
-    }
+    val castInfo = analyzer.getInitialInfo(typeCastTree)
+    val exprInfo = analyzer.getInferredInfo(typeCastTree.expression)
+    val castType = castInfo.jtcType
+    val exprType = exprInfo.jtcType
+    checkAssignOrCast(castType, castInfo.type, exprType, exprInfo.type, typeCastTree, "cast.unsafe")
   }
 
   override fun visitTypeCast(node: TypeCastTree, p: Void?): Void? {

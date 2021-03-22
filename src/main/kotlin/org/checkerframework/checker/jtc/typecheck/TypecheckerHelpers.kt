@@ -236,48 +236,61 @@ open class TypecheckerHelpers(val checker: JavaTypestateChecker) : SourceVisitor
     if (isPrimitiveAndBoxedPrimitive(varJTCType, valJTCType, valueType.underlyingType)) return
     if (isPrimitiveAndBoxedPrimitive(valJTCType, varJTCType, varType.underlyingType)) return
 
-    val leftGraph = utils.classUtils.visitClassTypeMirror(varType.underlyingType)
-    val rightGraph = utils.classUtils.visitClassTypeMirror(valueType.underlyingType)
+    checkAssignOrCast(varJTCType, varType, valJTCType, valueType, valueTree, errorKey)
+  }
+
+  protected fun checkAssignOrCast(
+    leftType: JTCType, leftTypeMirror: AnnotatedTypeMirror,
+    rightType: JTCType, rightTypeMirror: AnnotatedTypeMirror,
+    tree: Tree, errorKey: String
+  ) {
+    val castType = utils.checkCastType(leftTypeMirror.underlyingType, rightTypeMirror.underlyingType)
+    val castTypeStr = when (castType) {
+      JTCUtils.CastType.INVALID -> "Casting"
+      JTCUtils.CastType.UPCAST -> "Up-casting"
+      JTCUtils.CastType.DOWNCAST -> "Down-casting"
+    }
+    val leftGraph = utils.classUtils.visitClassTypeMirror(leftTypeMirror.underlyingType)
+    val rightGraph = utils.classUtils.visitClassTypeMirror(rightTypeMirror.underlyingType)
 
     when {
       leftGraph != null && rightGraph != null -> {
         if (leftGraph !== rightGraph) {
-          val initialState = rightGraph.getInitialState()
           val allowedType = JTCUnionType.create(listOf(
-            JTCStateType.create(rightGraph, initialState),
+            JTCStateType.create(rightGraph, rightGraph.getInitialState()),
             JTCEndedType.SINGLETON
           ))
-          if (!valJTCType.isSubtype(allowedType)) {
+          if (!rightType.isSubtype(allowedType)) {
             checker.reportError(
-              valueTree,
-              "Up-casting not allowed. Expected ${allowedType.format()} but got ${valJTCType.format()}"
+              tree,
+              "$castTypeStr not allowed. Expected ${allowedType.format()} but got ${rightType.format()}"
             )
           }
         } else {
-          if (!valJTCType.isSubtype(varJTCType)) {
+          if (!rightType.isSubtype(leftType)) {
             checker.reportError(
-              valueTree,
+              tree,
               errorKey,
-              "${valJTCType.format()} $valueType",
-              "${varJTCType.format()} $varType"
+              "${rightType.format()} $rightTypeMirror",
+              "${leftType.format()} $leftTypeMirror"
             )
           }
         }
       }
       rightGraph == null -> {
-        if (!valJTCType.isSubtype(varJTCType)) {
+        if (!rightType.isSubtype(leftType)) {
           checker.reportError(
-            valueTree,
+            tree,
             errorKey,
-            "${valJTCType.format()} $valueType",
-            "${varJTCType.format()} $varType"
+            "${rightType.format()} $rightTypeMirror",
+            "${leftType.format()} $leftTypeMirror"
           )
         }
       }
       leftGraph == null -> {
         checker.reportError(
-          valueTree,
-          "Up-casting not allowed. Left-hand-side has no protocol."
+          tree,
+          "$castTypeStr to a type with no protocol is not allowed"
         )
       }
     }

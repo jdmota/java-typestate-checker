@@ -10,6 +10,7 @@ import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.node.*
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
@@ -178,8 +179,9 @@ class AnalyzerVisitor(private val checker: JavaTypestateChecker, private val ana
   override fun visitAssignment(n: AssignmentNode, result: MutableAnalyzerResultWithValue): Void? {
     val lhs = n.target
     val rhs = n.expression
-    val rhsValue = analyzer.getCurrentInferredInfo(rhs)
-    setCurrentInfo(result, lhs, rhsValue)
+    val rhsInfo = analyzer.getCurrentInferredInfo(rhs)
+    val typeToAssign = computeTypeResultingOfAssignOrCast(lhs, rhsInfo.jtcType, rhsInfo.type)
+    setCurrentInfo(result, lhs, StoreInfo(rhsInfo, typeToAssign))
 
     // Restore the type of the receiver
     val target = n.target
@@ -191,6 +193,44 @@ class AnalyzerVisitor(private val checker: JavaTypestateChecker, private val ana
     handleMove(n.expression, result)
 
     return null
+  }
+
+  override fun visitTypeCast(node: TypeCastNode, result: MutableAnalyzerResultWithValue): Void? {
+    val rhsInfo = analyzer.getCurrentInferredInfo(node.operand)
+    val typeToAssign = computeTypeResultingOfAssignOrCast(node, rhsInfo.jtcType, rhsInfo.type)
+    result.value = StoreInfo(result.value, typeToAssign)
+    return null
+  }
+
+  private fun computeTypeResultingOfAssignOrCast(
+    left: Node,
+    rightType: JTCType, rightTypeMirror: AnnotatedTypeMirror
+  ): JTCType {
+    val leftInfo = analyzer.getInitialInfo(left)
+    return computeTypeResultingOfAssignOrCast(leftInfo.jtcType, leftInfo.type, rightType, rightTypeMirror)
+  }
+
+  private fun computeTypeResultingOfAssignOrCast(
+    leftType: JTCType, leftTypeMirror: AnnotatedTypeMirror,
+    rightType: JTCType, rightTypeMirror: AnnotatedTypeMirror
+  ): JTCType {
+    val leftGraph = utils.classUtils.visitClassTypeMirror(leftTypeMirror.underlyingType)
+    val rightGraph = utils.classUtils.visitClassTypeMirror(rightTypeMirror.underlyingType)
+    return when {
+      leftGraph != null && rightGraph != null -> {
+        if (leftGraph !== rightGraph) {
+          val leftInitialStateType = JTCStateType.create(leftGraph, leftGraph.getInitialState()) as JTCStateType
+          val rightInitialStateType = JTCStateType.create(rightGraph, rightGraph.getInitialState()) as JTCStateType
+          val allowedType = JTCUnionType.create(listOf(rightInitialStateType, JTCEndedType.SINGLETON))
+          allowedType.intersect(rightType).replace(rightInitialStateType, leftInitialStateType)
+        } else {
+          leftType.intersect(rightType)
+        }
+      }
+      rightGraph == null -> leftType.intersect(rightType)
+      leftGraph == null -> leftType.intersect(rightType)
+      else -> error("unreachable")
+    }
   }
 
   override fun visitReturn(n: ReturnNode, result: MutableAnalyzerResultWithValue): Void? {
@@ -385,10 +425,6 @@ class AnalyzerVisitor(private val checker: JavaTypestateChecker, private val ana
     if (isAssignmentReceiver(n) || isParameter(n)) {
       handleMove(n, result)
     }
-    return null
-  }
-
-  override fun visitTypeCast(n: TypeCastNode, result: MutableAnalyzerResultWithValue): Void? {
     return null
   }
 

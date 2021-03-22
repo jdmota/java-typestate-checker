@@ -25,6 +25,21 @@ sealed class JTCType {
   }
 
   open fun leastUpperBound(other: JTCType) = JTCUnionType.create(listOf(this, other))
+
+  fun replace(state1: JTCStateType, state2: JTCStateType): JTCType {
+    return when (this) {
+      is JTCBottomType -> this
+      is JTCStateType -> if (this == state1) state2 else this
+      is JTCEndedType -> this
+      is JTCMovedType -> this
+      is JTCNoProtocolType -> this
+      is JTCNullType -> this
+      is JTCObjectType -> this
+      is JTCPrimitiveType -> this
+      is JTCUnionType -> JTCUnionType.create(this.types.map { it.replace(state1, state2) })
+      is JTCUnknownType -> this
+    }
+  }
 }
 
 private fun isObjectType(a: JTCType) = a is JTCStateType || a is JTCEndedType || a is JTCNoProtocolType

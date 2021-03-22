@@ -15,8 +15,6 @@ public class Main {
     Iterator<String> it = Arrays.asList(args).iterator();
     // :: error: (assignment.type.incompatible)
     String value = it.next();
-    // :: warning: (value: NoProtocol | Null)
-    // :: error: (argument.type.incompatible)
     System.out.println(value);
   }
 }

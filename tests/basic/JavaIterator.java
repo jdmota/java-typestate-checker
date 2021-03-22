@@ -90,7 +90,7 @@ public class JavaIterator {
   public static void initializedNull() {
     // :: error: (assignment.type.incompatible)
     JavaIterator it = null;
-    // :: warning: (it: Null)
+    // :: warning: (it: Bottom)
     it = new JavaIterator();
     // :: warning: (it: State "HasNext")
     while (it.hasNext()) {
@@ -260,7 +260,7 @@ public class JavaIterator {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State "HasNext")
     // :: error: (Object did not complete its protocol. Type: State "HasNext")
-    // :: error: (Up-casting not allowed. Left-hand-side has no protocol.)
+    // :: error: (Up-casting to a type with no protocol is not allowed)
     Object alias = it;
   }
 
@@ -519,7 +519,7 @@ public class JavaIterator {
     Supplier<String> fn = () -> {
       // :: warning: (it: Bottom)
       // :: error: (it was moved to a different closure)
-      // :: error: (Up-casting not allowed. Left-hand-side has no protocol.)
+      // :: error: (Up-casting to a type with no protocol is not allowed)
       System.out.println(it);
       return "";
     };
