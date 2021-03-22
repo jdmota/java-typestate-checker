@@ -264,7 +264,7 @@ open class TypecheckerHelpers(val checker: JavaTypestateChecker) : SourceVisitor
           }
         }
       }
-      leftGraph == null && rightGraph == null -> {
+      rightGraph == null -> {
         if (!valJTCType.isSubtype(varJTCType)) {
           checker.reportError(
             valueTree,
@@ -274,25 +274,7 @@ open class TypecheckerHelpers(val checker: JavaTypestateChecker) : SourceVisitor
           )
         }
       }
-      leftGraph != null && rightGraph == null -> {
-        if (!valJTCType.isSubtype(JTCNullType.SINGLETON)) {
-          // Not possible
-          checker.reportError(
-            valueTree,
-            "INTERNAL ERROR"
-          )
-        } else {
-          if (!valJTCType.isSubtype(varJTCType)) {
-            checker.reportError(
-              valueTree,
-              errorKey,
-              "${valJTCType.format()} $valueType",
-              "${varJTCType.format()} $varType"
-            )
-          }
-        }
-      }
-      leftGraph == null && rightGraph != null -> {
+      leftGraph == null -> {
         checker.reportError(
           valueTree,
           "Up-casting not allowed. Left-hand-side has no protocol."
