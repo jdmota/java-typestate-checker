@@ -300,9 +300,11 @@ public class LinearityTests {
     Linearity obj1 = list.get(0);
     // :: error: (assignment.type.incompatible)
     Linearity obj2 = list.get(0);
-    // :: warning: (obj1: State "State0" | State "State1")
+    // :: warning: (obj1: State "State0" | State "State1" | Ended)
+    // :: error: (Cannot call finish on ended protocol)
     obj1.finish();
-    // :: warning: (obj2: State "State0" | State "State1")
+    // :: warning: (obj2: State "State0" | State "State1" | Ended)
+    // :: error: (Cannot call finish on ended protocol)
     obj2.finish();
   }
 
@@ -311,7 +313,8 @@ public class LinearityTests {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
     // :: error: (assignment.type.incompatible)
     Linearity obj = w.obj;
-    // :: warning: (obj: State "State0" | State "State1")
+    // :: warning: (obj: State "State0" | State "State1" | Ended)
+    // :: error: (Cannot call finish on ended protocol)
     obj.finish();
   }
 
@@ -328,7 +331,8 @@ public class LinearityTests {
     Supplier<String> fn = () -> {
       // :: error: (assignment.type.incompatible)
       Linearity obj = w.obj;
-      // :: warning: (obj: State "State0" | State "State1")
+      // :: warning: (obj: State "State0" | State "State1" | Ended)
+      // :: error: (Cannot call finish on ended protocol)
       obj.finish();
       return "";
     };
@@ -360,7 +364,8 @@ public class LinearityTests {
     Supplier<Linearity> method = w::get;
     // :: error: (assignment.type.incompatible)
     Linearity obj = method.get();
-    // :: warning: (obj: State "State0" | State "State1")
+    // :: warning: (obj: State "State0" | State "State1" | Ended)
+    // :: error: (Cannot call finish on ended protocol)
     obj.finish();
   }
 

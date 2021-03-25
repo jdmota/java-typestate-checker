@@ -32,7 +32,8 @@ class FileInCollection {
 
     // :: error: (enhancedfor.type.incompatible)
     for (FileInCollection f : list) {
-      // :: warning: (f: State "Init" | State "Open" | State "Read" | State "Close")
+      // :: warning: (f: State "Init" | State "Open" | State "Read" | State "Close" | Ended)
+      // :: error: (Cannot call state on ended protocol)
       switch (f.state()) {
         case INIT:
           // :: warning: (f: State "Init")

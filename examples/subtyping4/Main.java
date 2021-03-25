@@ -80,8 +80,6 @@ public class Main {
     if (d.hasNext()) {
       d.next();
     }
-    // :: error: [assignment.type.incompatible] found: Ended Base; required: State "HasNext" | State "Next" Base
-    // this error is because new variables do not expect "ended" objects
     // :: error: (Up-casting not allowed. Expected State "HasNext" | Ended but got State "Remove" | Ended)
     Base b = (Base) d;
   }
@@ -101,8 +99,6 @@ public class Main {
     while (b.hasNext()) {
       b.next();
     }
-    // :: error: [assignment.type.incompatible] found: Ended Base; required: State "HasNext" | State "Next" | State "Remove" | State "NextRemove" Derived
-    // this error is because new variables do not expect "ended" objects
     Derived d2 = (Derived) b;
   }
 
@@ -112,8 +108,6 @@ public class Main {
     if (b.hasNext()) {
       b.next();
     }
-    // :: error: [assignment.type.incompatible]
-    // this error is because new variables do not expect "ended" objects
     Derived d2 = (Derived) b;
     // this cast is actually safe, since "b" is left either in the initial state or end states
   }
@@ -122,8 +116,6 @@ public class Main {
     Derived d = new Derived();
     Base b = (Base) d;
     b.hasNext();
-    // :: error: [assignment.type.incompatible]
-    // this error is because new variables do not expect "ended" objects
     // :: error: Down-casting not allowed. Expected State "HasNext" | Ended but got State "Next" | Ended
     Derived d2 = (Derived) b;
   }

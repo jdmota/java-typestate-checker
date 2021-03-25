@@ -261,7 +261,8 @@ class JavaIteratorWrapper9 {
     iterator = it;
     // :: error: (Possible 'this' leak)
     JavaIteratorWrapper9 wrapper = this;
-    // :: warning: (wrapper: State "Start" | State "HasNext" | State "Next")
+    // :: error: (argument.type.incompatible)
+    // :: warning: (wrapper: State "Start" | State "HasNext" | State "Next" | Ended)
     use(wrapper);
   }
 

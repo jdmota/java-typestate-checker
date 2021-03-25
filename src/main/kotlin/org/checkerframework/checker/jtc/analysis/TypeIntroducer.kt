@@ -43,7 +43,7 @@ private fun typeMirrorToJTCType(utils: JTCUtils, annotatedType: AnnotatedTypeMir
       when {
         opts.localTypeDeclaration -> {
           val states = graph.getAllConcreteStates()
-          JTCUnionType.create(states.map { JTCStateType.create(graph, it) })
+          JTCUnionType.create(states.map { JTCStateType.create(graph, it) }.plus(JTCEndedType.SINGLETON))
         }
         opts.typeDeclaration -> {
           val stateNames = JTCUtils.getAnnotationValue(annotations.find {
