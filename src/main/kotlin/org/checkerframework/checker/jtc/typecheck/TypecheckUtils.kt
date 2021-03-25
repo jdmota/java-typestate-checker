@@ -237,7 +237,7 @@ object TypecheckUtils {
 
   fun canDrop(type: JTCType): Boolean {
     return type.isSubtype(acceptedFinalTypes) || when (type) {
-      is JTCUnionType -> type.types.any { type is JTCStateType && type.state.isDroppable }
+      is JTCUnionType -> type.types.all { canDrop(it) }
       is JTCStateType -> type.state.isDroppable
       else -> false
     }

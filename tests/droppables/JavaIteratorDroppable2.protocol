@@ -1,0 +1,9 @@
+typestate JavaIteratorDroppable2 {
+    HasNext = {
+        boolean hasNext(): <true: Next, false: end>
+    }
+    Next = {
+        String next(): HasNext,
+        drop: end
+    }
+}
