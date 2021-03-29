@@ -38,7 +38,7 @@ class Subtyper {
       first is DecisionState && second is DecisionState -> {
         val t1 = first.normalizedTransitions
         val t2 = second.normalizedTransitions
-        if (!t2.keys.containsAll(t1.keys)) { // Output contravariance
+        if (!t2.keys.containsAll(t1.keys)) { // Output covariance
           val common = t1.keys.intersect(t2.keys)
           common.forEach {
             subtyping(g1, g2, t1[it]!! to t2[it]!!, marked + currentStates)
