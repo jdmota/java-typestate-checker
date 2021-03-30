@@ -179,9 +179,10 @@ class AnalyzerVisitor(private val checker: JavaTypestateChecker, private val ana
   override fun visitAssignment(n: AssignmentNode, result: MutableAnalyzerResultWithValue): Void? {
     val lhs = n.target
     val rhs = n.expression
+    val lhsInfo = analyzer.getInitialInfo(lhs)
     val rhsInfo = analyzer.getCurrentInferredInfo(rhs)
     val typeToAssign = computeTypeResultingOfAssignOrCast(lhs, rhsInfo.jtcType, rhsInfo.type)
-    setCurrentInfo(result, lhs, StoreInfo(rhsInfo, typeToAssign))
+    setCurrentInfo(result, lhs, StoreInfo(lhsInfo, typeToAssign))
 
     // Restore the type of the receiver
     val target = n.target

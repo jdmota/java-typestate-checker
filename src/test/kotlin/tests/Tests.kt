@@ -3,7 +3,7 @@ package tests
 import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
-val ignore = listOf("inference") // TODO for now...
+val ignore = listOf("generics", "inference")
 val only = emptyList<String>()
 
 private val defaultOpts = arrayOf("-Anomsgtext", "-AshowTypeInfo")
@@ -120,16 +120,30 @@ class GenericsTest(testFiles: List<File>) : PerDirectoryTest(
   }
 }
 
-private const val dir9 = "inference"
+private const val dir9 = "subtyping"
+
+class SubtypingTest(testFiles: List<File>) : PerDirectoryTest(
+  dir9,
+  testFiles,
+  defaultOpts
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir9)
+  }
+}
+
+private const val dir10 = "inference"
 
 class InferenceTest(testFiles: List<File>) : PerDirectoryTest(
-  dir9,
+  dir10,
   testFiles,
   arrayOf("-Anomsgtext", "-AshowTypeInfo", "-AperformInference")
 ) {
   companion object {
     @JvmStatic
     @get:Parameters
-    val testDirs = arrayOf(dir9)
+    val testDirs = arrayOf(dir10)
   }
 }

@@ -1,0 +1,18 @@
+typestate DerivedIterator {
+  Start = {
+    boolean hasNext(): <true: Next, false: Start>,
+    drop:end
+  }
+  Next = {
+    void next(): Remove
+  }
+  Remove = {
+    void remove(): Start,
+    boolean hasNext(): <true: NextRemove, false: Start>,
+    drop:end
+  }
+  NextRemove = {
+    void remove(): Next,
+    void next(): Remove
+  }
+}

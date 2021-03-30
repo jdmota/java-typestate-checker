@@ -32,7 +32,7 @@ public class Main {
     // :: warning: (it: State "HasNext")
     while (it.hasNext()) {
       // :: warning: (it: State "Next")
-      // :: error: (Returned object did not complete its protocol. Type: Object | Null | Moved)
+      // :: error: (Returned object did not complete its protocol. Type: Object | Moved)
       it.next();
     }
   }
@@ -45,7 +45,7 @@ public class Main {
     while (!it.hasNext()) {
       // :: warning: (it: Ended)
       // :: error: (Cannot call next on ended protocol)
-      // :: error: (Returned object did not complete its protocol. Type: Object | Null | Moved)
+      // :: error: (Returned object did not complete its protocol. Type: Object | Moved)
       it.next();
     }
   }
