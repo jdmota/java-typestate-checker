@@ -1,0 +1,11 @@
+typestate Iterator {
+  HasNext = {
+    boolean hasNext(): <true: Next, false: end>,
+    drop: end
+  }
+  Next = {
+    boolean hasNext(): <true: Next, false: end>,
+    String next(): HasNext,
+    drop: end
+  }
+}
