@@ -146,18 +146,31 @@ class TypestateProcessor(private val utils: JTCUtils) {
         utils.methodUtils.wrapMethodSymbol(it)
       }
 
+      val allSeenMethods = mutableSetOf<MethodUtils.MethodSymbolWrapper>()
+
       for (state in graph.getAllConcreteStates()) {
         val seen = mutableSetOf<MethodUtils.MethodSymbolWrapper>()
         for (transition in state.transitions.keys) {
           val method = utils.methodUtils.methodNodeToMethodSymbol(env, transition, element)
 
           if (seen.add(method)) {
+            allSeenMethods.add(method)
             if (!methodSymbols.any { it == method }) {
               err("Class ${element.name} has no public method for this transition", transition)
             }
           }
         }
       }
+
+      // TODO
+      /*for (method in methodSymbols) {
+        if (!allSeenMethods.contains(method)) {
+          val sym = method.sym
+          if (!sym.isConstructor && sym.enclosingElement.qualifiedName.toString() != "java.lang.Object") {
+            utils.warn("Method ${sym.name} does not appear in the typestate", sym)
+          }
+        }
+      }*/
 
       val superGraph = utils.classUtils.getSuperGraph(element)
       if (superGraph != null) {

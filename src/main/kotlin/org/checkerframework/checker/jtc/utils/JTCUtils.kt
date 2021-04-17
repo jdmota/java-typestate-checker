@@ -64,7 +64,7 @@ class JTCUtils(val checker: SourceChecker) {
   fun getTypeFromStub(elt: Element) = factory.getTypeFromStub(elt)
 
   // Adapted from SourceChecker#report and JavacTrees#printMessage
-  private fun reportError(file: Path, pos: Int, messageKey: String, vararg args: Any?) {
+  private fun report(file: Path, pos: Int, messageKey: String, isError: Boolean, vararg args: Any?) {
     val defaultFormat = "($messageKey)"
     val fmtString = if (env.options != null && env.options.containsKey("nomsgtext")) {
       defaultFormat
@@ -84,7 +84,11 @@ class JTCUtils(val checker: SourceChecker) {
     val newSource = fileManager.getJavaFileObject(getUserPath(file))
     val oldSource = log.useSource(newSource)
     try {
-      log.error(JCDiagnostic.DiagnosticFlag.MULTIPLE, JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
+      if (isError) {
+        log.error(JCDiagnostic.DiagnosticFlag.MULTIPLE, JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
+      } else {
+        log.warning(JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
+      }
     } finally {
       log.useSource(oldSource)
     }
@@ -98,8 +102,16 @@ class JTCUtils(val checker: SourceChecker) {
     checker.reportError(where, message)
   }
 
+  fun warn(message: String, where: Element) {
+    checker.reportWarning(where, message)
+  }
+
   fun err(message: String, file: Path, pos: Int) {
-    reportError(file, pos, message)
+    report(file, pos, message, true)
+  }
+
+  fun warn(message: String, file: Path, pos: Int) {
+    report(file, pos, message, false)
   }
 
   fun checkStates(graph: Graph, states: List<String>?): List<String> {
