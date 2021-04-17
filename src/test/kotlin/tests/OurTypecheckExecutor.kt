@@ -12,7 +12,7 @@ import java.util.regex.Pattern
 import javax.tools.Diagnostic
 import javax.tools.JavaFileObject
 
-class OurTypecheckExecutor(private val testDir: String) : TypecheckExecutor() {
+class OurTypecheckExecutor(private val testDir: String, private val testFiles: List<File>) : TypecheckExecutor() {
   private class OurDiagnostic<F : JavaFileObject>(private val d: Diagnostic<F>) : Diagnostic<F> {
     override fun getKind(): Diagnostic.Kind = d.kind
     override fun getSource(): F = d.source
@@ -35,9 +35,9 @@ class OurTypecheckExecutor(private val testDir: String) : TypecheckExecutor() {
 
   // Support expecting errors from protocol files
   private fun extendExpected(expected: List<TestDiagnostic>): List<TestDiagnostic> {
-    val dir = File(testDir)
-    val list = dir.list() ?: emptyArray<String>()
-    val protocols = list.filter { it.endsWith(".protocol") }.map { File(dir, it) }
+    // Collect folders
+    val list = testFiles.mapNotNull { it.parentFile.listFiles() }.flatMap { it.toList() }
+    val protocols = list.filter { it.absolutePath.endsWith(".protocol") }
     val expectedFromProtocols = JavaDiagnosticReader.readJavaSourceFiles(protocols).map {
       val file = it.filename.replace(".protocol", ".protocol.java") // Hack
       TestDiagnostic(file, it.lineNumber, it.kind, it.message, it.isFixable, it.shouldOmitParentheses())

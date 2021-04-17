@@ -159,7 +159,7 @@ class TypestateProcessor(private val utils: JTCUtils) {
         }
       }
 
-      val superGraph = utils.classUtils.visitClassSymbol(element.superclass.asElement())
+      val superGraph = utils.classUtils.getSuperGraph(element)
       if (superGraph != null) {
         val subtyper = Subtyper()
         subtyper.subtyping(graph, superGraph, Pair(graph.getInitialState(), superGraph.getInitialState()))

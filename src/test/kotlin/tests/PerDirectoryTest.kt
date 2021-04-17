@@ -30,7 +30,7 @@ abstract class PerDirectoryTest(val originalTestDir: String, testFiles: List<Fil
       listOf(JavaTypestateChecker::class.java.canonicalName),
       customizedOptions,
       shouldEmitDebugInfo)
-    val testResult = OurTypecheckExecutor(testDir).runTest(config)
+    val testResult = OurTypecheckExecutor(testDir, testFiles).runTest(config)
     TestUtilities.assertTestDidNotFail(testResult)
   }
 }

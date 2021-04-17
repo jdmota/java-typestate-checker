@@ -60,6 +60,10 @@ class ClassUtils(private val utils: JTCUtils) {
     return if (type is DeclaredType) visitClassSymbol(type.asElement()) else null
   }
 
+  fun getSuperGraph(element: Symbol.ClassSymbol): Graph? {
+    return getSuperClass(element)?.let { visitClassSymbol(it) }
+  }
+
   fun visitClassSymbol(element: Element?): Graph? {
     if (element !is Symbol.ClassSymbol) return null
     return classNameToGraph.computeIfAbsent(element) { sym ->
@@ -103,14 +107,24 @@ class ClassUtils(private val utils: JTCUtils) {
   private val classNameToGraph = WeakIdentityHashMap<Symbol.ClassSymbol, Optional<Graph>>()
 
   companion object {
-    fun getNonStaticPublicMethods(sym: Symbol.ClassSymbol) = sym.members().symbols.filterIsInstance(Symbol.MethodSymbol::class.java).filter {
-      val flags = it.modifiers
-      flags.contains(Modifier.PUBLIC) && !flags.contains(Modifier.STATIC)
+    fun getSuperClass(element: Symbol.ClassSymbol): Symbol.ClassSymbol? {
+      val superClass = element.superclass.asElement()
+      return if (superClass is Symbol.ClassSymbol) superClass else null
     }
 
-    fun getNonStaticMethodsWithBody(classTree: ClassTree) = classTree.members.filterIsInstance(MethodTree::class.java).filter {
-      val flags = it.modifiers.flags
-      it.body != null && !flags.contains(Modifier.STATIC) && !flags.contains(Modifier.ABSTRACT) && !flags.contains(Modifier.NATIVE)
+    fun getMembers(clazz: Symbol.ClassSymbol) = sequence {
+      var currClazz: Symbol.ClassSymbol? = clazz
+      while (currClazz != null) {
+        for (sym in currClazz.members().symbols) {
+          yield(sym)
+        }
+        currClazz = getSuperClass(currClazz)
+      }
+    }
+
+    fun getNonStaticPublicMethods(sym: Symbol.ClassSymbol) = getMembers(sym).filterIsInstance(Symbol.MethodSymbol::class.java).filter {
+      val flags = it.modifiers
+      flags.contains(Modifier.PUBLIC) && !flags.contains(Modifier.STATIC)
     }
 
     fun getEnumLabels(classSymbol: Symbol.ClassSymbol) = classSymbol.members().symbols.filter { it.isEnum }.map { it.name.toString() }
