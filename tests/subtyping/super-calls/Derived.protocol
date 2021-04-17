@@ -1,0 +1,16 @@
+typestate Derived {
+  Start = {
+    boolean hasNext(): <true: Next, false: Start>
+  }
+  Next = {
+    void next(): Remove
+  }
+  Remove = {
+    void remove(): Start,
+    boolean hasNext(): <true: NextRemove, false: Start>
+  }
+  NextRemove = {
+    void remove(): Next,
+    void next(): Remove
+  }
+}

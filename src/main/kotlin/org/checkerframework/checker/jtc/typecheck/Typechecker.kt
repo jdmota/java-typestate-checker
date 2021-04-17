@@ -3,10 +3,7 @@ package org.checkerframework.checker.jtc.typecheck
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.jtc.JavaTypestateChecker
-import org.checkerframework.checker.jtc.utils.JTCUtils
-import org.checkerframework.checker.jtc.utils.isSelfAccess
-import org.checkerframework.checker.jtc.utils.lowerBound
-import org.checkerframework.checker.jtc.utils.upperBound
+import org.checkerframework.checker.jtc.utils.*
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.ElementUtils
@@ -351,7 +348,7 @@ class Typechecker(checker: JavaTypestateChecker) : TypecheckerHelpers(checker) {
     val element = TreeUtils.elementFromTree(node) ?: return p
 
     // Check this field access if this is not a self access, or static access, or method call
-    if (!(TreeUtils.isExplicitThisDereference(node) || isSelfAccess(node) || ElementUtils.isStatic(element))) {
+    if (!(isThisOrSuperDereference(node) || isSelfAccess(node) || ElementUtils.isStatic(element))) {
       val parent = currentPath.parentPath.leaf
       if (!(parent is MethodInvocationTree && parent.methodSelect === node)) {
         val typeInfo = analyzer.getInferredType(node.expression)
@@ -363,7 +360,7 @@ class Typechecker(checker: JavaTypestateChecker) : TypecheckerHelpers(checker) {
     utils.classUtils.visitClassOfElement(element) ?: return p
 
     // If "this"...
-    if (TreeUtils.isExplicitThisDereference(node)) {
+    if (isThisOrSuperDereference(node)) {
       val enclosingMethodOrLambda = JTCUtils.enclosingMethodOrLambda(currentPath) ?: return p
       if (enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION) {
         utils.err("$node was moved to a different closure", node)

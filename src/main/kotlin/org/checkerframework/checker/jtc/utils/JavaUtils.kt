@@ -3,6 +3,7 @@ package org.checkerframework.checker.jtc.utils
 import com.sun.source.tree.*
 import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.Element
+import javax.lang.model.element.Name
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.type.TypeVariable
 import javax.lang.model.type.WildcardType
@@ -20,6 +21,14 @@ fun treeToElement(tree: Tree): Element = when (tree) {
   is MethodTree -> TreeUtils.elementFromDeclaration(tree)
   is VariableTree -> TreeUtils.elementFromDeclaration(tree)
   else -> throw RuntimeException("unknown kind ${tree.kind}")
+}
+
+private fun isThisOrSuper(name: Name): Boolean {
+  return name.contentEquals("this") || name.contentEquals("super");
+}
+
+fun isThisOrSuperDereference(tree: ExpressionTree): Boolean {
+  return (tree is IdentifierTree && isThisOrSuper(tree.name)) || (tree is MemberSelectTree && isThisOrSuper(tree.identifier))
 }
 
 // Adapted from TreeUtils.isSelfAccess
@@ -45,10 +54,8 @@ fun isSelfAccess(tree: ExpressionTree): Boolean {
 
   if (tr is MemberSelectTree) {
     tr = tr.expression
-    // Fix missing
-    return TreeUtils.isExplicitThisDereference(tr)
+    return isThisOrSuperDereference(tr)
   }
-
   return false
 }
 

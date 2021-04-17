@@ -10,6 +10,7 @@ import org.checkerframework.checker.jtc.analysis.*
 import org.checkerframework.checker.jtc.utils.ClassUtils
 import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.checker.jtc.utils.isSelfAccess
+import org.checkerframework.checker.jtc.utils.isThisOrSuperDereference
 import org.checkerframework.framework.source.SourceVisitor
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.ElementUtils
@@ -210,7 +211,7 @@ open class TypecheckerHelpers(val checker: JavaTypestateChecker) : SourceVisitor
     }
 
     // Detect possible leaked "this"
-    if (valueTree is ExpressionTree && TreeUtils.isExplicitThisDereference(valueTree)) {
+    if (valueTree is ExpressionTree && isThisOrSuperDereference(valueTree)) {
       val element = TreeUtils.elementFromTree(valueTree)
       if (element != null) {
         val hasProtocol = utils.classUtils.visitClassSymbol(element.enclosingElement) != null
@@ -297,7 +298,7 @@ open class TypecheckerHelpers(val checker: JavaTypestateChecker) : SourceVisitor
   }
 
   protected fun printTypeInfo(path: TreePath, node: IdentifierTree) {
-    if (checker.shouldReportTypeInfo() && !node.name.contentEquals("this")) {
+    if (checker.shouldReportTypeInfo() && !isThisOrSuperDereference(node)) {
       val parent = path.parentPath.leaf
       val type = if (parent is VariableTree || parent is AssignmentTree && parent.variable === node) {
         (analyzer.getStoreBefore(node)[getReference(node)!!] ?: analyzer.getInitialInfo(node)).jtcType
