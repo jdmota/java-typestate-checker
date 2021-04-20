@@ -63,9 +63,11 @@ class ClassInstanceInfo(
 class ClassInfoPair(val static: ClassStaticInfo, val nonStatic: ClassInstanceInfo)
 
 fun prepareClass(classTree: ClassTree): ClassInfoPair {
-  // TODO skip abstract and native methods
-  // TODO skip abstract methods in an interface, which have a null body but do not have an ABSTRACT flag.
-  val methods = classTree.members.filterIsInstance(MethodTree::class.java)
+  val methods = classTree.members.filterIsInstance(MethodTree::class.java).filterNot {
+    // Skip abstract and native methods
+    // Skip abstract methods in an interface, which have a null body but do not have an ABSTRACT flag
+    it.modifiers.flags.contains(Modifier.ABSTRACT) || it.modifiers.flags.contains(Modifier.NATIVE) || it.body == null
+  }
   val fields = classTree.members.filterIsInstance(VariableTree::class.java)
   val blocks = classTree.members.filterIsInstance(BlockTree::class.java)
   // This includes Tree.Kind.CLASS, Tree.Kind.ANNOTATION_TYPE, Tree.Kind.INTERFACE, Tree.Kind.ENUM

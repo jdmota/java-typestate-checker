@@ -89,15 +89,22 @@ class ClassUtils(private val utils: JTCUtils) {
         }
       } ?: protocolFromConfig
 
-      val graph = if (protocolFile == null) {
-        val superclass = element.superclass
-        if (superclass.kind == TypeKind.NONE) {
-          null
-        } else {
-          visitClassSymbol(element.superclass.asElement())
+      val graph = if (element.isInterface) {
+        if (protocolFile != null) {
+          utils.err("Protocols on interfaces are not supported yet", sym)
         }
+        null
       } else {
-        getGraph(protocolFile, sym)
+        if (protocolFile != null) {
+          getGraph(protocolFile, sym)
+        } else {
+          val superclass = element.superclass
+          if (superclass.kind == TypeKind.NONE) {
+            null
+          } else {
+            visitClassSymbol(element.superclass.asElement())
+          }
+        }
       }
 
       // "computeIfAbsent" does not store null values, store an Optional instead
