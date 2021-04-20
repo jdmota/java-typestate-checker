@@ -6,6 +6,7 @@ public class LinkedList {
   private static class Node {
 
     // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Null | Moved)
+    // :: error: (Object with protocol inside object without protocol might break linearity)
     public @Nullable Item value = null;
     public @Nullable Node next;
 

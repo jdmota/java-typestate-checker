@@ -3,6 +3,7 @@ package org.checkerframework.checker.jtc.utils
 import com.sun.source.tree.ClassTree
 import com.sun.source.tree.MethodTree
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.jtc.typestate.TypestateProcessor
 import org.checkerframework.checker.jtc.typestate.graph.Graph
 import org.checkerframework.javacutil.AnnotationUtils
@@ -18,6 +19,8 @@ import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
 class ClassUtils(private val utils: JTCUtils) {
+
+  private val classNameToGraph = WeakIdentityHashMap<Symbol.ClassSymbol, Optional<Graph>>()
 
   private fun getGraph(protocolFilePath: Path, src: Element): Graph? {
     // Parse and process typestate
@@ -104,9 +107,19 @@ class ClassUtils(private val utils: JTCUtils) {
     }.orElse(null)
   }
 
-  private val classNameToGraph = WeakIdentityHashMap<Symbol.ClassSymbol, Optional<Graph>>()
+  fun hasProtocol(ct: ClassTree): Boolean {
+    return visitClassSymbol(getSymFromClassTree(ct)) != null
+  }
+
+  fun hasProtocol(type: TypeMirror): Boolean {
+    return visitClassTypeMirror(type) != null
+  }
 
   companion object {
+    fun getSymFromClassTree(ct: ClassTree): Symbol.ClassSymbol {
+      return (ct as JCTree.JCClassDecl).sym
+    }
+
     fun getSuperClass(element: Symbol.ClassSymbol): Symbol.ClassSymbol? {
       val superClass = element.superclass.asElement()
       return if (superClass is Symbol.ClassSymbol) superClass else null

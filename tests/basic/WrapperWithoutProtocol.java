@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 class WrapperWithoutProtocol1 {
 
   // :: error: (Object did not complete its protocol. Type: State "HasNext" | State "Next" | Ended | Null | Moved)
+  // :: error: (Object with protocol inside object without protocol might break linearity)
   public @Nullable JavaIterator iterator = null;
 
   public WrapperWithoutProtocol1(JavaIterator it) {
@@ -44,6 +45,7 @@ class WrapperWithoutProtocol1 {
 class WrapperWithoutProtocol2 {
 
   // :: error: (Object did not complete its protocol. Type: State "HasNext" | State "Next" | Ended)
+  // :: error: (Object with protocol inside object without protocol might break linearity)
   private @Nullable JavaIterator iterator = null;
 
   public WrapperWithoutProtocol2(JavaIterator it) {

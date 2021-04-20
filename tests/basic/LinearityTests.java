@@ -73,6 +73,7 @@ class CircularObjWithGetter {
 // Enforce protocol completeness for objects inside other objects
 class PublicLinearityWrapper {
   // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Moved)
+  // :: error: (Object with protocol inside object without protocol might break linearity)
   public Linearity obj = new Linearity();
 
   public void a() {
@@ -117,6 +118,7 @@ class PublicLinearityWrapper {
 
 class PrivateLinearityWrapper {
   // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Moved)
+  // :: error: (Object with protocol inside object without protocol might break linearity)
   private Linearity obj = new Linearity();
 
   public void a() {
@@ -161,6 +163,7 @@ class PrivateLinearityWrapper {
 
 class PrivateLinearityWrapperNoMoves {
   // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended)
+  // :: error: (Object with protocol inside object without protocol might break linearity)
   private Linearity obj = new Linearity();
 
   public void a() {

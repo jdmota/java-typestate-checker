@@ -1,0 +1,5 @@
+typestate Linear {
+  Init = {
+    void change(): end
+  }
+}

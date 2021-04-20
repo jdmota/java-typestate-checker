@@ -3,6 +3,7 @@ package org.checkerframework.checker.jtc.typecheck
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.jtc.JavaTypestateChecker
+import org.checkerframework.checker.jtc.analysis.prepareClass
 import org.checkerframework.checker.jtc.utils.*
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
@@ -63,7 +64,17 @@ class Typechecker(checker: JavaTypestateChecker) : TypecheckerHelpers(checker) {
       ensureFieldsCompleteness(it)
     }
 
-    // TODO checkExtendsImplements: If "@B class Y extends @A X {}", then enforce that @B must be a subtype of @A.
+    // Report error if we find an object with protocol inside an object without protocol
+    if (!utils.classUtils.hasProtocol(classTree)) {
+      val info = prepareClass(classTree)
+      for (field in info.nonStatic.fields) {
+        val type = utils.factory.getAnnotatedType(field).underlyingType
+        val fieldHasProtocol = utils.classUtils.hasProtocol(type)
+        if (fieldHasProtocol) {
+          utils.err("Object with protocol inside object without protocol might break linearity", field)
+        }
+      }
+    }
 
     return super.visitClass(classTree, p)
   }
