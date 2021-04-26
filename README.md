@@ -33,6 +33,10 @@ You may also find other examples in the [examples folder](./examples).
 - [Tutorial](http://bit.ly/2ZulTMW)
 - [Master Thesis](./docs/msc-thesis.pdf)
 
+## Changelog
+
+- [Changelog](https://github.com/jdmota/java-typestate-checker/wiki/Changelog)
+
 <!-- http://www.plantuml.com/plantuml/uml/NSqn2i9048NXVayHKgcG6rW4mT8O40yGirEixix0-YOs7bx8Wc6sUl0Lx-_Vc38qHNVd5yk7c-EtwvhhuqapN9b2xGqJQ7VOjuRFxCaR6MJC0fcb-XmqLZBca0B2GfOlif1tMw_eIG19RkqPsNgMDLhuruokCICziTSKVm00 -->
 
 <!-- http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuGhDoyxBByzJiAdHrLNmAyr14r4ABaaiITNGqbJYGZ2XKcwPEQdL_WMfUJeAGQc9ARLAN1X264e9AeAQ1789HDWflwGaFvSBsGWK2OGsD0c7rBmKe0y1 -->
