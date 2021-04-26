@@ -13,7 +13,7 @@ public class PublicAccess {
 
   public static void publicAccess() {
     PublicAccess w = new PublicAccess();
-    // :: error: (Cannot call finish on ended protocol, on moved value)
+    // :: error: (Cannot call finish on unknown)
     w.o.finish();
     w.finish();
   }

@@ -1,14 +1,13 @@
-public class Shared {
+public class Shared2 {
   // :: error: (Object did not complete its protocol. Type: State "Init" | Ended)
   private Linear l;
 
-  public Shared() {
+  public Shared2() {
     l = new Linear();
   }
 
-  public void change() {
+  public synchronized void change() {
     // :: error: (Cannot call change on ended protocol)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     l.change();
   }
 }

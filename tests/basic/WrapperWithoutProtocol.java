@@ -2,12 +2,9 @@ import org.checkerframework.checker.jtc.lib.Typestate;
 import org.checkerframework.checker.jtc.lib.Requires;
 import org.checkerframework.checker.jtc.lib.Nullable;
 
-import java.util.function.Supplier;
-
 class WrapperWithoutProtocol1 {
 
   // :: error: (Object did not complete its protocol. Type: State "HasNext" | State "Next" | Ended | Null | Moved)
-  // :: error: (Object with protocol inside object without protocol might break linearity)
   public @Nullable JavaIterator iterator = null;
 
   public WrapperWithoutProtocol1(JavaIterator it) {
@@ -19,24 +16,27 @@ class WrapperWithoutProtocol1 {
   public boolean hasNext() {
     // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
     // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.hasNext();
   }
 
   public String next() {
     // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
     // :: error: (Cannot call next on null, on ended protocol, on moved value, on state HasNext (got: HasNext, Next))
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.next();
   }
 
   private String privateNext() {
     // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
     // :: error: (Cannot call next on null, on ended protocol, on moved value, on state HasNext (got: HasNext, Next))
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.next();
   }
 
   public static void main() {
     WrapperWithoutProtocol1 wrapper = new WrapperWithoutProtocol1(new JavaIterator());
-    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
+    // :: error: (Cannot call hasNext on unknown)
     wrapper.iterator.hasNext();
   }
 
@@ -45,7 +45,6 @@ class WrapperWithoutProtocol1 {
 class WrapperWithoutProtocol2 {
 
   // :: error: (Object did not complete its protocol. Type: State "HasNext" | State "Next" | Ended)
-  // :: error: (Object with protocol inside object without protocol might break linearity)
   private @Nullable JavaIterator iterator = null;
 
   public WrapperWithoutProtocol2(JavaIterator it) {
@@ -57,18 +56,21 @@ class WrapperWithoutProtocol2 {
   public boolean hasNext() {
     // :: warning: (iterator: State "HasNext" | State "Next" | Ended)
     // :: error: (Cannot call hasNext on ended protocol)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.hasNext();
   }
 
   public String next() {
     // :: warning: (iterator: State "HasNext" | State "Next" | Ended)
     // :: error: (Cannot call next on ended protocol, on state HasNext (got: HasNext, Next))
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.next();
   }
 
   private String privateNext() {
     // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
     // :: error: (Cannot call next on null, on ended protocol, on moved value, on state HasNext (got: HasNext, Next))
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.next();
   }
 

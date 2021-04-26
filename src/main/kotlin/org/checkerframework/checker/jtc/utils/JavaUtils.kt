@@ -3,6 +3,7 @@ package org.checkerframework.checker.jtc.utils
 import com.sun.source.tree.*
 import org.checkerframework.javacutil.TreeUtils
 import javax.lang.model.element.Element
+import javax.lang.model.element.ElementKind
 import javax.lang.model.element.Name
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.type.TypeVariable
@@ -28,7 +29,22 @@ private fun isThisOrSuper(name: Name): Boolean {
 }
 
 fun isThisOrSuperDereference(tree: ExpressionTree): Boolean {
-  return (tree is IdentifierTree && isThisOrSuper(tree.name)) || (tree is MemberSelectTree && isThisOrSuper(tree.identifier))
+  val tr = TreeUtils.withoutParens(tree)
+  return (tr is IdentifierTree && isThisOrSuper(tr.name)) || (tr is MemberSelectTree && isThisOrSuper(tr.identifier))
+}
+
+// Adapted from TreeUtils.isFieldAccess
+fun isFieldAccess(tree: Tree): Boolean {
+  if (tree is MemberSelectTree) {
+    // Explicit field access
+    val el = TreeUtils.elementFromUse(tree)
+    return el!!.kind.isField && !isThisOrSuper(tree.identifier)
+  } else if (tree is IdentifierTree) {
+    // Implicit field access
+    val el = TreeUtils.elementFromUse(tree)
+    return el!!.kind.isField && !isThisOrSuper(tree.name)
+  }
+  return false
 }
 
 // Adapted from TreeUtils.isSelfAccess
@@ -49,7 +65,8 @@ fun isSelfAccess(tree: ExpressionTree): Boolean {
   tr = TreeUtils.withoutParens(tr)
 
   if (tr.kind == Tree.Kind.IDENTIFIER) {
-    return true
+    val el = TreeUtils.elementFromUse(tr) ?: return false
+    return el.kind.isField || el.kind == ElementKind.METHOD
   }
 
   if (tr is MemberSelectTree) {

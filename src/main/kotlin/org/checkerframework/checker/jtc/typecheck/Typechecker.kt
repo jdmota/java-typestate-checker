@@ -1,7 +1,9 @@
 package org.checkerframework.checker.jtc.typecheck
 
 import com.sun.source.tree.*
+import com.sun.source.util.TreeScanner
 import com.sun.tools.javac.code.Symbol
+import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.jtc.JavaTypestateChecker
 import org.checkerframework.checker.jtc.analysis.prepareClass
 import org.checkerframework.checker.jtc.utils.*
@@ -11,6 +13,7 @@ import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
 import javax.lang.model.element.ElementKind
+import javax.lang.model.element.Modifier
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
@@ -47,6 +50,30 @@ class Typechecker(checker: JavaTypestateChecker) : TypecheckerHelpers(checker) {
     return r
   }
 
+  private val fieldAccessVisitor = object : TreeScanner<Void?, Void?>() {
+    override fun visitIdentifier(node: IdentifierTree, p: Void?): Void? {
+      if (isFieldAccess(node)) {
+        checkFieldAccess(node)
+      }
+      return super.visitIdentifier(node, p)
+    }
+
+    override fun visitMemberSelect(node: MemberSelectTree, p: Void?): Void? {
+      if (isFieldAccess(node)) {
+        checkFieldAccess(node)
+      }
+      return super.visitMemberSelect(node, p)
+    }
+
+    private fun checkFieldAccess(node: ExpressionTree) {
+      val type = utils.factory.getAnnotatedType(node).underlyingType
+      val fieldHasProtocol = utils.classUtils.hasProtocol(type)
+      if (fieldHasProtocol) {
+        utils.err("Access of object with protocol inside object without protocol might break linearity", node)
+      }
+    }
+  }
+
   override fun visitClass(classTree: ClassTree, p: Void?): Void? {
     utils.factory.setRoot(root)
     analyzer.setRoot(root)
@@ -64,16 +91,25 @@ class Typechecker(checker: JavaTypestateChecker) : TypecheckerHelpers(checker) {
       ensureFieldsCompleteness(it)
     }
 
-    // Report error if we find an object with protocol inside an object without protocol
+    // Report error if we find an use of an object with protocol inside an object without protocol
+    // in a non-synchronized method
     if (!utils.classUtils.hasProtocol(classTree)) {
       val info = prepareClass(classTree)
-      for (field in info.nonStatic.fields) {
+
+      for (method in info.nonStatic.methods) {
+        val sym = (method as JCTree.JCMethodDecl).sym
+        if (!method.modifiers.getFlags().contains(Modifier.SYNCHRONIZED) && !sym.isConstructor) {
+          method.accept(fieldAccessVisitor, null)
+        }
+      }
+
+      /*for (field in info.nonStatic.fields) {
         val type = utils.factory.getAnnotatedType(field).underlyingType
         val fieldHasProtocol = utils.classUtils.hasProtocol(type)
         if (fieldHasProtocol) {
           utils.err("Object with protocol inside object without protocol might break linearity", field)
         }
-      }
+      }*/
     }
 
     return super.visitClass(classTree, p)

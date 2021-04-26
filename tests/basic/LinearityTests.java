@@ -73,33 +73,37 @@ class CircularObjWithGetter {
 // Enforce protocol completeness for objects inside other objects
 class PublicLinearityWrapper {
   // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Moved)
-  // :: error: (Object with protocol inside object without protocol might break linearity)
   public Linearity obj = new Linearity();
 
   public void a() {
     // :: error: (Cannot call a on ended protocol, on moved value, on state State1 (got: State0, State1))
     // :: warning: (obj: State "State0" | State "State1" | Ended | Moved)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.a();
   }
 
   public void b() {
     // :: error: (Cannot call b on ended protocol, on moved value, on state State0 (got: State0, State1))
     // :: warning: (obj: State "State0" | State "State1" | Ended | Moved)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.b();
   }
 
   public Linearity get() {
     // :: error: (return.type.incompatible)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return this.obj;
   }
 
   public void move1() {
     // :: error: (argument.type.incompatible)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     LinearityTests.use(this.obj);
   }
 
   public void move2() {
     // :: error: (argument.type.incompatible)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     LinearityTests.use(PublicLinearityWrapper.this.obj);
   }
 
@@ -114,37 +118,51 @@ class PublicLinearityWrapper {
     // :: error: (Returned object did not complete its protocol. Type: State "State0" | State "State1")
     LinearityTests.use(PublicLinearityWrapper.this.get());
   }
+
+  public static void use1(PublicLinearityWrapper wrapper) {
+    // :: error: (argument.type.incompatible)
+    LinearityTests.use(wrapper.obj);
+  }
+
+  public static void use2(PublicLinearityWrapper wrapper) {
+    // :: error: (Cannot call a on unknown)
+    wrapper.obj.a();
+  }
 }
 
 class PrivateLinearityWrapper {
   // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Moved)
-  // :: error: (Object with protocol inside object without protocol might break linearity)
   private Linearity obj = new Linearity();
 
   public void a() {
     // :: error: (Cannot call a on ended protocol, on moved value, on state State1 (got: State0, State1))
     // :: warning: (obj: State "State0" | State "State1" | Ended | Moved)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.a();
   }
 
   public void b() {
     // :: warning: (obj: State "State0" | State "State1" | Ended | Moved)
     // :: error: (Cannot call b on ended protocol, on moved value, on state State0 (got: State0, State1))
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.b();
   }
 
   public Linearity get() {
     // :: error: (return.type.incompatible)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return this.obj;
   }
 
   public void move1() {
     // :: error: (argument.type.incompatible)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     LinearityTests.use(this.obj);
   }
 
   public void move2() {
     // :: error: (argument.type.incompatible)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     LinearityTests.use(PrivateLinearityWrapper.this.obj);
   }
 
@@ -159,22 +177,33 @@ class PrivateLinearityWrapper {
     // :: error: (argument.type.incompatible)
     LinearityTests.use(PrivateLinearityWrapper.this.get());
   }
+
+  public static void use1(PrivateLinearityWrapper wrapper) {
+    // :: error: (argument.type.incompatible)
+    LinearityTests.use(wrapper.obj);
+  }
+
+  public static void use2(PrivateLinearityWrapper wrapper) {
+    // :: error: (Cannot call a on unknown)
+    wrapper.obj.a();
+  }
 }
 
 class PrivateLinearityWrapperNoMoves {
   // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended)
-  // :: error: (Object with protocol inside object without protocol might break linearity)
   private Linearity obj = new Linearity();
 
   public void a() {
     // :: warning: (obj: State "State0" | State "State1" | Ended)
     // :: error: (Cannot call a on ended protocol, on state State1 (got: State0, State1))
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.a();
   }
 
   public void b() {
     // :: warning: (obj: State "State0" | State "State1" | Ended)
     // :: error: (Cannot call b on ended protocol, on state State0 (got: State0, State1))
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.b();
   }
 }

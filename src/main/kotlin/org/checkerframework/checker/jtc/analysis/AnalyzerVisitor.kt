@@ -419,9 +419,16 @@ class AnalyzerVisitor(private val checker: JavaTypestateChecker, private val ana
   }
 
   override fun visitFieldAccess(n: FieldAccessNode, result: MutableAnalyzerResultWithValue): Void? {
+    val receiverRef = getReference(n.receiver)
     val value = getCurrentInfo(result, n, result.value)
-    // Prefer the inferred type information
-    result.value = value
+    // If "this.field" access or a type without protocol or moved
+    if (receiverRef is ThisReference || value.jtcType.isSubtype(TypecheckUtils.noProtocolOrMoved)) {
+      // Prefer the inferred type information
+      result.value = value
+    } else {
+      // Set type to unknown to be safe
+      result.value = StoreInfo(result.value, JTCUnknownType.SINGLETON)
+    }
 
     if (isAssignmentReceiver(n) || isParameter(n)) {
       handleMove(n, result)

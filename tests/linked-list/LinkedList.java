@@ -6,7 +6,6 @@ public class LinkedList {
   private static class Node {
 
     // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Null | Moved)
-    // :: error: (Object with protocol inside object without protocol might break linearity)
     public @Nullable Item value = null;
     public @Nullable Node next;
 
@@ -51,6 +50,7 @@ public class LinkedList {
     // method return type: State "State0" | State "State1" | Null
     // :: warning: (node: NoProtocol | Null)
     // :: error: (return.type.incompatible)
+    // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return node == null ? null : node.value;
   }
 
