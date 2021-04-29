@@ -132,17 +132,17 @@ class ClassUtils(private val utils: JTCUtils) {
       return if (superClass is Symbol.ClassSymbol) superClass else null
     }
 
-    fun getMembers(clazz: Symbol.ClassSymbol) = sequence {
+    fun getMembers(clazz: Symbol.ClassSymbol, recursive: Boolean) = sequence {
       var currClazz: Symbol.ClassSymbol? = clazz
       while (currClazz != null) {
         for (sym in currClazz.members().symbols) {
           yield(sym)
         }
-        currClazz = getSuperClass(currClazz)
+        currClazz = if (recursive) getSuperClass(currClazz) else null
       }
     }
 
-    fun getNonStaticPublicMethods(sym: Symbol.ClassSymbol) = getMembers(sym).filterIsInstance(Symbol.MethodSymbol::class.java).filter {
+    fun getNonStaticPublicMethods(sym: Symbol.ClassSymbol, recursive: Boolean) = getMembers(sym, recursive).filterIsInstance(Symbol.MethodSymbol::class.java).filter {
       val flags = it.modifiers
       flags.contains(Modifier.PUBLIC) && !flags.contains(Modifier.STATIC)
     }

@@ -1,5 +1,8 @@
 import mungo.lib.Typestate;
 
 public class Derived extends Base {
-  public void remove() {}
+  // :: warning: (Method remove does not appear in the typestate)
+  public void remove() {
+
+  }
 }
