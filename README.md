@@ -30,7 +30,8 @@ You may also find other examples in the [examples folder](./examples).
 ## Resources
 
 - [Examples](./examples)
-- [Tutorial](http://bit.ly/2ZulTMW)
+- [Tutorial](https://youtu.be/_zrcqYPe8-8)
+- [Paper](./docs/jatyc-paper.pdf)
 - [Master Thesis](./docs/msc-thesis.pdf)
 
 ## Changelog
