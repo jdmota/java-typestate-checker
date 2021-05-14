@@ -5,7 +5,7 @@ public class LinkedList {
 
   private static class Node {
 
-    // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Null | Moved)
+    // :: error: (Object did not complete its protocol. Type: Unknown)
     public @Nullable Item value = null;
     public @Nullable Node next;
 

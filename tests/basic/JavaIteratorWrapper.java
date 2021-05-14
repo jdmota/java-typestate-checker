@@ -164,6 +164,7 @@ class JavaIteratorWrapper5 {
 @Typestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper6 {
 
+  // :: error: (Object did not complete its protocol. Type: Unknown)
   private @Nullable JavaIterator iterator = null;
 
   public void init(JavaIterator it) {
@@ -175,16 +176,16 @@ class JavaIteratorWrapper6 {
   public boolean hasNext() {
     // :: error: (Cannot call its own public method)
     hasNext();
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
+    // :: warning: (iterator: Unknown)
+    // :: error: (Cannot call hasNext on unknown)
     return iterator.hasNext();
   }
 
   public String next() {
     // :: error: (Cannot call its own public method)
     this.hasNext();
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call next on null, on ended protocol, on moved value, on state HasNext (got: HasNext, Next))
+    // :: warning: (iterator: Unknown)
+    // :: error: (Cannot call next on unknown)
     return iterator.next();
   }
 

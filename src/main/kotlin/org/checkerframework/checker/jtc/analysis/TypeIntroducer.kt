@@ -57,10 +57,7 @@ private fun typeMirrorToJTCType(utils: JTCUtils, annotatedType: AnnotatedTypeMir
           }
           JTCUnionType.create(states.map { JTCStateType.create(graph, it) })
         }
-        else -> {
-          val states = graph.getAllConcreteStates()
-          JTCUnionType.create(states.map { JTCStateType.create(graph, it) }.plus(JTCEndedType.SINGLETON).plus(JTCMovedType.SINGLETON))
-        }
+        else -> JTCUnknownType.SINGLETON
       }
     }
   }

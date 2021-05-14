@@ -40,7 +40,7 @@ class Linearity {
 @Typestate("Circular")
 class CircularObj {
 
-  // :: error: (Object did not complete its protocol. Type: State "State0" | Ended | Null | Moved)
+  // :: error: (Object did not complete its protocol. Type: Unknown)
   public @Nullable CircularObj f = null;
 
   public void finish() {
@@ -72,19 +72,19 @@ class CircularObjWithGetter {
 
 // Enforce protocol completeness for objects inside other objects
 class PublicLinearityWrapper {
-  // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Moved)
+  // :: error: (Object did not complete its protocol. Type: Unknown)
   public Linearity obj = new Linearity();
 
   public void a() {
-    // :: error: (Cannot call a on ended protocol, on moved value, on state State1 (got: State0, State1))
-    // :: warning: (obj: State "State0" | State "State1" | Ended | Moved)
+    // :: error: (Cannot call a on unknown)
+    // :: warning: (obj: Unknown)
     // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.a();
   }
 
   public void b() {
-    // :: error: (Cannot call b on ended protocol, on moved value, on state State0 (got: State0, State1))
-    // :: warning: (obj: State "State0" | State "State1" | Ended | Moved)
+    // :: error: (Cannot call b on unknown)
+    // :: warning: (obj: Unknown)
     // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.b();
   }
@@ -131,19 +131,19 @@ class PublicLinearityWrapper {
 }
 
 class PrivateLinearityWrapper {
-  // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended | Moved)
+  // :: error: (Object did not complete its protocol. Type: Unknown)
   private Linearity obj = new Linearity();
 
   public void a() {
-    // :: error: (Cannot call a on ended protocol, on moved value, on state State1 (got: State0, State1))
-    // :: warning: (obj: State "State0" | State "State1" | Ended | Moved)
+    // :: error: (Cannot call a on unknown)
+    // :: warning: (obj: Unknown)
     // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.a();
   }
 
   public void b() {
-    // :: warning: (obj: State "State0" | State "State1" | Ended | Moved)
-    // :: error: (Cannot call b on ended protocol, on moved value, on state State0 (got: State0, State1))
+    // :: warning: (obj: Unknown)
+    // :: error: (Cannot call b on unknown)
     // :: error: (Access of object with protocol inside object without protocol might break linearity)
     obj.b();
   }
@@ -386,7 +386,7 @@ public class LinearityTests {
   // Overrides
   public static void main11() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: error: (Cannot override because object has not ended its protocol. Type: State "State0" | State "State1" | Ended | Moved)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
     w.obj = new Linearity();
   }
 
@@ -435,11 +435,11 @@ public class LinearityTests {
     CircularObj o2 = new CircularObj();
     // :: warning: (o1: State "State0")
     // :: warning: (o2: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: State "State0" | Ended | Null | Moved)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
     o2.f = o1;
     // :: warning: (o1: Moved)
     // :: warning: (o2: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: State "State0" | Ended | Null | Moved)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
     // :: error: (Cannot access f on moved value)
     o1.f = o2;
   }
@@ -463,15 +463,15 @@ public class LinearityTests {
     CircularObj o4 = new CircularObj();
     // :: warning: (o3: State "State0")
     // :: warning: (o4: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: State "State0" | Ended | Null | Moved)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
     o3.f = o4;
     // :: warning: (o2: State "State0")
     // :: warning: (o3: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: State "State0" | Ended | Null | Moved)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
     o2.f = o3;
     // :: warning: (o1: State "State0")
     // :: warning: (o2: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: State "State0" | Ended | Null | Moved)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
     o1.f = o2;
     // :: warning: (o4: Moved)
     // :: error: (Cannot call finish on moved value)
@@ -486,7 +486,7 @@ public class LinearityTests {
     CircularObj o = new CircularObj();
     // :: warning: (o: State "State0")
     // :: warning: (o: Moved)
-    // :: error: (Cannot override because object has not ended its protocol. Type: State "State0" | Ended | Null | Moved)
+    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
     o.f = o;
   }
 

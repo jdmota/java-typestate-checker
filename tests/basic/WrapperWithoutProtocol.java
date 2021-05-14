@@ -4,7 +4,7 @@ import org.checkerframework.checker.jtc.lib.Nullable;
 
 class WrapperWithoutProtocol1 {
 
-  // :: error: (Object did not complete its protocol. Type: State "HasNext" | State "Next" | Ended | Null | Moved)
+  // :: error: (Object did not complete its protocol. Type: Unknown)
   public @Nullable JavaIterator iterator = null;
 
   public WrapperWithoutProtocol1(JavaIterator it) {
@@ -14,22 +14,22 @@ class WrapperWithoutProtocol1 {
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call hasNext on null, on ended protocol, on moved value)
+    // :: warning: (iterator: Unknown)
+    // :: error: (Cannot call hasNext on unknown)
     // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call next on null, on ended protocol, on moved value, on state HasNext (got: HasNext, Next))
+    // :: warning: (iterator: Unknown)
+    // :: error: (Cannot call next on unknown)
     // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.next();
   }
 
   private String privateNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call next on null, on ended protocol, on moved value, on state HasNext (got: HasNext, Next))
+    // :: warning: (iterator: Unknown)
+    // :: error: (Cannot call next on unknown)
     // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.next();
   }
@@ -68,8 +68,8 @@ class WrapperWithoutProtocol2 {
   }
 
   private String privateNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended | Null | Moved)
-    // :: error: (Cannot call next on null, on ended protocol, on moved value, on state HasNext (got: HasNext, Next))
+    // :: warning: (iterator: Unknown)
+    // :: error: (Cannot call next on unknown)
     // :: error: (Access of object with protocol inside object without protocol might break linearity)
     return iterator.next();
   }

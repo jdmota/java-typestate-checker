@@ -3,11 +3,11 @@ import mungo.lib.Typestate;
 @Typestate("ObjProtocol")
 public class PublicAccess {
 
-  // :: error: (Object did not complete its protocol. Type: State "Start" | Ended | Moved)
+  // :: error: (Object did not complete its protocol. Type: Unknown)
   public Obj o = new Obj();
 
   public void finish() {
-    // :: error: (Cannot call finish on ended protocol, on moved value)
+    // :: error: (Cannot call finish on unknown)
     o.finish();
   }
 
