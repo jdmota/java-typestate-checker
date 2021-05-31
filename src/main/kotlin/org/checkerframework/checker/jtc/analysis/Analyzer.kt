@@ -246,7 +246,7 @@ class Analyzer(private val checker: JavaTypestateChecker) {
       scanning[ct] = 1
 
       val graph = utils.classUtils.visitClassSymbol((ct as JCTree.JCClassDecl).sym)
-      val info = prepareClass(ct)
+      val info = prepareClass(ct, utils)
       run(classQueue, ct, info.static, null)
       run(classQueue, ct, info.nonStatic, graph)
 

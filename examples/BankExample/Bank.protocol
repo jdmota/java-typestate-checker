@@ -1,15 +1,13 @@
-import java.util.List;
-typestate BaseProtocol {
+typestate BankProtocol {
   Init = {
     boolean openAccount(String, String): <true: Open, false: Init>,
-    drop:end
+    drop: end
   }
 
   Open = {
     FunnyMoney closeAccount(): Init,
     boolean deposit(FunnyMoney): <true: Open, false: Open>,
     boolean withdraw(int): <true: Open, false: Open>,
-    int getBalance(): Open,
-    List getTransactionHistory(): Open
+    int getBalance(): Open
   }
 }
