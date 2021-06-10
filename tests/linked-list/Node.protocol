@@ -1,0 +1,10 @@
+typestate Node {
+  State0 = {
+    Item getValue(): State0,
+    void setNext(Node): State1
+  }
+  State1 = {
+    Item getValue(): State1,
+    Node getNext(): State1
+  }
+}

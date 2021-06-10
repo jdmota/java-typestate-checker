@@ -4,7 +4,6 @@ import com.sun.source.util.TreePathScanner
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.jtc.JavaTypestateChecker
-import org.checkerframework.checker.jtc.analysis.*
 import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap

@@ -53,9 +53,13 @@ class TypestateProcessor(private val utils: JTCUtils) {
       val stream = run {
         try {
           CharStreams.fromPath(resolvedFile)
-        } catch (exp: NoSuchFileException) {
+        } catch (exp1: NoSuchFileException) {
           resolvedFile = Paths.get("$file.protocol")
-          CharStreams.fromPath(resolvedFile)
+          try {
+            CharStreams.fromPath(resolvedFile)
+          } catch (exp2: NoSuchFileException) {
+            throw exp1 // Throw the first exception
+          }
         }
       }
       val lexer = TypestateLexer(stream)
@@ -87,6 +91,13 @@ class TypestateProcessor(private val utils: JTCUtils) {
       fun err(text: String, node: TNode) {
         utils.err(text, graph.userPath, node.pos.pos)
         hasErrors = true
+      }
+
+      val unused = graph.unusedStates
+      if (unused != null) {
+        for (node in unused) {
+          utils.warn("Unused state", graph.userPath, node.pos.pos)
+        }
       }
 
       val env = graph.getEnv()
@@ -132,60 +143,19 @@ class TypestateProcessor(private val utils: JTCUtils) {
       return if (hasErrors) null else graph
     }
 
-    // Validate typestate as it relates to the class that uses it
-    fun validateClassAndGraph(utils: JTCUtils, element: Symbol.ClassSymbol, graph: Graph): Graph? {
+    fun validateSubtyping(utils: JTCUtils, element: Symbol.ClassSymbol, graph: Graph): Graph? {
       var hasErrors = false
-
-      fun err(text: String, node: TNode) {
-        utils.err(text, graph.userPath, node.pos.pos)
-        hasErrors = true
-      }
-
-      val env = graph.getEnv()
-      val allMethodSymbols = ClassUtils.getNonStaticPublicMethods(element, recursive = true).map {
-        utils.methodUtils.wrapMethodSymbol(it)
-      }
-
-      val allSeenMethods = mutableSetOf<MethodUtils.MethodSymbolWrapper>()
-
-      for (state in graph.getAllConcreteStates()) {
-        val seen = mutableSetOf<MethodUtils.MethodSymbolWrapper>()
-        for (transition in state.transitions.keys) {
-          val method = utils.methodUtils.methodNodeToMethodSymbol(env, transition, element)
-
-          if (seen.add(method)) {
-            allSeenMethods.add(method)
-            if (!allMethodSymbols.any { it == method }) {
-              err("Class ${element.name} has no public method for this transition", transition)
-            }
+      for (supertype in ClassUtils.getSuperTypes(element)) {
+        val superGraph = utils.classUtils.visitClassSymbol(supertype)
+        if (superGraph != null) {
+          val subtyper = Subtyper()
+          subtyper.subtyping(graph, superGraph, Pair(graph.getInitialState(), superGraph.getInitialState()))
+          for (error in subtyper.errors) {
+            utils.err(error, element)
+            hasErrors = true
           }
         }
       }
-
-      val thisClassMethods = ClassUtils.getNonStaticPublicMethods(element, recursive = false).map {
-        utils.methodUtils.wrapMethodSymbol(it)
-      }
-
-      for (method in thisClassMethods) {
-        if (!allSeenMethods.contains(method)) {
-          val sym = method.sym
-          // sym.enclosingElement.qualifiedName.toString() != "java.lang.Object"
-          if (!sym.isConstructor) {
-            utils.warn("Method ${sym.name} does not appear in the typestate", sym)
-          }
-        }
-      }
-
-      val superGraph = utils.classUtils.getSuperGraph(element)
-      if (superGraph != null) {
-        val subtyper = Subtyper()
-        subtyper.subtyping(graph, superGraph, Pair(graph.getInitialState(), superGraph.getInitialState()))
-        for (error in subtyper.errors) {
-          utils.err(error, element)
-        }
-        hasErrors = hasErrors || subtyper.errors.isNotEmpty()
-      }
-
       return if (hasErrors) null else graph
     }
   }

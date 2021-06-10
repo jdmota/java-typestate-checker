@@ -1,21 +1,20 @@
 public class Main {
 
   public static void main() {
-    // :: error: (Up-casting to a type with no protocol is not allowed)
     Base b = new Derived();
-    // :: warning: (b: Bottom)
+    // :: warning: (b: State{Derived, HasNext} | State{Derived, Remove})
     while (b.hasNext()) {
-      // :: warning: (b: Bottom)
+      // :: warning: (b: State{Derived, Next} | State{Derived, NextRemove})
       b.next();
     }
   }
 
+  // :: error: ([b] did not complete its protocol (found: State{Derived, Remove} | State{Derived, end}))
   public static void main2() {
-    // :: error: (Up-casting to a type with no protocol is not allowed)
     Base b = new Derived();
-    // :: warning: (b: Bottom)
+    // :: warning: (b: State{Derived, HasNext})
     if (b.hasNext()) {
-      // :: warning: (b: Bottom)
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
   }

@@ -28,7 +28,7 @@ public class Main {
     }
   }
 
-  public static void bankUsage(@Requires("Open") @Ensures("Init") Bank bank, Scanner s) {
+  public static void bankUsage(@Requires("Open") @Ensures("Init") final Bank bank, Scanner s) {
     while(true) {
       String cmd = s.next().toLowerCase();
       if (cmd.equals("close")) {
@@ -48,7 +48,7 @@ public class Main {
     }
   }
 
-  public static void extendedBankUsage(@Requires("Open") @Ensures("Init") ExtendedBank bank, Scanner s) {
+  public static void extendedBankUsage(@Requires("Open") @Ensures("Init") final ExtendedBank bank, Scanner s) {
     while(true) {
       String cmd = s.next().toLowerCase();
       if (cmd.equals("close")) {

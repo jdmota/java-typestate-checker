@@ -19,19 +19,19 @@ class Linearity {
   }
 
   public void useOther(@Requires("State0") Linearity obj) {
-    // :: warning: (obj: State "State0")
+    // :: warning: (obj: State{Linearity, State0})
     obj.a();
-    // :: warning: (obj: State "State1")
+    // :: warning: (obj: State{Linearity, State1})
     obj.b();
   }
 
   private void moveThis1() {
-    // :: error: (Possible 'this' leak)
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     LinearityTests.use(this);
   }
 
   private void moveThis2() {
-    // :: error: (Possible 'this' leak)
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     LinearityTests.use(Linearity.this);
   }
 
@@ -40,7 +40,6 @@ class Linearity {
 @Typestate("Circular")
 class CircularObj {
 
-  // :: error: (Object did not complete its protocol. Type: Unknown)
   public @Nullable CircularObj f = null;
 
   public void finish() {
@@ -54,16 +53,17 @@ class CircularObjWithGetter {
 
   private @Nullable CircularObjWithGetter f = null;
 
-  public void setF(CircularObjWithGetter f) {
-    // :: warning: (f: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: State "State0" | Null)
+  public void setF(@Requires("State0") CircularObjWithGetter f) {
+    // :: warning: (f: State{CircularObjWithGetter, State0})
+    // :: warning: (this.f: State{CircularObjWithGetter, State0} | Null)
+    // :: error: (The previous value of [this.f] did not complete its protocol (found: State{CircularObjWithGetter, State0} | Null))
     this.f = f;
   }
 
   public void finish() {
-    // :: warning: (f: State "State0" | Null)
+    // :: warning: (this.f: State{CircularObjWithGetter, State0} | Null)
     if (f != null) {
-      // :: warning: (f: State "State0")
+      // :: warning: (this.f: State{CircularObjWithGetter, State0})
       f.finish();
     }
   }
@@ -71,181 +71,188 @@ class CircularObjWithGetter {
 }
 
 // Enforce protocol completeness for objects inside other objects
+// :: error: ([this.obj] did not complete its protocol (found: Shared{Linearity} | State{Linearity, ?}))
 class PublicLinearityWrapper {
-  // :: error: (Object did not complete its protocol. Type: Unknown)
   public Linearity obj = new Linearity();
 
+  public void setNull() {
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot perform assignment because Null is not a subtype of Shared{Linearity} | State{Linearity, ?})
+    // :: error: (The previous value of [this.obj] did not complete its protocol (found: Shared{Linearity} | State{Linearity, ?}))
+    obj = null;
+  }
+
   public void a() {
-    // :: error: (Cannot call a on unknown)
-    // :: warning: (obj: Unknown)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: error: (Cannot call [a] on State{Linearity, ?})
+    // :: error: (Cannot call [a] on Shared{Linearity} | State{Linearity, ?})
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
     obj.a();
   }
 
   public void b() {
-    // :: error: (Cannot call b on unknown)
-    // :: warning: (obj: Unknown)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: error: (Cannot call [b] on State{Linearity, ?})
+    // :: error: (Cannot call [b] on Shared{Linearity} | State{Linearity, ?})
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
     obj.b();
   }
 
   public Linearity get() {
-    // :: error: (return.type.incompatible)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
     return this.obj;
   }
 
   public void move1() {
-    // :: error: (argument.type.incompatible)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: error: (Incompatible parameter because Shared{Linearity} | State{Linearity, ?} is not a subtype of State{Linearity, State0})
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
     LinearityTests.use(this.obj);
   }
 
   public void move2() {
-    // :: error: (argument.type.incompatible)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: error: (Incompatible parameter because Shared{Linearity} | State{Linearity, ?} is not a subtype of State{Linearity, State0})
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
     LinearityTests.use(PublicLinearityWrapper.this.obj);
   }
 
   public void move3() {
-    // :: error: (argument.type.incompatible)
-    // :: error: (Returned object did not complete its protocol. Type: State "State0" | State "State1")
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     LinearityTests.use(this.get());
   }
 
   public void move4() {
-    // :: error: (argument.type.incompatible)
-    // :: error: (Returned object did not complete its protocol. Type: State "State0" | State "State1")
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     LinearityTests.use(PublicLinearityWrapper.this.get());
   }
 
   public static void use1(PublicLinearityWrapper wrapper) {
-    // :: error: (argument.type.incompatible)
+    // :: warning: (wrapper: Shared{PublicLinearityWrapper})
+    // :: warning: (wrapper.obj: Unknown)
+    // :: error: (Cannot access [wrapper.obj])
     LinearityTests.use(wrapper.obj);
   }
 
   public static void use2(PublicLinearityWrapper wrapper) {
-    // :: error: (Cannot call a on unknown)
+    // :: warning: (wrapper: Shared{PublicLinearityWrapper})
+    // :: warning: (wrapper.obj: Unknown)
+    // :: error: (Cannot access [wrapper.obj])
     wrapper.obj.a();
   }
 }
 
+// :: error: ([this.obj] did not complete its protocol (found: Shared{Linearity} | State{Linearity, ?}))
 class PrivateLinearityWrapper {
-  // :: error: (Object did not complete its protocol. Type: Unknown)
   private Linearity obj = new Linearity();
 
   public void a() {
-    // :: error: (Cannot call a on unknown)
-    // :: warning: (obj: Unknown)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [a] on Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [a] on State{Linearity, ?})
     obj.a();
   }
 
   public void b() {
-    // :: warning: (obj: Unknown)
-    // :: error: (Cannot call b on unknown)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [b] on Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [b] on State{Linearity, ?})
     obj.b();
   }
 
   public Linearity get() {
-    // :: error: (return.type.incompatible)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
     return this.obj;
   }
 
   public void move1() {
-    // :: error: (argument.type.incompatible)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Incompatible parameter because Shared{Linearity} | State{Linearity, ?} is not a subtype of State{Linearity, State0})
     LinearityTests.use(this.obj);
   }
 
   public void move2() {
-    // :: error: (argument.type.incompatible)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Incompatible parameter because Shared{Linearity} | State{Linearity, ?} is not a subtype of State{Linearity, State0})
     LinearityTests.use(PrivateLinearityWrapper.this.obj);
   }
 
   public void move3() {
-    // :: error: (Returned object did not complete its protocol. Type: State "State0" | State "State1")
-    // :: error: (argument.type.incompatible)
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     LinearityTests.use(this.get());
   }
 
   public void move4() {
-    // :: error: (Returned object did not complete its protocol. Type: State "State0" | State "State1")
-    // :: error: (argument.type.incompatible)
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     LinearityTests.use(PrivateLinearityWrapper.this.get());
   }
 
   public static void use1(PrivateLinearityWrapper wrapper) {
-    // :: error: (argument.type.incompatible)
+    // :: warning: (wrapper: Shared{PrivateLinearityWrapper})
+    // :: warning: (wrapper.obj: Unknown)
+    // :: error: (Cannot access [wrapper.obj])
     LinearityTests.use(wrapper.obj);
   }
 
   public static void use2(PrivateLinearityWrapper wrapper) {
-    // :: error: (Cannot call a on unknown)
+    // :: warning: (wrapper: Shared{PrivateLinearityWrapper})
+    // :: warning: (wrapper.obj: Unknown)
+    // :: error: (Cannot access [wrapper.obj])
     wrapper.obj.a();
   }
 }
 
+// :: error: ([this.obj] did not complete its protocol (found: Shared{Linearity} | State{Linearity, ?}))
 class PrivateLinearityWrapperNoMoves {
-  // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1" | Ended)
   private Linearity obj = new Linearity();
 
   public void a() {
-    // :: warning: (obj: State "State0" | State "State1" | Ended)
-    // :: error: (Cannot call a on ended protocol, on state State1 (got: State0, State1))
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [a] on Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [a] on State{Linearity, ?})
     obj.a();
   }
 
   public void b() {
-    // :: warning: (obj: State "State0" | State "State1" | Ended)
-    // :: error: (Cannot call b on ended protocol, on state State0 (got: State0, State1))
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [b] on Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [b] on State{Linearity, ?})
     obj.b();
   }
 }
 
 class MoveToConstructor {
-
-  // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1")
-  public MoveToConstructor(Linearity obj) {
+  // :: error: ([obj] did not complete its protocol (found: State{Linearity, State0} | State{Linearity, State1}))
+  public MoveToConstructor(@Requires({"State0", "State1"}) Linearity obj) {
 
   }
-
 }
 
 class MoveToConstructor2Args {
-
-  // :: error: (Object did not complete its protocol. Type: State "State0" | State "State1")
-  public MoveToConstructor2Args(Linearity obj, Linearity obj2) {
+  // :: error: ([obj] did not complete its protocol (found: State{Linearity, State0} | State{Linearity, State1}))
+  // :: error: ([obj2] did not complete its protocol (found: State{Linearity, State0} | State{Linearity, State1}))
+  public MoveToConstructor2Args(
+    @Requires({"State0", "State1"}) Linearity obj,
+    @Requires({"State0", "State1"}) Linearity obj2
+  ) {
 
   }
-
 }
 
 class MoveToConstructor2 extends MoveToConstructor {
-
-  public MoveToConstructor2(Linearity obj) {
-    // :: warning: (obj: State "State0" | State "State1")
+  public MoveToConstructor2(@Requires({"State0", "State1"}) Linearity obj) {
+    // :: warning: (obj: State{Linearity, State0} | State{Linearity, State1})
     super(obj);
-    // :: warning: (obj: Moved)
-    // :: error: (Cannot call finish on moved value)
+    // :: warning: (obj: Shared{Linearity})
+    // :: error: (Cannot call [finish] on Shared{Linearity})
     obj.finish();
   }
-
 }
 
 public class LinearityTests {
 
   public static void main1() {
     Linearity obj = new Linearity();
-    // :: warning: (obj: State "State0")
+    // :: warning: (obj: State{Linearity, State0})
     use(obj);
-    // :: warning: (obj: Moved)
-    // :: error: (Cannot call finish on moved value)
+    // :: warning: (obj: Shared{Linearity})
+    // :: error: (Cannot call [finish] on Shared{Linearity})
     obj.finish();
   }
 
@@ -259,101 +266,103 @@ public class LinearityTests {
 
   public static void main2() {
     Linearity obj = new Linearity();
-    // :: warning: (obj: State "State0")
+    // :: warning: (obj: State{Linearity, State0})
     use(obj);
-    // :: warning: (obj: Moved)
-    // :: error: (argument.type.incompatible)
+    // :: warning: (obj: Shared{Linearity})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     use(obj);
   }
 
   public static void main2_2() {
     Linearity obj = new Linearity();
-    // :: warning: (obj: State "State0")
-    // :: warning: (obj: Moved)
-    // :: error: (argument.type.incompatible)
+    // :: warning: (obj: State{Linearity, State0})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0} | State{Linearity, State1})
     use2(obj, obj);
-    // :: warning: (obj: Moved)
-    // :: error: (Cannot call finish on moved value)
+    // :: warning: (obj: Bottom)
     obj.finish();
   }
 
   public static void main2_3() {
     Linearity obj = new Linearity();
-    // :: warning: (obj: State "State0")
-    // :: warning: (obj: Moved)
-    // :: error: (argument.type.incompatible)
+    // :: warning: (obj: State{Linearity, State0})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0} | State{Linearity, State1})
     use2((Linearity) ((Linearity) obj), obj);
-    // :: warning: (obj: Moved)
-    // :: error: (Cannot call finish on moved value)
+    // :: warning: (obj: Bottom)
     obj.finish();
   }
 
   public static void main3() {
     Linearity obj = new Linearity();
-    // :: warning: (obj: State "State0")
+    // :: warning: (obj: State{Linearity, State0})
     Linearity obj2 = obj;
-    // :: warning: (obj2: State "State0")
+    // :: warning: (obj2: State{Linearity, State0})
     use(obj2);
-    // :: warning: (obj: Moved)
-    // :: error: (Cannot call finish on moved value)
+    // :: warning: (obj: Shared{Linearity})
+    // :: error: (Cannot call [finish] on Shared{Linearity})
     obj.finish();
   }
 
   public static void main4() {
     Linearity obj = new Linearity();
-    // :: warning: (obj: State "State0")
+    // :: warning: (obj: State{Linearity, State0})
     Linearity obj2 = obj;
-    // :: warning: (obj2: State "State0")
+    // :: warning: (obj2: State{Linearity, State0})
     use(obj2);
-    // :: warning: (obj: Moved)
-    // :: error: (argument.type.incompatible)
+    // :: warning: (obj: Shared{Linearity})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     use(obj);
   }
 
   public static void main5() {
     Linearity obj = new Linearity();
     Supplier<String> fn = () -> {
-      // :: error: (obj was moved to a different closure)
-      // :: warning: (obj: Bottom)
+      // :: warning: (obj: Unknown)
+      // :: error: (Cannot access [obj])
       obj.a();
       return "";
     };
-    // :: warning: (obj: State "State0")
+    // :: warning: (obj: State{Linearity, State0})
     obj.finish();
+    // :: warning: (fn: Shared{java.util.function.Supplier})
     fn.get();
   }
 
-  // If an object is moved to a method which we do not have the code for
+  // :: error: ([new Linearity] did not complete its protocol (found: State{Linearity, State0}))
   public static void main6() {
     List<Linearity> list = new LinkedList<>();
-    // :: error: (Passing an object with protocol to a method that cannot be analyzed)
+    // :: warning: (list: Shared{java.util.LinkedList})
     list.add(new Linearity());
-    // :: error: (assignment.type.incompatible)
+    // :: warning: (list: Shared{java.util.LinkedList})
     Linearity obj1 = list.get(0);
-    // :: error: (assignment.type.incompatible)
+    // :: warning: (list: Shared{java.util.LinkedList})
     Linearity obj2 = list.get(0);
-    // :: warning: (obj1: State "State0" | State "State1" | Ended)
-    // :: error: (Cannot call finish on ended protocol)
+    // :: warning: (obj1: Shared{java.lang.Object} | Null)
+    // :: error: (Cannot call finish on null)
+    // :: error: (Cannot call [finish] on Shared{java.lang.Object})
     obj1.finish();
-    // :: warning: (obj2: State "State0" | State "State1" | Ended)
-    // :: error: (Cannot call finish on ended protocol)
+    // :: warning: (obj2: Shared{java.lang.Object} | Null)
+    // :: error: (Cannot call finish on null)
+    // :: error: (Cannot call [finish] on Shared{java.lang.Object})
     obj2.finish();
   }
 
   // Detect moves of objects inside other objects to variables
   public static void main7() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: error: (assignment.type.incompatible)
+    // :: warning: (w: Shared{PublicLinearityWrapper})
+    // :: warning: (w.obj: Unknown)
+    // :: error: (Cannot access [w.obj])
     Linearity obj = w.obj;
-    // :: warning: (obj: State "State0" | State "State1" | Ended)
-    // :: error: (Cannot call finish on ended protocol)
+    // :: warning: (obj: Bottom)
     obj.finish();
   }
 
   // Detect moves of objects inside other objects to methods
   public static void main8() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: error: (argument.type.incompatible)
+    // :: warning: (w.obj: Unknown)
+    // :: warning: (w: Shared{PublicLinearityWrapper})
+    // :: error: (Cannot access [w.obj])
     use(w.obj);
   }
 
@@ -361,10 +370,11 @@ public class LinearityTests {
   public static void main9() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
     Supplier<String> fn = () -> {
-      // :: error: (assignment.type.incompatible)
+      // :: warning: (w: Unknown)
+      // :: warning: (w.obj: Bottom)
+      // :: error: (Cannot access [w])
       Linearity obj = w.obj;
-      // :: warning: (obj: State "State0" | State "State1" | Ended)
-      // :: error: (Cannot call finish on ended protocol)
+      // :: warning: (obj: Bottom)
       obj.finish();
       return "";
     };
@@ -373,86 +383,89 @@ public class LinearityTests {
   // Detecting moves to its own method
   public static void main10() {
     Linearity obj = new Linearity();
-    // :: warning: (obj: State "State0")
-    // :: warning: (obj: Moved)
-    // :: error: (argument.type.incompatible)
+    // :: warning: (obj: State{Linearity, State0})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     obj.useOther(obj);
-    // :: warning: (obj: State "State0")
+    // :: warning: (obj: Bottom)
     Linearity obj2 = obj;
-    // :: warning: (obj2: State "State0")
+    // :: warning: (obj2: Bottom)
     obj2.finish();
   }
 
   // Overrides
   public static void main11() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
+    // :: warning: (w: Shared{PublicLinearityWrapper})
+    // :: warning: (w.obj: Unknown)
+    // :: error: (Cannot perform assignment because [w.obj] is not accessible here)
+    // :: error: (Cannot access [w.obj])
     w.obj = new Linearity();
   }
 
   // Implicity move in method reference
-  public static void main12() {
+  /*public static void main12() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
     Supplier<Linearity> method = w::get;
-    // :: error: (assignment.type.incompatible)
+    :: error: (assignment.type.incompatible)
     Linearity obj = method.get();
-    // :: warning: (obj: State "State0" | State "State1" | Ended)
-    // :: error: (Cannot call finish on ended protocol)
+    :: warning: (obj: State{Linearity, State0} | State{Linearity, State1} | Ended)
+    :: error: (Cannot call finish on ended protocol)
     obj.finish();
-  }
+  }*/
 
   // Implicity move in method reference
-  public static void main13() {
-    // :: error: (Object did not complete its protocol. Type: State "State0")
+  /*TODO public static void main13() {
+    :: error: (Object did not complete its protocol. Type: State{Linearity, State0})
     Linearity obj = new Linearity();
-    // :: warning: (obj: State "State0")
-    // :: error: (Cannot create reference for method of an object with protocol)
+    :: warning: (obj: State{Linearity, State0})
+    :: error: (Cannot create reference for method of an object with protocol)
     Runnable method = obj::a;
-  }
+  }*/
 
   public static void main14() {
     Linearity obj1 = new Linearity();
-    // :: warning: (obj1: State "State0")
+    // :: warning: (obj1: State{Linearity, State0})
     MoveToConstructor obj2 = new MoveToConstructor(obj1);
-    // :: warning: (obj1: Moved)
-    // :: error: (Cannot call finish on moved value)
+    // :: warning: (obj1: Shared{Linearity})
+    // :: error: (Cannot call [finish] on Shared{Linearity})
     obj1.finish();
   }
 
   public static void main15() {
     Linearity obj1 = new Linearity();
-    // :: warning: (obj1: State "State0")
-    // :: warning: (obj1: Moved)
-    // :: error: (argument.type.incompatible)
+    // :: warning: (obj1: State{Linearity, State0})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0} | State{Linearity, State1})
     MoveToConstructor2Args obj2 = new MoveToConstructor2Args(obj1, obj1);
-    // :: warning: (obj1: Moved)
-    // :: error: (Cannot call finish on moved value)
+    // :: warning: (obj1: Bottom)
     obj1.finish();
   }
 
   public static void main16() {
     CircularObj o1 = new CircularObj();
     CircularObj o2 = new CircularObj();
-    // :: warning: (o1: State "State0")
-    // :: warning: (o2: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
+    // :: warning: (o1: State{CircularObj, State0})
+    // :: warning: (o2: State{CircularObj, State0})
+    // :: warning: (o2.f: Unknown)
+    // :: error: (Cannot perform assignment because [o2.f] is not accessible here)
+    // :: error: (Cannot access [o2.f])
     o2.f = o1;
-    // :: warning: (o1: Moved)
-    // :: warning: (o2: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
-    // :: error: (Cannot access f on moved value)
+    // :: warning: (o1: Shared{CircularObj})
+    // :: warning: (o2: State{CircularObj, State0})
+    // :: warning: (o1.f: Unknown)
+    // :: error: (Cannot perform assignment because [o1.f] is not accessible here)
+    // :: error: (Cannot access [o1.f])
     o1.f = o2;
   }
 
   public static void main17() {
     CircularObjWithGetter o1 = new CircularObjWithGetter();
     CircularObjWithGetter o2 = new CircularObjWithGetter();
-    // :: warning: (o1: State "State0")
-    // :: warning: (o2: State "State0")
+    // :: warning: (o1: State{CircularObjWithGetter, State0})
+    // :: warning: (o2: State{CircularObjWithGetter, State0})
     o2.setF(o1);
-    // :: warning: (o1: Moved)
-    // :: warning: (o2: State "State0")
-    // :: error: (Cannot call setF on moved value)
+    // :: warning: (o1: Shared{CircularObjWithGetter})
+    // :: warning: (o2: State{CircularObjWithGetter, State0})
+    // :: error: (Cannot call [setF] on Shared{CircularObjWithGetter})
     o1.setF(o2);
   }
 
@@ -461,71 +474,83 @@ public class LinearityTests {
     CircularObj o2 = new CircularObj();
     CircularObj o3 = new CircularObj();
     CircularObj o4 = new CircularObj();
-    // :: warning: (o3: State "State0")
-    // :: warning: (o4: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
+    // :: warning: (o3: State{CircularObj, State0})
+    // :: warning: (o4: State{CircularObj, State0})
+    // :: warning: (o3.f: Unknown)
+    // :: error: (Cannot perform assignment because [o3.f] is not accessible here)
+    // :: error: (Cannot access [o3.f])
     o3.f = o4;
-    // :: warning: (o2: State "State0")
-    // :: warning: (o3: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
+    // :: warning: (o2: State{CircularObj, State0})
+    // :: warning: (o3: State{CircularObj, State0})
+    // :: warning: (o2.f: Unknown)
+    // :: error: (Cannot perform assignment because [o2.f] is not accessible here)
+    // :: error: (Cannot access [o2.f])
     o2.f = o3;
-    // :: warning: (o1: State "State0")
-    // :: warning: (o2: State "State0")
-    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
+    // :: warning: (o1: State{CircularObj, State0})
+    // :: warning: (o2: State{CircularObj, State0})
+    // :: warning: (o1.f: Unknown)
+    // :: error: (Cannot perform assignment because [o1.f] is not accessible here)
+    // :: error: (Cannot access [o1.f])
     o1.f = o2;
-    // :: warning: (o4: Moved)
-    // :: error: (Cannot call finish on moved value)
+    // :: warning: (o4: Shared{CircularObj})
+    // :: error: (Cannot call [finish] on Shared{CircularObj})
     o4.finish();
-    // :: warning: (o1: State "State0")
+    // :: warning: (o1: State{CircularObj, State0})
     o1.finish();
   }
 
-  // Making sure that the first access marks the object as moved
-  // as if it were something like o.setF(o) or Obj#setF(o, o)
   public static void main19() {
     CircularObj o = new CircularObj();
-    // :: warning: (o: State "State0")
-    // :: warning: (o: Moved)
-    // :: error: (Cannot override because object has not ended its protocol. Type: Unknown)
+    // :: warning: (o: State{CircularObj, State0})
+    // :: warning: (o.f: Unknown)
+    // :: error: (Cannot perform assignment because [o.f] is not accessible here)
+    // :: error: (Cannot access [o.f])
     o.f = o;
   }
 
   // Helpers
 
   public static void use(@Requires("State0") Linearity obj) {
-    // :: warning: (obj: State "State0")
+    // :: warning: (obj: State{Linearity, State0})
     obj.a();
-    // :: warning: (obj: State "State1")
+    // :: warning: (obj: State{Linearity, State1})
     obj.b();
   }
 
-  public static void useNullable(@Nullable @Requires("State0") @Ensures("State1") Linearity obj) {
-    // :: warning: (obj: State "State0" | Null)
+  public static void useNullable(@Nullable @Requires("State0") @Ensures("State1") final Linearity obj) {
+    // :: warning: (obj: State{Linearity, State0} | Null)
     if (obj != null) {
-      // :: warning: (obj: State "State0")
+      // :: warning: (obj: State{Linearity, State0})
       obj.a();
     }
   }
 
-  public static void useNullable2(@Nullable @Requires("State0") @Ensures("State1") Linearity obj) {
-    // :: warning: (obj: State "State0" | Null)
-    if (obj != null) {
-      // :: warning: (obj: State "State0")
-      // :: error: (Cannot override because object is not in the state specified by @Ensures. Type: State "State0")
-      // :: error: (Cannot override because object has not ended its protocol. Type: State "State0")
-      obj = null;
+  // :: error: (Type of parameter [obj] is Shared{Linearity} | Null, expected State{Linearity, State1} | Null})
+  public static void useNullable2(@Nullable @Requires("State0") @Ensures("State1") final Linearity obj) {
+    // :: warning: (obj: State{Linearity, State0} | Null)
+    Linearity obj2 = obj;
+    // :: warning: (obj2: State{Linearity, State0} | Null)
+    if (obj2 != null) {
+      // :: warning: (obj2: State{Linearity, State0})
+      // :: error: (The previous value of [obj2] did not complete its protocol (found: State{Linearity, State0}))
+      obj2 = null;
     }
   }
 
-  public static void use2(Linearity obj1, Linearity obj2) {
-    // :: warning: (obj1: State "State0" | State "State1")
+  public static void use2(
+    @Requires({"State0", "State1"}) Linearity obj1,
+    @Requires({"State0", "State1"}) Linearity obj2
+  ) {
+    // :: warning: (obj1: State{Linearity, State0} | State{Linearity, State1})
     obj1.finish();
-    // :: warning: (obj2: State "State0" | State "State1")
+    // :: warning: (obj2: State{Linearity, State0} | State{Linearity, State1})
     obj2.finish();
   }
 
   public static void useWrapper(PublicLinearityWrapper obj) {
+    // :: warning: (obj: Shared{PublicLinearityWrapper})
     obj.a();
+    // :: warning: (obj: Shared{PublicLinearityWrapper})
     obj.b();
   }
 }

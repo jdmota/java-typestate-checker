@@ -1,1 +1,1 @@
-public class NO extends RestrictedStatus{ }
+public class NO extends RestrictedStatus {}

@@ -1,16 +1,11 @@
-package org.checkerframework.checker.jtc.analysis
+package org.checkerframework.checker.jtc.assertions
 
 import com.sun.source.tree.BlockTree
 import com.sun.source.tree.ClassTree
 import com.sun.source.tree.MethodTree
 import com.sun.source.tree.VariableTree
-import com.sun.tools.javac.tree.JCTree
-import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.javacutil.TreeUtils
-import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.Modifier
-import javax.lang.model.element.TypeElement
-import javax.lang.model.util.ElementFilter
 
 fun filterMethods(methods: List<MethodTree>, modifier: Modifier) = methods.filter {
   it.modifiers.flags.contains(modifier)
@@ -67,10 +62,7 @@ class ClassInstanceInfo(
 
 class ClassInfoPair(val static: ClassStaticInfo, val nonStatic: ClassInstanceInfo)
 
-fun prepareClass(classTree: ClassTree, utils: JTCUtils): ClassInfoPair {
-  // val e = (classTree.extendsClause as JCTree).type.asElement()
-  // val d = utils.treeUtils.getTree(e)
-
+fun prepareClass(classTree: ClassTree): ClassInfoPair {
   val methods = classTree.members.filterIsInstance(MethodTree::class.java).filterNot {
     // Skip abstract and native methods
     // Skip abstract methods in an interface, which have a null body but do not have an ABSTRACT flag

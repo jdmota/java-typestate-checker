@@ -1,6 +1,6 @@
 import mungo.lib.Typestate;
 
-@Typestate("Derived.protocol")
+@Typestate("Derived")
 public class Derived implements Base {
 
   public boolean hasNext() {
@@ -8,10 +8,10 @@ public class Derived implements Base {
   }
 
   public void next() {
-    
+
   }
 
   public void remove() {
-    
+
   }
 }

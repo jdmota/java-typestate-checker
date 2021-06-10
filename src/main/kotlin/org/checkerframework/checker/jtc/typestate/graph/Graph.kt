@@ -8,6 +8,7 @@ import java.nio.file.Path
 
 class Graph private constructor(val resolvedFile: Path, val typestateName: String) {
   val userPath = JTCUtils.getUserPath(resolvedFile)
+  val filename = resolvedFile.fileName
 
   private var env: Env<AttrContext>? = null
   private var initialState: State? = null
@@ -17,6 +18,8 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
   private val referencedStates = HashSet<String>()
   private val concreteStates = mutableSetOf<State>()
   private val decisionStates = mutableSetOf<DecisionState>()
+
+  var unusedStates: List<TStateNode>? = null
 
   init {
     finalStates.add(endState)
@@ -33,12 +36,20 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
 
   fun getDecisionStates(): Set<DecisionState> = decisionStates
 
+  fun getAllTransitions(): Sequence<MethodTransition> = sequence {
+    for (state in concreteStates) {
+      for (method in state.normalizedTransitions) {
+        yield(method.key)
+      }
+    }
+  }
+
   fun hasStateByName(name: String): Boolean {
     return namedStates[name] != null
   }
 
   fun isFinalState(name: String): Boolean {
-    return name == "end" || namedStates[name]?.transitions?.isEmpty() ?: false
+    return name == "end" || namedStates[name]?.isEnd() ?: false
   }
 
   private fun getStateByName(id: TIdNode): State {
@@ -120,7 +131,7 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
     val unusedStates: MutableSet<String> = HashSet(namedStates.keys)
     unusedStates.removeAll(referencedStates)
     if (unusedStates.size > 0) {
-      throw UnusedStates(unusedStates.map { namedStates[it]!!.node!! })
+      this.unusedStates = unusedStates.map { namedStates[it]!!.node!! }
     }
   }
 

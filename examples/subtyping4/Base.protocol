@@ -1,4 +1,4 @@
-typestate Iterator {
+typestate Base {
   HasNext = {
     boolean hasNext(): <true: Next, false: end>
   }

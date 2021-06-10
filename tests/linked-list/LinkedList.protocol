@@ -1,0 +1,6 @@
+typestate LinkedList {
+  State0 = {
+    void add(Item): State0,
+    Item get(int): State0
+  }
+}

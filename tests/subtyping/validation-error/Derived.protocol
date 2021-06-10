@@ -6,12 +6,10 @@ typestate Derived {
     void next(): Remove
   }
   Remove = {
-    // :: error: (Class Derived has no public method for this transition)
     void remove(): HasNext,
     boolean hasNext(): <true: NextRemove, false: end>
   }
   NextRemove = {
-    // :: error: (Class Derived has no public method for this transition)
     void remove(): Next,
     void next(): Remove
   }

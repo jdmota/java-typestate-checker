@@ -11,19 +11,29 @@ sealed class JavaType {
       }
     }
   }
+
+  abstract fun getName(): String
 }
 
-class JavaTypeId(val name: String) : JavaType() {
+class JavaTypeId(val id: String) : JavaType() {
+  override fun getName(): String {
+    return id
+  }
+
   override fun equals(other: Any?): Boolean {
-    return other is JavaTypeId && name == other.name
+    return other is JavaTypeId && id == other.id
   }
 
   override fun hashCode(): Int {
-    return name.hashCode()
+    return id.hashCode()
   }
 }
 
 class JavaTypeSelect(val parent: JavaType, val id: String) : JavaType() {
+  override fun getName(): String {
+    return parent.getName() + "." + id
+  }
+
   override fun equals(other: Any?): Boolean {
     return other is JavaTypeSelect && id == other.id && parent == other.parent
   }
@@ -116,7 +126,7 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
 class DecisionState(node: TDecisionStateNode) : AbstractState<TDecisionStateNode>(node) {
 
   val transitions: MutableMap<TDecisionNode, State> = LinkedHashMap()
-  val normalizedTransitions: MutableMap<DecisionLabelTransition, AbstractState<*>> = LinkedHashMap()
+  val normalizedTransitions: MutableMap<DecisionLabelTransition, State> = LinkedHashMap()
 
   fun addTransition(transition: TDecisionNode, destination: State) {
     transitions[transition] = destination

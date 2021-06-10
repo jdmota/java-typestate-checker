@@ -2,20 +2,20 @@ public class Main {
 
   public static void main1() {
     Derived d = new Derived();
-    // :: warning: (d: State "HasNext")
+    // :: warning: (d: State{Derived, HasNext})
     while (d.hasNext()) {
-      // :: warning: (d: State "Next")
+      // :: warning: (d: State{Derived, Next})
       d.next();
     }
   }
 
+  // :: error: ([d] did not complete its protocol (found: State{Derived, HasNext}))
   public static void main2() {
-    // :: error: (Object did not complete its protocol. Type: State "HasNext")
     Derived d = new Derived();
-    // :: warning: (d: State "HasNext")
+    // :: warning: (d: State{Derived, HasNext})
     d.hasNext();
-    // :: warning: (d: State "Next" | Ended)
-    // :: error: (Cannot call next on ended protocol)
+    // :: warning: (d: State{Derived, Next} | State{Derived, end})
+    // :: error: (Cannot call [next] on State{Derived, Next} | State{Derived, end})
     d.next();
   }
 

@@ -1,1 +1,1 @@
-public class OK extends RestrictedStatus{ }
+public class OK extends RestrictedStatus {}

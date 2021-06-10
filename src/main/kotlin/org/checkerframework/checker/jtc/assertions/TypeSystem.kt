@@ -1,14 +1,8 @@
-package org.checkerframework.checker.jtc.typecheck
+package org.checkerframework.checker.jtc.assertions
 
 import org.checkerframework.checker.jtc.typestate.graph.Graph
 import org.checkerframework.checker.jtc.typestate.graph.State
 import org.checkerframework.checker.jtc.utils.JTCUtils
-
-// To avoid the creation of new unnecessary JCTType instances
-private val graphToType = mutableMapOf<Graph, JTCType>()
-fun createTypeWithAllStates(graph: Graph) = graphToType.computeIfAbsent(graph) { g ->
-  JTCUnionType.create(g.getAllConcreteStates().map { JTCStateType.create(graph, it) })
-}
 
 sealed class JTCType {
   abstract fun format(): String

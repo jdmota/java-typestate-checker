@@ -24,8 +24,3 @@ class StateNotDefined(val id: TIdNode) : TypestateError() {
   override val message: String
     get() = String.format("State %s was not defined (%s)", id.name, id.pos.toString())
 }
-
-class UnusedStates(private val unusedStates: List<TStateNode>) : TypestateError() {
-  override val message: String
-    get() = String.format("Unused states in %s: %s", unusedStates[0].pos.basename, unusedStates.map { it.name }.joinToString("; "))
-}

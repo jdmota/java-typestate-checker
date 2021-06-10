@@ -1,4 +1,4 @@
-typestate BaseProtocol {
+typestate Base {
   Init = {
     Status offer1(): <OK: S1, NO: S1>,
     void done(): end

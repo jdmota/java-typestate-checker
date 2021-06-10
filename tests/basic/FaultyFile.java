@@ -4,6 +4,7 @@ import org.checkerframework.checker.jtc.lib.Typestate;
 class FaultyFile {
 
   public FileStatus open() {
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     return FileStatus.OK;
   }
 

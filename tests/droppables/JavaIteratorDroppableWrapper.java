@@ -10,31 +10,31 @@ class JavaIteratorDroppableWrapper1 {
   private JavaIteratorDroppable iterator = new JavaIteratorDroppable();
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIteratorDroppable, HasNext} | State{JavaIteratorDroppable, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: State{JavaIteratorDroppable, Next})
     return iterator.next();
   }
 
 }
 
 @Typestate("JavaIteratorDroppableWrapper.protocol")
+// :: error: ([this.iterator] did not complete its protocol (found: State{JavaIterator, HasNext}))
+// :: error: ([this.iterator] did not complete its protocol (found: State{JavaIterator, Next}))
 class JavaIteratorDroppableWrapper2 {
 
-  // :: error: (Object did not complete its protocol. Type: State "HasNext")
-  // :: error: (Object did not complete its protocol. Type: State "Next")
   private JavaIterator iterator = new JavaIterator();
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.next();
   }
 

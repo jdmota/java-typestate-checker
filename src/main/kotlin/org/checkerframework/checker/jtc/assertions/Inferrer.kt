@@ -4,11 +4,7 @@ import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.jtc.JavaTypestateChecker
-import org.checkerframework.checker.jtc.analysis.*
-import org.checkerframework.checker.jtc.typecheck.JTCStateType
-import org.checkerframework.checker.jtc.typecheck.JTCUnknownType
 import org.checkerframework.checker.jtc.typestate.graph.Graph
-import org.checkerframework.checker.jtc.utils.treeToType
 import org.checkerframework.dataflow.analysis.Store
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST
@@ -20,7 +16,16 @@ import java.util.*
 import javax.annotation.processing.ProcessingEnvironment
 import javax.lang.model.element.ElementKind
 import javax.lang.model.type.TypeKind
-import org.checkerframework.checker.jtc.analysis.getReference as getBasicReference
+import javax.lang.model.type.TypeMirror
+import org.checkerframework.checker.jtc.assertions.getReference as getBasicReference
+
+private fun treeToType(tree: Tree): TypeMirror = when (tree) {
+  is ClassTree -> TreeUtils.elementFromDeclaration(tree).asType()
+  is MethodTree -> TreeUtils.elementFromDeclaration(tree).asType()
+  is VariableTree -> TreeUtils.elementFromDeclaration(tree).asType()
+  is ExpressionTree -> TreeUtils.typeOf(TreeUtils.withoutParens(tree))
+  else -> throw RuntimeException("unknown kind ${tree.kind}")
+}
 
 class Inferrer(val checker: JavaTypestateChecker) {
 

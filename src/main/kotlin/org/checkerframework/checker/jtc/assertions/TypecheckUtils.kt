@@ -1,6 +1,5 @@
-package org.checkerframework.checker.jtc.typecheck
+package org.checkerframework.checker.jtc.assertions
 
-import com.sun.source.tree.MemberSelectTree
 import com.sun.source.tree.MethodInvocationTree
 import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.jtc.typestate.graph.DecisionState
@@ -111,77 +110,6 @@ object TypecheckUtils {
     return "Cannot call $m ${items.joinToString(", ")}"
   }
 
-  fun checkFieldAccess(
-    utils: JTCUtils,
-    info: JTCType,
-    node: MemberSelectTree
-  ): Boolean {
-    val error = when (info) {
-      is JTCUnknownType -> createErrorMsg(node, isUnknown = true)
-      is JTCObjectType -> createErrorMsg(node, isObject = true)
-      is JTCBottomType -> null // Allow operations on the BottomType to avoid propagating errors
-      is JTCNoProtocolType -> null // Any access allowed on NoProtocol
-      is JTCPrimitiveType -> null // Accesses on primitive values are not possible, so just ignore
-      is JTCNullType -> createErrorMsg(node, isNull = true)
-      is JTCEndedType -> createErrorMsg(node, isEnded = true)
-      is JTCMovedType -> createErrorMsg(node, isMoved = true)
-      is JTCStateType -> null
-      is JTCUnionType -> {
-        var isObject = false
-        var isNull = false
-        var isEnded = false
-        var isMoved = false
-        for (type in info.types) {
-          when (type) {
-            is JTCObjectType -> isObject = true
-            is JTCNullType -> isNull = true
-            is JTCEndedType -> isEnded = true
-            is JTCMovedType -> isMoved = true
-            is JTCPrimitiveType -> {
-              // Accesses on primitive values are not possible, so just ignore
-            }
-            is JTCNoProtocolType -> {
-              // Any access allowed on NoProtocol
-            }
-            is JTCStateType -> {
-              // Allowed
-            }
-            else -> throw AssertionError("union has ${type.javaClass}")
-          }
-        }
-        if (isNull || isEnded || isMoved) {
-          createErrorMsg(node, isObject = isObject, isNull = isNull, isEnded = isEnded, isMoved = isMoved)
-        } else {
-          null
-        }
-      }
-    }
-    return if (error == null) {
-      true
-    } else {
-      utils.err(error, node)
-      false
-    }
-  }
-
-  private fun createErrorMsg(
-    node: MemberSelectTree,
-    isUnknown: Boolean = false,
-    isObject: Boolean = false,
-    isNull: Boolean = false,
-    isEnded: Boolean = false,
-    isMoved: Boolean = false
-  ): String {
-    val fieldName = node.identifier.toString()
-    val items = mutableListOf<String>()
-    if (isUnknown) items.add("on unknown")
-    if (isObject) items.add("on object")
-    if (isNull) items.add("on null")
-    if (isEnded) items.add("on ended protocol")
-    if (isMoved) items.add("on moved value")
-    return "Cannot access $fieldName ${items.joinToString(", ")}"
-  }
-
   fun refine(utils: JTCUtils, type: JTCType, method: Symbol.MethodSymbol, predicate: (String) -> Boolean): JTCType {
     return when (type) {
       // Unknown stays Unknown
@@ -235,14 +163,6 @@ object TypecheckUtils {
     return if (JTCNullType.SINGLETON.isSubtype(type)) JTCNullType.SINGLETON else JTCBottomType.SINGLETON
   }
 
-  fun canDrop(type: JTCType): Boolean {
-    return type.isSubtype(acceptedFinalTypes) || when (type) {
-      is JTCUnionType -> type.types.all { canDrop(it) }
-      is JTCStateType -> type.state.isDroppable
-      else -> false
-    }
-  }
-
   fun objectCreation(utils: JTCUtils, type: TypeMirror): JTCType {
     return if (ClassUtils.isJavaLangObject(type)) {
       JTCObjectType.SINGLETON
@@ -273,8 +193,6 @@ object TypecheckUtils {
     return JTCUnionType.create(states.map { JTCStateType.create(graph, it) }.plus(maybeNullableType))
   }
 
-  private val acceptedFinalTypes = JTCUnionType.create(listOf(JTCPrimitiveType.SINGLETON, JTCNullType.SINGLETON, JTCNoProtocolType.SINGLETON, JTCMovedType.SINGLETON, JTCEndedType.SINGLETON))
-  val noProtocolTypes = JTCUnionType.create(listOf(JTCPrimitiveType.SINGLETON, JTCNullType.SINGLETON, JTCNoProtocolType.SINGLETON))
   val noProtocolOrMoved = JTCUnionType.create(listOf(JTCPrimitiveType.SINGLETON, JTCNullType.SINGLETON, JTCNoProtocolType.SINGLETON, JTCMovedType.SINGLETON))
 
 }

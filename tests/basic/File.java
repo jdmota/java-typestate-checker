@@ -4,6 +4,7 @@ import org.checkerframework.checker.jtc.lib.Typestate;
 class File {
 
   public FileStatus open() {
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     return FileStatus.OK;
   }
 
@@ -21,17 +22,19 @@ class File {
   public static void main1() {
     File f = new File();
 
-    // :: warning: (f: State "Init")
+    // :: warning: (f: State{File, Init})
     switch (f.open()) {
+      // :: warning: (FileStatus.OK: Shared{FileStatus})
       case OK:
-        // :: warning: (f: State "Open")
+        // :: warning: (f: State{File, Open})
         while (f.hasNext()) {
-          // :: warning: (f: State "Read")
+          // :: warning: (f: State{File, Read})
           f.read();
         }
-        // :: warning: (f: State "Close")
+        // :: warning: (f: State{File, Close})
         f.close();
         break;
+      // :: warning: (FileStatus.ERROR: Shared{FileStatus})
       case ERROR:
         break;
     }
@@ -40,17 +43,19 @@ class File {
   public static void main2() {
     File f = new File();
 
-    // :: warning: (f: State "Init")
+    // :: warning: (f: State{File, Init})
     switch (f.open()) {
+      // :: warning: (FileStatus.OK: Shared{FileStatus})
       case OK:
+      // :: warning: (FileStatus.ERROR: Shared{FileStatus})
       case ERROR:
-        // :: warning: (f: State "Open" | Ended)
-        // :: error: (Cannot call hasNext on ended protocol)
+        // :: warning: (f: State{File, Open} | State{File, end})
+        // :: error: (Cannot call [hasNext] on State{File, Open} | State{File, end})
         while (f.hasNext()) {
-          // :: warning: (f: State "Read")
+          // :: warning: (f: State{File, Read})
           f.read();
         }
-        // :: warning: (f: State "Close")
+        // :: warning: (f: State{File, Close})
         f.close();
     }
   }
@@ -58,26 +63,28 @@ class File {
   public static void main3() {
     File f = new File();
 
-    // :: warning: (f: State "Init")
+    // :: warning: (f: State{File, Init})
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     if (f.open() == FileStatus.OK) {
-      // :: warning: (f: State "Open")
+      // :: warning: (f: State{File, Open})
       while (f.hasNext()) {
-        // :: warning: (f: State "Read")
+        // :: warning: (f: State{File, Read})
         f.read();
       }
-      // :: warning: (f: State "Close")
+      // :: warning: (f: State{File, Close})
       f.close();
     }
   }
 
+  // :: error: ([f] did not complete its protocol (found: State{File, Open}))
   public static void main4() {
-    // :: error: (Object did not complete its protocol. Type: State "Open")
     File f = new File();
 
-    // :: warning: (f: State "Init")
+    // :: warning: (f: State{File, Init})
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     if (f.open() != FileStatus.OK) {
-      // :: warning: (f: Ended)
-      // :: error: (Cannot call hasNext on ended protocol)
+      // :: warning: (f: State{File, end})
+      // :: error: (Cannot call [hasNext] on State{File, end})
       while (f.hasNext()) {
         // :: warning: (f: Bottom)
         f.read();
@@ -90,14 +97,15 @@ class File {
   public static void main5() {
     File f = new File();
 
-    // :: warning: (f: State "Init")
+    // :: warning: (f: State{File, Init})
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     if (f.open() == FileStatus.OK) {
-      // :: warning: (f: State "Open")
+      // :: warning: (f: State{File, Open})
       while (f.hasNext() == true) {
-        // :: warning: (f: State "Read")
+        // :: warning: (f: State{File, Read})
         f.read();
       }
-      // :: warning: (f: State "Close")
+      // :: warning: (f: State{File, Close})
       f.close();
     }
   }
@@ -105,14 +113,15 @@ class File {
   public static void main6() {
     File f = new File();
 
-    // :: warning: (f: State "Init")
+    // :: warning: (f: State{File, Init})
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     if (f.open() == FileStatus.OK) {
-      // :: warning: (f: State "Open")
+      // :: warning: (f: State{File, Open})
       while (!f.hasNext() == false) {
-        // :: warning: (f: State "Read")
+        // :: warning: (f: State{File, Read})
         f.read();
       }
-      // :: warning: (f: State "Close")
+      // :: warning: (f: State{File, Close})
       f.close();
     }
   }
@@ -120,15 +129,16 @@ class File {
   public static void main7() {
     File f = new File();
 
-    // :: warning: (f: State "Init")
+    // :: warning: (f: State{File, Init})
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     if (f.open() == FileStatus.OK) {
-      // :: warning: (f: State "Open")
+      // :: warning: (f: State{File, Open})
       while (f.hasNext() == false) {
-        // :: warning: (f: State "Close")
-        // :: error: (Cannot call read on state Close (got: Close))
+        // :: warning: (f: State{File, Close})
+        // :: error: (Cannot call [read] on State{File, Close})
         f.read();
       }
-      // :: warning: (f: State "Read")
+      // :: warning: (f: State{File, Read})
       f.close();
     }
   }
@@ -136,17 +146,18 @@ class File {
   public static void main8() {
     File f = new File();
 
-    // :: warning: (f: State "Init")
+    // :: warning: (f: State{File, Init})
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     if (f.open() == FileStatus.OK) {
-      // :: warning: (f: State "Open")
+      // :: warning: (f: State{File, Open})
       f.hasNext();
       boolean bool = false;
       while (bool) {
-        // :: warning: (f: State "Open" | State "Read" | State "Close")
-        // :: error: (Cannot call read on states Open, Close (got: Open, Read, Close))
+        // :: warning: (f: State{File, Close} | State{File, Open} | State{File, Read})
+        // :: error: (Cannot call [read] on State{File, Close} | State{File, Open} | State{File, Read})
         f.read();
       }
-      // :: warning: (f: State "Open" | State "Read" | State "Close")
+      // :: warning: (f: State{File, Close} | State{File, Open} | State{File, Read})
       f.close();
     }
   }

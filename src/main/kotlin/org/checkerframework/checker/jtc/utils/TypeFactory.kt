@@ -1,19 +1,22 @@
-package org.checkerframework.checker.jtc.analysis
+package org.checkerframework.checker.jtc.utils
 
-import com.sun.source.tree.*
+import com.sun.source.tree.CompilationUnitTree
+import com.sun.source.tree.LambdaExpressionTree
+import com.sun.source.tree.Tree
+import com.sun.tools.javac.code.Symbol
 import org.checkerframework.checker.jtc.qualifiers.BottomAnno
 import org.checkerframework.checker.jtc.qualifiers.InternalInfoAnno
 import org.checkerframework.checker.jtc.qualifiers.UnknownAnno
 import org.checkerframework.common.basetype.BaseTypeChecker
+import org.checkerframework.dataflow.util.PurityUtils
 import org.checkerframework.framework.source.SourceChecker
 import org.checkerframework.framework.stub.StubTypes
 import org.checkerframework.framework.type.*
-import org.checkerframework.framework.util.AnnotatedTypes
 import org.checkerframework.framework.util.DefaultAnnotationFormatter
+import org.checkerframework.framework.util.PurityUnqualified
 import org.checkerframework.javacutil.AnnotationBuilder
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
-import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.Elements
 
 private class FakeBasicTypeChecker(myChecker: SourceChecker) : BaseTypeChecker() {
@@ -22,7 +25,7 @@ private class FakeBasicTypeChecker(myChecker: SourceChecker) : BaseTypeChecker()
   }
 }
 
-private class FakeAnnotatedTypeFactory(myChecker: SourceChecker) : AnnotatedTypeFactory(FakeBasicTypeChecker(myChecker)) {
+class FakeAnnotatedTypeFactory internal constructor(myChecker: SourceChecker) : AnnotatedTypeFactory(FakeBasicTypeChecker(myChecker)) {
 
   private val typesFromStubFilesField = StubTypes::class.java.getDeclaredField("typesFromStubFiles")
   private val typesFromStubFiles = mutableMapOf<Element, AnnotatedTypeMirror>()
@@ -57,7 +60,7 @@ private class FakeAnnotatedTypeFactory(myChecker: SourceChecker) : AnnotatedType
   }
 
   override fun createSupportedTypeQualifiers(): Set<Class<out Annotation>> {
-    return setOf(BottomAnno::class.java, InternalInfoAnno::class.java, UnknownAnno::class.java)
+    return setOf(BottomAnno::class.java, InternalInfoAnno::class.java, UnknownAnno::class.java, PurityUnqualified::class.java)
   }
 
   override fun createQualifierHierarchy(): QualifierHierarchy {
@@ -109,26 +112,9 @@ private class FakeAnnotatedTypeFactory(myChecker: SourceChecker) : AnnotatedType
     return true
   }
 
-  private var analyzer: Analyzer? = null
-
-  fun setAnalyzer(analyzer: Analyzer) {
-    this.analyzer = analyzer
-  }
-
-  override fun getAnnotatedType(tree: Tree): AnnotatedTypeMirror {
-    val type = super.getAnnotatedType(tree)
-    val info = analyzer?.getInferredInfoOptional(tree)
-    if (info != null) {
-      if (info.type is AnnotatedTypeMirror.AnnotatedDeclaredType) {
-        return info.type
-      }
-    }
-    return type
-  }
-
 }
 
-class TypeFactory(private val checker: SourceChecker) {
+class TypeFactory(checker: SourceChecker) {
 
   private val fake = FakeAnnotatedTypeFactory(checker)
 
@@ -136,24 +122,16 @@ class TypeFactory(private val checker: SourceChecker) {
     fake.setRoot(root)
   }
 
-  fun setAnalyzer(analyzer: Analyzer) {
-    fake.setAnalyzer(analyzer)
-  }
+  fun getPath(tree: Tree) = fake.getPath(tree)
+  fun getProvider() = fake
+
+  fun isSideEffectFree(method: Symbol.MethodSymbol) = PurityUtils.isSideEffectFree(fake, method)
 
   fun getTypeFromStub(elt: Element) = fake.getTypeFromStub(elt)
 
-  fun getAnnotatedType(tree: Tree) = fake.getAnnotatedType(tree)
-  fun getIteratedType(expr: ExpressionTree): AnnotatedTypeMirror = fake.getIterableElementType(expr)
+  fun getAnnotatedType(elt: Element): AnnotatedTypeMirror = fake.fromElement(elt)
+  fun getAnnotatedType(tree: Tree): AnnotatedTypeMirror = fake.getAnnotatedType(tree)
+
   fun getFunctionTypeFromTree(node: LambdaExpressionTree): AnnotatedTypeMirror.AnnotatedExecutableType = fake.getFunctionTypeFromTree(node)
-  fun getMethodReturnType(method: MethodTree, returnTree: ReturnTree): AnnotatedTypeMirror = fake.getMethodReturnType(method, returnTree)
-
-  fun createType(type: TypeMirror, isDeclaration: Boolean = false): AnnotatedTypeMirror = AnnotatedTypeMirror.createType(type, fake, isDeclaration)
-  fun createNullType(): AnnotatedTypeMirror.AnnotatedNullType = fake.getAnnotatedNullType(emptySet())
-
-  fun methodFromUse(method: MethodInvocationTree): AnnotatedTypeFactory.ParameterizedExecutableType = fake.methodFromUse(method)
-  fun constructorFromUse(node: NewClassTree): AnnotatedTypeFactory.ParameterizedExecutableType = fake.constructorFromUse(node)
-
-  fun expandVarArgs(invokedMethod: AnnotatedTypeMirror.AnnotatedExecutableType, node: MethodInvocationTree): List<AnnotatedTypeMirror> = AnnotatedTypes.expandVarArgs(fake, invokedMethod, node.arguments)
-  fun expandVarArgs(invokedMethod: AnnotatedTypeMirror.AnnotatedExecutableType, node: NewClassTree): List<AnnotatedTypeMirror> = AnnotatedTypes.expandVarArgs(fake, invokedMethod, node.arguments)
 
 }

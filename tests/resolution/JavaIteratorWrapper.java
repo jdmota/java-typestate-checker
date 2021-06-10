@@ -9,21 +9,21 @@ import utils.JavaIterator;
 @Typestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper1 {
 
-  private @Nullable JavaIterator iterator = null;
+  private JavaIterator iterator;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{utils.JavaIterator, HasNext})
     iterator = it;
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{utils.JavaIterator, HasNext} | State{utils.JavaIterator, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: State{utils.JavaIterator, Next})
     return iterator.next();
   }
 

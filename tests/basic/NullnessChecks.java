@@ -5,28 +5,31 @@ public class NullnessChecks {
   public String obj = new String("some text");
 
   public static void main1() {
-    @Nullable NullnessChecks n = null;
+    NullnessChecks n = null;
+    // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
     // :: warning: (n: Null)
-    // :: error: (Cannot access obj on null)
+    // :: warning: (n.obj: Bottom)
+    // :: error: (Cannot access field [obj] of null)
     System.out.println(n.obj);
   }
 
   public static void main2() {
-    @Nullable NullnessChecks n = null;
+    NullnessChecks n = null;
     // :: warning: (n: Null)
-    // :: error: (cast.unsafe)
     Object obj = (Object) n;
   }
 
   public static void main3() {
-    // :: error: (assignment.type.incompatible)
     NullnessChecks n = null;
   }
 
   public static void main4() {
     NullnessChecks n = new NullnessChecks();
+    // :: warning: (n: Shared{NullnessChecks})
     if (n == null) {
       // :: warning: (n: Bottom)
+      // :: warning: (n.obj: Bottom)
+      // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
       System.out.println(n.obj);
     }
   }
@@ -34,29 +37,50 @@ public class NullnessChecks {
   // https://github.com/typetools/checker-framework/issues/3267
 
   public static void foo(@Nullable String obj) {
-    // :: warning: (obj: NoProtocol | Null)
+    // :: warning: (obj: Shared{java.lang.String} | Null)
     if ((obj != null) == false) {
-      // :: warning: (obj: NoProtocol | Null)
+      // :: warning: (obj: Null)
       // :: error: (Cannot call toString on null)
       obj.toString();
     }
   }
 
   public static void bar(@Nullable String obj) {
-    // :: warning: (obj: NoProtocol | Null)
+    // :: warning: (obj: Shared{java.lang.String} | Null)
     if (!(obj == null) == false) {
-      // :: warning: (obj: NoProtocol | Null)
+      // :: warning: (obj: Null)
       // :: error: (Cannot call toString on null)
       obj.toString();
     }
   }
 
   public static void baz(@Nullable String obj) {
-    // :: warning: (obj: NoProtocol | Null)
+    // :: warning: (obj: Shared{java.lang.String} | Null)
     if ((obj == null) == true) {
-      // :: warning: (obj: NoProtocol | Null)
+      // :: warning: (obj: Null)
       // :: error: (Cannot call toString on null)
       obj.toString();
+    }
+  }
+
+  public class WithOutProtocol {
+    public String str;
+
+    public void action1() {
+      // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
+      // :: warning: (this.str: Shared{java.lang.String} | NoProtocol{java.lang.String} | Null)
+      // :: error: (Cannot call toUpperCase on null)
+      System.out.println(str.toUpperCase());
+    }
+
+    public void action2() {
+      String str = null;
+      // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
+      // :: warning: (str: Null)
+      System.out.print(str);
+      // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
+      // :: warning: (str: Null)
+      System.out.println(str);
     }
   }
 

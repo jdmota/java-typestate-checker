@@ -1,10 +1,8 @@
 import java.util.Random;
-
 import mungo.lib.Typestate;
-@Typestate("Base.protocol")
 
+@Typestate("Base")
 public class Base {
-
   private Random rd;
 
   public Base() {
@@ -19,5 +17,7 @@ public class Base {
     return rd.nextBoolean() ? Status.OK : Status.NO;
   }
 
-  public void done(){}
+  public void done() {
+
+  }
 }

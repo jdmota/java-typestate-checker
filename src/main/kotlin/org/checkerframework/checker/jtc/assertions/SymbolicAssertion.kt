@@ -1,6 +1,5 @@
 package org.checkerframework.checker.jtc.assertions
 
-import org.checkerframework.checker.jtc.analysis.*
 import java.lang.StringBuilder
 
 class SymbolicFraction(val info: SymbolicInfo) {

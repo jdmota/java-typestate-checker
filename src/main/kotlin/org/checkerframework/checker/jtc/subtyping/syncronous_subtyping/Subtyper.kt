@@ -51,7 +51,7 @@ class Subtyper {
         }
       }
       else -> {
-        errors.add("Discordant states error: state $first in ${g1.userPath} is ${type(first)} while state $second in ${g2.userPath} is ${type(second)}")
+        errors.add("Discordant states error: state $first in ${g1.filename} is ${type(first)} while state $second in ${g2.filename} is ${type(second)}")
       }
     }
   }
@@ -67,12 +67,12 @@ class Subtyper {
   private fun inputErrorMsg(fn1: Graph, fn2: Graph, currStates: Pair<AbstractState<*>, AbstractState<*>>, diff: List<String>): String {
     val first = currStates.first.format()
     val second = currStates.second.format()
-    return "Input contravariance error: $diff transition(s) in state $second of ${fn2.userPath} are not included in state $first of ${fn1.userPath}"
+    return "$diff transition(s) in [$second] of ${fn2.filename} are not included in [$first] of ${fn1.filename}"
   }
 
   private fun outputErrorMsg(fn1: Graph, fn2: Graph, currStates: Pair<AbstractState<*>, AbstractState<*>>, diff: List<String>): String {
     val first = currStates.first.format()
     val second = currStates.second.format()
-    return "Output covariance error: $diff transition(s) in state $first of ${fn1.userPath} are not included in state $second of ${fn2.userPath}"
+    return "$diff transition(s) in $first of ${fn1.filename} are not included in $second of ${fn2.filename}"
   }
 }

@@ -1,4 +1,4 @@
-typestate Iterator {
+typestate Derived {
   HasNext = {
     boolean hasNext(): <true: Next, false: end>
   }
@@ -11,6 +11,6 @@ typestate Iterator {
   }
   NextRemove = {
     void remove(): Next
-    //void next(): Remove //- By removing this, this session type is no longer a (sync) subtype
+    //void next(): Remove // By removing this, this session type is no longer a (sync) subtype
   }
 }

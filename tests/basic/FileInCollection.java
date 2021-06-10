@@ -7,10 +7,12 @@ import java.util.LinkedList;
 class FileInCollection {
 
   public FileState state() {
+    // :: warning: (FileState.CLOSE: Shared{FileState})
     return FileState.CLOSE;
   }
 
   public FileStatus open() {
+    // :: warning: (FileStatus.OK: Shared{FileStatus})
     return FileStatus.OK;
   }
 
@@ -25,51 +27,58 @@ class FileInCollection {
   public void close() {
   }
 
+  /*:: error: ([new FileInCollection] did not complete its protocol (found: State{FileInCollection, Init}))
   public static void main1(String[] args) {
     List<FileInCollection> list = new LinkedList<>();
-    // :: error: (Passing an object with protocol to a method that cannot be analyzed)
+    :: warning: (list: Shared{java.util.LinkedList})
     list.add(new FileInCollection());
 
-    // :: error: (enhancedfor.type.incompatible)
+    :: warning: (list: Shared{java.util.LinkedList})
     for (FileInCollection f : list) {
-      // :: warning: (f: State "Init" | State "Open" | State "Read" | State "Close" | Ended)
-      // :: error: (Cannot call state on ended protocol)
+      :: warning: (f: Shared{java.lang.Object} | Null)
+      :: error: (Cannot call state on Shared{java.lang.Object})
+      :: error: (Cannot call state on null)
       switch (f.state()) {
+        :: warning: (FileState.INIT: Shared{FileState})
         case INIT:
-          // :: warning: (f: State "Init")
+          :: warning: (f: Bottom)
           switch (f.open()) {
+            :: warning: (FileStatus.OK: Shared{FileStatus})
             case OK:
-              // :: warning: (f: State "Open")
+              :: warning: (f: Bottom)
               while (f.hasNext()) {
-                // :: warning: (f: State "Read")
+                :: warning: (f: Bottom)
                 f.read();
               }
-              // :: warning: (f: State "Close")
+              :: warning: (f: Bottom)
               f.close();
               break;
+            :: warning: (FileStatus.ERROR: Shared{FileStatus})
             case ERROR:
               break;
           }
           break;
+        :: warning: (FileState.OPEN: Shared{FileState})
         case OPEN:
+        :: warning: (FileState.READ: Shared{FileState})
         case READ:
-          // :: warning: (f: State "Open" | State "Read")
+          :: warning: (f: Bottom)
           while (f.hasNext()) {
-            // :: warning: (f: State "Read")
+            :: warning: (f: Bottom)
             f.read();
           }
-          // :: warning: (f: State "Close")
+          :: warning: (f: Bottom)
           f.close();
           break;
+        :: warning: (FileState.CLOSE: Shared{FileState})
         case CLOSE:
-          // :: warning: (f: State "Close")
+          :: warning: (f: Bottom)
           f.close();
           break;
       }
     }
-  }
+  }*/
 
-  // TODO
   /*public static void main2(String[] args) {
     FileInCollection[] list = new FileInCollection[] { new FileInCollection() };
 

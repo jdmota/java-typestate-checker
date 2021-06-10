@@ -1,9 +1,6 @@
 package org.checkerframework.checker.jtc.utils
 
-import com.sun.source.tree.ClassTree
-import com.sun.source.tree.MethodTree
 import com.sun.tools.javac.code.Symbol
-import com.sun.tools.javac.tree.JCTree
 import org.checkerframework.checker.jtc.typestate.TypestateProcessor
 import org.checkerframework.checker.jtc.typestate.graph.Graph
 import org.checkerframework.javacutil.AnnotationUtils
@@ -13,7 +10,6 @@ import java.nio.file.Paths
 import java.util.*
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
-import javax.lang.model.element.Modifier
 import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
@@ -64,7 +60,14 @@ class ClassUtils(private val utils: JTCUtils) {
   }
 
   fun getSuperGraph(element: Symbol.ClassSymbol): Graph? {
-    return getSuperClass(element)?.let { visitClassSymbol(it) }
+    // TODO combine the union of the graphs instead of returning the first
+    for (supertype in getSuperTypes(element)) {
+      val graph = visitClassSymbol(supertype)
+      if (graph != null) {
+        return graph
+      }
+    }
+    return null
   }
 
   fun visitClassSymbol(element: Element?): Graph? {
@@ -89,33 +92,12 @@ class ClassUtils(private val utils: JTCUtils) {
         }
       } ?: protocolFromConfig
 
-      val graph = if (element.isInterface) {
-        if (protocolFile != null) {
-          utils.err("Protocols on interfaces are not supported yet", sym)
-        }
-        null
-      } else {
-        if (protocolFile != null) {
-          getGraph(protocolFile, sym)
-        } else {
-          val superclass = element.superclass
-          if (superclass.kind == TypeKind.NONE) {
-            null
-          } else {
-            visitClassSymbol(element.superclass.asElement())
-          }
-        }
-      }
+      val graph = protocolFile?.let { getGraph(protocolFile, sym) }?.let { TypestateProcessor.validateSubtyping(utils, sym, it) }
+        ?: getSuperGraph(element)
 
       // "computeIfAbsent" does not store null values, store an Optional instead
-      Optional.ofNullable(graph?.let {
-        TypestateProcessor.validateClassAndGraph(utils, sym, it)
-      })
+      Optional.ofNullable(graph)
     }.orElse(null)
-  }
-
-  fun hasProtocol(ct: ClassTree): Boolean {
-    return visitClassSymbol(getSymFromClassTree(ct)) != null
   }
 
   fun hasProtocol(type: TypeMirror): Boolean {
@@ -123,28 +105,12 @@ class ClassUtils(private val utils: JTCUtils) {
   }
 
   companion object {
-    fun getSymFromClassTree(ct: ClassTree): Symbol.ClassSymbol {
-      return (ct as JCTree.JCClassDecl).sym
-    }
-
-    fun getSuperClass(element: Symbol.ClassSymbol): Symbol.ClassSymbol? {
-      val superClass = element.superclass.asElement()
-      return if (superClass is Symbol.ClassSymbol) superClass else null
-    }
-
-    fun getMembers(clazz: Symbol.ClassSymbol, recursive: Boolean) = sequence {
-      var currClazz: Symbol.ClassSymbol? = clazz
-      while (currClazz != null) {
-        for (sym in currClazz.members().symbols) {
-          yield(sym)
-        }
-        currClazz = if (recursive) getSuperClass(currClazz) else null
+    fun getSuperTypes(element: Symbol.ClassSymbol): List<Symbol.TypeSymbol> {
+      val supertypes = mutableListOf(element.superclass.asElement())
+      for (i in element.interfaces) {
+        supertypes.add(i.asElement())
       }
-    }
-
-    fun getNonStaticPublicMethods(sym: Symbol.ClassSymbol, recursive: Boolean) = getMembers(sym, recursive).filterIsInstance(Symbol.MethodSymbol::class.java).filter {
-      val flags = it.modifiers
-      flags.contains(Modifier.PUBLIC) && !flags.contains(Modifier.STATIC)
+      return supertypes
     }
 
     fun getEnumLabels(classSymbol: Symbol.ClassSymbol) = classSymbol.members().symbols.filter { it.isEnum }.map { it.name.toString() }

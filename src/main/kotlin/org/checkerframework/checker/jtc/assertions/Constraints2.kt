@@ -2,10 +2,6 @@ package org.checkerframework.checker.jtc.assertions
 
 import com.microsoft.z3.*
 import com.sun.tools.javac.code.Symbol
-import org.checkerframework.checker.jtc.analysis.Reference
-import org.checkerframework.checker.jtc.typecheck.JTCBottomType
-import org.checkerframework.checker.jtc.typecheck.JTCType
-import org.checkerframework.checker.jtc.typecheck.JTCUnknownType
 
 sealed class TinyExpr<E : TinyExpr<E, Z>, Z : Expr> {
   abstract fun substitute(s: Substitution): E

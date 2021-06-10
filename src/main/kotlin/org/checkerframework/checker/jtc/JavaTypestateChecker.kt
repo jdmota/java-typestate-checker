@@ -1,11 +1,12 @@
 package org.checkerframework.checker.jtc
 
+import com.sun.source.tree.CompilationUnitTree
 import com.sun.source.tree.Tree
 import com.sun.source.util.TreePath
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Log
+import org.checkerframework.checker.jtc.core.adapters.CFVisitor
 import org.checkerframework.checker.jtc.assertions.InferenceVisitor
-import org.checkerframework.checker.jtc.typecheck.Typechecker
 import org.checkerframework.checker.jtc.utils.JTCUtils
 import org.checkerframework.framework.source.SourceChecker
 import org.checkerframework.framework.source.SourceVisitor
@@ -35,7 +36,7 @@ class JavaTypestateChecker : SourceChecker() {
     if (performInference()) {
       return InferenceVisitor(this)
     }
-    return Typechecker(this)
+    return CFVisitor(this)
   }
 
   override fun initChecker() {
@@ -43,6 +44,10 @@ class JavaTypestateChecker : SourceChecker() {
     val utils = JTCUtils(this)
     utils.initFactory()
     this.utils = utils
+  }
+
+  fun setCompilationRoot(root: CompilationUnitTree) {
+    setRoot(root)
   }
 
   // FIXME for some reason, there is an java.lang.InterruptedException exception when the code examples includes threads...
@@ -80,9 +85,9 @@ class JavaTypestateChecker : SourceChecker() {
   }*/
 
   override fun typeProcessingOver() {
-    val visitor = this.visitor
-    if (visitor is InferenceVisitor) {
-      visitor.inferrer.phase2()
+    when (val visitor = this.visitor) {
+      is InferenceVisitor -> visitor.inferrer.phase2()
+      is CFVisitor -> visitor.finishAnalysis()
     }
   }
 

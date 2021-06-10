@@ -1,4 +1,4 @@
-package org.checkerframework.checker.jtc.analysis
+package org.checkerframework.checker.jtc.assertions
 
 import com.sun.source.tree.*
 import com.sun.tools.javac.code.Symbol.VarSymbol

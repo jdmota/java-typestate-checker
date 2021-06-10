@@ -15,8 +15,8 @@ public class JavaIterator {
     return "";
   }
 
+  // :: error: ([it] did not complete its protocol (found: State{JavaIterator, HasNext}))
   public static void main() {
-    // :: error: (Object did not complete its protocol. Type: State "HasNext")
     JavaIterator it = new JavaIterator();
   }
 

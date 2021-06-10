@@ -2,75 +2,77 @@ import org.checkerframework.checker.jtc.lib.Typestate;
 import org.checkerframework.checker.jtc.lib.Requires;
 import org.checkerframework.checker.jtc.lib.Nullable;
 
+// :: error: ([this.iterator] did not complete its protocol (found: Shared{JavaIterator} | State{JavaIterator, ?}))
 class WrapperWithoutProtocol1 {
 
-  // :: error: (Object did not complete its protocol. Type: Unknown)
-  public @Nullable JavaIterator iterator = null;
+  public JavaIterator iterator;
 
-  public WrapperWithoutProtocol1(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public WrapperWithoutProtocol1(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: Unknown)
-    // :: error: (Cannot call hasNext on unknown)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [hasNext] on Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [hasNext] on State{JavaIterator, ?})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: Unknown)
-    // :: error: (Cannot call next on unknown)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [next] on State{JavaIterator, ?})
     return iterator.next();
   }
 
   private String privateNext() {
-    // :: warning: (iterator: Unknown)
-    // :: error: (Cannot call next on unknown)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [next] on State{JavaIterator, ?})
     return iterator.next();
   }
 
   public static void main() {
     WrapperWithoutProtocol1 wrapper = new WrapperWithoutProtocol1(new JavaIterator());
-    // :: error: (Cannot call hasNext on unknown)
+    // :: warning: (wrapper: Shared{WrapperWithoutProtocol1})
+    // :: warning: (wrapper.iterator: Unknown)
+    // :: error: (Cannot access [wrapper.iterator])
     wrapper.iterator.hasNext();
   }
 
 }
 
+// :: error: ([this.iterator] did not complete its protocol (found: Shared{JavaIterator} | State{JavaIterator, ?}))
 class WrapperWithoutProtocol2 {
 
-  // :: error: (Object did not complete its protocol. Type: State "HasNext" | State "Next" | Ended)
-  private @Nullable JavaIterator iterator = null;
+  private JavaIterator iterator;
 
-  public WrapperWithoutProtocol2(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public WrapperWithoutProtocol2(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended)
-    // :: error: (Cannot call hasNext on ended protocol)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [hasNext] on Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [hasNext] on State{JavaIterator, ?})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended)
-    // :: error: (Cannot call next on ended protocol, on state HasNext (got: HasNext, Next))
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [next] on State{JavaIterator, ?})
     return iterator.next();
   }
 
   private String privateNext() {
-    // :: warning: (iterator: Unknown)
-    // :: error: (Cannot call next on unknown)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, ?})
+    // :: error: (Cannot call [next] on State{JavaIterator, ?})
     return iterator.next();
   }
 

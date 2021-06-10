@@ -11,16 +11,24 @@ import org.checkerframework.checker.jtc.lib.Nullable;
 
 @Typestate("CProtocol")
 public class CRole {
-  private @Nullable BufferedReader socketSIn = null;
-  private @Nullable PrintWriter socketSOut = null;
+  private BufferedReader socketSIn;
+  private PrintWriter socketSOut;
 
   public CRole() {
     InetAddress addr;
-    @Nullable Socket socket = null;
+    Socket socket = null;
 
     try {
+      // :: warning: (addr: Null)
       addr = InetAddress.getByName("www.google.co.uk");
+      // :: warning: (addr: Shared{java.net.InetAddress} | Null)
+      if (addr == null) {
+        // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
+        System.out.println("Unable to listen on ports");
+        System.exit(-1);
+      }
       // :: warning: (socket: Null)
+      // :: warning: (addr: Shared{java.net.InetAddress})
       socket = new Socket(addr, 80);
     } catch (IOException e) {
       System.out.println("Unable to listen on ports");
@@ -28,11 +36,11 @@ public class CRole {
     }
 
     try {
-      // :: warning: (socketSIn: Null)
-      // :: warning: (socket: NoProtocol | Null)
-      // :: error: (Cannot call getInputStream on null)
+      // :: warning: (this.socketSIn: Null)
+      // :: warning: (socket: Shared{java.net.Socket})
       socketSIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-      // :: warning: (socketSOut: Null)
+      // :: warning: (this.socketSOut: Null)
+      // :: warning: (socket: Shared{java.net.Socket})
       socketSOut = new PrintWriter(socket.getOutputStream(), true);
     } catch (IOException e) {
       System.out.println("Read failed");
@@ -41,12 +49,13 @@ public class CRole {
   }
 
   public void send(String msg) {
-    // :: error: (Cannot call print on null)
+    // :: warning: (this.socketSOut: Shared{java.io.PrintWriter})
+    // :: warning: (msg: Shared{java.lang.String})
     this.socketSOut.print(msg);
   }
 
   public int receive() throws IOException {
-    // :: error: (Cannot call read on null)
+    // :: warning: (this.socketSIn: Shared{java.io.BufferedReader})
     return this.socketSIn.read();
   }
 

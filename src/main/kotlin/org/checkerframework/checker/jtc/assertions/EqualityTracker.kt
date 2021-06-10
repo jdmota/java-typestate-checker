@@ -1,7 +1,5 @@
 package org.checkerframework.checker.jtc.assertions
 
-import org.checkerframework.checker.jtc.analysis.*
-
 class Equalities<E>(var root: E, var set: MutableSet<E> = mutableSetOf(root)) {
   override fun toString(): String {
     return "{root=$root, set=$set}"

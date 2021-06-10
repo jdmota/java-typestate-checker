@@ -1,28 +1,28 @@
 public class Main {
   public static void main() {
     Derived d = new Derived();
-    // :: warning: (d: State "Start")
+    // :: warning: (d: State{Derived, Start})
     if (d.hasNext()) {
-      // :: warning: (d: State "Next")
+      // :: warning: (d: State{Derived, Next})
       d.next();
-      // :: warning: (d: State "Remove")
+      // :: warning: (d: State{Derived, Remove})
       if (d.hasNext()) {
-        // :: warning: (d: State "NextRemove")
+        // :: warning: (d: State{Derived, NextRemove})
         d.remove();
-        // :: warning: (d: State "Next")
+        // :: warning: (d: State{Derived, Next})
         d.next();
-        // :: warning: (d: State "Remove")
+        // :: warning: (d: State{Derived, Remove})
         d.remove();
       }
     }
-    // :: warning: (d: State "Start")
-    Base b = d; // allowed upcast
-    // :: warning: (b: State "Start")
+    // :: warning: (d: State{Derived, Start})
+    Base b = d;
+    // :: warning: (b: State{Derived, Start})
     if (b.hasNext()) {
-      // :: warning: (b: State "Next")
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
-    // :: warning: (b: State "Start")
-    Derived d2 = (Derived) b; // allowed downcast
+    // :: warning: (b: State{Derived, Remove} | State{Derived, Start})
+    Derived d2 = (Derived) b;
   }
 }

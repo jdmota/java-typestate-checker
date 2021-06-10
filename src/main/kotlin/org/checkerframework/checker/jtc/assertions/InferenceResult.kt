@@ -1,7 +1,6 @@
 package org.checkerframework.checker.jtc.assertions
 
 import com.microsoft.z3.*
-import org.checkerframework.checker.jtc.analysis.*
 import org.checkerframework.dataflow.cfg.node.*
 
 sealed class MiniInferenceResult

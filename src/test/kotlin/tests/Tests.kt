@@ -3,18 +3,17 @@ package tests
 import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
-// TODO we now need support for interfaces for "config" tests to work
-val ignore = listOf("config", "generics", "inference")
+val ignore = listOf("linearity", "linked-list", "generics", "inference")
 val only = emptyList<String>()
 
 private val defaultOpts = arrayOf("-Anomsgtext", "-AshowTypeInfo")
 
-private const val dir1 = "config"
+private const val dir1 = "basic"
 
-class ConfigTest(testFiles: List<File>) : PerDirectoryTest(
+class BasicTests(testFiles: List<File>) : PerDirectoryTest(
   dir1,
   testFiles,
-  defaultOpts.plus(arrayOf("-AconfigFile=tests/$dir1/jtc.config", "-Astubs=tests/$dir1/stubs", "-AstubWarnIfNotFound", "-Aignorejdkastub"))
+  defaultOpts
 ) {
   companion object {
     @JvmStatic
@@ -23,12 +22,12 @@ class ConfigTest(testFiles: List<File>) : PerDirectoryTest(
   }
 }
 
-private const val dir2 = "droppables"
+private const val dir2 = "config"
 
-class DroppablesTest(testFiles: List<File>) : PerDirectoryTest(
+class ConfigTest(testFiles: List<File>) : PerDirectoryTest(
   dir2,
   testFiles,
-  defaultOpts
+  defaultOpts.plus(arrayOf("-AconfigFile=tests/$dir2/jtc.config", "-Astubs=tests/$dir2/stubs", "-AstubWarnIfNotFound", "-Aignorejdkastub"))
 ) {
   companion object {
     @JvmStatic
@@ -37,9 +36,9 @@ class DroppablesTest(testFiles: List<File>) : PerDirectoryTest(
   }
 }
 
-private const val dir3 = "resolution"
+private const val dir3 = "droppables"
 
-class ResolutionTest(testFiles: List<File>) : PerDirectoryTest(
+class DroppablesTest(testFiles: List<File>) : PerDirectoryTest(
   dir3,
   testFiles,
   defaultOpts
@@ -51,9 +50,9 @@ class ResolutionTest(testFiles: List<File>) : PerDirectoryTest(
   }
 }
 
-private const val dir4 = "basic"
+private const val dir4 = "resolution"
 
-class BasicTests(testFiles: List<File>) : PerDirectoryTest(
+class ResolutionTest(testFiles: List<File>) : PerDirectoryTest(
   dir4,
   testFiles,
   defaultOpts

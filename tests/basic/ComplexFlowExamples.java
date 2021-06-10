@@ -1,16 +1,17 @@
 import org.checkerframework.checker.jtc.lib.Typestate;
 
+// https://github.com/typetools/checker-framework/issues/3267
+
 class ComplexFlowExamples {
-  // https://github.com/typetools/checker-framework/issues/3267
+  // :: error: ([it] did not complete its protocol (found: State{JavaIterator, HasNext}))
   public static void example1() {
-    // :: error: (Object did not complete its protocol. Type: State "HasNext")
     JavaIterator it = new JavaIterator();
 
-    // :: warning: (it: State "HasNext")
+    // :: warning: (it: State{JavaIterator, HasNext})
     it.hasNext();
     if (true) {
-      // :: warning: (it: State "Next" | Ended)
-      // :: error: (Cannot call next on ended protocol)
+      // :: warning: (it: State{JavaIterator, Next} | State{JavaIterator, end})
+      // :: error: (Cannot call [next] on State{JavaIterator, Next} | State{JavaIterator, end})
       it.next();
     } else {
       // :: warning: (it: Bottom)
@@ -18,31 +19,31 @@ class ComplexFlowExamples {
     }
   }
 
+  // :: error: ([it] did not complete its protocol (found: State{JavaIterator, HasNext}))
   public static void example2() {
-    // :: error: (Object did not complete its protocol. Type: State "HasNext")
     JavaIterator it = new JavaIterator();
 
-    // :: warning: (it: State "HasNext")
+    // :: warning: (it: State{JavaIterator, HasNext})
     it.hasNext();
     if (!true) {
       // :: warning: (it: Bottom)
       it.next();
     } else {
-      // :: warning: (it: State "Next" | Ended)
-      // :: error: (Cannot call next on ended protocol)
+      // :: warning: (it: State{JavaIterator, Next} | State{JavaIterator, end})
+      // :: error: (Cannot call [next] on State{JavaIterator, Next} | State{JavaIterator, end})
       it.next();
     }
   }
 
+  // :: error: ([it] did not complete its protocol (found: State{JavaIterator, HasNext}))
   public static void example3() {
-    // :: error: (Object did not complete its protocol. Type: State "HasNext")
     JavaIterator it = new JavaIterator();
 
-    // :: warning: (it: State "HasNext")
+    // :: warning: (it: State{JavaIterator, HasNext})
     it.hasNext();
     if (!!true) {
-      // :: warning: (it: State "Next" | Ended)
-      // :: error: (Cannot call next on ended protocol)
+      // :: warning: (it: State{JavaIterator, Next} | State{JavaIterator, end})
+      // :: error: (Cannot call [next] on State{JavaIterator, Next} | State{JavaIterator, end})
       it.next();
     } else {
       // :: warning: (it: Bottom)
@@ -50,15 +51,15 @@ class ComplexFlowExamples {
     }
   }
 
+  // :: error: ([it] did not complete its protocol (found: State{JavaIterator, HasNext}))
   public static void example4() {
-    // :: error: (Object did not complete its protocol. Type: State "HasNext")
     JavaIterator it = new JavaIterator();
 
-    // :: warning: (it: State "HasNext")
+    // :: warning: (it: State{JavaIterator, HasNext})
     it.hasNext();
     if (!false) {
-      // :: warning: (it: State "Next" | Ended)
-      // :: error: (Cannot call next on ended protocol)
+      // :: warning: (it: State{JavaIterator, Next} | State{JavaIterator, end})
+      // :: error: (Cannot call [next] on State{JavaIterator, Next} | State{JavaIterator, end})
       it.next();
     } else {
       // :: warning: (it: Bottom)

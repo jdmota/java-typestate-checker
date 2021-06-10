@@ -15,7 +15,7 @@ public class JavaIteratorDroppable2 {
 
   public static void main() {
     JavaIteratorDroppable2 it = new JavaIteratorDroppable2();
-    // :: warning: (it: State "HasNext")
+    // :: warning: (it: State{JavaIteratorDroppable2, HasNext})
     it.hasNext();
   }
 

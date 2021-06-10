@@ -3,7 +3,7 @@ import mungo.lib.Typestate;
 @Typestate("Derived.protocol")
 public class Derived extends Base {
   public boolean hasNext() {
-    // :: error: (Cannot call its own public method)
+    // :: error: (Cannot call own public method [hasNext])
     return super.hasNext();
   }
 

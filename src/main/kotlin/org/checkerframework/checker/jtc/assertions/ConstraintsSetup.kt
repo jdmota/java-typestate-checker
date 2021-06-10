@@ -2,8 +2,6 @@ package org.checkerframework.checker.jtc.assertions
 
 import com.sun.tools.javac.code.Symbol as JavacSymbol
 import com.microsoft.z3.*
-import org.checkerframework.checker.jtc.analysis.Reference
-import org.checkerframework.checker.jtc.typecheck.*
 
 // Z3 Tutorial: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.225.8231&rep=rep1&type=pdf
 // Z3 Guide and Playground: https://rise4fun.com/z3/tutorial/guide

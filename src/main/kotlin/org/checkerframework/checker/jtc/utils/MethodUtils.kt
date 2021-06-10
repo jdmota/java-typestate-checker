@@ -73,10 +73,6 @@ class MethodUtils(private val utils: JTCUtils) {
     return a.name.toString() == b.name.toString() && utils.isSameType(erasure(a), erasure(b))
   }
 
-  fun sameMethod(a: Symbol.MethodSymbol, b: Symbol.MethodSymbol): Boolean {
-    return a.name.toString() == b.name.toString() && utils.isSameType(a.type, b.type)
-  }
-
   // We could use "typeUtils.isSameType" with the MethodType, but it does not compare thrown types
   private fun sameMethod(env: Env<AttrContext>, name: String, type: Type, node: TMethodNode): Boolean {
     // TODO deal with thrownTypes and typeArguments

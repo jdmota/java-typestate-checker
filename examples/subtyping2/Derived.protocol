@@ -1,4 +1,4 @@
-typestate DerivedProtocol {
+typestate Derived {
   Init = {
     RestrictedStatus offer1(): <NO: S1>,
     void done(): end
@@ -9,5 +9,3 @@ typestate DerivedProtocol {
     void done(): end
   }
 }
-
-

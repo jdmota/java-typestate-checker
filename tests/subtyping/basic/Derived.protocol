@@ -1,7 +1,7 @@
 typestate DerivedIterator {
   Start = {
     boolean hasNext(): <true: Next, false: Start>,
-    drop:end
+    drop: end
   }
   Next = {
     void next(): Remove
@@ -9,7 +9,7 @@ typestate DerivedIterator {
   Remove = {
     void remove(): Start,
     boolean hasNext(): <true: NextRemove, false: Start>,
-    drop:end
+    drop: end
   }
   NextRemove = {
     void remove(): Next,

@@ -1,5 +1,6 @@
 import org.checkerframework.checker.jtc.lib.Typestate;
 import org.checkerframework.checker.jtc.lib.Requires;
+import org.checkerframework.checker.jtc.lib.State;
 import org.checkerframework.checker.jtc.lib.Nullable;
 
 import java.util.function.Supplier;
@@ -9,19 +10,19 @@ class JavaIteratorWrapper1 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.next();
   }
 
@@ -32,19 +33,19 @@ class JavaIteratorWrapper2 {
 
   private @Nullable JavaIterator iterator = null;
 
-  // :: error: (Object did not complete its protocol. Type: State "HasNext" | State "Next")
-  public void init(JavaIterator it) {
+  // :: error: ([it] did not complete its protocol (found: State{JavaIterator, HasNext}))
+  public void init(@Requires("HasNext") JavaIterator it) {
 
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: Null)
+    // :: warning: (this.iterator: Null)
     // :: error: (Cannot call hasNext on null)
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: Bottom)
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -55,9 +56,9 @@ class JavaIteratorWrapper3 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
@@ -66,8 +67,8 @@ class JavaIteratorWrapper3 {
   }
 
   public String next() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
-    // :: error: (Cannot call next on state HasNext (got: HasNext, Next))
+    // :: warning: (this.iterator: State{JavaIterator, HasNext})
+    // :: error: (Cannot call [next] on State{JavaIterator, HasNext})
     return iterator.next();
   }
 
@@ -78,9 +79,9 @@ class JavaIteratorWrapper4_2 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
@@ -89,10 +90,10 @@ class JavaIteratorWrapper4_2 {
   }
 
   public String next() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended)
-    // :: error: (Cannot call hasNext on ended protocol)
+    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, end})
+    // :: error: (Cannot call [hasNext] on State{JavaIterator, HasNext} | State{JavaIterator, end})
     if (iterator.hasNext()) {
-      // :: warning: (iterator: State "Next")
+      // :: warning: (this.iterator: State{JavaIterator, Next})
       return iterator.next();
     }
     return "";
@@ -105,23 +106,23 @@ class JavaIteratorWrapper4 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, HasNext})
     while (iterator.hasNext()) {
-      // :: warning: (iterator: State "Next")
+      // :: warning: (this.iterator: State{JavaIterator, Next})
       iterator.next();
     }
     return false;
   }
 
   public String next() {
-    // :: warning: (iterator: Bottom)
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -132,29 +133,29 @@ class JavaIteratorWrapper5 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, HasNext})
     use(iterator);
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: Moved)
-    // :: error: (Cannot call hasNext on moved value)
+    // :: warning: (this.iterator: Shared{JavaIterator})
+    // :: error: (Cannot call [hasNext] on Shared{JavaIterator})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: Bottom)
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
-  public static void use(JavaIterator it) {
-    // :: warning: (it: State "HasNext" | State "Next")
+  public static void use(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (it: State{JavaIterator, HasNext})
     while (it.hasNext()) {
-      // :: warning: (it: State "Next")
+      // :: warning: (it: State{JavaIterator, Next})
       it.next();
     }
   }
@@ -164,28 +165,25 @@ class JavaIteratorWrapper5 {
 @Typestate("JavaIteratorWrapper.protocol")
 class JavaIteratorWrapper6 {
 
-  // :: error: (Object did not complete its protocol. Type: Unknown)
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
   public boolean hasNext() {
-    // :: error: (Cannot call its own public method)
+    // :: error: (Cannot call own public method [hasNext])
     hasNext();
-    // :: warning: (iterator: Unknown)
-    // :: error: (Cannot call hasNext on unknown)
+    // :: warning: (this.iterator: Bottom)
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: error: (Cannot call its own public method)
+    // :: error: (Cannot call own public method [hasNext])
     this.hasNext();
-    // :: warning: (iterator: Unknown)
-    // :: error: (Cannot call next on unknown)
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -196,26 +194,27 @@ class JavaIteratorWrapper7 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Moved)
-    // :: error: (Cannot call hasNext on moved value)
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next})
+    // :: error: (Cannot call [hasNext] on Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, Next})
+    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, Next})
     return iterator.next();
   }
 
-  public JavaIterator getIterator() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Moved)
-    // :: error: (return.type.incompatible)
+  public @State({"HasNext", "Next"}) JavaIterator getIterator() {
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next})
+    // :: error: (Incompatible return value because Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next} is not a subtype of State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator;
   }
 
@@ -226,26 +225,27 @@ class JavaIteratorWrapper8 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  // :: error: (Type of parameter [this] is Shared{JavaIteratorWrapper8}, expected State{JavaIteratorWrapper8, ?}})
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
-    // :: error: (Possible 'this' leak)
+    // :: error: (Incompatible parameter because State{JavaIteratorWrapper8, ?} is not a subtype of State{JavaIteratorWrapper8, HasNext})
     use(this);
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.next();
   }
 
-  // :: error: (Object did not complete its protocol. Type: State "Start" | State "HasNext" | State "Next")
-  public static void use(JavaIteratorWrapper8 it) {
+  // :: error: ([it] did not complete its protocol (found: State{JavaIteratorWrapper8, HasNext}))
+  public static void use(@Requires("HasNext") JavaIteratorWrapper8 it) {
 
   }
 
@@ -256,28 +256,27 @@ class JavaIteratorWrapper9 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  // :: error: ([wrapper] did not complete its protocol (found: State{JavaIteratorWrapper9, ?}))
+  // :: error: (Type of parameter [this] is Shared{JavaIteratorWrapper9}, expected State{JavaIteratorWrapper9, ?}})
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
-    // :: error: (Possible 'this' leak)
     JavaIteratorWrapper9 wrapper = this;
-    // :: error: (argument.type.incompatible)
-    // :: warning: (wrapper: State "Start" | State "HasNext" | State "Next" | Ended)
+    // :: warning: (wrapper: State{JavaIteratorWrapper9, ?})
     use(wrapper);
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.next();
   }
 
-  // :: error: (Object did not complete its protocol. Type: State "Start" | State "HasNext" | State "Next")
   public static void use(JavaIteratorWrapper9 it) {
 
   }
@@ -289,24 +288,23 @@ class JavaIteratorWrapper10 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
     Supplier<Object> fn = () -> {
-      // :: error: (this was moved to a different closure)
-      // :: error: (Possible 'this' leak)
+      // :: error: (Cannot access [this])
       return this;
     };
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.next();
   }
 
@@ -317,24 +315,23 @@ class JavaIteratorWrapper11 {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
     Supplier<Object> fn = () -> {
-      // :: error: (JavaIteratorWrapper11.this was moved to a different closure)
-      // :: error: (Possible 'this' leak)
+      // :: error: (Cannot access [this])
       return JavaIteratorWrapper11.this;
     };
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next")
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.next();
   }
 
@@ -345,22 +342,22 @@ class JavaIteratorWrapperPropagation {
 
   private @Nullable JavaIterator iterator = null;
 
-  public void init(JavaIterator it) {
-    // :: warning: (iterator: Null)
-    // :: warning: (it: State "HasNext" | State "Next")
+  public void init(@Requires("HasNext") JavaIterator it) {
+    // :: warning: (this.iterator: Null)
+    // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
   }
 
   public boolean hasNext() {
-    // :: warning: (iterator: State "HasNext" | State "Next" | Ended)
-    // :: error: (Cannot call hasNext on ended protocol)
+    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, Next} | State{JavaIterator, end})
+    // :: error: (Cannot call [hasNext] on State{JavaIterator, HasNext} | State{JavaIterator, Next} | State{JavaIterator, end})
     iterator.hasNext();
     return true;
   }
 
   public String next() {
-    // :: warning: (iterator: State "Next" | Ended)
-    // :: error: (Cannot call next on ended protocol)
+    // :: warning: (this.iterator: State{JavaIterator, Next} | State{JavaIterator, end})
+    // :: error: (Cannot call [next] on State{JavaIterator, Next} | State{JavaIterator, end})
     return iterator.next();
   }
 

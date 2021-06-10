@@ -14,7 +14,6 @@ import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Context
 import com.sun.tools.javac.util.JCDiagnostic
 import com.sun.tools.javac.util.Log
-import org.checkerframework.checker.jtc.analysis.TypeFactory
 import org.checkerframework.checker.jtc.lib.*
 import org.checkerframework.checker.jtc.typestate.TypestateProcessor
 import org.checkerframework.checker.jtc.typestate.graph.Graph

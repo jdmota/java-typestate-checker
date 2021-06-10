@@ -1,10 +1,8 @@
 import java.util.Random;
-
 import mungo.lib.Typestate;
+
 @Typestate("Derived.protocol")
-
 public class Derived extends Base{
-
   private Random rd;
 
   public Derived() {
@@ -19,5 +17,7 @@ public class Derived extends Base{
     return rd.nextBoolean() ? Status.OK : Status.NO;
   }
 
-  public void done(){}
+  public void done() {
+
+  }
 }
