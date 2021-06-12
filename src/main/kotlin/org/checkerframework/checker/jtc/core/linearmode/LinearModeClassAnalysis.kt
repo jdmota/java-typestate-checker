@@ -82,11 +82,12 @@ class LinearModeClassAnalysis(
   private fun analyzeClassWithoutProtocol(clazz: ClassDecl) {
     val constructorsStore = analyzeConstructors(clazz)
     val upperBoundStore = getUpperBoundStore(constructorsStore, clazz)
+    val upperBoundSharedStore = upperBoundStore.toShared()
 
     // Since this class has no protocol, all methods are available
     // Since they can be called anytime, assume nothing
     for (method in clazz.nonConstructors()) {
-      analyzeMethod(clazz.thisRef, method, upperBoundStore)
+      analyzeMethod(clazz.thisRef, method, upperBoundSharedStore)
     }
 
     // Ensure completion of objects in fields
@@ -197,14 +198,11 @@ class LinearModeClassAnalysis(
       }
     }
 
-    // Analyze non-public and anytime methods
-    val upperBoundStore = getUpperBoundStore(constructorsStore, clazz)
-    for (method in clazz.nonPublicMethods.filter { !it.isConstructor }) {
-      analyzeMethod(classThisRef, method, upperBoundStore)
-    }
-    for (method in clazz.publicMethods.filter { !it.isConstructor }) {
-      if (method.isAnytime) {
-        analyzeMethod(classThisRef, method, upperBoundStore)
+    // Analyze anytime methods
+    val upperBoundSharedStore = getUpperBoundStore(constructorsStore, clazz).toShared()
+    for (method in clazz.methods) {
+      if (!method.isConstructor && method.isAnytime) {
+        analyzeMethod(classThisRef, method, upperBoundSharedStore)
       }
     }
 

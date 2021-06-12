@@ -107,7 +107,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCPrimitiveType -> true
       is JTCNullType -> true
       is JTCSharedType -> true
-      is JTCNoProtocolType -> type.javaType.isFinal()
+      is JTCNoProtocolType -> type.exact
       is JTCUnknownStateType -> false
       is JTCStateType -> type.state.canEndHere()
       is JTCBottomType -> true
@@ -127,7 +127,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         val javaType = type.javaType
         val graph = javaType.getGraph()
         if (graph == null) {
-          JTCSharedType(javaType).union(JTCNoProtocolType(javaType))
+          JTCSharedType(javaType).union(JTCNoProtocolType(javaType, false))
         } else {
           JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph))
         }

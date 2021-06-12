@@ -103,10 +103,14 @@ class Inference(
       is Assign -> {
         val leftRef = Reference.makeFromLHS(node)
         val rightRef = Reference.make(node.right)
+        // Do not allow field assignments unless the receiver object is "this" and we have linear access to it
         val targetType = when {
-          leftRef.isFieldOf(thisRef) -> clazz!!.allFields(classAnalysis.classes).find { leftRef.isFieldOf(thisRef, it.id) }!!.type
-          leftRef.isField() -> JTCBottomType.SINGLETON // Do not allow field assignments unless the receiver object is "this"
-          else -> JTCUnknownType.SINGLETON
+          thisRef != null && leftRef.isFieldOf(thisRef) && pre[thisRef].type.requiresLinear() ->
+            clazz!!.allFields(classAnalysis.classes).find { leftRef.isFieldOf(thisRef, it.id) }!!.type
+          leftRef.isField() ->
+            JTCBottomType.SINGLETON
+          else ->
+            JTCUnknownType.SINGLETON
         }
         assign(node, targetType, pre, post, leftRef, rightRef)
       }

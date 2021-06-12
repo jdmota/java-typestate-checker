@@ -215,22 +215,22 @@ class CFAdapter(
     val receiver = it.getCorrectReceiverType()
     val isPublic = it.isPublic()
     val isPure = isSideEffectFree(utils, hierarchy, it)
-    // TODO ensure this is safe
-    val isAnytimeMethod = it.isStatic || isPure || !isPublic || !utils.classUtils.hasProtocol(receiver)
+    val isConstructor = funcName == "<init>"
+    val isAnytime = !isConstructor && (it.isStatic || isPure || !isPublic || !utils.classUtils.hasProtocol(receiver))
     val thisParam = if (it.isStatic) {
       emptyList()
     } else {
-      val thisType = typeIntroducer.getThisType(receiver, anytimeMethod = isAnytimeMethod)
+      val thisType = typeIntroducer.getThisType(receiver, isAnytime = isAnytime, isConstructor = isConstructor)
       listOf(FuncParam(renamer.transformThisLHS(receiver), thisType, thisType, isThis = true))
     }
-    val params = if (funcName == "<init>" && receiver.toString() == "java.lang.Enum<E>") {
+    val params = if (isConstructor && receiver.toString() == "java.lang.Enum<E>") {
       // It seems the java.lang.Enum constructor has more parameters (String, Int), but is called with zero
       // Thus, when defining the functional interface, assume there is only one parameter, the "this"
       thisParam
     } else {
       thisParam.plus(getParamTypes(it))
     }
-    FuncInterface(funcName, params, getReturnType(it), isPublic = isPublic, isAnytime = isAnytimeMethod, isPure = isPure).set(it.asType())
+    FuncInterface(funcName, params, getReturnType(it), isPublic = isPublic, isAnytime = isAnytime, isPure = isPure).set(it.asType())
   }
 
   fun setRoot(root: CompilationUnitTree) {

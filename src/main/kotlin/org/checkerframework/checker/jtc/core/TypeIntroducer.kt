@@ -80,20 +80,24 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     val javaType = hierarchy.get(type)
     val graph = javaType.getGraph()
     return if (graph == null) {
-      JTCSharedType(javaType)
+      JTCNoProtocolType(javaType, true)
     } else {
       JTCStateType(javaType, graph, graph.getInitialState())
     }
   }
 
-  fun getThisType(type: TypeMirror, anytimeMethod: Boolean): JTCType {
+  fun getThisType(type: TypeMirror, isAnytime: Boolean, isConstructor: Boolean): JTCType {
     val javaType = hierarchy.get(type)
-    return if (anytimeMethod) {
+    return if (isAnytime) {
       JTCSharedType(javaType)
     } else {
       val graph = javaType.getGraph()
       if (graph == null) {
-        JTCSharedType(javaType)
+        if (isConstructor) {
+          JTCNoProtocolType(javaType, false)
+        } else {
+          JTCSharedType(javaType)
+        }
       } else {
         JTCUnknownStateType(javaType, graph)
       }
@@ -115,7 +119,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
             // then we can just assume it is a sharable object
             JTCSharedType(javaType).toMaybeNullable(isNullable)
           } else {
-            JTCSharedType(javaType).union(JTCNoProtocolType(javaType)).toMaybeNullable(isNullable)
+            JTCSharedType(javaType).union(JTCNoProtocolType(javaType, false)).toMaybeNullable(isNullable)
           }
         } else {
           JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph)).toMaybeNullable(isNullable)
@@ -161,7 +165,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
         val javaType = hierarchy.get(typeMirror)
         val graph = javaType.getGraph()
         if (graph == null) {
-          JTCSharedType(javaType).union(JTCNoProtocolType(javaType)).toMaybeNullable(isNullable)
+          JTCSharedType(javaType).union(JTCNoProtocolType(javaType, false)).toMaybeNullable(isNullable)
         } else {
           JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph)).toMaybeNullable(isNullable)
         }

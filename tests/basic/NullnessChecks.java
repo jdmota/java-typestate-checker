@@ -25,7 +25,7 @@ public class NullnessChecks {
 
   public static void main4() {
     NullnessChecks n = new NullnessChecks();
-    // :: warning: (n: Shared{NullnessChecks})
+    // :: warning: (n: NoProtocol{NullnessChecks, exact=true})
     if (n == null) {
       // :: warning: (n: Bottom)
       // :: warning: (n.obj: Bottom)
@@ -68,7 +68,7 @@ public class NullnessChecks {
 
     public void action1() {
       // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
-      // :: warning: (this.str: Shared{java.lang.String} | NoProtocol{java.lang.String} | Null)
+      // :: warning: (this.str: Shared{java.lang.String} | Null)
       // :: error: (Cannot call toUpperCase on null)
       System.out.println(str.toUpperCase());
     }

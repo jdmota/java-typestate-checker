@@ -237,7 +237,7 @@ class JTCStateType internal constructor(val javaType: JavaType, val graph: Graph
       is JTCUnknownType -> true
       is JTCUnionType -> other.types.any { this.isSubtype(it) }
       is JTCIntersectionType -> other.types.all { this.isSubtype(it) }
-      is JTCNoProtocolType -> javaType.isSubtype(other.javaType)
+      is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
       is JTCUnknownStateType -> javaType.isSubtype(other.javaType)
       is JTCStateType -> javaType.isSubtype(other.javaType) && (
         (state == other.state) ||
@@ -271,7 +271,7 @@ class JTCUnknownStateType internal constructor(val javaType: JavaType, val graph
       is JTCUnknownType -> true
       is JTCUnionType -> other.types.any { this.isSubtype(it) }
       is JTCIntersectionType -> other.types.all { this.isSubtype(it) }
-      is JTCNoProtocolType -> javaType.isSubtype(other.javaType)
+      is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
       is JTCUnknownStateType -> javaType.isSubtype(other.javaType)
       else -> false
     }
@@ -281,11 +281,13 @@ class JTCUnknownStateType internal constructor(val javaType: JavaType, val graph
   override fun format() = "State{$javaType, ?}"
 }
 
-class JTCNoProtocolType internal constructor(val javaType: JavaType) : JTCType() {
+class JTCNoProtocolType internal constructor(val javaType: JavaType, isActualType: Boolean) : JTCType() {
+
+  val exact = isActualType || javaType.isFinal()
 
   override fun equals(other: Any?) = when {
     this === other -> true
-    other is JTCNoProtocolType -> javaType == other.javaType
+    other is JTCNoProtocolType -> javaType == other.javaType && exact == other.exact
     else -> false
   }
 
@@ -298,13 +300,13 @@ class JTCNoProtocolType internal constructor(val javaType: JavaType) : JTCType()
       is JTCUnknownType -> true
       is JTCUnionType -> other.types.any { this.isSubtype(it) }
       is JTCIntersectionType -> other.types.all { this.isSubtype(it) }
-      is JTCNoProtocolType -> javaType.isSubtype(other.javaType)
+      is JTCNoProtocolType -> if (other.exact) this == other else javaType.isSubtype(other.javaType)
       else -> false
     }
   }
 
-  override fun toString() = "JTCNoProtocolType{$javaType}"
-  override fun format() = "NoProtocol{$javaType}"
+  override fun toString() = "JTCNoProtocolType{$javaType, exact=$exact}"
+  override fun format() = "NoProtocol{$javaType, exact=$exact}"
 }
 
 class JTCPrimitiveType internal constructor(val javaType: JavaType) : JTCType() {

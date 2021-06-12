@@ -76,40 +76,37 @@ class PublicLinearityWrapper {
   public Linearity obj = new Linearity();
 
   public void setNull() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot perform assignment because Null is not a subtype of Shared{Linearity} | State{Linearity, ?})
-    // :: error: (The previous value of [this.obj] did not complete its protocol (found: Shared{Linearity} | State{Linearity, ?}))
+    // :: warning: (this.obj: Shared{Linearity})
+    // :: error: (Cannot perform assignment because [this.obj] is not accessible here)
     obj = null;
   }
 
   public void a() {
-    // :: error: (Cannot call [a] on State{Linearity, ?})
-    // :: error: (Cannot call [a] on Shared{Linearity} | State{Linearity, ?})
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [a] on Shared{Linearity})
+    // :: warning: (this.obj: Shared{Linearity})
     obj.a();
   }
 
   public void b() {
-    // :: error: (Cannot call [b] on State{Linearity, ?})
-    // :: error: (Cannot call [b] on Shared{Linearity} | State{Linearity, ?})
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Cannot call [b] on Shared{Linearity})
+    // :: warning: (this.obj: Shared{Linearity})
     obj.b();
   }
 
   public Linearity get() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: warning: (this.obj: Shared{Linearity})
     return this.obj;
   }
 
   public void move1() {
-    // :: error: (Incompatible parameter because Shared{Linearity} | State{Linearity, ?} is not a subtype of State{Linearity, State0})
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: warning: (this.obj: Shared{Linearity})
     LinearityTests.use(this.obj);
   }
 
   public void move2() {
-    // :: error: (Incompatible parameter because Shared{Linearity} | State{Linearity, ?} is not a subtype of State{Linearity, State0})
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: warning: (this.obj: Shared{Linearity})
     LinearityTests.use(PublicLinearityWrapper.this.obj);
   }
 
@@ -143,33 +140,31 @@ class PrivateLinearityWrapper {
   private Linearity obj = new Linearity();
 
   public void a() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot call [a] on Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot call [a] on State{Linearity, ?})
+    // :: warning: (this.obj: Shared{Linearity})
+    // :: error: (Cannot call [a] on Shared{Linearity})
     obj.a();
   }
 
   public void b() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot call [b] on Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot call [b] on State{Linearity, ?})
+    // :: warning: (this.obj: Shared{Linearity})
+    // :: error: (Cannot call [b] on Shared{Linearity})
     obj.b();
   }
 
   public Linearity get() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
+    // :: warning: (this.obj: Shared{Linearity})
     return this.obj;
   }
 
   public void move1() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Incompatible parameter because Shared{Linearity} | State{Linearity, ?} is not a subtype of State{Linearity, State0})
+    // :: warning: (this.obj: Shared{Linearity})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     LinearityTests.use(this.obj);
   }
 
   public void move2() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Incompatible parameter because Shared{Linearity} | State{Linearity, ?} is not a subtype of State{Linearity, State0})
+    // :: warning: (this.obj: Shared{Linearity})
+    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
     LinearityTests.use(PrivateLinearityWrapper.this.obj);
   }
 
@@ -203,16 +198,14 @@ class PrivateLinearityWrapperNoMoves {
   private Linearity obj = new Linearity();
 
   public void a() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot call [a] on Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot call [a] on State{Linearity, ?})
+    // :: warning: (this.obj: Shared{Linearity})
+    // :: error: (Cannot call [a] on Shared{Linearity})
     obj.a();
   }
 
   public void b() {
-    // :: warning: (this.obj: Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot call [b] on Shared{Linearity} | State{Linearity, ?})
-    // :: error: (Cannot call [b] on State{Linearity, ?})
+    // :: warning: (this.obj: Shared{Linearity})
+    // :: error: (Cannot call [b] on Shared{Linearity})
     obj.b();
   }
 }
@@ -323,18 +316,18 @@ public class LinearityTests {
     };
     // :: warning: (obj: State{Linearity, State0})
     obj.finish();
-    // :: warning: (fn: Shared{java.util.function.Supplier})
+    // :: warning: (fn: NoProtocol{java.util.function.Supplier, exact=true})
     fn.get();
   }
 
   // :: error: ([new Linearity] did not complete its protocol (found: State{Linearity, State0}))
   public static void main6() {
     List<Linearity> list = new LinkedList<>();
-    // :: warning: (list: Shared{java.util.LinkedList})
+    // :: warning: (list: NoProtocol{java.util.LinkedList, exact=true})
     list.add(new Linearity());
-    // :: warning: (list: Shared{java.util.LinkedList})
+    // :: warning: (list: NoProtocol{java.util.LinkedList, exact=true})
     Linearity obj1 = list.get(0);
-    // :: warning: (list: Shared{java.util.LinkedList})
+    // :: warning: (list: NoProtocol{java.util.LinkedList, exact=true})
     Linearity obj2 = list.get(0);
     // :: warning: (obj1: Shared{java.lang.Object} | Null)
     // :: error: (Cannot call finish on null)
@@ -349,7 +342,7 @@ public class LinearityTests {
   // Detect moves of objects inside other objects to variables
   public static void main7() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: warning: (w: Shared{PublicLinearityWrapper})
+    // :: warning: (w: NoProtocol{PublicLinearityWrapper, exact=true})
     // :: warning: (w.obj: Unknown)
     // :: error: (Cannot access [w.obj])
     Linearity obj = w.obj;
@@ -361,7 +354,7 @@ public class LinearityTests {
   public static void main8() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
     // :: warning: (w.obj: Unknown)
-    // :: warning: (w: Shared{PublicLinearityWrapper})
+    // :: warning: (w: NoProtocol{PublicLinearityWrapper, exact=true})
     // :: error: (Cannot access [w.obj])
     use(w.obj);
   }
@@ -395,7 +388,7 @@ public class LinearityTests {
   // Overrides
   public static void main11() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: warning: (w: Shared{PublicLinearityWrapper})
+    // :: warning: (w: NoProtocol{PublicLinearityWrapper, exact=true})
     // :: warning: (w.obj: Unknown)
     // :: error: (Cannot perform assignment because [w.obj] is not accessible here)
     // :: error: (Cannot access [w.obj])

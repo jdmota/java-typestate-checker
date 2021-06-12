@@ -521,7 +521,7 @@ public class JavaIterator {
       it.hasNext();
       return "";
     };
-    // :: warning: (fn: Shared{java.util.function.Supplier})
+    // :: warning: (fn: NoProtocol{java.util.function.Supplier, exact=true})
     fn.get();
   }
 
@@ -535,7 +535,7 @@ public class JavaIterator {
       System.out.println(it);
       return "";
     };
-    // :: warning: (fn: Shared{java.util.function.Supplier})
+    // :: warning: (fn: NoProtocol{java.util.function.Supplier, exact=true})
     fn.get();
   }
 

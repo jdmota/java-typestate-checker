@@ -14,29 +14,26 @@ class WrapperWithoutProtocol1 {
   }
 
   public boolean hasNext() {
-    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [hasNext] on Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [hasNext] on State{JavaIterator, ?})
+    // :: warning: (this.iterator: Shared{JavaIterator})
+    // :: error: (Cannot call [hasNext] on Shared{JavaIterator})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [next] on State{JavaIterator, ?})
+    // :: warning: (this.iterator: Shared{JavaIterator})
+    // :: error: (Cannot call [next] on Shared{JavaIterator})
     return iterator.next();
   }
 
   private String privateNext() {
-    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [next] on State{JavaIterator, ?})
+    // :: warning: (this.iterator: Shared{JavaIterator})
+    // :: error: (Cannot call [next] on Shared{JavaIterator})
     return iterator.next();
   }
 
   public static void main() {
     WrapperWithoutProtocol1 wrapper = new WrapperWithoutProtocol1(new JavaIterator());
-    // :: warning: (wrapper: Shared{WrapperWithoutProtocol1})
+    // :: warning: (wrapper: NoProtocol{WrapperWithoutProtocol1, exact=true})
     // :: warning: (wrapper.iterator: Unknown)
     // :: error: (Cannot access [wrapper.iterator])
     wrapper.iterator.hasNext();
@@ -56,23 +53,20 @@ class WrapperWithoutProtocol2 {
   }
 
   public boolean hasNext() {
-    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [hasNext] on Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [hasNext] on State{JavaIterator, ?})
+    // :: warning: (this.iterator: Shared{JavaIterator})
+    // :: error: (Cannot call [hasNext] on Shared{JavaIterator})
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [next] on State{JavaIterator, ?})
+    // :: warning: (this.iterator: Shared{JavaIterator})
+    // :: error: (Cannot call [next] on Shared{JavaIterator})
     return iterator.next();
   }
 
   private String privateNext() {
-    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [next] on Shared{JavaIterator} | State{JavaIterator, ?})
-    // :: error: (Cannot call [next] on State{JavaIterator, ?})
+    // :: warning: (this.iterator: Shared{JavaIterator})
+    // :: error: (Cannot call [next] on Shared{JavaIterator})
     return iterator.next();
   }
 

@@ -267,6 +267,14 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     return store
   }
 
+  fun toShared(): Store {
+    val store = Store()
+    for ((ref, info) in this) {
+      store[ref] = info.type.toShared()
+    }
+    return store
+  }
+
   fun propagateTo(other: Store): Boolean {
     var changed = false
     for ((ref, info) in this) {
