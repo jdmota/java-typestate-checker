@@ -1,4 +1,5 @@
 import org.checkerframework.checker.jtc.lib.Requires;
+import org.checkerframework.checker.jtc.lib.Ensures;
 import org.checkerframework.checker.jtc.lib.State;
 
 public class Main {
@@ -8,7 +9,11 @@ public class Main {
   }
 
   public static void upcastObject(Object obj) {
-
+    // :: warning: (obj: Shared{java.lang.Object})
+    if (obj instanceof Base) {
+      // :: warning: (obj: Shared{Base})
+      Base b = (Base) obj;
+    }
   }
 
   public static void main1() {
@@ -185,9 +190,9 @@ public class Main {
   public static void main15(@Requires("HasNext") Base b) {
     // :: warning: (b: State{Base, HasNext})
     if (b instanceof Derived) {
-      // :: warning: (b: (State{Derived, ?} & State{Base, HasNext}))
+      // :: warning: (b: State{Derived, HasNext} | State{Derived, Remove})
       while (b.hasNext()) {
-        // :: warning: (b: (State{Derived, ?} & State{Base, Next}))
+        // :: warning: (b: State{Derived, Next} | State{Derived, NextRemove})
         b.next();
       }
     } else {
@@ -196,6 +201,51 @@ public class Main {
         // :: warning: (b: State{Base, Next})
         b.next();
       }
+    }
+  }
+
+  public static void main16() {
+    Object obj = new Object();
+    // :: warning: (obj: NoProtocol{java.lang.Object, exact=true})
+    if (obj instanceof Base) {
+      // :: warning: (obj: Bottom)
+      Base b = (Base) obj;
+    }
+  }
+
+  // :: error: ([b] did not complete its protocol (found: State{Base, HasNext}))
+  public static void main17() {
+    Object obj = null;
+    if (1 < 5) {
+      // :: warning: (obj: Null)
+      obj = new Base();
+    } else {
+      // :: warning: (obj: Null)
+      obj = new String();
+    }
+    // :: warning: (obj: NoProtocol{java.lang.String, exact=true} | State{Base, HasNext})
+    if (obj instanceof Base) {
+      // :: warning: (obj: State{Base, HasNext})
+      Base b = (Base) obj;
+    } else {
+      // :: warning: (obj: NoProtocol{java.lang.String, exact=true} | State{Base, HasNext})
+      // :: error: (Unsafe cast)
+      String str = (String) obj;
+      // :: warning: (str: NoProtocol{java.lang.String, exact=true})
+      str.toUpperCase();
+    }
+  }
+
+  // :: error: ([b] did not complete its protocol (found: Shared{Derived} | State{Base, HasNext}))
+  // :: error: ([d] did not complete its protocol (found: State{Derived, HasNext}))
+  public static void main18(@Requires("HasNext") Base b) {
+    // :: warning: (b: State{Base, HasNext})
+    if (b instanceof Derived) {
+      // :: warning: (b: State{Derived, HasNext})
+      Derived d = (Derived) b;
+      // :: warning: (d: State{Derived, HasNext})
+      // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
+      System.out.println(d);
     }
   }
 

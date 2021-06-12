@@ -113,14 +113,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
         val javaType = hierarchy.get(type)
         val graph = javaType.getGraph()
         if (graph == null) {
-          if (isActualType || javaType.isFinal()) {
-            // If we know this is the actual type of something,
-            // and it has no protocol,
-            // then we can just assume it is a sharable object
-            JTCSharedType(javaType).toMaybeNullable(isNullable)
-          } else {
-            JTCSharedType(javaType).union(JTCNoProtocolType(javaType, false)).toMaybeNullable(isNullable)
-          }
+          JTCSharedType(javaType).union(JTCNoProtocolType(javaType, isActualType)).toMaybeNullable(isNullable)
         } else {
           JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph)).toMaybeNullable(isNullable)
         }
@@ -133,6 +126,10 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
       is UnionType -> JTCUnknownType.SINGLETON
       else -> throw AssertionError("unexpected ${type.kind}")
     }
+  }
+
+  fun getCastType(type: TypeMirror): JTCType {
+    return getUpperBound(type, isNullable = true, isActualType = false)
   }
 
   fun getArrayComponentType(type: TypeMirror): JTCType {
@@ -184,10 +181,10 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     val type = (typeMirror as Type).tsym
     if (type is Symbol.ClassSymbol && type.isEnum) {
       val symbol = type.members().symbols.find {
-        it.simpleName.toString() == field && ElementUtils.isStatic(it)
+        it is Symbol.VarSymbol && it.simpleName.toString() == field && ElementUtils.isStatic(it)
       }
       if (symbol != null) {
-        return getUpperBound(symbol.asType(), isNullable = false, isActualType = true)
+        return getUpperBound(symbol.asType(), isNullable = false, isActualType = true).toShared()
       }
     }
     return null
@@ -212,7 +209,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
         it is Symbol.VarSymbol && it.simpleName.toString() == field && ElementUtils.isStatic(it)
       }
       if (opts != null && symbol != null) {
-        return getUpperBound(symbol.asType(), isNullable = opts.isNullable, isActualType = opts.isActualType)
+        return getUpperBound(symbol.asType(), isNullable = opts.isNullable, isActualType = opts.isActualType).toShared()
       }
     }
     return null

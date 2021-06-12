@@ -64,14 +64,26 @@ private fun createIntersection(sequence: Sequence<JTCType>): JTCType {
 
 private fun areExclusive(a: JTCType, b: JTCType): Boolean {
   return when (a) {
-    is JTCNoProtocolType,
+    is JTCNoProtocolType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType || ((b is JTCUnknownStateType || b is JTCStateType) && a.exact)
     is JTCUnknownStateType,
-    is JTCStateType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType
+    is JTCStateType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType || (b is JTCNoProtocolType && b.exact)
     is JTCSharedType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCNoProtocolType || b is JTCUnknownStateType || b is JTCStateType
     is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || b is JTCNoProtocolType || b is JTCUnknownStateType || b is JTCStateType
     is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || b is JTCNoProtocolType || b is JTCUnknownStateType || b is JTCStateType
     else -> false
   }
+}
+
+private fun attemptDowncast(a: JTCStateType, b: JTCUnknownStateType): JTCType? {
+  if (b.javaType.isSubtype(a.javaType)) {
+    if (a.state == a.graph.getInitialState()) {
+      return JTCStateType(b.javaType, b.graph, b.graph.getInitialState())
+    }
+    if (a.state.isEnd()) {
+      return JTCStateType(b.javaType, b.graph, b.graph.getEndState())
+    }
+  }
+  return null
 }
 
 sealed class JTCType {
@@ -80,9 +92,15 @@ sealed class JTCType {
   abstract fun isSubtype(other: JTCType): Boolean
 
   open fun intersect(other: JTCType): JTCType {
+    if (this === other) return this
+    if (areExclusive(this, other)) return JTCBottomType.SINGLETON
+    if (this is JTCStateType && other is JTCUnknownStateType) {
+      attemptDowncast(this, other)?.let { return@intersect it }
+    }
+    if (this is JTCUnknownStateType && other is JTCStateType) {
+      attemptDowncast(other, this)?.let { return@intersect it }
+    }
     return when {
-      this === other -> this
-      areExclusive(this, other) -> JTCBottomType.SINGLETON
       // We need to ensure that there are no unions in intersections
       this is JTCUnionType -> createUnion(unionSeq(this.types.map { it.intersect(other) }))
       other is JTCUnionType -> createUnion(unionSeq(other.types.map { it.intersect(this) }))

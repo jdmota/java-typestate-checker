@@ -806,7 +806,7 @@ class CFAdapter(
         else -> error("Unexpected node ${node.javaClass}")
       })
       is ThrowNode -> SingleAdaptResult(ThrowExpr(t(node.expression)).set(node))
-      is TypeCastNode -> SingleAdaptResult(CastExpr(t(node.operand), typeIntroducer.getUpperBound(node.type), hierarchy.get(node.type)).set(node))
+      is TypeCastNode -> SingleAdaptResult(CastExpr(t(node.operand), typeIntroducer.getCastType(node.type), hierarchy.get(node.type)).set(node))
       is UnaryOperationNode -> {
         val expr = t(node.operand)
         val operator = when (node) {

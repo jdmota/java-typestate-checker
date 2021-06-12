@@ -29,6 +29,8 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
 
   fun getInitialState() = initialState!!
 
+  fun getEndState() = endState
+
   fun getFinalStates(): Set<State> = finalStates
 
   // All non final states
@@ -49,7 +51,7 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
   }
 
   fun isFinalState(name: String): Boolean {
-    return name == "end" || namedStates[name]?.isEnd() ?: false
+    return name == END_STATE_NAME || namedStates[name]?.isEnd() ?: false
   }
 
   private fun getStateByName(id: TIdNode): State {
