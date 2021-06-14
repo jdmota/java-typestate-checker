@@ -1,7 +1,7 @@
-import org.checkerframework.checker.jtc.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Requires;
-import org.checkerframework.checker.jtc.lib.State;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Typestate;
+import jatyc.lib.Requires;
+import jatyc.lib.State;
+import jatyc.lib.Nullable;
 
 import java.util.function.Supplier;
 

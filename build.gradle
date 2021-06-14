@@ -95,20 +95,6 @@ tasks.withType(JavaCompile).all {
     options.compilerArgs.add("-Xlint:all")
 }
 
-// Add `mavenLocal()` in `repositories`, then run `./gradlew publishToMavenLocal`
-// to publish your checker to your local Maven repository.
-publishing {
-    publications {
-        maven(MavenPublication) {
-            groupId = 'org.checkerframework'
-            artifactId = 'jtc-checker'
-            version = '0.1-SNAPSHOT'
-
-            from components.java
-        }
-    }
-}
-
 test {
     testLogging.showStandardStreams = true
 

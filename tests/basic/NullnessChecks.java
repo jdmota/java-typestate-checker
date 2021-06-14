@@ -1,4 +1,4 @@
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 public class NullnessChecks {
 

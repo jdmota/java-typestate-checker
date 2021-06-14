@@ -1,6 +1,6 @@
-import org.checkerframework.checker.jtc.lib.Requires;
-import org.checkerframework.checker.jtc.lib.Ensures;
-import org.checkerframework.checker.jtc.lib.State;
+import jatyc.lib.Requires;
+import jatyc.lib.Ensures;
+import jatyc.lib.State;
 
 public class NotOk {
 
@@ -22,7 +22,7 @@ public class NotOk {
     return new File();
   }
 
-  public static void read(@Requires("Read") @Ensures("Close") File f) {
+  public static void read(@Requires("Read") @Ensures("Close") final File f) {
     f.read();
   }
 

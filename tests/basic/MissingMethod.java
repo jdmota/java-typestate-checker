@@ -1,4 +1,4 @@
-import org.checkerframework.checker.jtc.lib.Typestate;
+import jatyc.lib.Typestate;
 
 @Typestate("JavaIterator.protocol")
 public class MissingMethod {

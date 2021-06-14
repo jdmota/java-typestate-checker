@@ -8,13 +8,11 @@ fi
 
 mungoJar="$CD/mungo-73dd8ae.jar"
 
-javaTypestateChecker="$CD/../dist/jtc-checker.jar"
-javaTypestateCheckerLib="$CD/../dist/jtc-checker-lib.jar"
-javaTypestateCheckerClass="org.checkerframework.checker.jtc.JavaTypestateChecker"
+javaTypestateChecker="$CD/../dist/jatyc.jar"
+javaTypestateCheckerLib="$CD/../dist/jatyc-lib.jar"
+javaTypestateCheckerClass="jatyc.JavaTypestateChecker"
 
-checkerVersion="3.8.0"
-
-checker="$CD/../dist/checker-framework-$checkerVersion/checker/dist/checker.jar"
+checker="$CD/../dist/checker/checker.jar"
 latexFolder="$CD/comparison/_latex"
 
 if [ ! -f "$checker" ]; then

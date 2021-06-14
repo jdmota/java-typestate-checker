@@ -1,7 +1,7 @@
 import java.util.Scanner;
 import java.util.List;
-import org.checkerframework.checker.jtc.lib.Requires;
-import org.checkerframework.checker.jtc.lib.Ensures;
+import jatyc.lib.Requires;
+import jatyc.lib.Ensures;
 
 public class Main {
 

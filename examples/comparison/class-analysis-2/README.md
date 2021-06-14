@@ -17,13 +17,16 @@ Exception in thread "main" java.lang.NullPointerException
 ## Our tool's output
 
 ```
-NotOkFileWrapper4.java:5: error: [Object did not complete its protocol. Type: State "Read" | Null] (Object did not complete its protocol. Type: State "Read" | Null)
-  private @Nullable File file = null;
-                         ^
-NotOkFileWrapper4.java:8: error: [Cannot override because object has not ended its protocol. Type: State "Read" | Null] (Cannot override because object has not ended its protocol. Type: State "Read" | Null)
-    this.file = file;
-        ^
-NotOkFileWrapper4.java:12: error: [Cannot call read on null] (Cannot call read on null)
+NotOkFileWrapper4.java:12: error: Cannot call read on null
     return file.read();
-                    ^
-3 errors```
+               ^
+NotOkFileWrapper4.java:12: error: Cannot call [read] on Shared{File}
+    return file.read();
+           ^
+NotOkFileWrapper4.java:8: error: Cannot perform assignment because [this.file] is not accessible here
+    this.file = file;
+              ^
+NotOkFileWrapper4.java:3: error: [this.file] did not complete its protocol (found: Shared{File} | State{File, ?} | Null)
+class NotOkFileWrapper4 {
+^
+4 errors```

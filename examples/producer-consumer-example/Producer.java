@@ -1,5 +1,5 @@
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("Producer.protocol")
 public class Producer {
@@ -12,7 +12,7 @@ public class Producer {
   public void init(Consumer consumer) {
     this.consumer = consumer;
   }
-  
+
   public void produce(String string) {
     this.consumer.consume(string);
   }

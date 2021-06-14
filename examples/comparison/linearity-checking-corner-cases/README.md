@@ -22,23 +22,19 @@ Exception in thread "main" java.lang.NullPointerException
 ## Our tool's output
 
 ```
-NotOk.java:6: error: [Passing an object with protocol to a method that cannot be analyzed] (Passing an object with protocol to a method that cannot be analyzed)
-    list.add(new File());
-             ^
-NotOk.java:7: error: [assignment.type.incompatible] incompatible types in assignment.
-    File f1 = list.get(0);
-                      ^
-  found   : State "Read" | Ended | Moved File
-  required: State "Read" File
-NotOk.java:8: error: [assignment.type.incompatible] incompatible types in assignment.
-    File f2 = list.get(0);
-                      ^
-  found   : State "Read" | Ended | Moved File
-  required: State "Read" File
-NotOk.java:9: error: [Cannot call read on ended protocol, on moved value] (Cannot call read on ended protocol, on moved value)
-    f1.read();
-           ^
-NotOk.java:11: error: [Cannot call read on ended protocol, on moved value] (Cannot call read on ended protocol, on moved value)
+NotOk.java:11: error: Cannot call [read] on Shared{java.lang.Object}
     f2.read();
-           ^
+    ^
+NotOk.java:9: error: Cannot call read on null
+    f1.read();
+      ^
+NotOk.java:11: error: Cannot call read on null
+    f2.read();
+      ^
+NotOk.java:9: error: Cannot call [read] on Shared{java.lang.Object}
+    f1.read();
+    ^
+NotOk.java:4: error: [new File] did not complete its protocol (found: State{File, Read})
+  public static void main1() {
+                     ^
 5 errors```

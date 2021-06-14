@@ -1,5 +1,5 @@
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class NotOkFileWrapper2 {

@@ -1,5 +1,5 @@
-import org.checkerframework.checker.jtc.lib.Requires;
-import org.checkerframework.checker.jtc.lib.State;
+import jatyc.lib.Requires;
+import jatyc.lib.State;
 
 public class Main {
 

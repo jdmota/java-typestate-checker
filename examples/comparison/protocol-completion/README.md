@@ -11,10 +11,16 @@ NotOk.java: 9-14: Semantic Error
 ## Our tool's output
 
 ```
-NotOk.java:5: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
-    File f = new File();
-         ^
-NotOk.java:13: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
-  public static void use(File f) {
-                              ^
-2 errors```
+Ok.java:14: error: Cannot call [read] on Shared{File}
+    System.out.println(f.read());
+                       ^
+Ok.java:8: error: [f] did not complete its protocol (found: State{File, Read})
+  public static void main2() {
+                     ^
+NotOk.java:4: error: [f] did not complete its protocol (found: State{File, Read})
+  public static void main1() {
+                     ^
+NotOk.java:8: error: [f] did not complete its protocol (found: State{File, Read})
+  public static void main2() {
+                     ^
+4 errors```

@@ -45,8 +45,8 @@ public enum FileStatus {
 
 \lstset{language=Java,caption=\textit{NotOk.java}}
 \begin{code}
-import org.checkerframework.checker.jtc.lib.Nullable;
-import org.checkerframework.checker.jtc.lib.Requires;
+import jatyc.lib.Nullable;
+import jatyc.lib.Requires;
 
 public class NotOk {
   public static void main1(String args[]) {
@@ -81,8 +81,8 @@ public class NotOk {
 
 \lstset{language=Java,caption=\textit{Ok.java}}
 \begin{code}
-import org.checkerframework.checker.jtc.lib.Nullable;
-import org.checkerframework.checker.jtc.lib.Requires;
+import jatyc.lib.Nullable;
+import jatyc.lib.Requires;
 
 public class Ok {
   public static void main(String args[]) {
@@ -119,16 +119,20 @@ Ok.java: 6-20: Semantic Error
 
 \lstset{language=,caption=Our tool's output}
 \begin{code}
-NotOk.java:11: error: [Cannot override because object has not ended its protocol. Type: State "Close"] (Cannot override because object has not ended its protocol. Type: State "Close")
-        f = null;
-        ^
-NotOk.java:12: error: [Cannot call close on null] (Cannot call close on null)
+Ok.java:6: error: Cannot access [args.length]
+    @Nullable File f = args.length == 0 ? null : new File();
+                           ^
+Ok.java:5: error: [new File] did not complete its protocol (found: State{File, Init})
+  public static void main(String args[]) {
+                     ^
+NotOk.java:12: error: Cannot call close on null
         f.close();
-               ^
-NotOk.java:20: error: [argument.type.incompatible] incompatible types in argument.
+         ^
+NotOk.java:20: error: Incompatible parameter because Null is not a subtype of State{File, Init}
     use(null);
         ^
-  found   : Null null
-  required: State "Init" File
-3 errors\end{code}
+NotOk.java:11: error: The previous value of [f] did not complete its protocol (found: State{File, Close})
+        f = null;
+          ^
+5 errors\end{code}
 

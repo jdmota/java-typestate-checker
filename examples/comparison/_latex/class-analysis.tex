@@ -38,7 +38,7 @@ class File {
 \lstset{language=Java,caption=\textit{NotOkFileWrapper1.java}}
 \begin{code}
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class NotOkFileWrapper1 {
@@ -60,7 +60,7 @@ class NotOkFileWrapper1 {
 \lstset{language=Java,caption=\textit{NotOkFileWrapper2.java}}
 \begin{code}
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class NotOkFileWrapper2 {
@@ -84,7 +84,7 @@ class NotOkFileWrapper2 {
 \lstset{language=Java,caption=\textit{NotOkFileWrapper3.java}}
 \begin{code}
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class NotOkFileWrapper3 {
@@ -109,7 +109,7 @@ class NotOkFileWrapper3 {
 \lstset{language=Java,caption=\textit{OkFileWrapper.java}}
 \begin{code}
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("FileWrapperProtocol")
 class OkFileWrapper {
@@ -138,26 +138,26 @@ NotOkFileWrapper1.java: 7-26: Semantic Error
 
 \lstset{language=,caption=Our tool's output}
 \begin{code}
-NotOkFileWrapper1.java:9: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
-  public void init(File file) {}
-                        ^
-NotOkFileWrapper1.java:12: error: [Cannot call read on null] (Cannot call read on null)
+OkFileWrapper.java:18: error: Cannot call [close] on Shared{File}
+    file.close();
+    ^
+OkFileWrapper.java:14: error: Cannot call [read] on Shared{File}
     return file.read();
-                    ^
-NotOkFileWrapper1.java:16: error: [Cannot call close on null] (Cannot call close on null)
+           ^
+NotOkFileWrapper3.java:14: error: Cannot call [close] on Shared{File}
     file.close();
-              ^
-NotOkFileWrapper2.java:7: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
-  private @Nullable File file = null;
-                         ^
-NotOkFileWrapper3.java:7: error: [Object did not complete its protocol. Type: State "Read"] (Object did not complete its protocol. Type: State "Read")
-  private @Nullable File file = null;
-                         ^
-NotOkFileWrapper3.java:14: error: [Cannot call close on ended protocol] (Cannot call close on ended protocol)
-    file.close();
-              ^
-NotOkFileWrapper3.java:19: error: [Cannot call read on ended protocol] (Cannot call read on ended protocol)
+    ^
+NotOkFileWrapper3.java:19: error: Cannot call [read] on Shared{File}
     file.read();
-             ^
+    ^
+NotOkFileWrapper2.java:14: error: Cannot call [read] on Shared{File}
+    return file.read();
+           ^
+NotOkFileWrapper1.java:16: error: Cannot call close on null
+    file.close();
+        ^
+NotOkFileWrapper1.java:12: error: Cannot call read on null
+    return file.read();
+               ^
 7 errors\end{code}
 

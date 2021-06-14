@@ -9,7 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("CProtocol")
 public class CRole {

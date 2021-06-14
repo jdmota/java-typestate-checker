@@ -6,9 +6,7 @@
 ## Our tool's output
 
 ```
-Main.java:6: error: [argument.type.incompatible] incompatible types in argument.
+Main.java:6: error: Incompatible parameter because Shared{java.lang.Object} | Null is not a subtype of Shared{java.lang.String} | Null
     System.out.println(it.next());
                               ^
-  found   : NoProtocol | Null /*INFERENCE FAILED for:*/ ? extends String
-  required: NoProtocol String
 1 error```

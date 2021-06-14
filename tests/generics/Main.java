@@ -1,6 +1,6 @@
 import java.util.*;
 
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 public class Main {
   public static void main1(String[] args) {

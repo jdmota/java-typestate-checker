@@ -1,7 +1,7 @@
-import org.checkerframework.checker.jtc.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Requires;
-import org.checkerframework.checker.jtc.lib.Ensures;
-import org.checkerframework.checker.jtc.lib.State;
+import jatyc.lib.Typestate;
+import jatyc.lib.Requires;
+import jatyc.lib.Ensures;
+import jatyc.lib.State;
 
 @Typestate("BankWithProtocol")
 // :: error: (Method [deposit] should be available anytime since it is available anytime in the super type)

@@ -25,10 +25,19 @@ JavaIteratorProtocol.protocol:3,37: error: unexpected token "false"```
 ## Our tool's output
 
 ```
-NotOk.java:5: error: [Object did not complete its protocol. Type: State "Next"] (Object did not complete its protocol. Type: State "Next")
+Ok.java:5: error: Incompatible parameter because Shared{java.util.Iterator} | Null is not a subtype of Shared{java.util.Iterator}
     JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
-                 ^
-NotOk.java:8: error: [Cannot call next on ended protocol] (Cannot call next on ended protocol)
+                                                                   ^
+NotOk.java:8: error: Cannot call [next] on State{JavaIterator, end}
       System.out.println(it.next());
                                 ^
-2 errors```
+NotOk.java:5: error: Incompatible parameter because Shared{java.util.Iterator} | Null is not a subtype of Shared{java.util.Iterator}
+    JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
+                                                                   ^
+NotOk.java:4: error: [it] did not complete its protocol (found: State{JavaIterator, Next})
+  public static void main(String args[]) {
+                     ^
+JavaIterator.java:19: error: Incompatible return value because Shared{java.lang.Object} | Null is not a subtype of Shared{java.lang.String}
+    return it.next();
+    ^
+5 errors```

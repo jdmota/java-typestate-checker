@@ -1,4 +1,4 @@
-import org.checkerframework.checker.jtc.lib.Typestate;
+import jatyc.lib.Typestate;
 
 // https://github.com/typetools/checker-framework/issues/3267
 

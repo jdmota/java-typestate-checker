@@ -22,4 +22,10 @@ JavaIteratorProtocol.protocol:3,37: error: unexpected token "false"```
 ## Our tool's output
 
 ```
-```
+Main.java:5: error: Incompatible parameter because Shared{java.util.Iterator} | Null is not a subtype of Shared{java.util.Iterator}
+		JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
+		                                                               ^
+JavaIterator.java:18: error: Incompatible return value because Shared{java.lang.Object} | Null is not a subtype of Shared{java.lang.String}
+    return it.next();
+    ^
+2 errors```

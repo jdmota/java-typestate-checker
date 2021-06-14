@@ -18,7 +18,7 @@ Exception in thread "main" java.lang.NullPointerException
 ## Our tool's output
 
 ```
-FileWrapper.java:2: error: [Object did not complete its protocol. Type: State "Read" | Ended | Moved] (Object did not complete its protocol. Type: State "Read" | Ended | Moved)
-  public File file = new File();
-              ^
+FileWrapper.java:1: error: [this.file] did not complete its protocol (found: Shared{File} | State{File, ?})
+class FileWrapper {
+^
 1 error```

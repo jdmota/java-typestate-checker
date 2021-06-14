@@ -1,4 +1,4 @@
-import org.checkerframework.checker.jtc.lib.State;
+import jatyc.lib.State;
 
 package java.util;
 

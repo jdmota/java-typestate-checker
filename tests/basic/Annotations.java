@@ -1,6 +1,6 @@
-import org.checkerframework.checker.jtc.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Requires;
-import org.checkerframework.checker.jtc.lib.Ensures;
+import jatyc.lib.Typestate;
+import jatyc.lib.Requires;
+import jatyc.lib.Ensures;
 
 public class Annotations {
 

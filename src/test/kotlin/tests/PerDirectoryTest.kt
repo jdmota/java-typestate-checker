@@ -1,6 +1,6 @@
 package tests
 
-import org.checkerframework.checker.jtc.JavaTypestateChecker
+import jatyc.JavaTypestateChecker
 import org.checkerframework.framework.test.CheckerFrameworkPerDirectoryTest
 import org.checkerframework.framework.test.TestConfigurationBuilder
 import org.checkerframework.framework.test.TestUtilities

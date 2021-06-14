@@ -57,16 +57,8 @@ Exception in thread "main" java.lang.NullPointerException
 
 \lstset{language=,caption=Our tool's output}
 \begin{code}
-Main.java:7: error: [Object did not complete its protocol. Type: State "Read" | Ended | Moved] (Object did not complete its protocol. Type: State "Read" | Ended | Moved)
-    File f1 = list.get(0);
-         ^
-Main.java:6: error: [Passing an object with protocol to a method that cannot be analyzed] (Passing an object with protocol to a method that cannot be analyzed)
-    list.add(new File());
-             ^
-Main.java:7: error: [assignment.type.incompatible] incompatible types in assignment.
-    File f1 = list.get(0);
-                      ^
-  found   : State "Read" | Ended | Moved File
-  required: State "Read" File
-3 errors\end{code}
+Main.java:4: error: [new File] did not complete its protocol (found: State{File, Read})
+  public static void main() {
+                     ^
+1 error\end{code}
 

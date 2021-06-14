@@ -1,5 +1,5 @@
-import org.checkerframework.checker.jtc.lib.Nullable;
-import org.checkerframework.checker.jtc.lib.Requires;
+import jatyc.lib.Nullable;
+import jatyc.lib.Requires;
 
 public class NotOk {
   public static void main1(String args[]) {

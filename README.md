@@ -1,10 +1,10 @@
-# Java Typestate Checker plugin for the Checker Framework
+# Java Typestate Checker
 
-The Java Typestate Checker is a plugin for the Checker Framework. This plugin allows one to statically ensure that method calls are called in the correct order. The sequences of method calls allowed are specified in a protocol file which is associated with a Java class by adding a `@Typestate` annotation to the class. You can find an example in the [demo folder](https://github.com/jdmota/java-typestate-checker/tree/master/demo) of this project.
-
-This tool in inspired in the [Mungo tool](http://www.dcs.gla.ac.uk/research/mungo/index.html). It is a new implementation which includes new features and improvements over the current version of Mungo. A comparison table between Mungo and this tool is available [here](https://github.com/jdmota/abcd-mungo/wiki/Comparison).
+The Java Typestate Checker is a plugin for the Checker Framework. This plugin allows one to statically ensure that method calls are called in the correct order. The sequences of method calls allowed are specified in a protocol file which is associated with a Java class by adding a `@Typestate` annotation to the class. This tool was inspired in the [Mungo tool](http://www.dcs.gla.ac.uk/research/mungo/index.html). It is a new implementation which includes new features and improvements over the current version of Mungo. A comparison table between Mungo and this tool is available [here](https://github.com/jdmota/abcd-mungo/wiki/Comparison).
 
 ## Features
+
+**Latest feature: initial support for subtyping!**
 
 - checking that **methods are called in the correct order** specified by the protocol;
 - checking that **protocols of objects are completed**;
@@ -18,14 +18,53 @@ This tool in inspired in the [Mungo tool](http://www.dcs.gla.ac.uk/research/mung
 
 The tool has two modes:
 
-- Linear mode: where objects must be used in a linear way;
-- Non linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**). It is highly experimental, including several limitations, and may not provide the same guarantees that the linear mode is able to provide.
+- Linear mode: where objects must be used linearly;
+- Non-linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**). It is highly experimental, including several limitations, and may not provide the same guarantees that the linear mode is able to provide.
 
-## Demo
+## Quick Start
+
+1. Make sure you have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
+1. Run the following commands:
+
+```sh
+git clone https://github.com/jdmota/java-typestate-checker.git
+cd java-typestate-checker/examples/quick-start
+java -jar ../../dist/checker/checker.jar -classpath ../../dist/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
+```
+
+You should get the following output:
+
+```
+Main.java:7: error: Cannot call [next] on State{JavaIterator, end}
+      iterator.next();
+                   ^
+Main.java:2: error: [iterator] did not complete its protocol (found: State{JavaIterator, Next})
+  public static void main(String[] args) {
+                     ^
+2 errors
+```
+
+## Installation
+
+1. Make sure you have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
+1. Clone this repository: `git clone https://github.com/jdmota/java-typestate-checker.git`
+1. Run the following command from the folder where the Java files you want to check are by replacing `REPO` with the appropriate path to the repository cloned in step 2.
+
+```sh
+java -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
+```
+
+Optional: To use the experimental non-linear mode, make sure the environment variable `PATH` includes `REPO/dist/z3/bin` and then run the following command instead:
+
+```sh
+java -Djava.library.path=REPO/dist/z3/bin -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processor jatyc.JavaTypestateChecker *.java -AperformInference
+```
+
+<!--## Demo
 
 You can find an example with instructions on how to experiment with the tool in the folder [examples/line-reader-example](./examples/line-reader-example).
 
-You may also find other examples in the [examples folder](./examples).
+You may also find other examples in the [examples folder](./examples).-->
 
 ## Resources
 

@@ -1,6 +1,6 @@
-import org.checkerframework.checker.jtc.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Requires;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Typestate;
+import jatyc.lib.Requires;
+import jatyc.lib.Nullable;
 
 // :: error: ([this.iterator] did not complete its protocol (found: Shared{JavaIterator} | State{JavaIterator, ?}))
 class WrapperWithoutProtocol1 {

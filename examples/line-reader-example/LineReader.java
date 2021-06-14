@@ -2,7 +2,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.lang.Thread;
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("LineReader.protocol")
 public class LineReader {

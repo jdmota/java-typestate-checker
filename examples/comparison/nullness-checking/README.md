@@ -14,15 +14,19 @@ Ok.java: 6-20: Semantic Error
 ## Our tool's output
 
 ```
-NotOk.java:11: error: [Cannot override because object has not ended its protocol. Type: State "Close"] (Cannot override because object has not ended its protocol. Type: State "Close")
-        f = null;
-        ^
-NotOk.java:12: error: [Cannot call close on null] (Cannot call close on null)
+Ok.java:6: error: Cannot access [args.length]
+    @Nullable File f = args.length == 0 ? null : new File();
+                           ^
+Ok.java:5: error: [new File] did not complete its protocol (found: State{File, Init})
+  public static void main(String args[]) {
+                     ^
+NotOk.java:12: error: Cannot call close on null
         f.close();
-               ^
-NotOk.java:20: error: [argument.type.incompatible] incompatible types in argument.
+         ^
+NotOk.java:20: error: Incompatible parameter because Null is not a subtype of State{File, Init}
     use(null);
         ^
-  found   : Null null
-  required: State "Init" File
-3 errors```
+NotOk.java:11: error: The previous value of [f] did not complete its protocol (found: State{File, Close})
+        f = null;
+          ^
+5 errors```

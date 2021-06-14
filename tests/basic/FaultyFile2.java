@@ -1,4 +1,4 @@
-import org.checkerframework.checker.jtc.lib.Typestate;
+import jatyc.lib.Typestate;
 
 @Typestate("FaultyFile2.protocol")
 class FaultyFile2 {

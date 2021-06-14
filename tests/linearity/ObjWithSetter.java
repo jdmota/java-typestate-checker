@@ -1,5 +1,5 @@
 import mungo.lib.Typestate;
-import org.checkerframework.checker.jtc.lib.Nullable;
+import jatyc.lib.Nullable;
 
 @Typestate("ObjWithSetter")
 public class ObjWithSetter {
