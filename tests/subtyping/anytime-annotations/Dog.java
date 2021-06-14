@@ -5,6 +5,7 @@ import jatyc.lib.Anytime;
 public class Dog extends Animal {
   @Anytime
   public Sound sound() {
+    // :: warning: (Sound.Bark: Shared{Sound})
     return Sound.Bark;
   }
   public void eat() {

@@ -101,6 +101,10 @@ class JTCUtils(val checker: SourceChecker) {
     checker.reportError(where, message)
   }
 
+  fun warn(message: String, where: Tree) {
+    checker.reportWarning(where, message)
+  }
+
   fun warn(message: String, where: Element) {
     checker.reportWarning(where, message)
   }
@@ -235,6 +239,8 @@ class JTCUtils(val checker: SourceChecker) {
     val jtcStateAnno: String = State::class.java.canonicalName
     val jtcRequiresAnno: String = Requires::class.java.canonicalName
     val jtcEnsuresAnno: String = Ensures::class.java.canonicalName
+    val jtcAnytimeAnno: String = Anytime::class.java.canonicalName
+    val jtcNotAnytimeAnno: String = NotAnytime::class.java.canonicalName
     val typestateAnnotations = setOf(Typestate::class.java.canonicalName, "mungo.lib.Typestate")
     val nullableAnnotations = setOf(
       Nullable::class.java.canonicalName,

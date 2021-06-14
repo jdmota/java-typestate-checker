@@ -320,7 +320,7 @@ class LinearModeClassAnalysis(
     check(!a.isConstructor)
     check(!b.isConstructor)
 
-    if (b.isAnytime && !b.isAbstract && !a.isAnytime) {
+    if (b.isAnytime && !a.isAnytime) {
       errors.add("Method should be available anytime since the overridden method is available anytime")
     }
 

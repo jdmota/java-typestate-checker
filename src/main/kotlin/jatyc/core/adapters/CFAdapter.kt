@@ -216,13 +216,23 @@ class CFAdapter(
 
   private var funcInterfaces = FunctionInterfaces(hierarchy) {
     val funcName = it.simpleName.toString()
+    val annotations = it.annotationMirrors.map { a -> a.toString().substring(1) /* Remove first @ */ }
+    val hasAnytimeAnnotation = annotations.any { a -> a == JTCUtils.jtcAnytimeAnno }
+    val hasNotAnytimeAnnotation = annotations.any { a -> a == JTCUtils.jtcNotAnytimeAnno }
     // Because it.getReceiverType() might return null
     val receiver = it.getCorrectReceiverType()
     val isPublic = it.isPublic()
     val isPure = isSideEffectFree(utils, hierarchy, it)
     val isConstructor = funcName == "<init>"
     val isAbstract = it.isAbstract()
-    val isAnytime = !isConstructor && (it.isStatic || isPure || !isPublic || !utils.classUtils.hasProtocol(receiver))
+    val isAnytime = when {
+      isConstructor -> false
+      it.isStatic -> true
+      !isPublic -> true
+      hasNotAnytimeAnnotation -> false
+      hasAnytimeAnnotation -> true
+      else -> !utils.classUtils.hasProtocol(receiver)
+    }
     val thisParam = if (it.isStatic) {
       emptyList()
     } else {
