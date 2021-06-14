@@ -1,1 +1,1 @@
-public enum Sound {Nothing, GenericSound, Bark}
+public enum Sound { Nothing, GenericSound, Bark }

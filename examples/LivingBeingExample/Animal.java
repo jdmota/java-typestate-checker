@@ -1,7 +1,8 @@
 import mungo.lib.Typestate;
-@Typestate("Animal.protocol")
-public class Animal extends LivingBeing {
-  public Sound sound() {return Sound.GenericSound;}
+
+@Typestate("Animal")
+public abstract class Animal extends LivingBeing {
+  public abstract Sound sound();
   public void move() {}
   public void eat() {}
 }

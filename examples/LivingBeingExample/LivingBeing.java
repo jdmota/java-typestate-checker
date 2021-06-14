@@ -1,3 +1,3 @@
-public class LivingBeing {
-  public Sound sound() {return Sound.Nothing;}
+public abstract class LivingBeing {
+  public abstract Sound sound();
 }

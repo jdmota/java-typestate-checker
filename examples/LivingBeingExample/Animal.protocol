@@ -1,11 +1,10 @@
 typestate Animal {
   Init = {
     void move(): Moved,
-    drop:end
+    drop: end
   }
 
   Moved = {
     void eat(): Init
   }
-
 }

@@ -1,6 +1,6 @@
 import mungo.lib.Typestate;
 
-@Typestate("Dog.protocol")
+@Typestate("Dog")
 public class Dog extends Animal {
   public Sound sound() {return Sound.Bark;}
   public void eat() {sound();}
