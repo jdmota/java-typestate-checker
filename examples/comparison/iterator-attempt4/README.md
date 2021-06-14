@@ -8,9 +8,6 @@ Main.java: 0-0: Semantic Error
 ## Our tool's output
 
 ```
-Main.java:5: error: Incompatible parameter because Shared{java.util.Iterator} | Null is not a subtype of Shared{java.util.Iterator}
-		JavaIterator it = new JavaIterator(Arrays.asList(args).iterator());
-		                                                               ^
 Main.java:8: error: Cannot call [next] on State{JavaIterator, Next} | State{JavaIterator, end}
       System.out.println(it.next());
                                 ^
@@ -20,4 +17,4 @@ Main.java:4: error: [it] did not complete its protocol (found: State{JavaIterato
 JavaIterator.java:18: error: Incompatible return value because Shared{java.lang.Object} | Null is not a subtype of Shared{java.lang.String}
     return it.next();
     ^
-4 errors```
+3 errors```

@@ -233,6 +233,8 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     jdkNonNullReturns.add("java.lang.StringBuilder#toString")
     jdkNonNullReturns.add("java.util.Scanner#next")
     jdkNonNullReturns.add("java.util.Scanner#nextLine")
+    jdkNonNullReturns.add("java.util.ArrayList#iterator")
+    jdkNonNullReturns.add("java.util.List#iterator")
   }
 
   fun returnsNonNull(type: AnnotatedExecutableType): Boolean {

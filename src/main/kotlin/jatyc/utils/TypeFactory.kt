@@ -3,6 +3,7 @@ package jatyc.utils
 import com.sun.source.tree.CompilationUnitTree
 import com.sun.source.tree.LambdaExpressionTree
 import com.sun.source.tree.Tree
+import com.sun.source.util.TreePath
 import com.sun.tools.javac.code.Symbol
 import jatyc.qualifiers.BottomAnno
 import jatyc.qualifiers.InternalInfoAnno
@@ -10,10 +11,10 @@ import jatyc.qualifiers.UnknownAnno
 import org.checkerframework.common.basetype.BaseTypeChecker
 import org.checkerframework.dataflow.util.PurityUtils
 import org.checkerframework.framework.source.SourceChecker
-import org.checkerframework.framework.stub.StubTypes
+import org.checkerframework.framework.stub.AnnotationFileElementTypes
+import org.checkerframework.framework.stub.AnnotationFileParser
 import org.checkerframework.framework.type.*
 import org.checkerframework.framework.util.DefaultAnnotationFormatter
-import org.checkerframework.framework.util.PurityUnqualified
 import org.checkerframework.javacutil.AnnotationBuilder
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
@@ -27,16 +28,16 @@ private class FakeBasicTypeChecker(myChecker: SourceChecker) : BaseTypeChecker()
 
 class FakeAnnotatedTypeFactory internal constructor(myChecker: SourceChecker) : AnnotatedTypeFactory(FakeBasicTypeChecker(myChecker)) {
 
-  private val typesFromStubFilesField = StubTypes::class.java.getDeclaredField("typesFromStubFiles")
-  private val typesFromStubFiles = mutableMapOf<Element, AnnotatedTypeMirror>()
+  private val annotationFileAnnosField = AnnotationFileElementTypes::class.java.getDeclaredField("annotationFileAnnos")
+  private val annotationFileAnnos = mutableMapOf<Element, AnnotatedTypeMirror>()
 
   private val topAnnotation = AnnotationBuilder(checker.processingEnvironment, UnknownAnno::class.java).build()
   private val bottomAnnotation = AnnotationBuilder(checker.processingEnvironment, BottomAnno::class.java).build()
 
   init {
-    typesFromStubFilesField.isAccessible = true
+    annotationFileAnnosField.isAccessible = true
     postInit()
-    parseStubFiles()
+    parseAnnotationFiles()
   }
 
   private class AnnotationFormatter : DefaultAnnotationFormatter() {
@@ -60,7 +61,7 @@ class FakeAnnotatedTypeFactory internal constructor(myChecker: SourceChecker) : 
   }
 
   override fun createSupportedTypeQualifiers(): Set<Class<out Annotation>> {
-    return setOf(BottomAnno::class.java, InternalInfoAnno::class.java, UnknownAnno::class.java, PurityUnqualified::class.java)
+    return setOf(BottomAnno::class.java, InternalInfoAnno::class.java, UnknownAnno::class.java)
   }
 
   override fun createQualifierHierarchy(): QualifierHierarchy {
@@ -90,18 +91,18 @@ class FakeAnnotatedTypeFactory internal constructor(myChecker: SourceChecker) : 
     }
   }
 
-  override fun parseStubFiles() {
-    super.parseStubFiles()
+  override fun parseAnnotationFiles() {
+    super.parseAnnotationFiles()
 
-    val types = typesFromStubFilesField.get(stubTypes) as MutableMap<*, *>
+    val types = (annotationFileAnnosField.get(stubTypes) as AnnotationFileParser.AnnotationFileAnnotations).atypes
     for ((element, annotatedType) in types) {
-      typesFromStubFiles[element as Element] = annotatedType as AnnotatedTypeMirror
+      annotationFileAnnos[element as Element] = annotatedType as AnnotatedTypeMirror
     }
   }
 
   // So that we get the original AnnotatedTypeMirror, with all the annotations
   // See "isSupportedQualifier" for context
-  fun getTypeFromStub(elt: Element) = typesFromStubFiles[elt]
+  fun getTypeFromStub(elt: Element) = annotationFileAnnos[elt]
 
   // Allow all annotations to be added to AnnotatedTypeMirror's
   override fun isSupportedQualifier(a: AnnotationMirror?) = a != null
@@ -122,7 +123,7 @@ class TypeFactory(checker: SourceChecker) {
     fake.setRoot(root)
   }
 
-  fun getPath(tree: Tree) = fake.getPath(tree)
+  fun getPath(tree: Tree): TreePath? = fake.getPath(tree)
   fun getProvider() = fake
 
   fun isSideEffectFree(method: Symbol.MethodSymbol) = PurityUtils.isSideEffectFree(fake, method)

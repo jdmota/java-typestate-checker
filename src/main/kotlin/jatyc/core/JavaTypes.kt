@@ -5,6 +5,7 @@ import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import jatyc.JavaTypestateChecker
 import org.checkerframework.javacutil.ElementUtils
 import org.checkerframework.javacutil.TypesUtils
+import javax.lang.model.type.ArrayType
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
@@ -21,6 +22,7 @@ class JavaType internal constructor(val original: Type, private val checker: Jav
   fun isEnum() = original.tsym.let { it is Symbol.ClassSymbol && it.isEnum }
   fun isJavaObject() = TypesUtils.isObject(original)
   fun isJavaEnum() = original.toString() == "java.lang.Enum<E>"
+  fun isJavaArray() = original is ArrayType
 
   fun getGraph() = checker.utils.classUtils.visitClassTypeMirror(original)
   fun hasProtocol() = checker.utils.classUtils.hasProtocol(original)

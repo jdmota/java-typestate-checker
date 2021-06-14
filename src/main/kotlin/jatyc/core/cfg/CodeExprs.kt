@@ -144,9 +144,15 @@ class NewObj(val type: JTCType, val javaType: JavaType) : CodeExpr() {
   }
 }
 
+class NewArrayWithDimensions(val type: JTCType, val javaType: JavaType, val componentType: JTCType, val componentJavaType: JavaType, val dimensions: List<CodeExpr>) : CodeExpr() {
+  override fun format(indent: String): String {
+    return "${indent}new $javaType [${dimensions.joinToString(", ") { it.format("") }}]"
+  }
+}
+
 class NewArrayWithValues(val type: JTCType, val javaType: JavaType, val componentType: JTCType, val componentJavaType: JavaType, val initializers: List<CodeExpr>) : CodeExpr() {
   override fun format(indent: String): String {
-    return "${indent}new $javaType {${initializers.joinToString(", ") { it.format("") }}"
+    return "${indent}new $javaType {${initializers.joinToString(", ") { it.format("") }}}"
   }
 }
 
@@ -181,8 +187,9 @@ class FuncDeclaration(
   isPublic: Boolean,
   isAnytime: Boolean,
   isPure: Boolean,
+  isAbstract: Boolean,
   var clazz: ClassDecl? = null
-) : FuncInterface(name, parameters, returnType, isPublic, isAnytime, isPure) {
+) : FuncInterface(name, parameters, returnType, isPublic, isAnytime, isPure, isAbstract) {
   override fun format(indent: String): String {
     return "$indent(fun ${name ?: "anonymous"}(...) -> ...)" // ${parameters.joinToString(", ")}
   }
@@ -194,7 +201,8 @@ open class FuncInterface(
   val returnType: JTCType,
   val isPublic: Boolean,
   val isAnytime: Boolean,
-  val isPure: Boolean
+  val isPure: Boolean,
+  val isAbstract: Boolean
 ) : CodeExpr() {
   val isConstructor = name == "<init>"
   override fun format(indent: String): String {
@@ -356,7 +364,8 @@ enum class UnaryOP {
   Minus,
   Plus,
   Widening,
-  Narrowing
+  Narrowing,
+  ToString
 }
 
 class NullCheck(val expr: CodeExpr, val message: String) : CodeExpr() {

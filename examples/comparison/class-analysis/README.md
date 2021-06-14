@@ -14,11 +14,11 @@ OkFileWrapper.java:18: error: Cannot call [close] on Shared{File}
 OkFileWrapper.java:14: error: Cannot call [read] on Shared{File}
     return file.read();
            ^
-NotOkFileWrapper3.java:14: error: Cannot call [close] on Shared{File}
-    file.close();
-    ^
 NotOkFileWrapper3.java:19: error: Cannot call [read] on Shared{File}
     file.read();
+    ^
+NotOkFileWrapper3.java:14: error: Cannot call [close] on Shared{File}
+    file.close();
     ^
 NotOkFileWrapper2.java:14: error: Cannot call [read] on Shared{File}
     return file.read();

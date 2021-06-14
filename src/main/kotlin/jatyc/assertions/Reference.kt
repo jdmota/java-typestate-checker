@@ -40,8 +40,7 @@ fun getReference(node: Node): Reference? {
         }
       }
     }
-    is ExplicitThisLiteralNode -> ThisReference(node.getType())
-    is ThisLiteralNode -> ThisReference(node.getType())
+    is ThisNode -> ThisReference(node.getType())
     is SuperNode -> ThisReference(node.getType())
     is LocalVariableNode -> LocalVariable(node)
     is ClassNameNode -> ClassName(node.type)
@@ -57,7 +56,7 @@ fun getReference(tree: Tree): Reference? {
         return ClassName(expressionType)
       }
       val ele = TreeUtils.elementFromUse(tree)!!
-      if (ElementUtils.isClassElement(ele)) {
+      if (ElementUtils.isTypeElement(ele)) {
         return ClassName(TreeUtils.typeOf(tree))
       }
       return when (ele.kind) {
@@ -76,13 +75,13 @@ fun getReference(tree: Tree): Reference? {
         return ThisReference(typeOfId)
       }
       val ele = TreeUtils.elementFromUse(tree)!!
-      if (ElementUtils.isClassElement(ele)) {
+      if (ElementUtils.isTypeElement(ele)) {
         return ClassName(ele.asType())
       }
       when (ele.kind) {
         LOCAL_VARIABLE, RESOURCE_VARIABLE, EXCEPTION_PARAMETER, PARAMETER -> LocalVariable(ele)
         FIELD -> {
-          val enclosingType = ElementUtils.enclosingClass(ele)!!.asType()
+          val enclosingType = ElementUtils.enclosingTypeElement(ele)!!.asType()
           val fieldAccessExpression = if (ElementUtils.isStatic(ele)) {
             ClassName(enclosingType)
           } else {

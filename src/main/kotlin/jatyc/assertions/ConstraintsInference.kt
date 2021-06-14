@@ -193,7 +193,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
     }
   }
 
-  override fun visitThisLiteral(n: ThisLiteralNode, result: NodeAssertions): Void? {
+  override fun visitThis(n: ThisNode, result: NodeAssertions): Void? {
     require.read(n, result)
     ensures.noSideEffects(result)
     return null

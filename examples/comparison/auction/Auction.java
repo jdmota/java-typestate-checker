@@ -20,7 +20,8 @@ public class Auction {
               Boolean.False;
   }
   public void bid(int clientId, double val) {
-    clients[clientId].bid(val);
+    Client c = clients[clientId];
+    c.bid(val);
     hBidder = clientId;
   }
   // There is an error here, clients are not being closed!

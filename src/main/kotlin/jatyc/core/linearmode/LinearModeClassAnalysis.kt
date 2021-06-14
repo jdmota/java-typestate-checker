@@ -269,7 +269,7 @@ class LinearModeClassAnalysis(
         checkMethodSubtyping(errors, method, override)
       }
 
-      if (graph != null && !method.isAnytime && !method.isConstructor) {
+      if (graph != null && !method.isAnytime && !method.isConstructor && !method.isAbstract) {
         val env = graph.getEnv()
         if (graph.getAllTransitions().none { typecheckUtils.sameMethod(env, method, it) }) {
           errors.add("Method [${method.name}] does not appear in the typestate")
@@ -320,7 +320,7 @@ class LinearModeClassAnalysis(
     check(!a.isConstructor)
     check(!b.isConstructor)
 
-    if (b.isAnytime && !a.isAnytime) {
+    if (b.isAnytime && !b.isAbstract && !a.isAnytime) {
       errors.add("Method should be available anytime since the overridden method is available anytime")
     }
 

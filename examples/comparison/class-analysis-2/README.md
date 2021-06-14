@@ -17,15 +17,15 @@ Exception in thread "main" java.lang.NullPointerException
 ## Our tool's output
 
 ```
-NotOkFileWrapper4.java:12: error: Cannot call read on null
-    return file.read();
-               ^
-NotOkFileWrapper4.java:12: error: Cannot call [read] on Shared{File}
-    return file.read();
-           ^
 NotOkFileWrapper4.java:8: error: Cannot perform assignment because [this.file] is not accessible here
     this.file = file;
               ^
+NotOkFileWrapper4.java:12: error: Cannot call [read] on Shared{File}
+    return file.read();
+           ^
+NotOkFileWrapper4.java:12: error: Cannot call read on null
+    return file.read();
+               ^
 NotOkFileWrapper4.java:3: error: [this.file] did not complete its protocol (found: Shared{File} | State{File, ?} | Null)
 class NotOkFileWrapper4 {
 ^

@@ -17,10 +17,10 @@ Ok.java:14: error: Cannot call [read] on Shared{File}
 Ok.java:8: error: [f] did not complete its protocol (found: State{File, Read})
   public static void main2() {
                      ^
-NotOk.java:4: error: [f] did not complete its protocol (found: State{File, Read})
-  public static void main1() {
-                     ^
 NotOk.java:8: error: [f] did not complete its protocol (found: State{File, Read})
   public static void main2() {
+                     ^
+NotOk.java:4: error: [f] did not complete its protocol (found: State{File, Read})
+  public static void main1() {
                      ^
 4 errors```

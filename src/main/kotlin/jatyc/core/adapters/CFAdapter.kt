@@ -19,6 +19,7 @@ import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.util.AnnotatedTypes
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.ElementUtils
+import org.checkerframework.javacutil.TreePathUtil
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
@@ -33,9 +34,13 @@ fun Symbol.MethodSymbol.isPublic(): Boolean {
   return flags_field and Flags.AccessFlags.toLong() == Flags.PUBLIC.toLong()
 }
 
+fun Symbol.MethodSymbol.isAbstract(): Boolean {
+  return flags_field and Flags.ABSTRACT.toLong() != 0L
+}
+
 fun Symbol.MethodSymbol.getCorrectReceiverType(): Type {
   // Because this.getReceiverType() might return null
-  return ElementUtils.enclosingClass(this)!!.asType() as Type
+  return ElementUtils.enclosingTypeElement(this)!!.asType() as Type
 }
 
 private fun isSideEffectFree(utils: JTCUtils, hierarchy: JavaTypesHierarchy, method: Symbol.MethodSymbol): Boolean {
@@ -216,6 +221,7 @@ class CFAdapter(
     val isPublic = it.isPublic()
     val isPure = isSideEffectFree(utils, hierarchy, it)
     val isConstructor = funcName == "<init>"
+    val isAbstract = it.isAbstract()
     val isAnytime = !isConstructor && (it.isStatic || isPure || !isPublic || !utils.classUtils.hasProtocol(receiver))
     val thisParam = if (it.isStatic) {
       emptyList()
@@ -230,7 +236,7 @@ class CFAdapter(
     } else {
       thisParam.plus(getParamTypes(it))
     }
-    FuncInterface(funcName, params, getReturnType(it), isPublic = isPublic, isAnytime = isAnytime, isPure = isPure).set(it.asType())
+    FuncInterface(funcName, params, getReturnType(it), isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType())
   }
 
   fun setRoot(root: CompilationUnitTree) {
@@ -385,7 +391,7 @@ class CFAdapter(
     if (!hasDeclaredConstructor && initializers.isNotEmpty()) {
       if (isStatic) {
         val cfg = joinCFGs(initializers.map { it.first })
-        val method = FuncDeclaration("<init>", listOf(), cfg, JTCNullType.SINGLETON, isPublic = true, isAnytime = true, isPure = false).set(classTree).set(root)
+        val method = FuncDeclaration("<init>", listOf(), cfg, JTCNullType.SINGLETON, isPublic = true, isAnytime = true, isPure = false, isAbstract = false).set(classTree).set(root)
         methods.add(method)
         publicMethods.add(method)
       } else {
@@ -449,7 +455,7 @@ class CFAdapter(
 
   private fun transformMethod(method: JCTree.JCMethodDecl, cfg: SimpleCFG): FuncDeclaration {
     val func = funcInterfaces.transform(method.sym)
-    return FuncDeclaration(func.name, func.parameters, cfg, func.returnType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure).set(method).set(root)
+    return FuncDeclaration(func.name, func.parameters, cfg, func.returnType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract).set(method).set(root)
   }
 
   private fun treeToAst(tree: Tree, classTree: JCTree.JCClassDecl): UnderlyingAST {
@@ -458,7 +464,7 @@ class CFAdapter(
       is BlockTree -> UnderlyingAST.CFGStatement(tree, classTree)
       is MethodTree -> UnderlyingAST.CFGMethod(tree, classTree)
       is LambdaExpressionTree -> {
-        val mt = TreeUtils.enclosingOfKind(utils.getPath(tree, root), Tree.Kind.METHOD) as MethodTree
+        val mt = TreePathUtil.enclosingOfKind(utils.getPath(tree, root), Tree.Kind.METHOD) as MethodTree
         UnderlyingAST.CFGLambda(tree, classTree, mt)
       }
       else -> error("Unexpected tree ${tree.javaClass}")
@@ -482,29 +488,39 @@ class CFAdapter(
   }
 
   private fun checkersCFGtoSimpleCFG(original: ControlFlowGraph): SimpleCFG {
-    val seen = IdentityHashMap<Node, SimpleNode>()
+    val seen = IdentityHashMap<Block, SimpleNode>()
     val cfg = SimpleCFG()
     connect(cfg, seen, cfg.entry, original.entryBlock, SimpleFlowRule.EACH_TO_EACH)
     return cfg
   }
 
-  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Node, SimpleNode>, prev: SimpleNode, block: Block, flowRule: Store.FlowRule) {
+  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Block, SimpleNode>, prev: SimpleNode, block: Block, flowRule: Store.FlowRule) {
     return connect(cfg, seen, prev, block, checkersFlowRuleToSimpleFlowRule(flowRule))
   }
 
-  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Node, SimpleNode>, prev: SimpleNode, block: Block, flowRule: SimpleFlowRule) {
+  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Block, SimpleNode>, prev: SimpleNode, block: Block, flowRule: SimpleFlowRule) {
+    if (seen.containsKey(block)) {
+      prev.addOutEdge(SimpleEdge(flowRule, seen[block]!!))
+      return
+    }
     when (block) {
       is RegularBlock -> {
+        var first = true
         var last = prev
         var lastFlow = flowRule
         for (n in block.nodes) {
-          last = connect(cfg, seen, last, n, lastFlow) ?: return
+          last = connect(cfg, last, n, lastFlow)
           lastFlow = SimpleFlowRule.EACH_TO_EACH
+          if (first) {
+            seen[block] = last
+            first = false
+          }
         }
         block.successor?.let { connect(cfg, seen, last, it, block.flowRule) }
       }
       is ExceptionBlock -> {
-        val last = connect(cfg, seen, prev, block.node, flowRule) ?: return
+        val last = connect(cfg, prev, block.node, flowRule)
+        seen[block] = last
         block.successor?.let { connect(cfg, seen, last, it, block.flowRule) }
         // TODO
         /*for ((cause, value) in block.exceptionalSuccessors) {
@@ -539,45 +555,38 @@ class CFAdapter(
 
   private val adaptedCache = IdentityHashMap<Node, AdaptResult>()
 
-  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Node, SimpleNode>, prev: SimpleNode, node: Node, flowRule: SimpleFlowRule): SimpleNode? {
-    return if (seen.containsKey(node)) {
-      prev.addOutEdge(SimpleEdge(flowRule, seen[node]!!))
-      null
-    } else {
-      when (val result = adaptedCache.computeIfAbsent(node) { transformHelper(it) }) {
-        is MultipleAdaptResult -> {
-          var first = true
-          var lastNode = prev
-          for (c in result.list) {
-            val simpleNode = SimpleCodeNode(c)
-            c.set(root)
-
-            cfg.allNodes.add(simpleNode)
-            lastNode.addOutEdge(SimpleEdge(if (first) flowRule else SimpleFlowRule.BOTH_TO_BOTH, simpleNode))
-            lastNode = simpleNode
-            if (first) {
-              seen[node] = simpleNode
-              first = false
-            }
-          }
-          lastNode
-        }
-        is SingleAdaptResult -> {
-          val simpleNode = SimpleCodeNode(result.code)
-          result.code.set(root)
+  private fun connect(cfg: SimpleCFG, prev: SimpleNode, node: Node, flowRule: SimpleFlowRule): SimpleNode {
+    return when (val result = adaptedCache.computeIfAbsent(node) { transformHelper(it) }) {
+      is MultipleAdaptResult -> {
+        var first = true
+        var lastNode = prev
+        for (c in result.list) {
+          val simpleNode = SimpleCodeNode(c)
+          c.set(root)
 
           cfg.allNodes.add(simpleNode)
-          prev.addOutEdge(SimpleEdge(flowRule, simpleNode))
-          seen[node] = simpleNode
-          simpleNode
+          lastNode.addOutEdge(SimpleEdge(if (first) flowRule else SimpleFlowRule.BOTH_TO_BOTH, simpleNode))
+          lastNode = simpleNode
+          if (first) {
+            first = false
+          }
         }
+        lastNode
+      }
+      is SingleAdaptResult -> {
+        val simpleNode = SimpleCodeNode(result.code)
+        result.code.set(root)
+
+        cfg.allNodes.add(simpleNode)
+        prev.addOutEdge(SimpleEdge(flowRule, simpleNode))
+        simpleNode
       }
     }
   }
 
   private fun transformLHS(node: Node): LeftHS {
     return when (node) {
-      is ThisLiteralNode -> renamer.transformThisLHS(node.type).set(node)
+      is ThisNode -> renamer.transformThisLHS(node.type).set(node)
       is LocalVariableNode -> renamer.transformLocalLHS(node).set(node)
       is FieldAccessNode -> renamer.transformSelectLHS(getAdapted(node.receiver), node.element).set(node)
       else -> error("Unexpected ${node.javaClass} in LHS - $node")
@@ -599,9 +608,22 @@ class CFAdapter(
   }
 
   private fun makeAssignment(left: Node, right: CodeExpr, node: Node): AdaptResult {
-    // left is ArrayAccessNode || left is LocalVariableNode || left is FieldAccessNode
     return when (left) {
-      is ArrayAccessNode -> makeCall2(helperToFuncInterface("#helpers.ArraySet"), listOf(left.array, left.index).map(::getAdapted).plus(right), node)
+      is ArrayAccessNode -> {
+        val type = left.array.type as ArrayType
+        val componentType = typeIntroducer.getArrayComponentType(type.componentType)
+        val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
+        val params = listOf(
+          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true),
+          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false),
+          FuncParam(IdLHS("value", 0), componentType, componentType, isThis = false)
+        )
+        makeCall2(
+          FuncInterface("#helpers.arraySet", params, returnType = componentType, isPublic = true, isAnytime = true, isPure = false, isAbstract = false),
+          listOf(left.array, left.index).map(::getAdapted).plus(right),
+          node
+        )
+      }
       else -> SingleAdaptResult(Assign(transformLHS(left), right).set(node))
     }
   }
@@ -630,29 +652,37 @@ class CFAdapter(
     return makeCall2(methodExpr, parameters.map(::getAdapted), cfNode)
   }
 
-  private fun helperToFuncInterface(helperName: String): FuncInterface {
-    TODO("$helperName not implemented")
-  }
-
   // See https://github.com/typetools/checker-framework/tree/master/dataflow/src/main/java/org/checkerframework/dataflow/cfg/node
   private fun transformHelper(node: Node): AdaptResult {
     val t = ::getAdapted
     return when (node) {
       is ArrayAccessNode -> {
-        makeCall(helperToFuncInterface("#helpers.arrayAccess"), listOf(node.array, node.index), node)
+        val type = node.array.type as ArrayType
+        val componentType = typeIntroducer.getArrayComponentType(type.componentType)
+        val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
+        val params = listOf(
+          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true),
+          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false)
+        )
+        makeCall(
+          FuncInterface("#helpers.arrayAccess", params, returnType = componentType, isPublic = true, isAnytime = true, isPure = true, isAbstract = false),
+          listOf(node.array, node.index),
+          node
+        )
       }
-      is ArrayCreationNode -> if (node.dimensions.isNotEmpty()) {
-        makeCall(helperToFuncInterface("#helpers.arrayInitWithDimensions"), node.dimensions, node)
-      } else {
+      is ArrayCreationNode -> {
         val type = node.type as ArrayType
         val javaType = hierarchy.get(type)
-        val componentType = hierarchy.get(type.componentType)
-        SingleAdaptResult(
-          NewArrayWithValues(JTCSharedType(javaType), javaType, typeIntroducer.getArrayComponentType(type.componentType), componentType, node.initializers.map(t))
-        ).set(node)
+        val javaComponentType = hierarchy.get(type.componentType)
+        val componentType = typeIntroducer.getArrayComponentType(type.componentType)
+        SingleAdaptResult(if (node.dimensions.isNotEmpty()) {
+          NewArrayWithDimensions(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.dimensions.map(t))
+        } else {
+          NewArrayWithValues(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.initializers.map(t))
+        }).set(node)
       }
       is ArrayTypeNode -> error("Unexpected node ${node.javaClass}")
-      is AssertionErrorNode -> makeCall(helperToFuncInterface("#helpers.assertion"), listOf(node.condition, node.detail), node)
+      is AssertionErrorNode -> TODO("assertion not implemented") // makeCall(helperToFuncInterface("#helpers.assertion"), listOf(node.condition, node.detail), node)
       is AssignmentNode -> makeAssignment(node.target, t(node.expression), node)
       is BinaryOperationNode -> {
         val left = t(node.leftOperand)
@@ -710,7 +740,7 @@ class CFAdapter(
           TODO("method references are not supported yet")
         }
         is JCTree.JCLambda -> MultipleAdaptResult(listOf(
-          FuncDeclaration(null, getParamTypes(tree), processCFG(tree), getReturnType(tree), isPublic = false, isAnytime = true, isPure = false).set(node),
+          FuncDeclaration(null, getParamTypes(tree), processCFG(tree), getReturnType(tree), isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node),
           NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node)
         ))
         else -> error("Unexpected tree ${node.javaClass} in FunctionalInterfaceNode")
@@ -737,7 +767,7 @@ class CFAdapter(
       is MethodAccessNode -> {
         val method = transformMethod(node.method as Symbol.MethodSymbol).set(node)
         val receiver = node.receiver
-        if (receiver is ClassNameNode || receiver is ThisLiteralNode || receiver is SuperNode) {
+        if (receiver is ClassNameNode || receiver is ThisNode || receiver is SuperNode) {
           // Make sure the corresponding tree of the receiver is not null
           // This can occur if the receiver is ClassNameNode or ImplicitThisNode
           val adaptedReceiver = t(receiver)
@@ -796,13 +826,13 @@ class CFAdapter(
         val concatExpr = BinaryExpr(t(left), t(node.rightOperand), BinaryOP.StringConcat).set(node)
         makeAssignment(if (left is StringConversionNode) left.operand else left, concatExpr, node)
       }
-      is StringConversionNode -> makeCall(helperToFuncInterface("#helpers.toString"), listOf(node.operand), node)
+      is StringConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.ToString)).set(node)
       is SuperNode -> SingleAdaptResult(renamer.transformThis(classesStack.peek().type).set(node))
       is SynchronizedNode -> SingleAdaptResult((if (node.isStartOfBlock) SynchronizedExprStart(t(node.expression)) else SynchronizedExprEnd(t(node.expression))).set(node))
       is TernaryExpressionNode -> SingleAdaptResult(TernaryExpr(t(node.conditionOperand), t(node.thenOperand), t(node.elseOperand)).set(node))
-      is ThisLiteralNode -> SingleAdaptResult(when (node) {
-        is ExplicitThisLiteralNode,
-        is ImplicitThisLiteralNode -> renamer.transformThis(classesStack.peek().type).set(node)
+      is ThisNode -> SingleAdaptResult(when (node) {
+        is ExplicitThisNode,
+        is ImplicitThisNode -> renamer.transformThis(classesStack.peek().type).set(node)
         else -> error("Unexpected node ${node.javaClass}")
       })
       is ThrowNode -> SingleAdaptResult(ThrowExpr(t(node.expression)).set(node))

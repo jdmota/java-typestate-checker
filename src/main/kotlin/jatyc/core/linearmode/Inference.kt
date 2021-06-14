@@ -143,8 +143,8 @@ class Inference(
 
         if (
           isSelfCall &&
-          !func.isAnytime && !func.isConstructor &&
-          !methodExpr.isAnytime && !methodExpr.isConstructor && methodExpr.isPublic
+          !func.isConstructor && !methodExpr.isConstructor &&
+          !methodExpr.isAnytime && methodExpr.isPublic
         ) {
           // We are calling our own public method!
           inference.errors[node] = "Cannot call own public method [${methodExpr.name}]"
@@ -272,6 +272,8 @@ class Inference(
 
         if (objType is JTCBottomType || objType is JTCNullType) {
           currentType = JTCBottomType.SINGLETON
+        } else if (node.id == "length" && objType is JTCSharedType && objType.javaType.isJavaArray()) {
+          currentType = hierarchy.INTEGER
         } else {
           // Handle enums or stuff like java.lang.System.out
           if (obj is SymbolResolveExpr) {
@@ -466,7 +468,21 @@ class Inference(
             }
             post[nodeRef] = hierarchy.BOOLEAN
           }
+          UnaryOP.ToString -> post[Reference.make(node)] = hierarchy.STRING
         }
+      }
+      is NewArrayWithDimensions -> {
+        inference.errors.remove(node)
+
+        for ((idx, init) in node.dimensions.withIndex()) {
+          val valueType = pre[Reference.make(init)].type.toShared()
+          if (!valueType.isSubtype(hierarchy.INTEGER)) {
+            inference.errors[node] = "Dimension in index $idx with type ${valueType.format()} is not a subtype of ${hierarchy.INTEGER}"
+            break
+          }
+        }
+
+        post[Reference.make(node)] = node.type
       }
       is NewArrayWithValues -> {
         inference.errors.remove(node)

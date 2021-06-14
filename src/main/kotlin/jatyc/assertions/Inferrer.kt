@@ -11,6 +11,7 @@ import org.checkerframework.dataflow.cfg.UnderlyingAST
 import org.checkerframework.dataflow.cfg.block.*
 import org.checkerframework.dataflow.cfg.node.*
 import org.checkerframework.framework.flow.CFCFGBuilder
+import org.checkerframework.javacutil.TreePathUtil
 import org.checkerframework.javacutil.TreeUtils
 import java.util.*
 import javax.annotation.processing.ProcessingEnvironment
@@ -174,7 +175,7 @@ class Inferrer(val checker: JavaTypestateChecker) {
     // Analyze lambdas
     while (!lambdaQueue.isEmpty()) {
       val lambdaPair = lambdaQueue.poll()
-      val mt = TreeUtils.enclosingOfKind(utils.getPath(lambdaPair.first, root), Tree.Kind.METHOD) as MethodTree
+      val mt = TreePathUtil.enclosingOfKind(utils.getPath(lambdaPair.first, root), Tree.Kind.METHOD) as MethodTree
       phase1(
         classQueue,
         lambdaQueue,
@@ -569,7 +570,7 @@ class Inferrer(val checker: JavaTypestateChecker) {
     return isPureCache.computeIfAbsent(tree) {
       getCFG(it).allNodes.all { node ->
         when (node) {
-          is ThisLiteralNode -> true
+          is ThisNode -> true
           is LocalVariableNode -> true
           is FieldAccessNode -> true
           is ReturnNode -> true

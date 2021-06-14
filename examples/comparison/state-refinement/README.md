@@ -15,13 +15,7 @@ Ok.java:20: error: annotation type jatyc.lib.State is not applicable to this kin
 ## Our tool's output
 
 ```
-NotOk.java:25: error: Parameters with @Ensures should be final
-  public static void read(@Requires("Read") @Ensures("Close") File f) {
-                                            ^
-Ok.java:24: error: Parameters with @Ensures should be final
-  public static void read(@Requires("Read") @Ensures("Close") File f) {
-                                            ^
 NotOk.java:13: error: Incompatible parameter because State{File, Close} is not a subtype of State{File, Read}
         read(f);
              ^
-3 errors```
+1 error```

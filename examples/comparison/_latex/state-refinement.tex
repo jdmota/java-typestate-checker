@@ -68,7 +68,7 @@ public class NotOk {
     return new File();
   }
 
-  public static void read(@Requires("Read") @Ensures("Close") File f) {
+  public static void read(@Requires("Read") @Ensures("Close") final File f) {
     f.read();
   }
 
@@ -99,7 +99,7 @@ public class Ok {
     return new File();
   }
 
-  public static void read(@Requires("Read") @Ensures("Close") File f) {
+  public static void read(@Requires("Read") @Ensures("Close") final File f) {
     f.read();
   }
 
@@ -120,14 +120,8 @@ Ok.java:20: error: annotation type jatyc.lib.State is not applicable to this kin
 
 \lstset{language=,caption=Our tool's output}
 \begin{code}
-NotOk.java:25: error: Parameters with @Ensures should be final
-  public static void read(@Requires("Read") @Ensures("Close") File f) {
-                                            ^
-Ok.java:24: error: Parameters with @Ensures should be final
-  public static void read(@Requires("Read") @Ensures("Close") File f) {
-                                            ^
 NotOk.java:13: error: Incompatible parameter because State{File, Close} is not a subtype of State{File, Read}
         read(f);
              ^
-3 errors\end{code}
+1 error\end{code}
 

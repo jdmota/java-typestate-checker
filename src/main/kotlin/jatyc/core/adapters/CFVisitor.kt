@@ -1,29 +1,21 @@
 package jatyc.core.adapters
 
 import com.sun.source.tree.*
-import com.sun.tools.javac.code.Flags
-import com.sun.tools.javac.code.Symbol.MethodSymbol
 import com.sun.tools.javac.tree.JCTree
 import jatyc.JavaTypestateChecker
 import jatyc.core.JavaTypesHierarchy
 import jatyc.core.TypeIntroducer
-import jatyc.core.linearmode.LinearModeClassAnalysis
 import jatyc.core.TypecheckUtils
 import jatyc.core.cfg.ClassDeclAndCompanion
+import jatyc.core.linearmode.LinearModeClassAnalysis
 import jatyc.utils.JTCUtils
-import org.checkerframework.dataflow.qual.Pure
-import org.checkerframework.dataflow.util.PurityChecker
-import org.checkerframework.dataflow.util.PurityChecker.PurityResult
-import org.checkerframework.dataflow.util.PurityUtils
 import org.checkerframework.framework.source.SourceVisitor
 import org.checkerframework.javacutil.AnnotationUtils
-import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.javacutil.Pair
+import org.checkerframework.javacutil.TreeUtils
 import java.util.*
 import javax.lang.model.element.AnnotationMirror
-import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.Modifier
-import javax.lang.model.type.TypeKind
 
 class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>(checker) {
 
@@ -161,128 +153,4 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
       utils.err("@$name should only be used in method parameters", node)
     }
   }
-
-  // Adapted from BaseTypeVisitor#checkPurity
-  override fun visitMethod(node: MethodTree, p: Void?): Void? {
-    super.visitMethod(node, p)
-
-    val factory = checker.utils.factory
-    val provider = factory.getProvider()
-
-    if (!checker.getBooleanOption("checkPurityAnnotations", true)) {
-      return null
-    }
-
-    val anyPurityAnnotation = PurityUtils.hasPurityAnnotation(provider, node)
-    val suggestPureMethods = checker.getBooleanOption("suggestPureMethods")
-    if (!anyPurityAnnotation && !suggestPureMethods) {
-      return null
-    }
-
-    // check "no" purity
-    val kinds = PurityUtils.getPurityKinds(provider, node)
-    // @Deterministic makes no sense for a void method or constructor
-    val isDeterministic = kinds.contains(Pure.Kind.DETERMINISTIC)
-    if (isDeterministic) {
-      if (TreeUtils.isConstructor(node)) {
-        checker.reportWarning(node, "purity.deterministic.constructor")
-      } else if (TreeUtils.typeOf(node.returnType).kind === TypeKind.VOID) {
-        checker.reportWarning(node, "purity.deterministic.void.method")
-      }
-    }
-
-    val body = factory.getPath(node.body)
-    val r = if (body == null) {
-      PurityResult()
-    } else {
-      PurityChecker.checkPurity(
-        body,
-        provider,
-        checker.getBooleanOption("assumeSideEffectFree") || checker.getBooleanOption("assumePure"),
-        checker.getBooleanOption("assumeDeterministic") || checker.getBooleanOption("assumePure"))
-    }
-
-    if (!r.isPure(kinds)) {
-      reportPurityErrors(r, kinds)
-    }
-
-    if (suggestPureMethods && !isSynthetic(node)) {
-      // Issue a warning if the method is pure, but not annotated as such.
-      val additionalKinds = r.kinds.clone()
-      additionalKinds.removeAll(kinds)
-      if (TreeUtils.isConstructor(node)) {
-        additionalKinds.remove(Pure.Kind.DETERMINISTIC)
-      }
-      if (!additionalKinds.isEmpty()) {
-        when {
-          additionalKinds.size == 2 -> checker.reportWarning(node, "purity.more.pure", node.name)
-          additionalKinds.contains(Pure.Kind.SIDE_EFFECT_FREE) -> checker.reportWarning(node, "purity.more.sideeffectfree", node.name)
-          additionalKinds.contains(Pure.Kind.DETERMINISTIC) -> checker.reportWarning(node, "purity.more.deterministic", node.name)
-          else -> assert(false) { "CFVisitor reached undesirable state" }
-        }
-      }
-    }
-    return null
-  }
-
-  // Adapted from BaseTypeVisitor#reportPurityErrors
-  private fun reportPurityErrors(result: PurityResult, expectedKinds: EnumSet<Pure.Kind>) {
-    assert(!result.isPure(expectedKinds))
-    val violations = EnumSet.copyOf(expectedKinds)
-    violations.removeAll(result.kinds)
-    if (violations.contains(Pure.Kind.DETERMINISTIC) || violations.contains(Pure.Kind.SIDE_EFFECT_FREE)) {
-      val msgKeyPrefix = if (!violations.contains(Pure.Kind.SIDE_EFFECT_FREE)) {
-        "purity.not.deterministic."
-      } else if (!violations.contains(Pure.Kind.DETERMINISTIC)) {
-        "purity.not.sideeffectfree."
-      } else {
-        "purity.not.deterministic.not.sideeffectfree."
-      }
-      for (r in result.notBothReasons) {
-        reportPurityError(msgKeyPrefix, r)
-      }
-      if (violations.contains(Pure.Kind.SIDE_EFFECT_FREE)) {
-        for (r in result.notSEFreeReasons) {
-          reportPurityError("purity.not.sideeffectfree.", r)
-        }
-      }
-      if (violations.contains(Pure.Kind.DETERMINISTIC)) {
-        for (r in result.notDetReasons) {
-          reportPurityError("purity.not.deterministic.", r)
-        }
-      }
-    }
-  }
-
-  // Adapted from BaseTypeVisitor#reportPurityError
-  private fun reportPurityError(msgKeyPrefix: String, r: Pair<Tree, String>) {
-    val reason = r.second
-    val msgKey = msgKeyPrefix + reason
-    if (reason == "call") {
-      if (r.first.kind === Tree.Kind.METHOD_INVOCATION) {
-        val mitree = r.first as MethodInvocationTree
-        checker.reportError(r.first, msgKey, mitree.methodSelect)
-      } else {
-        val nctree = r.first as NewClassTree
-        checker.reportError(r.first, msgKey, nctree.identifier)
-      }
-    } else {
-      checker.reportError(r.first, msgKey)
-    }
-  }
-
-  // TODO replace later with TreeUtils.isSynthetic
-  // Adapted from TreeUtils.isSynthetic
-  private fun isSynthetic(ee: ExecutableElement): Boolean {
-    val ms = ee as MethodSymbol
-    val mod = ms.flags()
-    return mod and (Flags.SYNTHETIC.toLong() or Flags.GENERATEDCONSTR) != 0L
-  }
-
-  // TODO replace later with TreeUtils.isSynthetic
-  // Adapted from TreeUtils.isSynthetic
-  private fun isSynthetic(node: MethodTree): Boolean {
-    return isSynthetic(TreeUtils.elementFromDeclaration(node))
-  }
-
 }
