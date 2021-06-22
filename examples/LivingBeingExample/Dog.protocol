@@ -5,7 +5,7 @@ typestate Dog {
   }
 
   Moved = {
-    void wag(): Init,
+    void wag(): end,
     void eat(): Init
   }
 }
