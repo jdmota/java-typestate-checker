@@ -44,9 +44,9 @@ fun Symbol.MethodSymbol.getCorrectReceiverType(): Type {
 }
 
 private fun isSideEffectFree(utils: JTCUtils, hierarchy: JavaTypesHierarchy, method: Symbol.MethodSymbol): Boolean {
-  if (method.isStatic) {
+  /*if (method.isStatic) {
     return utils.factory.isSideEffectFree(method)
-  }
+  }*/
   val receiver = hierarchy.get(method.getCorrectReceiverType())
   if (method.simpleName.toString() == "<init>") {
     if (receiver.isJavaObject()) {
@@ -61,7 +61,7 @@ private fun isSideEffectFree(utils: JTCUtils, hierarchy: JavaTypesHierarchy, met
   if (receiver.isImmutable()) {
     return true
   }
-  return utils.factory.isSideEffectFree(method)
+  return false // return utils.factory.isSideEffectFree(method)
 }
 
 sealed class AdaptResult {

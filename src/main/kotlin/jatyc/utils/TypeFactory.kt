@@ -126,7 +126,7 @@ class TypeFactory(checker: SourceChecker) {
   fun getPath(tree: Tree): TreePath? = fake.getPath(tree)
   fun getProvider() = fake
 
-  fun isSideEffectFree(method: Symbol.MethodSymbol) = PurityUtils.isSideEffectFree(fake, method)
+  // fun isSideEffectFree(method: Symbol.MethodSymbol) = PurityUtils.isSideEffectFree(fake, method)
 
   fun getTypeFromStub(elt: Element) = fake.getTypeFromStub(elt)
 

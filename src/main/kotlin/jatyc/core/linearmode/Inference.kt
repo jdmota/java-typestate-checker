@@ -161,13 +161,10 @@ class Inference(
           checkNotNull(thisRef)
           // If this is a self call we need to invalidate the information about the fields
           // Remember that we do not allow field accesses unless we are in a method of the object
-          // so the only way to modify fields is to call perform a self call
-          val modified = if (node.isSuperCall)
-            clazz.allFieldsExceptOurs(classAnalysis.classes)
-          else
-            clazz.allFields(classAnalysis.classes)
+          // so the only way to modify fields is to perform a self call
+          val modified = clazz.allFields(classAnalysis.classes)
           for (field in modified) {
-            post[Reference.make(thisRef, field)] = JTCUnknownType.SINGLETON
+            post[Reference.make(thisRef, field)] = field.type
           }
         }
 
