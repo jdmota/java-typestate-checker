@@ -1,0 +1,8 @@
+typestate A {
+  Init = {
+    void m1(): StateA
+  }
+  StateA = {
+    void m2(): end
+  }
+}
