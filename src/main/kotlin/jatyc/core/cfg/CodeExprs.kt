@@ -119,7 +119,7 @@ class Id(val name: String, val uuid: Long) : CodeExpr() {
   }
 }
 
-class Assign(val left: LeftHS, val right: CodeExpr) : CodeExpr() {
+class Assign(val left: LeftHS, val right: CodeExpr, val type: JTCType, val javaType: JavaType) : CodeExpr() {
   override fun format(indent: String): String {
     return "$left = $right"
   }
@@ -132,7 +132,7 @@ class ParamAssign(val idx: Int, val expr: CodeExpr) : CodeExpr() {
   }
 }
 
-class Return(val expr: CodeExpr?, val type: JTCType) : CodeExpr() {
+class Return(val expr: CodeExpr?, val type: JTCType, val javaType: JavaType) : CodeExpr() {
   override fun format(indent: String): String {
     return "${indent}return ${expr?.format("")}"
   }
@@ -173,7 +173,7 @@ class MethodCall(val methodExpr: FuncInterface, val parameters: List<ParamAssign
   }
 }
 
-class FuncParam(val id: IdLHS, val requires: JTCType, val ensures: JTCType, val isThis: Boolean) : AdaptedThing() {
+class FuncParam(val id: IdLHS, val requires: JTCType, val ensures: JTCType, val isThis: Boolean, val javaType: JavaType) : AdaptedThing() {
   override fun toString(): String {
     return "Param{$id, ${requires.format()}, ${ensures.format()}, isThis=$isThis}"
   }

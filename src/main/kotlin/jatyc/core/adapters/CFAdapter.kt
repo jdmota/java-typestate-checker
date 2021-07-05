@@ -237,7 +237,7 @@ class CFAdapter(
       emptyList()
     } else {
       val thisType = typeIntroducer.getThisType(receiver, isAnytime = isAnytime, isConstructor = isConstructor)
-      listOf(FuncParam(renamer.transformThisLHS(receiver), thisType, thisType, isThis = true))
+      listOf(FuncParam(renamer.transformThisLHS(receiver), thisType, thisType, isThis = true, hierarchy.get(receiver)))
     }
     val params = if (isConstructor && receiver.toString() == "java.lang.Enum<E>") {
       // It seems the java.lang.Enum constructor has more parameters (String, Int), but is called with zero
@@ -246,7 +246,7 @@ class CFAdapter(
     } else {
       thisParam.plus(getParamTypes(it))
     }
-    FuncInterface(funcName, params, getReturnType(it), isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType())
+    FuncInterface(funcName, params, getReturnType(it).first, isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType())
   }
 
   fun setRoot(root: CompilationUnitTree) {
@@ -264,11 +264,11 @@ class CFAdapter(
     return getParamTypes(type, sym.params())
   }
 
-  private fun getReturnType(tree: JCTree.JCMethodDecl): JTCType {
+  private fun getReturnType(tree: JCTree.JCMethodDecl): Pair<JTCType, JavaType> {
     return getReturnType(tree.sym)
   }
 
-  private fun getReturnType(sym: Symbol.MethodSymbol): JTCType {
+  private fun getReturnType(sym: Symbol.MethodSymbol): Pair<JTCType, JavaType> {
     val type = utils.factory.getAnnotatedType(sym) as AnnotatedTypeMirror.AnnotatedExecutableType
     return getReturnType(type)
   }
@@ -278,7 +278,7 @@ class CFAdapter(
     return getParamTypes(type, tree.params.map { it.sym })
   }
 
-  private fun getReturnType(tree: JCTree.JCLambda): JTCType {
+  private fun getReturnType(tree: JCTree.JCLambda): Pair<JTCType, JavaType> {
     val type = utils.factory.getFunctionTypeFromTree(tree)
     return getReturnType(type)
   }
@@ -294,26 +294,31 @@ class CFAdapter(
         renamer.transformParamLHS(param),
         requires = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcRequiresAnno)).toMaybeNullable(typeIntroducer.acceptsNull(type)),
         ensures = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcEnsuresAnno)),
-        isThis = false
+        isThis = false,
+        javaType = hierarchy.get(paramType.underlyingType)
       ))
     }
     return funcParams
   }
 
-  private fun getReturnType(type: AnnotatedTypeMirror.AnnotatedExecutableType): JTCType {
-    if (typeIntroducer.terminates(type)) {
-      return JTCBottomType.SINGLETON
-    }
-    // If the return type has annotations or we are sure we have access to the method's code, the return type is not nullable
-    return if (type.returnType.annotations.any { AnnotationUtils.annotationName(it) == JTCUtils.jtcStateAnno } || !ElementUtils.isElementFromByteCode(type.element)) {
-      typeIntroducer.get(type.returnType, TypeIntroOpts(annotation = JTCUtils.jtcStateAnno))
-    } else {
-      if (typeIntroducer.returnsNonNull(type)) {
-        typeIntroducer.get(type.returnType, typeIntroducer.nonNullableShared)
+  private fun getReturnType(type: AnnotatedTypeMirror.AnnotatedExecutableType): Pair<JTCType, JavaType> {
+    return Pair(
+      if (typeIntroducer.terminates(type)) {
+        JTCBottomType.SINGLETON
       } else {
-        typeIntroducer.get(type.returnType, typeIntroducer.nullableShared)
-      }
-    }
+        // If the return type has annotations or we are sure we have access to the method's code, the return type is not nullable
+        if (type.returnType.annotations.any { AnnotationUtils.annotationName(it) == JTCUtils.jtcStateAnno } || !ElementUtils.isElementFromByteCode(type.element)) {
+          typeIntroducer.get(type.returnType, TypeIntroOpts(annotation = JTCUtils.jtcStateAnno))
+        } else {
+          if (typeIntroducer.returnsNonNull(type)) {
+            typeIntroducer.get(type.returnType, typeIntroducer.nonNullableShared)
+          } else {
+            typeIntroducer.get(type.returnType, typeIntroducer.nullableShared)
+          }
+        }
+      },
+      hierarchy.get(type.underlyingType)
+    )
   }
 
   private fun getInitialType(method: Symbol.MethodSymbol): JTCType {
@@ -617,6 +622,10 @@ class CFAdapter(
     return SymbolResolveExpr(typeIntroducer.getUpperBound(type), hierarchy.get(type as Type))
   }
 
+  private fun makeCast(what: CodeExpr, type: TypeMirror): CastExpr {
+    return CastExpr(what, typeIntroducer.getCastType(type), hierarchy.get(type))
+  }
+
   private fun makeAssignment(left: Node, right: CodeExpr, node: Node): AdaptResult {
     return when (left) {
       is ArrayAccessNode -> {
@@ -624,9 +633,9 @@ class CFAdapter(
         val componentType = typeIntroducer.getArrayComponentType(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
         val params = listOf(
-          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true),
-          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false),
-          FuncParam(IdLHS("value", 0), componentType, componentType, isThis = false)
+          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type)),
+          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType),
+          FuncParam(IdLHS("value", 0), componentType, componentType, isThis = false, hierarchy.get(type.componentType))
         )
         makeCall2(
           FuncInterface("#helpers.arraySet", params, returnType = componentType, isPublic = true, isAnytime = true, isPure = false, isAbstract = false),
@@ -634,17 +643,17 @@ class CFAdapter(
           node
         )
       }
-      else -> SingleAdaptResult(Assign(transformLHS(left), right).set(node))
+      else -> SingleAdaptResult(Assign(transformLHS(left), right, typeIntroducer.getUpperBound(left.type), hierarchy.get(left.type)).set(node))
     }
   }
 
   private fun makeReturn(node: Node, result: Node?): CodeExpr {
-    val type = when (val enclosing = methodsStack.peek()) {
+    val (type, javaType) = when (val enclosing = methodsStack.peek()) {
       is JCTree.JCMethodDecl -> getReturnType(enclosing)
       is JCTree.JCLambda -> getReturnType(enclosing)
       else -> error("Unexpected enclosing method ${enclosing::class.java}")
     }
-    return Return(if (result == null) null else getAdapted(result), type).set(node)
+    return Return(if (result == null) null else getAdapted(result), type, javaType).set(node)
   }
 
   private fun makeCall2(methodExpr: FuncInterface, parameters: List<CodeExpr>, cfNode: Node): AdaptResult {
@@ -671,8 +680,8 @@ class CFAdapter(
         val componentType = typeIntroducer.getArrayComponentType(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
         val params = listOf(
-          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true),
-          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false)
+          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type)),
+          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType)
         )
         makeCall(
           FuncInterface("#helpers.arrayAccess", params, returnType = componentType, isPublic = true, isAnytime = true, isPure = true, isAbstract = false),
@@ -750,7 +759,7 @@ class CFAdapter(
           TODO("method references are not supported yet")
         }
         is JCTree.JCLambda -> MultipleAdaptResult(listOf(
-          FuncDeclaration(null, getParamTypes(tree), processCFG(tree), getReturnType(tree), isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node),
+          FuncDeclaration(null, getParamTypes(tree), processCFG(tree), getReturnType(tree).first, isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node),
           NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node)
         ))
         else -> error("Unexpected tree ${node.javaClass} in FunctionalInterfaceNode")
@@ -846,7 +855,7 @@ class CFAdapter(
         else -> error("Unexpected node ${node.javaClass}")
       })
       is ThrowNode -> SingleAdaptResult(ThrowExpr(t(node.expression)).set(node))
-      is TypeCastNode -> SingleAdaptResult(CastExpr(t(node.operand), typeIntroducer.getCastType(node.type), hierarchy.get(node.type)).set(node))
+      is TypeCastNode -> SingleAdaptResult(makeCast(t(node.operand), node.type).set(node))
       is UnaryOperationNode -> {
         val expr = t(node.operand)
         val operator = when (node) {

@@ -6,6 +6,7 @@ import com.sun.tools.javac.code.Type
 import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
+import jatyc.utils.JTCUtils
 
 class Inference(
   private val cfChecker: JavaTypestateChecker,
@@ -30,7 +31,62 @@ class Inference(
 
   // TODO improve how we preserve conditional information!
 
-  private fun assign(node: CodeExpr, targetType: JTCType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference) {
+  private fun checkAssignOrCast(
+    leftType: JTCType, leftJavaType: JavaType,
+    rightType: JTCType, rightJavaType: JavaType,
+  ): (CodeExpr, Store, Reference) -> Boolean {
+    val castTypeStr = when (cfChecker.utils.checkCastType(leftJavaType.original, rightJavaType.original)) {
+      JTCUtils.CastType.INVALID -> "Casting"
+      JTCUtils.CastType.UPCAST -> "Up-casting"
+      JTCUtils.CastType.DOWNCAST -> "Down-casting"
+    }
+    val leftGraph = leftJavaType.getGraph()
+    val rightGraph = rightJavaType.getGraph()
+    var casting: Pair<JTCType, String?>? = null
+
+    when {
+      leftGraph != null && rightGraph != null -> {
+        if (leftGraph !== rightGraph) {
+          val rightInitialState = JTCStateType(rightJavaType, rightGraph, rightGraph.getInitialState())
+          val rightEndState = JTCStateType(rightJavaType, rightGraph, rightGraph.getEndState())
+          val allowedType = JTCType.createUnion(listOf(rightInitialState, rightEndState))
+          casting = if (rightType.isSubtype(allowedType)) {
+            Pair(rightType
+              .replace(rightInitialState, JTCStateType(leftJavaType, leftGraph, leftGraph.getInitialState()))
+              .replace(rightEndState, JTCStateType(leftJavaType, leftGraph, leftGraph.getEndState())), null)
+          } else {
+            Pair(JTCBottomType.SINGLETON, "$castTypeStr only allowed on initial or final states. Expected ${allowedType.format()} but got ${rightType.format()}")
+          }
+        } else {
+          // Normal subtyping check done later
+        }
+      }
+      rightGraph == null -> {
+        // Normal subtyping check done later
+      }
+      leftGraph == null -> {
+        casting = Pair(JTCBottomType.SINGLETON, "$castTypeStr to a type with no protocol is not allowed")
+      }
+    }
+
+    return { node: CodeExpr, post: Store, leftRef: Reference ->
+      if (casting == null) {
+        inference.errors.remove(node)
+        false
+      } else {
+        post[leftRef] = casting.first
+        if (casting.second == null) {
+          inference.errors.remove(node)
+          false
+        } else {
+          inference.errors[node] = casting.second
+          true
+        }
+      }
+    }
+  }
+
+  private fun assign(node: CodeExpr, targetType: JTCType, targetJavaType: JavaType, exprJavaType: JavaType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference) {
     if (node is Assign) {
       post[Reference.old(node)] = pre[leftRef]
     }
@@ -43,16 +99,28 @@ class Inference(
       }
     }
 
-    // If this is a normal assignment or the target expects a linear type, move ownership to the target
-    // Otherwise, the target gets the shared type and the right expression keeps the linear type
-    val move = node is Assign || targetType.requiresLinear()
+    // OLD: If this is a normal assignment or the target expects a linear type, move ownership to the target
+    // OLD: Otherwise, the target gets the shared type and the right expression keeps the linear type
+    // OLD: val move = node is Assign || targetType.requiresLinear()
+    // OLD: val typeToAssign = if (move) pre[rightRef].type else pre[rightRef].type.toShared()
+    // OLD: val typeInExpr = if (move) pre[rightRef].type.toShared() else pre[rightRef].type
 
-    val typeToAssign = if (move) pre[rightRef].type else pre[rightRef].type.toShared()
-    val typeInExpr = if (move) pre[rightRef].type.toShared() else pre[rightRef].type
+    val typeToAssign = pre[rightRef].type.let {
+      // If the expected type of a parameter/return is shared, and we can drop the object now
+      if ((node is ParamAssign || node is Return) && targetType is JTCSharedType && typecheckUtils.canDrop(it))
+        it.toShared()
+      else
+        it
+    }
+    val typeInExpr = pre[rightRef].type.toShared()
 
     post[leftRef] = typeToAssign.intersect(targetType)
     post[rightRef] = typeInExpr
     post[Reference.make(node)] = pre[rightRef].type.toShared()
+
+    if (checkAssignOrCast(targetType, targetJavaType, typeToAssign, exprJavaType).invoke(node, post, leftRef)) {
+      return
+    }
 
     when {
       typeToAssign.isSubtype(targetType) -> inference.errors.remove(node)
@@ -110,14 +178,14 @@ class Inference(
           leftRef.isField() ->
             JTCBottomType.SINGLETON
           else ->
-            JTCUnknownType.SINGLETON
+            node.type
         }
-        assign(node, targetType, pre, post, leftRef, rightRef)
+        assign(node, targetType, node.javaType, hierarchy.get(node.right.cfType!!), pre, post, leftRef, rightRef)
       }
       is ParamAssign -> {
         val leftRef = Reference.makeFromLHS(node)
         val rightRef = Reference.make(node.expr)
-        assign(node, node.call.methodExpr.parameters[node.idx].requires, pre, post, leftRef, rightRef)
+        assign(node, node.call.methodExpr.parameters[node.idx].requires, node.call.methodExpr.parameters[node.idx].javaType, hierarchy.get(node.expr.cfType!!), pre, post, leftRef, rightRef)
       }
       is Return -> {
         if (node.expr == null) {
@@ -126,7 +194,7 @@ class Inference(
         } else {
           val leftRef = Reference.returnRef
           val rightRef = Reference.make(node.expr)
-          assign(node, node.type, pre, post, leftRef, rightRef)
+          assign(node, node.type, node.javaType, hierarchy.get(node.expr.cfType!!), pre, post, leftRef, rightRef)
         }
       }
       is MethodCall -> {
@@ -327,6 +395,10 @@ class Inference(
           val currentType = pre[exprRef].type
           val moreSpecificType = currentType.intersect(node.type)
           post[exprRef] = moreSpecificType
+
+          if (checkAssignOrCast(node.type, node.javaType, currentType, hierarchy.get(node.expr.cfType!!)).invoke(node, post, exprRef)) {
+            return
+          }
 
           if (currentType.isSubtype(node.type)) {
             inference.errors.remove(node)

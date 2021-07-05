@@ -154,6 +154,21 @@ sealed class JTCType {
     return if (nullable) this.union(JTCNullType.SINGLETON) else this
   }
 
+  fun replace(state1: JTCStateType, state2: JTCStateType): JTCType {
+    return when (this) {
+      is JTCUnknownType,
+      is JTCPrimitiveType,
+      is JTCNullType,
+      is JTCSharedType,
+      is JTCBottomType -> this
+      is JTCNoProtocolType -> this
+      is JTCUnknownStateType -> this
+      is JTCStateType -> if (this == state1) state2 else this
+      is JTCUnionType -> createUnion(types.map { it.replace(state1, state2) })
+      is JTCIntersectionType -> createIntersection(types.map { it.replace(state1, state2) })
+    }
+  }
+
   companion object {
     fun createUnion(list: Collection<JTCType>) = createUnion(unionSeq(list))
     fun createIntersection(list: Collection<JTCType>) = list.fold<JTCType, JTCType>(JTCUnknownType.SINGLETON) { acc, it -> acc.intersect(it) }
