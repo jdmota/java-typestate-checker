@@ -1,5 +1,7 @@
 # Java Typestate Checker
 
+[Changelog](https://github.com/jdmota/java-typestate-checker/wiki/Changelog) | [Documentation](https://github.com/jdmota/java-typestate-checker/wiki/Documentation)
+
 The Java Typestate Checker is a plugin for the Checker Framework. This plugin allows one to statically ensure that method calls are called in the correct order. The sequences of method calls allowed are specified in a protocol file which is associated with a Java class by adding a `@Typestate` annotation to the class. This tool was inspired in the [Mungo tool](http://www.dcs.gla.ac.uk/research/mungo/index.html). It is a new implementation which includes new features and improvements over the current version of Mungo. A comparison table between Mungo and this tool is available [here](https://github.com/jdmota/abcd-mungo/wiki/Comparison).
 
 ## Features
@@ -20,6 +22,18 @@ The tool has two modes:
 
 - Linear mode: where objects must be used linearly;
 - Non-linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**). It is highly experimental, including several limitations, and may not provide the same guarantees that the linear mode is able to provide.
+
+## Subtyping
+
+The latest version adds support for subtyping: you may have a class with a protocol that extends another class with another protocol and the tool will ensure that the first protocol is a subtype of the second protocol.
+
+One can also create a class with protocol that extends a class without protocol. In the class without protocol, all methods are available to be called and remain so in the subclass. Then in the subclass, one can add new methods and restrict their use by only allowing them in certain states.
+
+If a class extends another class with protocol, but does not include a `@Typestate` annotation, the subclass assumes by default the same protocol of its superclass.
+
+In Java, up and down-casts may occur explicitly and up-casts may occur implicitly when assigning to local variables or fields, passing objects to parameters or returning objects. With this initial support for subtyping, up and down casting is only allowed between initial states or final states.
+
+You may find more information in the [documentation page](https://github.com/jdmota/java-typestate-checker/wiki/Documentation).
 
 ## Quick Start
 
@@ -72,10 +86,6 @@ You may also find other examples in the [examples folder](./examples).-->
 - [Tutorial](https://youtu.be/_zrcqYPe8-8)
 - [Paper](./docs/jatyc-paper.pdf)
 - [Master Thesis](./docs/msc-thesis.pdf)
-
-## Changelog
-
-- [Changelog](https://github.com/jdmota/java-typestate-checker/wiki/Changelog)
 
 <!-- http://www.plantuml.com/plantuml/uml/NSqn2i9048NXVayHKgcG6rW4mT8O40yGirEixix0-YOs7bx8Wc6sUl0Lx-_Vc38qHNVd5yk7c-EtwvhhuqapN9b2xGqJQ7VOjuRFxCaR6MJC0fcb-XmqLZBca0B2GfOlif1tMw_eIG19RkqPsNgMDLhuruokCICziTSKVm00 -->
 
