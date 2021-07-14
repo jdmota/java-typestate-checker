@@ -3,7 +3,7 @@ import jatyc.lib.Requires;
 import jatyc.lib.Ensures;
 
 @Typestate("BankWithProtocol")
-// :: error: (Method [deposit] should be available anytime since it is available anytime in the super type)
+// :: error: (Method [deposit] that is always available should not appear in the protocol)
 public class BankWithProtocol extends Bank {
   // Ensure that anytime methods remain anytime
   // No matter if they are overriden or not

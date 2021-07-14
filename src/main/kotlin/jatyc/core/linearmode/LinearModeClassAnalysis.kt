@@ -293,7 +293,7 @@ class LinearModeClassAnalysis(
           errors.add("Method [${t.name}] is required by the typestate but not implemented")
         } else {
           if (method.isAnytime) {
-            errors.add("Method [${t.name}] should be available anytime since it is available anytime in the super type")
+            errors.add("Method [${t.name}] that is always available should not appear in the protocol")
           }
         }
       }

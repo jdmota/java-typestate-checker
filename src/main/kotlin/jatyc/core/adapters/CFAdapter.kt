@@ -214,25 +214,29 @@ class CFAdapter(
 
   private var renamer = VariableRenamer(hierarchy)
 
+  private fun shouldBeAnytime(method: Symbol.MethodSymbol): Boolean {
+    val annotations = method.annotationMirrors.map { a -> a.toString().substring(1) /* Remove first @ */ }
+    return when {
+      method.simpleName.toString() == "<init>" -> false
+      method.isStatic -> true
+      !method.isPublic() -> true
+      annotations.any { a -> a == JTCUtils.jtcNotAnytimeAnno } -> false
+      annotations.any { a -> a == JTCUtils.jtcAnytimeAnno } -> true
+      else ->
+        !utils.classUtils.hasProtocol(method.getCorrectReceiverType()) ||
+          AnnotatedTypes.overriddenMethods(utils.elementUtils, utils.factory.getProvider(), method).any { shouldBeAnytime(it.value as Symbol.MethodSymbol) }
+    }
+  }
+
   private var funcInterfaces = FunctionInterfaces(hierarchy) {
     val funcName = it.simpleName.toString()
-    val annotations = it.annotationMirrors.map { a -> a.toString().substring(1) /* Remove first @ */ }
-    val hasAnytimeAnnotation = annotations.any { a -> a == JTCUtils.jtcAnytimeAnno }
-    val hasNotAnytimeAnnotation = annotations.any { a -> a == JTCUtils.jtcNotAnytimeAnno }
     // Because it.getReceiverType() might return null
     val receiver = it.getCorrectReceiverType()
     val isPublic = it.isPublic()
     val isPure = isSideEffectFree(utils, hierarchy, it)
     val isConstructor = funcName == "<init>"
     val isAbstract = it.isAbstract()
-    val isAnytime = when {
-      isConstructor -> false
-      it.isStatic -> true
-      !isPublic -> true
-      hasNotAnytimeAnnotation -> false
-      hasAnytimeAnnotation -> true
-      else -> !utils.classUtils.hasProtocol(receiver)
-    }
+    val isAnytime = shouldBeAnytime(it)
     val thisParam = if (it.isStatic) {
       emptyList()
     } else {

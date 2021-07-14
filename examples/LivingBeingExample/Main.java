@@ -1,5 +1,5 @@
 public class Main {
-  public static void main1(String[] args) throws Exception {
+  public static void main(String[] args) {
     Animal x = new Dog();
     x.move();
     m1(x);

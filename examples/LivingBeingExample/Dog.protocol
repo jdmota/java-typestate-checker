@@ -1,5 +1,6 @@
 typestate Dog {
   Init = {
+    void roll(): Init,
     void move(): Moved,
     drop: end
   }
