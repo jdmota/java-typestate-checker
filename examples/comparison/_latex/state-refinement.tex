@@ -46,7 +46,6 @@ public enum FileStatus {
 \begin{code}
 import jatyc.lib.Requires;
 import jatyc.lib.Ensures;
-import jatyc.lib.State;
 
 public class NotOk {
 
@@ -64,7 +63,7 @@ public class NotOk {
     }
   }
 
-  public static @State("Init") File createFile() {
+  public static @Ensures("Init") File createFile() {
     return new File();
   }
 
@@ -78,7 +77,6 @@ public class NotOk {
 \begin{code}
 import jatyc.lib.Requires;
 import jatyc.lib.Ensures;
-import jatyc.lib.State;
 
 public class Ok {
 
@@ -95,7 +93,7 @@ public class Ok {
     }
   }
 
-  public static @State("Init") File createFile() {
+  public static @Ensures("Init") File createFile() {
     return new File();
   }
 
@@ -107,21 +105,23 @@ public class Ok {
 
 \lstset{language=,caption=Mungo's output}
 \begin{code}
-NotOk.java:21: error: annotation type jatyc.lib.State is not applicable to this kind of declaration
-Ok.java:20: error: annotation type jatyc.lib.State is not applicable to this kind of declaration
+NotOk.java:21: error: annotation type jatyc.lib.Ensures is not applicable to this kind of declaration
+Ok.java:20: error: annotation type jatyc.lib.Ensures is not applicable to this kind of declaration
 
 NotOk.java: 13-14: Semantic Error
 		Object reference is used uninitialised.
 
 Ok.java: 12-14: Semantic Error
 		Object reference is used uninitialised.
-NotOk.java:21: error: annotation type jatyc.lib.State is not applicable to this kind of declaration
-Ok.java:20: error: annotation type jatyc.lib.State is not applicable to this kind of declaration\end{code}
+NotOk.java:21: error: annotation type jatyc.lib.Ensures is not applicable to this kind of declaration
+Ok.java:20: error: annotation type jatyc.lib.Ensures is not applicable to this kind of declaration
+\end{code}
 
 \lstset{language=,caption=Our tool's output}
 \begin{code}
 NotOk.java:13: error: Incompatible parameter because State{File, Close} is not a subtype of State{File, Read}
         read(f);
              ^
-1 error\end{code}
+1 error
+\end{code}
 

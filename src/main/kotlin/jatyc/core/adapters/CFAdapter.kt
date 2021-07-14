@@ -307,8 +307,8 @@ class CFAdapter(
         JTCBottomType.SINGLETON
       } else {
         // If the return type has annotations or we are sure we have access to the method's code, the return type is not nullable
-        if (type.returnType.annotations.any { AnnotationUtils.annotationName(it) == JTCUtils.jtcStateAnno } || !ElementUtils.isElementFromByteCode(type.element)) {
-          typeIntroducer.get(type.returnType, TypeIntroOpts(annotation = JTCUtils.jtcStateAnno))
+        if (type.returnType.annotations.any { AnnotationUtils.annotationName(it) == JTCUtils.jtcEnsuresAnno } || !ElementUtils.isElementFromByteCode(type.element)) {
+          typeIntroducer.get(type.returnType, TypeIntroOpts(annotation = JTCUtils.jtcEnsuresAnno))
         } else {
           if (typeIntroducer.returnsNonNull(type)) {
             typeIntroducer.get(type.returnType, typeIntroducer.nonNullableShared)

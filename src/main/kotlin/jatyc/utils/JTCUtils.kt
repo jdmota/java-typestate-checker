@@ -236,7 +236,6 @@ class JTCUtils(val checker: SourceChecker) {
   }
 
   companion object {
-    val jtcStateAnno: String = State::class.java.canonicalName
     val jtcRequiresAnno: String = Requires::class.java.canonicalName
     val jtcEnsuresAnno: String = Ensures::class.java.canonicalName
     val jtcAnytimeAnno: String = Anytime::class.java.canonicalName
@@ -262,8 +261,7 @@ class JTCUtils(val checker: SourceChecker) {
 
     fun isLibAnnotation(annotation: AnnotationMirror): Boolean {
       val name = AnnotationUtils.annotationName(annotation)
-      return name == jtcStateAnno ||
-        name == jtcRequiresAnno ||
+      return name == jtcRequiresAnno ||
         name == jtcEnsuresAnno ||
         typestateAnnotations.contains(name) ||
         nullableAnnotations.contains(name)

@@ -1,6 +1,6 @@
 import jatyc.lib.Typestate;
 import jatyc.lib.Requires;
-import jatyc.lib.State;
+import jatyc.lib.Ensures;
 import jatyc.lib.Nullable;
 
 import java.util.function.Supplier;
@@ -212,7 +212,7 @@ class JavaIteratorWrapper7 {
     return iterator.next();
   }
 
-  public @State({"HasNext", "Next"}) JavaIterator getIterator() {
+  public @Ensures({"HasNext", "Next"}) JavaIterator getIterator() {
     // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next})
     // :: error: (Incompatible return value because Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next} is not a subtype of State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator;

@@ -1,6 +1,5 @@
 import jatyc.lib.Requires;
 import jatyc.lib.Ensures;
-import jatyc.lib.State;
 
 public class Ok {
 
@@ -17,7 +16,7 @@ public class Ok {
     }
   }
 
-  public static @State("Init") File createFile() {
+  public static @Ensures("Init") File createFile() {
     return new File();
   }
 

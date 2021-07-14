@@ -1,6 +1,5 @@
 import jatyc.lib.Requires;
 import jatyc.lib.Ensures;
-import jatyc.lib.State;
 
 public class Bank {
   public void deposit(@Requires("Active") Money money) {
@@ -8,7 +7,7 @@ public class Bank {
     money.close();
   }
 
-  public @State("Active") Money withdraw() {
+  public @Ensures("Active") Money withdraw() {
     return new Money();
   }
 

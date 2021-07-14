@@ -107,9 +107,20 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
     val annotationName = AnnotationUtils.annotationName(annoMirror)
 
     when (annotationName) {
-      JTCUtils.jtcStateAnno -> checkReturnTypeAnnotation(node, annoMirror, parent)
-      JTCUtils.jtcRequiresAnno -> checkParameterAnnotation(node, annoMirror, parent, parentParent, "Requires")
-      JTCUtils.jtcEnsuresAnno -> checkParameterAnnotation(node, annoMirror, parent, parentParent, "Ensures")
+      JTCUtils.jtcRequiresAnno -> {
+        if (checkRequires(node, parent, parentParent)) {
+          checkParameterAnnotation(node, annoMirror, parent, "Requires")
+        } else {
+          utils.err("@Requires should only be used in method parameters", node)
+        }
+      }
+      JTCUtils.jtcEnsuresAnno -> {
+        when {
+          checkEnsuresParam(node, parent, parentParent) -> checkParameterAnnotation(node, annoMirror, parent, "Ensures")
+          checkEnsuresReturn(node, parent, parentParent) -> checkReturnTypeAnnotation(node, annoMirror, parent)
+          else -> utils.err("@Ensures should only be used in method parameters or return types", node)
+        }
+      }
     }
 
     if (JTCUtils.typestateAnnotations.contains(annotationName)) {
@@ -157,36 +168,40 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
     }
   }
 
+  private fun checkRequires(node: AnnotationTree, parent: Tree, parentParent: Tree): Boolean {
+    return parent is VariableTree && parentParent is MethodTree && parentParent.parameters.contains(parent)
+  }
+
+  private fun checkEnsuresParam(node: AnnotationTree, parent: Tree, parentParent: Tree): Boolean {
+    return parent is VariableTree && parentParent is MethodTree && parentParent.parameters.contains(parent)
+  }
+
+  private fun checkEnsuresReturn(node: AnnotationTree, parent: Tree, parentParent: Tree): Boolean {
+    return parent is MethodTree && parent.modifiers.annotations.contains(node)
+  }
+
   private fun checkReturnTypeAnnotation(node: AnnotationTree, annoMirror: AnnotationMirror, parent: Tree) {
-    if (parent is MethodTree && parent.modifiers.annotations.contains(node)) {
-      val typeMirror = TreeUtils.elementFromTree(parent.returnType)!!.asType()
-      val graph = utils.classUtils.visitClassTypeMirror(typeMirror)
-      if (graph == null) {
-        utils.err("@State has no meaning since this type has no protocol", node)
-      } else {
-        val stateNames = JTCUtils.getAnnotationValue(annoMirror)
-        utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
-      }
+    val typeMirror = TreeUtils.elementFromTree((parent as MethodTree).returnType)!!.asType()
+    val graph = utils.classUtils.visitClassTypeMirror(typeMirror)
+    if (graph == null) {
+      utils.err("@Ensures has no meaning since this type has no protocol", node)
     } else {
-      utils.err("@State should only be used on return types", node)
+      val stateNames = JTCUtils.getAnnotationValue(annoMirror)
+      utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
     }
   }
 
-  private fun checkParameterAnnotation(node: AnnotationTree, annoMirror: AnnotationMirror, parent: Tree, parentParent: Tree, name: String) {
-    if (parent is VariableTree && parentParent is MethodTree && parentParent.parameters.contains(parent)) {
-      val typeMirror = TreeUtils.elementFromTree(parent)!!.asType()
-      val graph = utils.classUtils.visitClassTypeMirror(typeMirror)
-      if (graph == null) {
-        utils.err("@$name has no meaning since this type has no protocol", node)
-      } else {
-        if (name == "Ensures" && !parent.modifiers.flags.contains(Modifier.FINAL)) {
-          utils.err("Parameters with @Ensures should be final", node)
-        }
-        val stateNames = JTCUtils.getAnnotationValue(annoMirror)
-        utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
-      }
+  private fun checkParameterAnnotation(node: AnnotationTree, annoMirror: AnnotationMirror, parent: Tree, name: String) {
+    val typeMirror = TreeUtils.elementFromTree(parent as VariableTree)!!.asType()
+    val graph = utils.classUtils.visitClassTypeMirror(typeMirror)
+    if (graph == null) {
+      utils.err("@$name has no meaning since this type has no protocol", node)
     } else {
-      utils.err("@$name should only be used in method parameters", node)
+      if (name == "Ensures" && !parent.modifiers.flags.contains(Modifier.FINAL)) {
+        utils.err("Parameters with @Ensures should be final", node)
+      }
+      val stateNames = JTCUtils.getAnnotationValue(annoMirror)
+      utils.checkStates(graph, stateNames).forEach { utils.err(it, node) }
     }
   }
 }

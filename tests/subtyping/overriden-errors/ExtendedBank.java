@@ -1,6 +1,5 @@
 import jatyc.lib.Requires;
 import jatyc.lib.Ensures;
-import jatyc.lib.State;
 
 public class ExtendedBank extends Bank {
   // :: error: (Parameter [money] should require a supertype of State{Money, Active} (found: Shared{Money}))

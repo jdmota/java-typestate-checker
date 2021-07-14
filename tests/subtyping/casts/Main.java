@@ -1,6 +1,5 @@
 import jatyc.lib.Requires;
 import jatyc.lib.Ensures;
-import jatyc.lib.State;
 
 public class Main {
 
@@ -85,11 +84,11 @@ public class Main {
     }
   }
 
-  public static @State("HasNext") Base helper2() {
+  public static @Ensures("HasNext") Base helper2() {
     return new Derived();
   }
 
-  public static @State("HasNext") Base helper3() {
+  public static @Ensures("HasNext") Base helper3() {
     Derived d = new Derived();
     // :: warning: (d: State{Derived, HasNext})
     if (d.hasNext()) {

@@ -1,7 +1,7 @@
-import jatyc.lib.State;
+import jatyc.lib.Ensures;
 
 package java.util;
 
 public interface List<E> {
-  @State("HasNext") Iterator<E> iterator();
+  @Ensures("HasNext") Iterator<E> iterator();
 }

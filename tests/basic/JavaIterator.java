@@ -1,6 +1,6 @@
 import jatyc.lib.Typestate;
 import jatyc.lib.Requires;
-import jatyc.lib.State;
+import jatyc.lib.Ensures;
 import jatyc.lib.Nullable;
 
 import java.util.function.Supplier;
@@ -146,7 +146,7 @@ public class JavaIterator {
     }
   }
 
-  public static @State({"HasNext"}) JavaIterator correctReturn(@Requires({"Next"}) JavaIterator it) {
+  public static @Ensures({"HasNext"}) JavaIterator correctReturn(@Requires({"Next"}) JavaIterator it) {
     // :: warning: (it: State{JavaIterator, Next})
     it.next();
     // :: warning: (it: State{JavaIterator, HasNext})
@@ -346,8 +346,7 @@ public class JavaIterator {
     return it;
   }
 
-  public static @State("HasNext")
-  JavaIterator willBeCompleted() {
+  public static @Ensures("HasNext") JavaIterator willBeCompleted() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext})
     return it;
@@ -456,8 +455,7 @@ public class JavaIterator {
     return it;
   }
 
-  public static @State("HasNext")
-  JavaIterator cannotReturnStateEnd() {
+  public static @Ensures("HasNext") JavaIterator cannotReturnStateEnd() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext})
     while (it.hasNext()) {
@@ -469,8 +467,7 @@ public class JavaIterator {
     return it;
   }
 
-  public static @State("HasNext")
-  JavaIterator goodReturn() {
+  public static @Ensures("HasNext") JavaIterator goodReturn() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext})
     return it;
