@@ -11,7 +11,7 @@ public class MissingMethod {
     return "";
   }
 
-  // :: error: (Method [unusedMethod] does not appear in the typestate)
+  // (Method [unusedMethod] does not appear in the typestate)
   public void unusedMethod() {
 
   }

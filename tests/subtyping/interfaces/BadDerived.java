@@ -12,7 +12,7 @@ public class BadDerived implements Base {
 
   }
 
-  // :: error: (Method [remove] does not appear in the typestate)
+  // (Method [remove] does not appear in the typestate)
   public void remove() {
 
   }

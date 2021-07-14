@@ -269,12 +269,12 @@ class LinearModeClassAnalysis(
         checkMethodSubtyping(errors, method, override)
       }
 
-      if (graph != null && !method.isAnytime && !method.isConstructor && !method.isAbstract) {
+      /*if (graph != null && !method.isAnytime && !method.isConstructor && !method.isAbstract) {
         val env = graph.getEnv()
         if (graph.getAllTransitions().none { typecheckUtils.sameMethod(env, method, it) }) {
           errors.add("Method [${method.name}] does not appear in the typestate")
         }
-      }
+      }*/
 
       if (errors.isNotEmpty()) {
         inference.validationErrors[method] = errors
