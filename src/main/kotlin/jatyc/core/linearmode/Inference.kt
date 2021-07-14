@@ -86,7 +86,7 @@ class Inference(
     }
   }
 
-  private fun assign(node: CodeExpr, targetType: JTCType, targetJavaType: JavaType, exprJavaType: JavaType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference) {
+  private fun assign(node: CodeExpr, targetType: JTCType, targetJavaType: JavaType, exprJavaType: JavaType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean = false) {
     if (node is Assign) {
       post[Reference.old(node)] = pre[leftRef]
     }
@@ -99,26 +99,32 @@ class Inference(
       }
     }
 
-    // OLD: If this is a normal assignment or the target expects a linear type, move ownership to the target
-    // OLD: Otherwise, the target gets the shared type and the right expression keeps the linear type
-    // OLD: val move = node is Assign || targetType.requiresLinear()
-    // OLD: val typeToAssign = if (move) pre[rightRef].type else pre[rightRef].type.toShared()
-    // OLD: val typeInExpr = if (move) pre[rightRef].type.toShared() else pre[rightRef].type
+    val typeToAssign: JTCType
+    val typeInExpr: JTCType
 
-    val typeToAssign = pre[rightRef].type.let {
-      // If the expected type of a parameter/return is shared, and we can drop the object now
-      if ((node is ParamAssign || node is Return) && targetType is JTCSharedType && typecheckUtils.canDrop(it))
-        it.toShared()
-      else
-        it
+    if (thisParam) {
+      // FIXME use old behaviour for now with "this" param assignments
+      // If this is a normal assignment or the target expects a linear type, move ownership to the target
+      // Otherwise, the target gets the shared type and the right expression keeps the linear type
+      val move = node is Assign || targetType.requiresLinear()
+      typeToAssign = if (move) pre[rightRef].type else pre[rightRef].type.toShared()
+      typeInExpr = if (move) pre[rightRef].type.toShared() else pre[rightRef].type
+    } else {
+      typeToAssign = pre[rightRef].type.let {
+        // If the expected type of a parameter/return is shared, and we can drop the object now
+        if ((node is ParamAssign || node is Return) && targetType is JTCSharedType && typecheckUtils.canDrop(it))
+          it.toShared()
+        else
+          it
+      }
+      typeInExpr = pre[rightRef].type.toShared()
     }
-    val typeInExpr = pre[rightRef].type.toShared()
 
     post[leftRef] = typeToAssign.intersect(targetType)
     post[rightRef] = typeInExpr
     post[Reference.make(node)] = pre[rightRef].type.toShared()
 
-    if (checkAssignOrCast(targetType, targetJavaType, typeToAssign, exprJavaType).invoke(node, post, leftRef)) {
+    if (!thisParam && checkAssignOrCast(targetType, targetJavaType, typeToAssign, exprJavaType).invoke(node, post, leftRef)) {
       return
     }
 
@@ -185,7 +191,8 @@ class Inference(
       is ParamAssign -> {
         val leftRef = Reference.makeFromLHS(node)
         val rightRef = Reference.make(node.expr)
-        assign(node, node.call.methodExpr.parameters[node.idx].requires, node.call.methodExpr.parameters[node.idx].javaType, hierarchy.get(node.expr.cfType!!), pre, post, leftRef, rightRef)
+        val param = node.call.methodExpr.parameters[node.idx]
+        assign(node, param.requires, param.javaType, hierarchy.get(node.expr.cfType!!), pre, post, leftRef, rightRef, param.isThis)
       }
       is Return -> {
         if (node.expr == null) {
