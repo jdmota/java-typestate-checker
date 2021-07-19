@@ -215,13 +215,10 @@ class CFAdapter(
   private var renamer = VariableRenamer(hierarchy)
 
   private fun shouldBeAnytime(method: Symbol.MethodSymbol): Boolean {
-    val annotations = method.annotationMirrors.map { a -> a.toString().substring(1) /* Remove first @ */ }
     return when {
       method.simpleName.toString() == "<init>" -> false
       method.isStatic -> true
       !method.isPublic() -> true
-      annotations.any { a -> a == JTCUtils.jtcNotAnytimeAnno } -> false
-      annotations.any { a -> a == JTCUtils.jtcAnytimeAnno } -> true
       else -> {
         val graph = utils.classUtils.getGraph(method.getCorrectReceiverType())
         if (graph == null) {

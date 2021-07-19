@@ -238,8 +238,6 @@ class JTCUtils(val checker: SourceChecker) {
   companion object {
     val jtcRequiresAnno: String = Requires::class.java.canonicalName
     val jtcEnsuresAnno: String = Ensures::class.java.canonicalName
-    val jtcAnytimeAnno: String = Anytime::class.java.canonicalName
-    val jtcNotAnytimeAnno: String = NotAnytime::class.java.canonicalName
     val typestateAnnotations = setOf(Typestate::class.java.canonicalName, "mungo.lib.Typestate")
     val nullableAnnotations = setOf(
       Nullable::class.java.canonicalName,

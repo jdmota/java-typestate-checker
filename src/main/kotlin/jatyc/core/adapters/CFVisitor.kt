@@ -132,42 +132,6 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
     return null
   }
 
-  override fun visitMethod(node: MethodTree, p: Void?): Void? {
-    checkAnytimeAnnotations(node)
-    return super.visitMethod(node, p)
-  }
-
-  private fun checkAnytimeAnnotations(method: MethodTree) {
-    val annotations = method.modifiers.annotations.map { AnnotationUtils.annotationName(TreeUtils.annotationFromAnnotationTree(it)) }
-    val hasAnytime = annotations.any { it == JTCUtils.jtcAnytimeAnno }
-    val hasNotAnytime = annotations.any { it == JTCUtils.jtcNotAnytimeAnno }
-
-    if (hasAnytime || hasNotAnytime) {
-      val flags = method.modifiers.flags
-      if (
-        TreeUtils.isConstructor(method) ||
-        flags.contains(Modifier.STATIC) ||
-        flags.contains(Modifier.PROTECTED) ||
-        flags.contains(Modifier.PRIVATE)
-      ) {
-        utils.err("@Anytime and @NotAnytime annotations do not apply to constructors/static/protected/private methods", method)
-      } else if (hasAnytime && hasNotAnytime) {
-        utils.err("@Anytime and @NotAnytime annotations should not be used in the same method", method)
-      } else {
-        val parent = currentPath.parentPath.leaf
-        if (parent is JCTree.JCClassDecl) {
-          val hasProtocol = utils.classUtils.hasProtocol(parent.type)
-          if (hasAnytime && !hasProtocol) {
-            utils.warn("Redundant use of @Anytime annotation in method of class without protocol", method)
-          }
-          if (hasNotAnytime && hasProtocol) {
-            utils.warn("Redundant use of @NotAnytime annotation in method of class with protocol", method)
-          }
-        }
-      }
-    }
-  }
-
   private fun checkRequires(node: AnnotationTree, parent: Tree, parentParent: Tree): Boolean {
     return parent is VariableTree && parentParent is MethodTree && parentParent.parameters.contains(parent)
   }
