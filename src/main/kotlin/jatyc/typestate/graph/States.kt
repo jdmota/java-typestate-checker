@@ -47,7 +47,7 @@ class JavaTypeSelect(val parent: JavaType, val id: String) : JavaType() {
 
 sealed class Transition<N : TNode>(val nodes: List<N> = mutableListOf())
 
-class MethodTransition(val returnType: JavaType, val name: String, val args: List<JavaType>) : Transition<TMethodNode>() {
+class MethodTransition(val returnType: JavaType, val name: String, val args: List<JavaType>, val original: TMethodNode) : Transition<TMethodNode>() {
   override fun equals(other: Any?): Boolean {
     return other is MethodTransition && returnType == other.returnType && name == other.name && args == other.args
   }
@@ -64,7 +64,8 @@ class MethodTransition(val returnType: JavaType, val name: String, val args: Lis
       return MethodTransition(
         JavaType.make(node.returnType),
         node.name,
-        node.args.map { JavaType.make(it) }
+        node.args.map { JavaType.make(it) },
+        node
       )
     }
   }

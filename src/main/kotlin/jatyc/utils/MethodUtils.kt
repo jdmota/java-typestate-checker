@@ -6,6 +6,10 @@ import com.sun.tools.javac.comp.Env
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Names
 import jatyc.typestate.TMethodNode
+import kotlin.collections.List
+import kotlin.collections.emptyList
+import kotlin.collections.map
+import kotlin.collections.mutableListOf
 import com.sun.tools.javac.util.List as JavacList
 
 class MethodUtils(private val utils: JTCUtils) {

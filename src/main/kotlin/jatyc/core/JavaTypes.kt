@@ -24,7 +24,7 @@ class JavaType internal constructor(val original: Type, private val checker: Jav
   fun isJavaEnum() = original.toString() == "java.lang.Enum<E>"
   fun isJavaArray() = original is ArrayType
 
-  fun getGraph() = checker.utils.classUtils.visitClassTypeMirror(original)
+  fun getGraph() = checker.utils.classUtils.getGraph(original)
   fun hasProtocol() = checker.utils.classUtils.hasProtocol(original)
 
   fun isSubtype(other: JavaType): Boolean {

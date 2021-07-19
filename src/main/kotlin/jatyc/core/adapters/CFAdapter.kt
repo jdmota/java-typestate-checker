@@ -222,9 +222,16 @@ class CFAdapter(
       !method.isPublic() -> true
       annotations.any { a -> a == JTCUtils.jtcNotAnytimeAnno } -> false
       annotations.any { a -> a == JTCUtils.jtcAnytimeAnno } -> true
-      else ->
-        !utils.classUtils.hasProtocol(method.getCorrectReceiverType()) ||
-          AnnotatedTypes.overriddenMethods(utils.elementUtils, utils.factory.getProvider(), method).any { shouldBeAnytime(it.value as Symbol.MethodSymbol) }
+      else -> {
+        val graph = utils.classUtils.getGraph(method.getCorrectReceiverType())
+        if (graph == null) {
+          true
+        } else {
+          val env = graph.getEnv()
+          graph.getAllTransitions().none { utils.methodUtils.sameErasedMethod(env, method, it.original) } ||
+            AnnotatedTypes.overriddenMethods(utils.elementUtils, utils.factory.getProvider(), method).any { shouldBeAnytime(it.value as Symbol.MethodSymbol) }
+        }
+      }
     }
   }
 

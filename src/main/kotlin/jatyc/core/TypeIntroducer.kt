@@ -41,7 +41,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
       if (opts.forceShared) {
         JTCSharedType(javaType)
       } else {
-        val graph = utils.classUtils.visitClassTypeMirror(type)
+        val graph = utils.classUtils.getGraph(type)
         if (graph == null) {
           JTCSharedType(javaType)
         } else {

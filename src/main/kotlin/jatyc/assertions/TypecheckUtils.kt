@@ -167,7 +167,7 @@ object TypecheckUtils {
     return if (ClassUtils.isJavaLangObject(type)) {
       JTCObjectType.SINGLETON
     } else {
-      val graph = utils.classUtils.visitClassTypeMirror(type)
+      val graph = utils.classUtils.getGraph(type)
       if (graph == null) {
         JTCNoProtocolType.SINGLETON
       } else {
@@ -180,7 +180,7 @@ object TypecheckUtils {
     if (type.kind != TypeKind.DECLARED) return null
     if (ClassUtils.isJavaLangObject(type)) return null
 
-    val graph = utils.classUtils.visitClassTypeMirror(type) ?: return null
+    val graph = utils.classUtils.getGraph(type) ?: return null
 
     val isNullable = type.annotationMirrors.any { JTCUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }
     val stateAfterAnno = type.annotationMirrors.find { AnnotationUtils.areSameByName(it, JTCUtils.jtcEnsuresAnno) }

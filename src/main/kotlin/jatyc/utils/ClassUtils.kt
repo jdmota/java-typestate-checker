@@ -11,7 +11,6 @@ import java.util.*
 import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Element
 import javax.lang.model.type.DeclaredType
-import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 
 class ClassUtils(private val utils: JTCUtils) {
@@ -52,10 +51,10 @@ class ClassUtils(private val utils: JTCUtils) {
 
   fun visitClassOfElement(element: Element): Graph? {
     // val type = utils.factory.fromElement(element) as? AnnotatedTypeMirror.AnnotatedDeclaredType ?: return null
-    return visitClassTypeMirror(element.asType())
+    return getGraph(element.asType())
   }
 
-  fun visitClassTypeMirror(type: TypeMirror): Graph? {
+  fun getGraph(type: TypeMirror): Graph? {
     return if (type is DeclaredType) visitClassSymbol(type.asElement()) else null
   }
 
@@ -101,7 +100,7 @@ class ClassUtils(private val utils: JTCUtils) {
   }
 
   fun hasProtocol(type: TypeMirror): Boolean {
-    return visitClassTypeMirror(type) != null
+    return getGraph(type) != null
   }
 
   companion object {

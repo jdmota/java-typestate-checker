@@ -85,7 +85,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       val method = ((ast as UnderlyingAST.CFGMethod).method as JCTree.JCMethodDecl).sym
       val receiverType = method.enclosingElement.asType()
 
-      val graph = inferrer.utils.classUtils.visitClassTypeMirror(receiverType)
+      val graph = inferrer.utils.classUtils.getGraph(receiverType)
       if (graph != null) {
         // If this method always leaves the object in the same state
         TypecheckUtils.available(inferrer.utils, graph, method).all {
@@ -330,7 +330,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       if (receiver != null) {
         require.read(receiver, result)
 
-        val graph = inferrer.utils.classUtils.visitClassTypeMirror(receiver.type)
+        val graph = inferrer.utils.classUtils.getGraph(receiver.type)
         if (graph != null) {
           val states = TypecheckUtils.available(inferrer.utils, graph, method)
           val union = JTCUnionType.create(states)
@@ -638,7 +638,7 @@ class ConstraintsInference(private val inferrer: Inferrer, private val constrain
       val receiver = left.target.receiver
       val method = left.target.method
       if (receiver != null && method is Symbol.MethodSymbol) {
-        val graph = inferrer.utils.classUtils.visitClassTypeMirror(receiver.type)
+        val graph = inferrer.utils.classUtils.getGraph(receiver.type)
         if (graph != null) {
           val preStates = TypecheckUtils.available(inferrer.utils, graph, method)
           // TODO improve this to be more precise
