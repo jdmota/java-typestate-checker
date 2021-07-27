@@ -60,6 +60,13 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
     val inference1 = classAnalysis.inference
     val inference2 = classAnalysis.inference.inference
 
+    for ((codeExpr, type) in inference1.debugTypes) {
+      val tree = inference2.getTree(codeExpr)
+      val root = inference2.getRoot(codeExpr)
+      checker.setCompilationRoot(root)
+      checker.reportWarning(tree, type)
+    }
+
     for ((codeExpr, warnings) in inference1.warnings) {
       val tree = inference2.getTree(codeExpr)
       val root = inference2.getRoot(codeExpr)

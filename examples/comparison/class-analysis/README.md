@@ -8,21 +8,21 @@ NotOkFileWrapper1.java: 7-26: Semantic Error
 ## Our tool's output
 
 ```
-OkFileWrapper.java:18: error: Cannot call [close] on Shared{File}
-    file.close();
-    ^
 OkFileWrapper.java:14: error: Cannot call [read] on Shared{File}
     return file.read();
-           ^
-NotOkFileWrapper3.java:19: error: Cannot call [read] on Shared{File}
-    file.read();
-    ^
+                    ^
+OkFileWrapper.java:18: error: Cannot call [close] on Shared{File}
+    file.close();
+              ^
 NotOkFileWrapper3.java:14: error: Cannot call [close] on Shared{File}
     file.close();
-    ^
+              ^
+NotOkFileWrapper3.java:19: error: Cannot call [read] on Shared{File}
+    file.read();
+             ^
 NotOkFileWrapper2.java:14: error: Cannot call [read] on Shared{File}
     return file.read();
-           ^
+                    ^
 NotOkFileWrapper1.java:16: error: Cannot call close on null
     file.close();
         ^

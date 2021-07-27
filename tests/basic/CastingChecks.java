@@ -3,12 +3,13 @@ public class CastingChecks {
   public void main1() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext})
+    // :: error: (Cannot assign: cannot cast from State{JavaIterator, HasNext} to Shared{java.lang.Object} | Null)
     Object obj = it;
-    // :: warning: (obj: State{JavaIterator, HasNext})
+    // :: warning: (obj: Bottom)
     JavaIterator it2 = (JavaIterator) obj;
-    // :: warning: (it2: State{JavaIterator, HasNext})
+    // :: warning: (it2: Bottom)
     while (it2.hasNext()) {
-      // :: warning: (it2: State{JavaIterator, Next})
+      // :: warning: (it2: Bottom)
       it2.next();
     }
   }
@@ -21,11 +22,11 @@ public class CastingChecks {
       it.next();
     }
     // :: warning: (it: State{JavaIterator, end})
+    // :: error: (Cannot assign: cannot cast from State{JavaIterator, end} to Shared{java.lang.Object} | Null)
     Object obj = it;
-    // :: warning: (obj: State{JavaIterator, end})
+    // :: warning: (obj: Bottom)
     JavaIterator it2 = (JavaIterator) obj;
-    // :: warning: (it2: State{JavaIterator, end})
-    // :: error: (Cannot call [hasNext] on State{JavaIterator, end})
+    // :: warning: (it2: Bottom)
     while (it2.hasNext()) {
       // :: warning: (it2: Bottom)
       it2.next();

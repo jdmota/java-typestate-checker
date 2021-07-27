@@ -2,13 +2,13 @@ import java.util.function.Consumer;
 
 typestate JavaIterator {
     HasNext = {
-        boolean hasNext(): <true: Next, false: end>,
-        void forEachRemaining(Consumer): HasNext
+        boolean hasNext(): <true: Next, false: end>
+        //void forEachRemaining(Consumer): HasNext
     }
     Next = {
         boolean hasNext(): <true: Next, false: end>,
         void remove(): HasNext,
-        Object next(): HasNext,
-        void forEachRemaining(Consumer): Next
+        Object next(): HasNext
+        //void forEachRemaining(Consumer): Next
     }
 }

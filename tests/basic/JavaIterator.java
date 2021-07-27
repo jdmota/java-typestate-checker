@@ -246,17 +246,17 @@ public class JavaIterator {
     }
   }
 
-  // :: error: ([alias] did not complete its protocol (found: State{JavaIterator, HasNext}))
   public static void assigmentsAndMoves3() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext})
+    // :: error: (Cannot assign: cannot cast from State{JavaIterator, HasNext} to Shared{java.lang.Object} | Null)
     Object alias = it;
   }
 
   public static void incompatibleArg() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext})
-    // :: error: (Incompatible parameter because State{JavaIterator, HasNext} is not a subtype of State{JavaIterator, Next})
+    // :: error: (Incompatible parameter: cannot cast from State{JavaIterator, HasNext} to State{JavaIterator, Next})
     use2(it);
   }
 
@@ -279,12 +279,12 @@ public class JavaIterator {
     it.hasNext();
   }
 
-  // :: error: ([it] did not complete its protocol (found: State{JavaIterator, Next} | State{JavaIterator, end}))
   public static void wrongMove2() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext})
+    // :: error: (Incompatible parameter: cannot cast from State{JavaIterator, HasNext} to Shared{JavaIterator})
     use1(it);
-    // :: warning: (it: State{JavaIterator, HasNext})
+    // :: warning: (it: Bottom)
     it.hasNext();
   }
 
@@ -334,15 +334,16 @@ public class JavaIterator {
     }
   }
 
-  // :: error: ([it] did not complete its protocol (found: State{JavaIterator, HasNext}))
   public static JavaIterator didNotComplete5() {
     JavaIterator it = new JavaIterator();
     boolean bool = true;
     if (bool) {
       // :: warning: (it: State{JavaIterator, HasNext})
+      // :: error: (Incompatible return value: cannot cast from State{JavaIterator, HasNext} to Shared{JavaIterator})
       return it;
     }
     // :: warning: (it: State{JavaIterator, HasNext})
+    // :: error: (Incompatible return value: cannot cast from State{JavaIterator, HasNext} to Shared{JavaIterator})
     return it;
   }
 
@@ -463,7 +464,7 @@ public class JavaIterator {
       it.next();
     }
     // :: warning: (it: State{JavaIterator, end})
-    // :: error: (Incompatible return value because State{JavaIterator, end} is not a subtype of State{JavaIterator, HasNext})
+    // :: error: (Incompatible return value: cannot cast from State{JavaIterator, end} to State{JavaIterator, HasNext})
     return it;
   }
 
@@ -518,7 +519,7 @@ public class JavaIterator {
       it.hasNext();
       return "";
     };
-    // :: warning: (fn: NoProtocol{java.util.function.Supplier, exact=true})
+    // :: warning: (fn: Shared{java.util.function.Supplier})
     fn.get();
   }
 
@@ -532,7 +533,7 @@ public class JavaIterator {
       System.out.println(it);
       return "";
     };
-    // :: warning: (fn: NoProtocol{java.util.function.Supplier, exact=true})
+    // :: warning: (fn: Shared{java.util.function.Supplier})
     fn.get();
   }
 

@@ -25,7 +25,7 @@ public class NullnessChecks {
 
   public static void main4() {
     NullnessChecks n = new NullnessChecks();
-    // :: warning: (n: NoProtocol{NullnessChecks, exact=true})
+    // :: warning: (n: Shared{NullnessChecks})
     if (n == null) {
       // :: warning: (n: Bottom)
       // :: warning: (n.obj: Bottom)

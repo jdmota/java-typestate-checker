@@ -33,7 +33,7 @@ class WrapperWithoutProtocol1 {
 
   public static void main() {
     WrapperWithoutProtocol1 wrapper = new WrapperWithoutProtocol1(new JavaIterator());
-    // :: warning: (wrapper: NoProtocol{WrapperWithoutProtocol1, exact=true})
+    // :: warning: (wrapper: Shared{WrapperWithoutProtocol1})
     // :: warning: (wrapper.iterator: Unknown)
     // :: error: (Cannot access [wrapper.iterator])
     wrapper.iterator.hasNext();

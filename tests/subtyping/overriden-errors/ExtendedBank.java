@@ -8,8 +8,8 @@ public class ExtendedBank extends Bank {
   }
 
   // :: error: (Return value should be a subtype of State{Money, Active} (found: Shared{Money}))
-  // :: error: ([new Money] did not complete its protocol (found: State{Money, Active}))
   public Money withdraw() {
+    // :: error: (Incompatible return value: cannot cast from State{Money, Active} to Shared{Money})
     return new Money();
   }
 

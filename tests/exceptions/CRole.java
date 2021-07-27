@@ -37,10 +37,10 @@ public class CRole {
 
     try {
       // :: warning: (this.socketSIn: Null)
-      // :: warning: (socket: NoProtocol{java.net.Socket, exact=true})
+      // :: warning: (socket: Shared{java.net.Socket})
       socketSIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       // :: warning: (this.socketSOut: Null)
-      // :: warning: (socket: NoProtocol{java.net.Socket, exact=true})
+      // :: warning: (socket: Shared{java.net.Socket})
       socketSOut = new PrintWriter(socket.getOutputStream(), true);
     } catch (IOException e) {
       System.out.println("Read failed");
@@ -49,13 +49,13 @@ public class CRole {
   }
 
   public void send(String msg) {
-    // :: warning: (this.socketSOut: NoProtocol{java.io.PrintWriter, exact=true})
+    // :: warning: (this.socketSOut: Shared{java.io.PrintWriter})
     // :: warning: (msg: Shared{java.lang.String})
     this.socketSOut.print(msg);
   }
 
   public int receive() throws IOException {
-    // :: warning: (this.socketSIn: NoProtocol{java.io.BufferedReader, exact=true})
+    // :: warning: (this.socketSIn: Shared{java.io.BufferedReader})
     return this.socketSIn.read();
   }
 

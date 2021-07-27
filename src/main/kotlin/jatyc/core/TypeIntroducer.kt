@@ -19,7 +19,7 @@ data class TypeIntroOpts(
   // E.g. generic parameters, parameters and return values of methods which code we cannot analyze
   val forceNullable: Boolean = false,
   // Annotation name to look for
-  val annotation: String? // JTCUtils.jtcStateAnno OR JTCUtils.jtcRequiresAnno OR JTCUtils.jtcEnsuresAnno
+  val annotation: String? // JTCUtils.jtcRequiresAnno OR JTCUtils.jtcEnsuresAnno
 )
 
 class TypeIntroducer(private val checker: JavaTypestateChecker, private val hierarchy: JavaTypesHierarchy) {
@@ -80,7 +80,8 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     val javaType = hierarchy.get(type)
     val graph = javaType.getGraph()
     return if (graph == null) {
-      JTCNoProtocolType(javaType, true)
+      JTCSharedType(javaType)
+      // JTCNoProtocolType(javaType, true)
     } else {
       JTCStateType(javaType, graph, graph.getInitialState())
     }
@@ -94,7 +95,8 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
       val graph = javaType.getGraph()
       if (graph == null) {
         if (isConstructor) {
-          JTCNoProtocolType(javaType, false)
+          JTCSharedType(javaType)
+          // JTCNoProtocolType(javaType, false)
         } else {
           JTCSharedType(javaType)
         }
@@ -113,7 +115,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
         val javaType = hierarchy.get(type)
         val graph = javaType.getGraph()
         if (graph == null) {
-          JTCSharedType(javaType).union(JTCNoProtocolType(javaType, isActualType)).toMaybeNullable(isNullable)
+          JTCSharedType(javaType)/*.union(JTCNoProtocolType(javaType, isActualType))*/.toMaybeNullable(isNullable)
         } else {
           JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph)).toMaybeNullable(isNullable)
         }
@@ -162,7 +164,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
         val javaType = hierarchy.get(typeMirror)
         val graph = javaType.getGraph()
         if (graph == null) {
-          JTCSharedType(javaType).union(JTCNoProtocolType(javaType, false)).toMaybeNullable(isNullable)
+          JTCSharedType(javaType)/*.union(JTCNoProtocolType(javaType, false))*/.toMaybeNullable(isNullable)
         } else {
           JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph)).toMaybeNullable(isNullable)
         }

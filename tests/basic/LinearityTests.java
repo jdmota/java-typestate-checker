@@ -26,12 +26,12 @@ class Linearity {
   }
 
   private void moveThis1() {
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     LinearityTests.use(this);
   }
 
   private void moveThis2() {
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     LinearityTests.use(Linearity.this);
   }
 
@@ -77,7 +77,7 @@ class PublicLinearityWrapper {
 
   public void setNull() {
     // :: warning: (this.obj: Shared{Linearity})
-    // :: error: (Cannot perform assignment because [this.obj] is not accessible here)
+    // :: error: (Cannot assign because [this.obj] is not accessible here)
     obj = null;
   }
 
@@ -99,24 +99,24 @@ class PublicLinearityWrapper {
   }
 
   public void move1() {
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     // :: warning: (this.obj: Shared{Linearity})
     LinearityTests.use(this.obj);
   }
 
   public void move2() {
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     // :: warning: (this.obj: Shared{Linearity})
     LinearityTests.use(PublicLinearityWrapper.this.obj);
   }
 
   public void move3() {
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     LinearityTests.use(this.get());
   }
 
   public void move4() {
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     LinearityTests.use(PublicLinearityWrapper.this.get());
   }
 
@@ -158,23 +158,23 @@ class PrivateLinearityWrapper {
 
   public void move1() {
     // :: warning: (this.obj: Shared{Linearity})
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     LinearityTests.use(this.obj);
   }
 
   public void move2() {
     // :: warning: (this.obj: Shared{Linearity})
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     LinearityTests.use(PrivateLinearityWrapper.this.obj);
   }
 
   public void move3() {
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     LinearityTests.use(this.get());
   }
 
   public void move4() {
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     LinearityTests.use(PrivateLinearityWrapper.this.get());
   }
 
@@ -262,14 +262,14 @@ public class LinearityTests {
     // :: warning: (obj: State{Linearity, State0})
     use(obj);
     // :: warning: (obj: Shared{Linearity})
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     use(obj);
   }
 
   public static void main2_2() {
     Linearity obj = new Linearity();
     // :: warning: (obj: State{Linearity, State0})
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0} | State{Linearity, State1})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0} | State{Linearity, State1})
     use2(obj, obj);
     // :: warning: (obj: Bottom)
     obj.finish();
@@ -278,7 +278,7 @@ public class LinearityTests {
   public static void main2_3() {
     Linearity obj = new Linearity();
     // :: warning: (obj: State{Linearity, State0})
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0} | State{Linearity, State1})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0} | State{Linearity, State1})
     use2((Linearity) ((Linearity) obj), obj);
     // :: warning: (obj: Bottom)
     obj.finish();
@@ -302,7 +302,7 @@ public class LinearityTests {
     // :: warning: (obj2: State{Linearity, State0})
     use(obj2);
     // :: warning: (obj: Shared{Linearity})
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     use(obj);
   }
 
@@ -316,33 +316,23 @@ public class LinearityTests {
     };
     // :: warning: (obj: State{Linearity, State0})
     obj.finish();
-    // :: warning: (fn: NoProtocol{java.util.function.Supplier, exact=true})
+    // :: warning: (fn: Shared{java.util.function.Supplier})
     fn.get();
   }
 
-  // :: error: ([new Linearity] did not complete its protocol (found: State{Linearity, State0}))
-  public static void main6() {
+  /*public static void main6() {
     List<Linearity> list = new LinkedList<>();
-    // :: warning: (list: NoProtocol{java.util.LinkedList, exact=true})
     list.add(new Linearity());
-    // :: warning: (list: NoProtocol{java.util.LinkedList, exact=true})
     Linearity obj1 = list.get(0);
-    // :: warning: (list: NoProtocol{java.util.LinkedList, exact=true})
     Linearity obj2 = list.get(0);
-    // :: warning: (obj1: Shared{java.lang.Object} | Null)
-    // :: error: (Cannot call finish on null)
-    // :: error: (Cannot call [finish] on Shared{java.lang.Object})
     obj1.finish();
-    // :: warning: (obj2: Shared{java.lang.Object} | Null)
-    // :: error: (Cannot call finish on null)
-    // :: error: (Cannot call [finish] on Shared{java.lang.Object})
     obj2.finish();
-  }
+  }*/
 
   // Detect moves of objects inside other objects to variables
   public static void main7() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: warning: (w: NoProtocol{PublicLinearityWrapper, exact=true})
+    // :: warning: (w: Shared{PublicLinearityWrapper})
     // :: warning: (w.obj: Unknown)
     // :: error: (Cannot access [w.obj])
     Linearity obj = w.obj;
@@ -354,7 +344,7 @@ public class LinearityTests {
   public static void main8() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
     // :: warning: (w.obj: Unknown)
-    // :: warning: (w: NoProtocol{PublicLinearityWrapper, exact=true})
+    // :: warning: (w: Shared{PublicLinearityWrapper})
     // :: error: (Cannot access [w.obj])
     use(w.obj);
   }
@@ -377,7 +367,7 @@ public class LinearityTests {
   public static void main10() {
     Linearity obj = new Linearity();
     // :: warning: (obj: State{Linearity, State0})
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0})
     obj.useOther(obj);
     // :: warning: (obj: Bottom)
     Linearity obj2 = obj;
@@ -388,9 +378,9 @@ public class LinearityTests {
   // Overrides
   public static void main11() {
     PublicLinearityWrapper w = new PublicLinearityWrapper();
-    // :: warning: (w: NoProtocol{PublicLinearityWrapper, exact=true})
+    // :: warning: (w: Shared{PublicLinearityWrapper})
     // :: warning: (w.obj: Unknown)
-    // :: error: (Cannot perform assignment because [w.obj] is not accessible here)
+    // :: error: (Cannot assign because [w.obj] is not accessible here)
     // :: error: (Cannot access [w.obj])
     w.obj = new Linearity();
   }
@@ -427,7 +417,7 @@ public class LinearityTests {
   public static void main15() {
     Linearity obj1 = new Linearity();
     // :: warning: (obj1: State{Linearity, State0})
-    // :: error: (Incompatible parameter because Shared{Linearity} is not a subtype of State{Linearity, State0} | State{Linearity, State1})
+    // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0} | State{Linearity, State1})
     MoveToConstructor2Args obj2 = new MoveToConstructor2Args(obj1, obj1);
     // :: warning: (obj1: Bottom)
     obj1.finish();
@@ -439,13 +429,13 @@ public class LinearityTests {
     // :: warning: (o1: State{CircularObj, State0})
     // :: warning: (o2: State{CircularObj, State0})
     // :: warning: (o2.f: Unknown)
-    // :: error: (Cannot perform assignment because [o2.f] is not accessible here)
+    // :: error: (Cannot assign because [o2.f] is not accessible here)
     // :: error: (Cannot access [o2.f])
     o2.f = o1;
     // :: warning: (o1: Shared{CircularObj})
     // :: warning: (o2: State{CircularObj, State0})
     // :: warning: (o1.f: Unknown)
-    // :: error: (Cannot perform assignment because [o1.f] is not accessible here)
+    // :: error: (Cannot assign because [o1.f] is not accessible here)
     // :: error: (Cannot access [o1.f])
     o1.f = o2;
   }
@@ -470,19 +460,19 @@ public class LinearityTests {
     // :: warning: (o3: State{CircularObj, State0})
     // :: warning: (o4: State{CircularObj, State0})
     // :: warning: (o3.f: Unknown)
-    // :: error: (Cannot perform assignment because [o3.f] is not accessible here)
+    // :: error: (Cannot assign because [o3.f] is not accessible here)
     // :: error: (Cannot access [o3.f])
     o3.f = o4;
     // :: warning: (o2: State{CircularObj, State0})
     // :: warning: (o3: State{CircularObj, State0})
     // :: warning: (o2.f: Unknown)
-    // :: error: (Cannot perform assignment because [o2.f] is not accessible here)
+    // :: error: (Cannot assign because [o2.f] is not accessible here)
     // :: error: (Cannot access [o2.f])
     o2.f = o3;
     // :: warning: (o1: State{CircularObj, State0})
     // :: warning: (o2: State{CircularObj, State0})
     // :: warning: (o1.f: Unknown)
-    // :: error: (Cannot perform assignment because [o1.f] is not accessible here)
+    // :: error: (Cannot assign because [o1.f] is not accessible here)
     // :: error: (Cannot access [o1.f])
     o1.f = o2;
     // :: warning: (o4: Shared{CircularObj})
@@ -496,7 +486,7 @@ public class LinearityTests {
     CircularObj o = new CircularObj();
     // :: warning: (o: State{CircularObj, State0})
     // :: warning: (o.f: Unknown)
-    // :: error: (Cannot perform assignment because [o.f] is not accessible here)
+    // :: error: (Cannot assign because [o.f] is not accessible here)
     // :: error: (Cannot access [o.f])
     o.f = o;
   }

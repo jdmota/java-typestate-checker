@@ -14,10 +14,19 @@ class LinearModeInference(
 ) : CfgVisitor<Store>() {
 
   val inference = Inference(cfChecker, hierarchy, typeIntroducer, typecheckUtils, this, classAnalysis)
-  val warnings = IdentityHashMap<CodeExpr, List<String>>()
+  val debugTypes = IdentityHashMap<CodeExpr, String>()
+  val warnings = IdentityHashMap<CodeExpr, MutableSet<String>>()
   val errors = IdentityHashMap<CodeExpr, String>()
   val completionErrors = IdentityHashMap<CodeExpr, List<String>>()
   val validationErrors = IdentityHashMap<CodeExpr, List<String>>()
+
+  fun addWarning(code: CodeExpr, warning: String) {
+    warnings.computeIfAbsent(code) { mutableSetOf() }.add(warning)
+  }
+
+  fun removeWarning(code: CodeExpr, warning: String) {
+    warnings[code]?.remove(warning)
+  }
 
   override fun defaultAssertion(node: SimpleNode): Store {
     return Store()

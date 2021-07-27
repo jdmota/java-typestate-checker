@@ -214,7 +214,7 @@ class JavaIteratorWrapper7 {
 
   public @Ensures({"HasNext", "Next"}) JavaIterator getIterator() {
     // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next})
-    // :: error: (Incompatible return value because Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next} is not a subtype of State{JavaIterator, HasNext} | State{JavaIterator, Next})
+    // :: error: (Incompatible return value: cannot cast from Shared{JavaIterator} | State{JavaIterator, HasNext} | State{JavaIterator, Next} to State{JavaIterator, HasNext} | State{JavaIterator, Next})
     return iterator;
   }
 
@@ -225,12 +225,11 @@ class JavaIteratorWrapper8 {
 
   private @Nullable JavaIterator iterator = null;
 
-  // :: error: (Type of parameter [this] is Shared{JavaIteratorWrapper8}, expected State{JavaIteratorWrapper8, ?}})
   public void init(@Requires("HasNext") JavaIterator it) {
     // :: warning: (this.iterator: Null)
     // :: warning: (it: State{JavaIterator, HasNext})
     iterator = it;
-    // :: error: (Incompatible parameter because State{JavaIteratorWrapper8, ?} is not a subtype of State{JavaIteratorWrapper8, HasNext})
+    // :: error: (Incompatible parameter: cannot cast from State{JavaIteratorWrapper8, ?} to State{JavaIteratorWrapper8, HasNext})
     use(this);
   }
 
@@ -256,7 +255,6 @@ class JavaIteratorWrapper9 {
 
   private @Nullable JavaIterator iterator = null;
 
-  // :: error: ([wrapper] did not complete its protocol (found: State{JavaIteratorWrapper9, ?}))
   // :: error: (Type of parameter [this] is Shared{JavaIteratorWrapper9}, expected State{JavaIteratorWrapper9, ?}})
   public void init(@Requires("HasNext") JavaIterator it) {
     // :: warning: (this.iterator: Null)
@@ -264,6 +262,7 @@ class JavaIteratorWrapper9 {
     iterator = it;
     JavaIteratorWrapper9 wrapper = this;
     // :: warning: (wrapper: State{JavaIteratorWrapper9, ?})
+    // :: error: (Incompatible parameter: cannot cast from State{JavaIteratorWrapper9, ?} to Shared{JavaIteratorWrapper9})
     use(wrapper);
   }
 

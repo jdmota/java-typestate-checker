@@ -22,19 +22,13 @@ Exception in thread "main" java.lang.NullPointerException
 ## Our tool's output
 
 ```
-NotOk.java:9: error: Cannot call read on null
-    f1.read();
-      ^
-NotOk.java:11: error: Cannot call [read] on Shared{java.lang.Object}
-    f2.read();
-    ^
-NotOk.java:9: error: Cannot call [read] on Shared{java.lang.Object}
-    f1.read();
-    ^
-NotOk.java:11: error: Cannot call read on null
-    f2.read();
-      ^
-NotOk.java:4: error: [new File] did not complete its protocol (found: State{File, Read})
-  public static void main1() {
-                     ^
-5 errors```
+NotOk.java:6: error: Incompatible parameter: cannot cast from State{File, Read} to Shared{java.lang.Object} | Null
+    list.add(new File());
+             ^
+NotOk.java:8: error: Cannot assign: cannot cast from Shared{java.lang.Object} | Null to Shared{File} | State{File, ?} | Null
+    File f2 = list.get(0);
+         ^
+NotOk.java:7: error: Cannot assign: cannot cast from Shared{java.lang.Object} | Null to Shared{File} | State{File, ?} | Null
+    File f1 = list.get(0);
+         ^
+3 errors```

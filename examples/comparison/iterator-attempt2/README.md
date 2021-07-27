@@ -22,7 +22,7 @@ JavaIteratorProtocol.protocol:3,37: error: unexpected token "false"```
 ## Our tool's output
 
 ```
-JavaIterator.java:18: error: Incompatible return value because Shared{java.lang.Object} | Null is not a subtype of Shared{java.lang.String}
+JavaIterator.java:18: error: Incompatible return value: cannot cast from Shared{java.lang.Object} | Null to Shared{java.lang.String}
     return it.next();
     ^
 1 error```

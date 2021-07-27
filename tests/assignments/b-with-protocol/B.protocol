@@ -1,0 +1,5 @@
+typestate B {
+  Init = {
+    void m(): end
+  }
+}

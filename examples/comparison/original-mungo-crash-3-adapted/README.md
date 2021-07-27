@@ -6,7 +6,7 @@
 ## Our tool's output
 
 ```
-Main.java:4: error: [new File] did not complete its protocol (found: State{File, Read})
-  public static void main() {
-                     ^
+Main.java:6: error: Incompatible parameter: cannot cast from State{File, Read} to Shared{java.lang.Object} | Null
+    list.add(new File());
+             ^
 1 error```

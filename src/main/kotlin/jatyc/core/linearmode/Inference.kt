@@ -6,7 +6,6 @@ import com.sun.tools.javac.code.Type
 import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
-import jatyc.utils.JTCUtils
 
 class Inference(
   private val cfChecker: JavaTypestateChecker,
@@ -31,62 +30,7 @@ class Inference(
 
   // TODO improve how we preserve conditional information!
 
-  private fun checkAssignOrCast(
-    leftType: JTCType, leftJavaType: JavaType,
-    rightType: JTCType, rightJavaType: JavaType,
-  ): (CodeExpr, Store, Reference) -> Boolean {
-    val castTypeStr = when (cfChecker.utils.checkCastType(leftJavaType.original, rightJavaType.original)) {
-      JTCUtils.CastType.INVALID -> "Casting"
-      JTCUtils.CastType.UPCAST -> "Up-casting"
-      JTCUtils.CastType.DOWNCAST -> "Down-casting"
-    }
-    val leftGraph = leftJavaType.getGraph()
-    val rightGraph = rightJavaType.getGraph()
-    var casting: Pair<JTCType, String?>? = null
-
-    when {
-      leftGraph != null && rightGraph != null -> {
-        if (leftGraph !== rightGraph) {
-          val rightInitialState = JTCStateType(rightJavaType, rightGraph, rightGraph.getInitialState())
-          val rightEndState = JTCStateType(rightJavaType, rightGraph, rightGraph.getEndState())
-          val allowedType = JTCType.createUnion(listOf(rightInitialState, rightEndState))
-          casting = if (rightType.isSubtype(allowedType)) {
-            Pair(rightType
-              .replace(rightInitialState, JTCStateType(leftJavaType, leftGraph, leftGraph.getInitialState()))
-              .replace(rightEndState, JTCStateType(leftJavaType, leftGraph, leftGraph.getEndState())), null)
-          } else {
-            Pair(JTCBottomType.SINGLETON, "$castTypeStr only allowed on initial or final states. Expected ${allowedType.format()} but got ${rightType.format()}")
-          }
-        } else {
-          // Normal subtyping check done later
-        }
-      }
-      rightGraph == null -> {
-        // Normal subtyping check done later
-      }
-      leftGraph == null -> {
-        casting = Pair(JTCBottomType.SINGLETON, "$castTypeStr to a type with no protocol is not allowed")
-      }
-    }
-
-    return { node: CodeExpr, post: Store, leftRef: Reference ->
-      if (casting == null) {
-        inference.errors.remove(node)
-        false
-      } else {
-        post[leftRef] = casting.first
-        if (casting.second == null) {
-          inference.errors.remove(node)
-          false
-        } else {
-          inference.errors[node] = casting.second
-          true
-        }
-      }
-    }
-  }
-
-  private fun assign(node: CodeExpr, targetType: JTCType, targetJavaType: JavaType, exprJavaType: JavaType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean = false) {
+  private fun assign(node: CodeExpr, targetType: JTCType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean = false) {
     if (node is Assign) {
       post[Reference.old(node)] = pre[leftRef]
     }
@@ -101,6 +45,8 @@ class Inference(
 
     val typeToAssign: JTCType
     val typeInExpr: JTCType
+    val newTargetType: JTCType
+    val succeeded: Boolean
 
     if (thisParam) {
       // FIXME use old behaviour for now with "this" param assignments
@@ -109,40 +55,42 @@ class Inference(
       val move = node is Assign || targetType.requiresLinear()
       typeToAssign = if (move) pre[rightRef].type else pre[rightRef].type.toShared()
       typeInExpr = if (move) pre[rightRef].type.toShared() else pre[rightRef].type
+      newTargetType = typeToAssign
+      succeeded = true // Checking that the method can be called in this state is performed later
     } else {
       typeToAssign = pre[rightRef].type.let {
         // If the expected type of a parameter/return is shared, and we can drop the object now
-        if ((node is ParamAssign || node is Return) && targetType is JTCSharedType && typecheckUtils.canDrop(it))
+        if ((node is ParamAssign || node is Return) && targetType is JTCSharedType && typecheckUtils.canDrop(it)) {
+          if (typecheckUtils.isInDroppableState(it)) {
+            inference.addWarning(node, "This object will be dropped")
+          }
           it.toShared()
-        else
-          it
+        } else it
       }
       typeInExpr = pre[rightRef].type.toShared()
+      newTargetType = Subtyping.upcast(typeToAssign, targetType)
+      succeeded = typeToAssign is JTCBottomType || newTargetType !is JTCBottomType
     }
 
-    post[leftRef] = typeToAssign.intersect(targetType)
+    post[leftRef] = newTargetType
     post[rightRef] = typeInExpr
     post[Reference.make(node)] = pre[rightRef].type.toShared()
 
-    if (!thisParam && checkAssignOrCast(targetType, targetJavaType, typeToAssign, exprJavaType).invoke(node, post, leftRef)) {
-      return
-    }
-
     when {
-      typeToAssign.isSubtype(targetType) -> inference.errors.remove(node)
-      targetType is JTCBottomType -> inference.errors[node] = "Cannot perform assignment because [${leftRef.format()}] is not accessible here"
+      targetType is JTCBottomType -> inference.errors[node] = "Cannot assign because [${leftRef.format()}] is not accessible here"
+      succeeded -> inference.errors.remove(node)
       else -> inference.errors[node] = when (node) {
-        is Assign -> "Cannot perform assignment because ${typeToAssign.format()} is not a subtype of ${targetType.format()}"
+        is Assign -> "Cannot assign: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
         is ParamAssign -> {
           val method = node.call.methodExpr
           val param = method.parameters[node.idx]
           if (param.isThis) {
             "Cannot call [${method.name}] on ${typeToAssign.format()}"
           } else {
-            "Incompatible parameter because ${typeToAssign.format()} is not a subtype of ${targetType.format()}"
+            "Incompatible parameter: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
           }
         }
-        is Return -> "Incompatible return value because ${typeToAssign.format()} is not a subtype of ${targetType.format()}"
+        is Return -> "Incompatible return value: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
         else -> "INTERNAL ERROR"
       }
     }
@@ -179,20 +127,20 @@ class Inference(
         val rightRef = Reference.make(node.right)
         // Do not allow field assignments unless the receiver object is "this" and we have linear access to it
         val targetType = when {
-          thisRef != null && leftRef.isFieldOf(thisRef) && pre[thisRef].type.requiresLinear() ->
+          thisRef != null && leftRef.isFieldOf(thisRef) && (func.isConstructor || pre[thisRef].type.requiresLinear()) ->
             clazz!!.allFields(classAnalysis.classes).find { leftRef.isFieldOf(thisRef, it.id) }!!.type
           leftRef.isField() ->
             JTCBottomType.SINGLETON
           else ->
             node.type
         }
-        assign(node, targetType, node.javaType, hierarchy.get(node.right.cfType!!), pre, post, leftRef, rightRef)
+        assign(node, targetType, pre, post, leftRef, rightRef)
       }
       is ParamAssign -> {
         val leftRef = Reference.makeFromLHS(node)
         val rightRef = Reference.make(node.expr)
         val param = node.call.methodExpr.parameters[node.idx]
-        assign(node, param.requires, param.javaType, hierarchy.get(node.expr.cfType!!), pre, post, leftRef, rightRef, param.isThis)
+        assign(node, param.requires, pre, post, leftRef, rightRef, param.isThis)
       }
       is Return -> {
         if (node.expr == null) {
@@ -201,7 +149,7 @@ class Inference(
         } else {
           val leftRef = Reference.returnRef
           val rightRef = Reference.make(node.expr)
-          assign(node, node.type, node.javaType, hierarchy.get(node.expr.cfType!!), pre, post, leftRef, rightRef)
+          assign(node, node.type, pre, post, leftRef, rightRef)
         }
       }
       is MethodCall -> {
@@ -400,17 +348,19 @@ class Inference(
         } else {
           val exprRef = Reference.make(node.expr)
           val currentType = pre[exprRef].type
-          val moreSpecificType = currentType.intersect(node.type)
-          post[exprRef] = moreSpecificType
+          val newType = Subtyping.forceCast(currentType, node.type)
+          post[exprRef] = newType
 
-          if (checkAssignOrCast(node.type, node.javaType, currentType, hierarchy.get(node.expr.cfType!!)).invoke(node, post, exprRef)) {
-            return
-          }
-
-          if (currentType.isSubtype(node.type)) {
+          if (currentType is JTCBottomType || newType !is JTCBottomType) {
             inference.errors.remove(node)
+
+            if (currentType.isSubtype(node.type)) {
+              inference.removeWarning(node, "Unsafe cast")
+            } else {
+              inference.addWarning(node, "Unsafe cast")
+            }
           } else {
-            inference.errors[node] = "Unsafe cast"
+            inference.errors[node] = "Cannot perform cast from ${currentType.format()} to ${node.type.format()}"
           }
         }
       }
@@ -688,6 +638,6 @@ class Inference(
       return
     }
     val ref = Reference.make(node)
-    inference.warnings[node] = listOf("${ref.format()}: ${currentType.format()}")
+    inference.debugTypes[node] = "${ref.format()}: ${currentType.format()}"
   }
 }

@@ -17,12 +17,13 @@ public class Main {
     }
     // :: warning: (d: State{Derived, Start})
     Base b = d;
-    // :: warning: (b: State{Derived, Start})
+    // :: warning: (b: State{Base, Start})
     if (b.hasNext()) {
-      // :: warning: (b: State{Derived, Next})
+      // :: warning: (b: State{Base, Next})
       b.next();
     }
-    // :: warning: (b: State{Derived, Remove} | State{Derived, Start})
+    // :: warning: (b: State{Base, Start})
+    // :: warning: (Unsafe cast)
     Derived d2 = (Derived) b;
   }
 }

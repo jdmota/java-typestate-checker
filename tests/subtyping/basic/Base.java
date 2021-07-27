@@ -6,7 +6,7 @@ public class Base {
   private Random rd = new Random();
 
   public boolean hasNext() {
-    // :: warning: (this.rd: NoProtocol{java.util.Random, exact=true})
+    // :: warning: (this.rd: Shared{java.util.Random})
     return rd.nextBoolean();
   }
 
