@@ -6,7 +6,6 @@ import com.sun.source.util.TreePath
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Log
 import jatyc.core.adapters.CFVisitor
-import jatyc.assertions.InferenceVisitor
 import jatyc.utils.JTCUtils
 import org.checkerframework.framework.source.SourceChecker
 import org.checkerframework.framework.source.SourceVisitor
@@ -19,23 +18,17 @@ import javax.tools.Diagnostic
 
 const val showTypeInfoOpt = "showTypeInfo"
 const val configFileOpt = "configFile"
-const val inferenceOpt = "performInference"
 const val messagesFile = "/messages.properties"
 
 class JavaTypestateChecker : SourceChecker() {
 
   lateinit var utils: JTCUtils
 
-  override fun getSupportedOptions() = super.getSupportedOptions().plus(arrayOf(showTypeInfoOpt, inferenceOpt, configFileOpt))
+  override fun getSupportedOptions() = super.getSupportedOptions().plus(arrayOf(showTypeInfoOpt, configFileOpt))
 
   fun shouldReportTypeInfo() = hasOption(showTypeInfoOpt)
 
-  private fun performInference() = hasOption(inferenceOpt)
-
   override fun createSourceVisitor(): SourceVisitor<*, *> {
-    if (performInference()) {
-      return InferenceVisitor(this)
-    }
     return CFVisitor(this)
   }
 
@@ -86,7 +79,6 @@ class JavaTypestateChecker : SourceChecker() {
 
   override fun typeProcessingOver() {
     when (val visitor = this.visitor) {
-      is InferenceVisitor -> visitor.inferrer.phase2()
       is CFVisitor -> visitor.finishAnalysis()
     }
   }

@@ -1,5 +1,0 @@
-typestate ConsumerProtocol {
-  Start = {
-    void consume(String): end
-  }
-}

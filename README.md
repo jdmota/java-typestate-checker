@@ -11,17 +11,12 @@ The Java Typestate Checker is a plugin for the Checker Framework. This plugin al
 - checking that **methods are called in the correct order** specified by the protocol;
 - checking that **protocols of objects are completed**;
 - checking the **absence of null pointer errors**;
-- a **language of assertions** that focuses in allowing a program that uses typestates to be type-checked even in the presence of aliasing;
-- an **inference algorithm** which analyzes the code statically and infers all the required assertions;
 - support for **protocols to be associated with classes** from the standard Java library or from third-party libraries;
 - support for **"droppable" states**, which allow one to specify states in which an object may be "dropped" (i.e. stop being used) without having to reach the final state;
 - support for **transitions of state to depend on boolean values or enumeration values** returned by methods.
 - invalid sequences of method calls are ignored when analyzing the use of objects stored inside other objects by taking into account that the methods of the outer object will only be called in the order specified by the corresponding protocol, thus **avoiding false positives**.
 
-The tool has two modes:
-
-- Linear mode: where objects must be used linearly;
-- Non-linear mode: where objects may be aliased (this mode uses the **language of assertions** and the **inference algorithm**). It is highly experimental, including several limitations, and may not provide the same guarantees that the linear mode is able to provide.
+*Note: if you are looking for the experimental non-linear mode (where objects may be aliased), check out the [non-linear-mode branch](https://github.com/jdmota/java-typestate-checker/tree/non-linear-mode).*
 
 ## Subtyping
 
@@ -66,12 +61,6 @@ Main.java:2: error: [iterator] did not complete its protocol (found: State{JavaI
 
 ```sh
 java -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
-```
-
-Optional: To use the experimental non-linear mode, make sure the environment variable `PATH` includes `REPO/dist/z3/bin` and then run the following command instead:
-
-```sh
-java -Djava.library.path=REPO/dist/z3/bin -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processor jatyc.JavaTypestateChecker *.java -AperformInference
 ```
 
 <!--## Demo

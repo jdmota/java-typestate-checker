@@ -1,8 +1,0 @@
-typestate ProducerProtocol {
-  Start = {
-    void init(Consumer): Initialized
-  }
-  Initialized = {
-    void produce(String): end
-  }
-}
