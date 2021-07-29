@@ -1,8 +1,0 @@
-package demos.loop;
-
-
-typestate Loop {
-		Start = {
-			Bool finished(): <FALSE: Start, TRUE: end>
-		}
-}

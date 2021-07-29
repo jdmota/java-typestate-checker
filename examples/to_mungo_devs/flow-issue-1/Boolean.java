@@ -1,3 +1,0 @@
-enum Boolean {
-	True, False;
-}

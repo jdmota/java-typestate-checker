@@ -1,8 +1,0 @@
-typestate Base {
-  HasNext = {
-    boolean hasNext(): <true: Next, false: end>
-  }
-  Next = {
-    void next(): HasNext
-  }
-}

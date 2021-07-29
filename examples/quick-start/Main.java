@@ -1,10 +1,9 @@
 public class Main {
-  public static void main(String[] args) {
+  public static void main(String[] args) { // error: [iterator] did not complete its protocol
     JavaIterator iterator = new JavaIterator();
 
-    // Error!
     while (!iterator.hasNext()) {
-      iterator.next();
+      iterator.next(); // error: Cannot call [next] on State{JavaIterator, end}
     }
   }
 }

@@ -1,9 +1,0 @@
-typestate ObjProtocol {
-  Start = {
-    void init(String): Initialized
-  }
-  Initialized = {
-    String read(): Initialized,
-    void close(): end
-  }
-}

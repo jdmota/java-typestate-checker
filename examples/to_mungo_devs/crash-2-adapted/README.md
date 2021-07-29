@@ -1,5 +1,0 @@
-## Current Mungo's output
-
-```
-```
-

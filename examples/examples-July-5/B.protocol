@@ -1,8 +1,0 @@
-typestate B {
-  Init = {
-    void m1(): StateB
-  }
-  StateB = {
-    void m2(): end
-  }
-}
