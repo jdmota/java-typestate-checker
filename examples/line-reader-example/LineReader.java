@@ -1,10 +1,10 @@
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.Thread;
-import mungo.lib.Typestate;
+import jatyc.lib.Typestate;
 import jatyc.lib.Nullable;
 
-@Typestate("LineReader.protocol")
+@Typestate("LineReader")
 public class LineReader {
   private @Nullable FileReader file;
   private int curr;

@@ -1,8 +1,8 @@
 import java.util.ArrayList;
 import java.util.List;
-import mungo.lib.Typestate;
+import jatyc.lib.Typestate;
 
-@Typestate("Bank.protocol")
+@Typestate("Bank")
 public class Bank {
 
   public boolean openAccount(String name, String password) {

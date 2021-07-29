@@ -1,6 +1,6 @@
-import mungo.lib.Typestate;
+import jatyc.lib.Typestate;
 
-@Typestate("ExtendedBank.protocol")
+@Typestate("ExtendedBank")
 public class ExtendedBank extends Bank {
   public FunnyMoney withdrawAll() {
     return new FunnyMoney(0);

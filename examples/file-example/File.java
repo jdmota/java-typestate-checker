@@ -1,4 +1,4 @@
-import mungo.lib.Typestate;
+import jatyc.lib.Typestate;
 
 @Typestate("FileProtocol")
 public class File {
