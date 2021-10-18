@@ -1,0 +1,22 @@
+typestate RemovableIterator {
+  HasNext = {
+    boolean hasNext(): <true: Next, false: end>,
+    drop: end
+  }
+  Next = {
+    String next(): Remove
+  }
+  Remove = {
+    boolean hasNext(): <true: NextRemove, false: end>,
+    void remove(): HasNext,
+    drop: end
+  }
+  NextRemove = {
+    String next(): Remove
+    //void remove(): Next
+  }
+  /*RemoveEnd = {
+    void remove(): end,
+    drop: end
+  }*/
+}
