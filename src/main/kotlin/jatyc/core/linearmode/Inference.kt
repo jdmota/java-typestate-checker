@@ -61,7 +61,7 @@ class Inference(
       typeToAssign = pre[rightRef].type.let {
         // If the expected type of a parameter/return is shared, and we can drop the object now
         if ((node is ParamAssign || node is Return) && targetType is JTCSharedType && typecheckUtils.canDrop(it)) {
-          if (typecheckUtils.isInDroppableState(it)) {
+          if (typecheckUtils.isInDroppableStateNotEnd(it)) {
             inference.addWarning(node, "This object will be dropped")
           }
           it.toShared()

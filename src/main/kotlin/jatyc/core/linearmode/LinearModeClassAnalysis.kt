@@ -210,7 +210,7 @@ class LinearModeClassAnalysis(
     val errors = mutableListOf<String>()
     inference.completionErrors[clazz] = errors
     for ((state, store) in stateToStore) {
-      if (state.canEndHere()) {
+      if (state.canDropHere()) {
         ensureFieldsCompleteness(errors, store)
       }
     }

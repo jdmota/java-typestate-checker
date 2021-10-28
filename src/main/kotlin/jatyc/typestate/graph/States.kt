@@ -116,7 +116,7 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
 
   constructor(node: TStateNode) : this(node.name ?: "unknown:${node.pos.lineCol}", node)
 
-  val isDroppable = node != null && node.isDroppable
+  private val markedAsDroppable = node != null && node.isDroppable
 
   val transitions: MutableMap<TMethodNode, AbstractState<*>> = LinkedHashMap()
   val normalizedTransitions: MutableMap<MethodTransition, AbstractState<*>> = LinkedHashMap()
@@ -128,14 +128,14 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
 
   fun isEnd() = normalizedTransitions.isEmpty()
 
-  fun canEndHere() = isDroppable || isEnd()
+  fun canDropHere() = markedAsDroppable || isEnd()
 
   override fun format(): String {
     return name
   }
 
   override fun toString(): String {
-    return if (isDroppable) "State{name=$name, droppable}" else "State{name=$name}"
+    return if (markedAsDroppable) "State{name=$name, droppable}" else "State{name=$name}"
   }
 }
 

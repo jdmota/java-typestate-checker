@@ -5,7 +5,6 @@ import com.sun.tools.javac.comp.Env
 import jatyc.JavaTypestateChecker
 import jatyc.core.cfg.FuncInterface
 import jatyc.core.cfg.MethodCall
-import jatyc.typestate.TMethodNode
 import jatyc.typestate.graph.DecisionState
 import jatyc.typestate.graph.MethodTransition
 import jatyc.typestate.graph.State
@@ -101,7 +100,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
     return if (JTCNullType.SINGLETON.isSubtype(type)) JTCNullType.SINGLETON else JTCBottomType.SINGLETON
   }
 
-  fun isInDroppableState(type: JTCType): Boolean {
+  fun isInDroppableStateNotEnd(type: JTCType): Boolean {
     return when (type) {
       is JTCUnknownType -> false
       is JTCPrimitiveType -> false
@@ -109,10 +108,10 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCSharedType -> false
       // is JTCNoProtocolType -> false
       is JTCUnknownStateType -> false
-      is JTCStateType -> type.state.isDroppable
+      is JTCStateType -> type.state.canDropHere() && !type.state.isEnd()
       is JTCBottomType -> false
-      is JTCUnionType -> type.types.any { isInDroppableState(it) }
-      //is JTCIntersectionType -> type.types.all { isInDroppableState(it) }
+      is JTCUnionType -> type.types.any { isInDroppableStateNotEnd(it) }
+      //is JTCIntersectionType -> type.types.all { isInDroppableStateNotEnd(it) }
     }
   }
 
@@ -124,7 +123,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCSharedType -> true
       // is JTCNoProtocolType -> type.exact
       is JTCUnknownStateType -> false
-      is JTCStateType -> type.state.canEndHere()
+      is JTCStateType -> type.state.canDropHere()
       is JTCBottomType -> true
       is JTCUnionType -> type.types.all { canDrop(it) }
       //is JTCIntersectionType -> type.types.any { canDrop(it) }

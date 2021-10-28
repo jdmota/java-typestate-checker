@@ -8,18 +8,18 @@ class Subtyper {
 
   fun subtyping(g1: Graph, g2: Graph, currentStates: Pair<AbstractState<*>, AbstractState<*>>, marked: Set<Pair<AbstractState<*>, AbstractState<*>>> = emptySet()) {
     if (currentStates in marked) return
-    val first = currentStates.first
-    val second = currentStates.second
+    val derived = currentStates.first
+    val base = currentStates.second
     when {
-      first is EndState && second is EndState -> {
-      }
-      first is State && second is State && first !is EndState && second !is EndState -> {
-        val t1 = first.normalizedTransitions
-        val t2 = second.normalizedTransitions
+      derived is State && base is State -> {
+        // For end states, "normalizedTransitions" is empty
+        val t1 = derived.normalizedTransitions
+        val t2 = base.normalizedTransitions
 
-        // If "second" is droppable, "first" needs to be droppable
-        // (second.isDroppable ==> first.isDroppable) <=> (!second.isDroppable || first.isDroppable)
-        if (!(!second.isDroppable || first.isDroppable)) {
+        // If "base" is droppable, "derived" needs to be droppable
+        // (base.canDropHere() ==> derived.canDropHere()) <=> (!base.canDropHere() || derived.canDropHere())
+        // Note: canDropHere() also returns true if the state is "end"
+        if (!(!base.canDropHere() || derived.canDropHere())) {
           errors.add(inputErrorMsg(g1, g2, currentStates, listOf("drop: end")))
         }
 
@@ -35,9 +35,9 @@ class Subtyper {
           }
         }
       }
-      first is DecisionState && second is DecisionState -> {
-        val t1 = first.normalizedTransitions
-        val t2 = second.normalizedTransitions
+      derived is DecisionState && base is DecisionState -> {
+        val t1 = derived.normalizedTransitions
+        val t2 = base.normalizedTransitions
         if (!t2.keys.containsAll(t1.keys)) { // Output covariance
           val common = t1.keys.intersect(t2.keys)
           common.forEach {
@@ -51,7 +51,7 @@ class Subtyper {
         }
       }
       else -> {
-        errors.add("Discordant states error: state $first in ${g1.filename} is ${type(first)} while state $second in ${g2.filename} is ${type(second)}")
+        errors.add("Discordant states error: state $derived in ${g1.filename} is ${type(derived)} while state $base in ${g2.filename} is ${type(base)}")
       }
     }
   }
