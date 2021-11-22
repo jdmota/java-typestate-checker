@@ -1,12 +1,8 @@
 import jatyc.lib.Typestate;
 import jatyc.lib.Requires;
-import jatyc.lib.Nullable;
-
-import java.util.function.Supplier;
-
 import utils.JavaIterator;
 
-@Typestate("JavaIteratorWrapper.protocol")
+@Typestate("JavaIteratorWrapper")
 class JavaIteratorWrapper1 {
 
   private JavaIterator iterator;

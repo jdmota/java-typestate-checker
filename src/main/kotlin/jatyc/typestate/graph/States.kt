@@ -8,6 +8,7 @@ sealed class JavaType {
       return when (node) {
         is TIdNode -> JavaTypeId(node.name)
         is TMemberNode -> JavaTypeSelect(make(node.ref), node.id.name)
+        is TArrayTypeNode -> JavaTypeArray(make(node.ref))
       }
     }
   }
@@ -42,6 +43,20 @@ class JavaTypeSelect(val parent: JavaType, val id: String) : JavaType() {
     var result = parent.hashCode()
     result = 31 * result + id.hashCode()
     return result
+  }
+}
+
+class JavaTypeArray(val component: JavaType) : JavaType() {
+  override fun getName(): String {
+    return component.getName() + "[]"
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return other is JavaTypeArray && component == other.component
+  }
+
+  override fun hashCode(): Int {
+    return component.hashCode() * 31
   }
 }
 

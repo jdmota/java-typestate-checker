@@ -19,6 +19,11 @@ ref returns [TRefNode node] :
   r=ref '.' id {$node=new TMemberNode($r.node.getPos(), $r.node, $id.node);}
 ;
 
+javaType returns [TRefNode node] :
+  ref {$node=$ref.node;} |
+  j=javaType '[]' {$node=new TArrayTypeNode($j.node.getPos(), $j.node);}
+;
+
 package_statement returns [TPackageNode node] :
   t='package' ref ';'
   {$node=new TPackageNode(tokenToPos($t), $ref.node);}
@@ -50,8 +55,8 @@ state returns [TStateNode node] locals [boolean isDroppable] :
 ;
 
 method returns [TMethodNode node] locals [TNode destination] :
-  return_type=ref name=ID '(' ( args+=ref ( ',' args+=ref )* )? ')' ':' (
-    ref {$destination=$ref.node;} |
+  return_type=javaType name=ID '(' ( args+=javaType ( ',' args+=javaType )* )? ')' ':' (
+    id {$destination=$id.node;} |
     state {$destination=$state.node;} |
     decision_state {$destination=$decision_state.node;}
   )

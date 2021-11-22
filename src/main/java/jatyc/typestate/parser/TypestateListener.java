@@ -33,6 +33,16 @@ public interface TypestateListener extends ParseTreeListener {
 	 */
 	void exitRef(TypestateParser.RefContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link TypestateParser#javaType}.
+	 * @param ctx the parse tree
+	 */
+	void enterJavaType(TypestateParser.JavaTypeContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TypestateParser#javaType}.
+	 * @param ctx the parse tree
+	 */
+	void exitJavaType(TypestateParser.JavaTypeContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link TypestateParser#package_statement}.
 	 * @param ctx the parse tree
 	 */

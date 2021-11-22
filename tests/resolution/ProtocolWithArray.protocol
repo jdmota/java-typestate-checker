@@ -1,0 +1,8 @@
+import utils.JavaIterator;
+
+typestate ProtocolWithArray {
+    Start = {
+        void init(JavaIterator[]): end,
+        void init2(JavaIterator[]): end
+    }
+}

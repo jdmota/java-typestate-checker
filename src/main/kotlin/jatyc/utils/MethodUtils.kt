@@ -42,8 +42,6 @@ class MethodUtils(private val utils: JTCUtils) {
 
   private fun erasure(sym: Symbol.MethodSymbol): Type = sym.erasure(types)
 
-  fun wrapMethodSymbol(sym: Symbol.MethodSymbol) = MethodSymbolWrapper(sym)
-
   fun methodNodeToMethodSymbol(env: Env<AttrContext>, node: TMethodNode, owner: Symbol.ClassSymbol): MethodSymbolWrapper {
     val unknownTypes = mutableListOf<String>()
     fun resolve(type: String): Type {

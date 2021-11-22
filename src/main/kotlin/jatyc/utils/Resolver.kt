@@ -8,16 +8,14 @@ import com.sun.tools.javac.code.*
 import com.sun.tools.javac.code.Symbol.*
 import com.sun.tools.javac.comp.*
 import com.sun.tools.javac.file.JavacFileManager
+import com.sun.tools.javac.model.JavacTypes
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.tree.JCTree
 import com.sun.tools.javac.tree.TreeMaker
 import com.sun.tools.javac.util.List
 import com.sun.tools.javac.util.Name
 import com.sun.tools.javac.util.Names
-import jatyc.typestate.TIdNode
-import jatyc.typestate.TMemberNode
-import jatyc.typestate.TRefNode
-import jatyc.typestate.TTypestateNode
+import jatyc.typestate.*
 import org.checkerframework.framework.source.SourceChecker
 import java.lang.reflect.Method
 import java.nio.file.Path
@@ -28,6 +26,7 @@ class Resolver(checker: SourceChecker) {
 
   private val ctx = (checker.processingEnvironment as JavacProcessingEnvironment).context
   private val trees = Trees.instance(checker.processingEnvironment)
+  private val types = JavacTypes.instance(ctx)
   private val symtab = Symtab.instance(ctx)
   private val names = Names.instance(ctx)
   private val resolve = Resolve.instance(ctx)
@@ -48,6 +47,7 @@ class Resolver(checker: SourceChecker) {
     return when (ref) {
       is TIdNode -> maker.Ident(names.fromString(ref.name))
       is TMemberNode -> maker.Select(refToJCExpression(ref.ref), names.fromString(ref.id.name))
+      is TArrayTypeNode -> maker.TypeArray(refToJCExpression(ref.ref))
     }
   }
 
@@ -106,6 +106,11 @@ class Resolver(checker: SourceChecker) {
   }
 
   fun resolve(env: Env<AttrContext>, name: String): Type? {
+    val isArrayType = name.endsWith("[]")
+    if (isArrayType) {
+      val componentType = resolve(env, name.removeSuffix("[]"))
+      return if (componentType == null) null else types.getArrayType(componentType) as Type?
+    }
     return when (name) {
       "byte" -> symtab.byteType
       "char" -> symtab.charType

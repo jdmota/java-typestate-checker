@@ -45,6 +45,18 @@ public class TypestateBaseListener implements TypestateListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterJavaType(TypestateParser.JavaTypeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitJavaType(TypestateParser.JavaTypeContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterPackage_statement(TypestateParser.Package_statementContext ctx) { }
 	/**
 	 * {@inheritDoc}
