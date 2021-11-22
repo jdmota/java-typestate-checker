@@ -1,0 +1,11 @@
+typestate BaseIterator {
+  Init = {
+    void init(String[]): HasNext
+  }
+  HasNext = {
+    boolean hasNext(): <true: Next, false: end>
+  }
+  Next = {
+    Object next(): HasNext
+  }
+}
