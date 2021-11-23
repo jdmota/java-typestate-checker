@@ -53,7 +53,7 @@ Main.java:2: error: [iterator] did not complete its protocol (found: State{JavaI
 2 errors
 ```
 
-## Installation
+## Installation via git
 
 1. Recall that you must have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
 1. Clone this repository: `git clone https://github.com/jdmota/java-typestate-checker.git`
@@ -61,6 +61,17 @@ Main.java:2: error: [iterator] did not complete its protocol (found: State{JavaI
 
 ```sh
 java -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
+```
+
+## Manual installation
+
+1. Recall that you must have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
+1. Download and extract [checker-framework-3.14.0.zip](https://github.com/typetools/checker-framework/releases/tag/checker-framework-3.14.0).
+1. Download [jatyc.jar](https://github.com/jdmota/java-typestate-checker/releases/tag/3.0).
+1. Run the following command from the folder where the Java files you want to check are by replacing `DOWNLOADS` with the appropriate path containing the files downloaded in steps 2 and 3.
+
+```sh
+java -jar DOWNLOADS/checker-framework-3.14.0/checker/dist/checker.jar -classpath DOWNLOADS/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
 ```
 
 ## Resources
