@@ -1,7 +1,7 @@
 public class Example2 {
   public static void main(String[] args) {
     BaseIterator it = new RemovableIterator(args);
-    do {
+    while (true) {
       // Down-cast
       RemovableIterator remIt = (RemovableIterator) it;
       if (remIt.hasNext()) {
@@ -10,6 +10,6 @@ public class Example2 {
         // Up-cast
         it = remIt;
       } else break;
-    } while (true);
+    }
   }
 }
