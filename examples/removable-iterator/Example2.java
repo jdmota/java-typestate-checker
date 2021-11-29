@@ -1,15 +1,11 @@
 public class Example2 {
   public static void main(String[] args) {
-    BaseIterator it = new RemovableIterator(args);
-    while (true) {
-      // Down-cast
-      RemovableIterator remIt = (RemovableIterator) it;
-      if (remIt.hasNext()) {
-        System.out.printf("Item: %s\n", remIt.next());
-        remIt.remove();
-        // Up-cast
-        it = remIt;
-      } else break;
+    RemovableIterator it = new RemovableIterator(args);
+    while (it.hasNext()) {
+      System.out.println(it.next());
+      it.remove();
     }
+    BaseIterator baseIt = it; // Up-cast
+    System.out.println(baseIt.remainingItems());
   }
 }

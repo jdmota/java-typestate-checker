@@ -1,16 +1,13 @@
-public class Example2 {
+public class Example3 {
   public static void main(String[] args) {
-    BaseIterator it = new RemovableIterator();
+    BaseIterator it = new BaseIterator();
     it.init(args);
-    while (true) {
-      // Down-cast
-      RemovableIterator remIt = (RemovableIterator) it;
-      if (remIt.hasNext()) {
-        System.out.printf("Item: %s\n", remIt.next());
-        remIt.remove();
-        // Up-cast
-        it = remIt;
-      } else break;
+    while (!it.hasNext()) {
+      System.out.println(it.next());
     }
+    /*
+    If we pass an empty array:
+    Exception in thread "main" java.lang.IndexOutOfBoundsException: Index: 0, Size: 0
+    */
   }
 }
