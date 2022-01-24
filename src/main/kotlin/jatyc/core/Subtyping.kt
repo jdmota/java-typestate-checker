@@ -1,5 +1,7 @@
 package jatyc.core
 
+import jatyc.subtyping.syncronous_subtyping.Subtyper
+
 object Subtyping {
 
   fun subtype(a: JTCType, b: JTCType): Boolean {
@@ -9,59 +11,53 @@ object Subtyping {
         is JTCUnknownType -> true
         is JTCSharedType -> a.javaType.isSubtype(b.javaType)
         is JTCUnionType -> b.types.any { subtype(a, it) }
-        //is JTCIntersectionType -> b.types.all { subtype(a, it) }
+        is JTCIntersectionType -> b.types.all { subtype(a, it) }
         else -> false
       }
       is JTCUnknownStateType -> when (b) {
         is JTCUnknownType -> true
         is JTCUnknownStateType -> a.javaType.isSubtype(b.javaType)
         is JTCUnionType -> b.types.any { subtype(a, it) }
-        //is JTCIntersectionType -> b.types.all { subtype(a, it) }
+        is JTCIntersectionType -> b.types.all { subtype(a, it) }
         else -> false
-        // is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
+        //is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
       }
       is JTCStateType -> when (b) {
         is JTCUnknownType -> true
-        is JTCUnknownStateType -> a.javaType.isSubtype(b.javaType) && (
-          a.graph == b.graph || a.graph.getInitialState() == a.state || a.state.isEnd()
-          )
-        is JTCStateType -> a.javaType.isSubtype(b.javaType) && (
-          a.state == b.state ||
-            (a.graph.getInitialState() == a.state && b.graph.getInitialState() == b.state) ||
-            (a.state.isEnd() && b.state.isEnd())
-          )
+        is JTCUnknownStateType -> a.javaType.isSubtype(b.javaType) && a.graph == b.graph
+        is JTCStateType -> a.javaType.isSubtype(b.javaType) && Subtyper.isSubtype(a.state, b.state)
         is JTCUnionType -> b.types.any { subtype(a, it) }
-        //is JTCIntersectionType -> b.types.all { subtype(a, it) }
+        is JTCIntersectionType -> b.types.all { subtype(a, it) }
         else -> false
-        // is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
+        //is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
       }
       is JTCPrimitiveType -> when (b) {
         is JTCUnknownType -> true
         is JTCPrimitiveType -> a.javaType.isSubtype(b.javaType)
         is JTCUnionType -> b.types.any { subtype(a, it) }
-        //is JTCIntersectionType -> b.types.all { subtype(a, it) }
+        is JTCIntersectionType -> b.types.all { subtype(a, it) }
         else -> false
       }
       is JTCNullType -> when (b) {
         is JTCUnknownType -> true
         is JTCNullType -> true
         is JTCUnionType -> b.types.any { subtype(a, it) }
-        //is JTCIntersectionType -> b.types.all { subtype(a, it) }
+        is JTCIntersectionType -> b.types.all { subtype(a, it) }
         else -> false
       }
       is JTCBottomType -> true
       is JTCUnionType -> when (b) {
         is JTCUnknownType -> true
-        is JTCUnionType -> a.types.all { itA -> b.types.any { itB -> subtype(itA, itB) } }
-        //is JTCIntersectionType -> b.types.all { itB -> a.types.all { itA -> subtype(itA, itB) } }
+        is JTCUnionType -> a.types.all { itA -> subtype(itA, b) } || b.types.any { itB -> subtype(a, itB) }
+        is JTCIntersectionType -> a.types.all { itA -> subtype(itA, b) } || b.types.all { itB -> subtype(a, itB) }
         else -> a.types.all { itA -> subtype(itA, b) }
       }
-      /*is JTCIntersectionType -> when (b) {
+      is JTCIntersectionType -> when (b) {
         is JTCUnknownType -> true
-        is JTCUnionType -> a.types.any { itA -> b.types.any { itB -> subtype(itA, itB) } }
-        //is JTCIntersectionType -> b.types.all { itB -> a.types.any { itA -> subtype(itA, itB) } }
+        is JTCUnionType -> a.types.any { itA -> subtype(itA, b) } || b.types.any { itB -> subtype(a, itB) }
+        is JTCIntersectionType -> a.types.any { itA -> subtype(itA, b) } || b.types.all { itB -> subtype(a, itB) }
         else -> a.types.any { itA -> subtype(itA, b) }
-      }*/
+      }
     }
     return result
   }
@@ -74,14 +70,14 @@ object Subtyping {
         is JTCUnknownType -> b
         is JTCSharedType -> if (a.javaType.isSubtype(b.javaType)) b else bot
         is JTCUnionType -> JTCType.createUnion(b.types.map { upcast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
         else -> bot
       }
       is JTCUnknownStateType -> when (b) {
         is JTCUnknownType -> b
         is JTCUnknownStateType -> if (a.javaType.isSubtype(b.javaType)) b else bot
         is JTCUnionType -> JTCType.createUnion(b.types.map { upcast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
         else -> bot
       }
       is JTCStateType -> when (b) {
@@ -103,21 +99,21 @@ object Subtyping {
           }
         } else bot
         is JTCUnionType -> JTCType.createUnion(b.types.map { upcast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
         else -> bot
       }
       is JTCPrimitiveType -> when (b) {
         is JTCUnknownType -> b
         is JTCPrimitiveType -> if (a.javaType.isSubtype(b.javaType)) b else bot
         is JTCUnionType -> JTCType.createUnion(b.types.map { upcast(a, it) })
-        //s JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
         else -> bot
       }
       is JTCNullType -> when (b) {
         is JTCUnknownType -> b
         is JTCNullType -> b
         is JTCUnionType -> JTCType.createUnion(b.types.map { upcast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
         else -> bot
       }
       is JTCBottomType -> bot
@@ -128,18 +124,18 @@ object Subtyping {
           val newTypes = a.types.map { itA -> JTCType.createUnion(b.types.map { itB -> upcast(itA, itB) }) }
           if (newTypes.contains(bot)) bot else JTCType.createUnion(newTypes)
         }
-        /*is JTCIntersectionType -> {
+        is JTCIntersectionType -> {
           // b.types.all { itB -> a.types.all { itA -> subtype(itA, itB) } }
           val newTypes = b.types.map { itB -> JTCType.createIntersection(b.types.map { itA -> upcast(itA, itB) }) }
           if (newTypes.contains(bot)) bot else JTCType.createUnion(newTypes)
-        }*/
+        }
         else -> {
           // a.types.all { itA -> subtype(itA, b) }
           val newTypes = a.types.map { itA -> upcast(itA, b) }
           if (newTypes.contains(bot)) bot else JTCType.createUnion(newTypes)
         }
       }
-      /*is JTCIntersectionType -> when (b) {
+      is JTCIntersectionType -> when (b) {
         is JTCUnknownType -> b
         is JTCUnionType -> {
           // a.types.any { itA -> b.types.any { itB -> subtype(itA, itB) } }
@@ -156,7 +152,7 @@ object Subtyping {
           val newTypes = a.types.map { itA -> upcast(itA, b) }.filter { it != bot }
           if (newTypes.isEmpty()) bot else JTCType.createIntersection(newTypes)
         }
-      }*/
+      }
     }
     return result
   }
@@ -169,14 +165,14 @@ object Subtyping {
         is JTCUnknownType -> b
         is JTCSharedType -> b
         is JTCUnionType -> JTCType.createUnion(b.types.map { forceCast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
         else -> bot
       }
       is JTCUnknownStateType -> when (b) {
         is JTCUnknownType -> b
         is JTCUnknownStateType -> b
         is JTCUnionType -> JTCType.createUnion(b.types.map { forceCast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
         else -> bot
       }
       is JTCStateType -> when (b) {
@@ -194,21 +190,21 @@ object Subtyping {
           else -> bot
         }
         is JTCUnionType -> JTCType.createUnion(b.types.map { forceCast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
         else -> bot
       }
       is JTCPrimitiveType -> when (b) {
         is JTCUnknownType -> b
         is JTCPrimitiveType -> b
         is JTCUnionType -> JTCType.createUnion(b.types.map { forceCast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
         else -> bot
       }
       is JTCNullType -> when (b) {
         is JTCUnknownType -> b
         is JTCNullType -> b
         is JTCUnionType -> JTCType.createUnion(b.types.map { forceCast(a, it) })
-        //is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
+        is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
         else -> bot
       }
       is JTCBottomType -> bot
@@ -219,18 +215,18 @@ object Subtyping {
           val newTypes = a.types.map { itA -> JTCType.createUnion(b.types.map { itB -> forceCast(itA, itB) }) }
           if (newTypes.contains(bot)) bot else JTCType.createUnion(newTypes)
         }
-        /*is JTCIntersectionType -> {
+        is JTCIntersectionType -> {
           // b.types.all { itB -> a.types.all { itA -> subtype(itA, itB) } }
           val newTypes = b.types.map { itB -> JTCType.createIntersection(b.types.map { itA -> forceCast(itA, itB) }) }
           if (newTypes.contains(bot)) bot else JTCType.createUnion(newTypes)
-        }*/
+        }
         else -> {
           // a.types.all { itA -> subtype(itA, b) }
           val newTypes = a.types.map { itA -> forceCast(itA, b) }
           if (newTypes.contains(bot)) bot else JTCType.createUnion(newTypes)
         }
       }
-      /*is JTCIntersectionType -> when (b) {
+      is JTCIntersectionType -> when (b) {
         is JTCUnknownType -> b
         is JTCUnionType -> {
           // a.types.any { itA -> b.types.any { itB -> subtype(itA, itB) } }
@@ -247,7 +243,7 @@ object Subtyping {
           val newTypes = a.types.map { itA -> forceCast(itA, b) }.filter { it != bot }
           if (newTypes.isEmpty()) bot else JTCType.createIntersection(newTypes)
         }
-      }*/
+      }
     }
     return result
   }

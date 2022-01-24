@@ -4,6 +4,40 @@ import jatyc.typestate.graph.*
 
 class Subtyper {
 
+  companion object {
+    private val cache: MutableMap<Pair<AbstractState<*>, AbstractState<*>>, Boolean> = mutableMapOf()
+
+    fun isSubtype(sub: AbstractState<*>, sup: AbstractState<*>): Boolean {
+      return cache.computeIfAbsent(Pair(sub, sup)) { newSubtyping(sub, sup) }
+    }
+
+    private fun newSubtyping(derived: AbstractState<*>, base: AbstractState<*>): Boolean {
+      if (derived == base) return true
+      return when {
+        derived is State && base is State -> {
+          // For end states, "normalizedTransitions" is empty
+          val t1 = derived.normalizedTransitions
+          val t2 = base.normalizedTransitions
+
+          // If "base" is droppable, "derived" needs to be droppable
+          // (base.canDropHere() ==> derived.canDropHere()) <=> (!base.canDropHere() || derived.canDropHere())
+          // Note: canDropHere() also returns true if the state is "end"
+          (!base.canDropHere() || derived.canDropHere()) &&
+            // Input contravariance
+            t1.keys.containsAll(t2.keys) &&
+            t2.keys.all { isSubtype(t1[it]!!, t2[it]!!) }
+        }
+        derived is DecisionState && base is DecisionState -> {
+          val t1 = derived.normalizedTransitions
+          val t2 = base.normalizedTransitions
+          // Output covariance
+          t2.keys.containsAll(t1.keys) && t1.keys.all { isSubtype(t1[it]!!, t2[it]!!) }
+        }
+        else -> false
+      }
+    }
+  }
+
   val errors = mutableListOf<String>()
 
   fun subtyping(g1: Graph, g2: Graph, currentStates: Pair<AbstractState<*>, AbstractState<*>>, marked: Set<Pair<AbstractState<*>, AbstractState<*>>> = emptySet()) {

@@ -10,8 +10,8 @@ private fun unionSeq(a: JTCType, b: JTCType) = sequence {
 }
 
 private fun intersectionSeq(a: JTCType, b: JTCType) = sequence {
-  /*if (a is JTCIntersectionType) yieldAll(a.types) else*/ yield(a)
-  /*if (b is JTCIntersectionType) yieldAll(b.types) else*/ yield(b)
+  if (a is JTCIntersectionType) yieldAll(a.types) else yield(a)
+  if (b is JTCIntersectionType) yieldAll(b.types) else yield(b)
 }
 
 // Sequence does not produce union types
@@ -24,7 +24,7 @@ private fun unionSeq(list: Collection<JTCType>) = sequence {
 // Sequence does not produce intersection or union types assuming "list" does not contain union types
 private fun intersectionSeq(list: Collection<JTCType>) = sequence {
   for (type in list) {
-    /*if (type is JTCIntersectionType) yieldAll(type.types) else*/ yield(type)
+    if (type is JTCIntersectionType) yieldAll(type.types) else yield(type)
   }
 }
 
@@ -75,6 +75,7 @@ private fun areExclusive(a: JTCType, b: JTCType): Boolean {
 }
 
 private fun attemptDowncast(a: JTCStateType, b: JTCUnknownStateType): JTCType? {
+  // FIXME
   if (b.javaType.isSubtype(a.javaType)) {
     if (a.state == a.graph.getInitialState()) {
       return JTCStateType(b.javaType, b.graph, b.graph.getInitialState())
@@ -131,7 +132,7 @@ sealed class JTCType {
       is JTCStateType,
       is JTCBottomType -> true
       is JTCUnionType -> types.all { it.requiresLinear() }
-      // is JTCIntersectionType -> types.any { it.requiresLinear() }
+      is JTCIntersectionType -> types.any { it.requiresLinear() }
     }
   }
 
@@ -148,7 +149,7 @@ sealed class JTCType {
       is JTCUnionType -> createUnion(unionSeq(types.map { it.toShared() }))
       // Since "types" does not include union types, "toShared" will also not produce union types
       // So we do not break the pre-condition of "intersectionSeq"
-      // is JTCIntersectionType -> createIntersection(intersectionSeq(types.map { it.toShared() }))
+      is JTCIntersectionType -> createIntersection(intersectionSeq(types.map { it.toShared() }))
     }
   }
 
@@ -167,7 +168,7 @@ sealed class JTCType {
       is JTCUnknownStateType -> this
       is JTCStateType -> if (this == state1) state2 else this
       is JTCUnionType -> createUnion(types.map { it.replace(state1, state2) })
-      // is JTCIntersectionType -> createIntersection(types.map { it.replace(state1, state2) })
+      is JTCIntersectionType -> createIntersection(types.map { it.replace(state1, state2) })
     }
   }
 
@@ -207,7 +208,7 @@ class JTCUnionType internal constructor(val types: Set<JTCType>) : JTCType() {
   }
 }
 
-/*class JTCIntersectionType internal constructor(val types: Set<JTCType>) : JTCType() {
+class JTCIntersectionType internal constructor(val types: Set<JTCType>) : JTCType() {
 
   init {
     if (types.size <= 1) {
@@ -235,7 +236,7 @@ class JTCUnionType internal constructor(val types: Set<JTCType>) : JTCType() {
     formatCache = cache
     cache
   }
-}*/
+}
 
 class JTCStateType internal constructor(val javaType: JavaType, val graph: Graph, val state: State) : JTCType() {
   override fun equals(other: Any?) = when {
@@ -386,7 +387,7 @@ private object JTCTypeFormatter {
     return when (t) {
       is JTCUnknownType -> 1
       is JTCUnionType -> 2
-      // is JTCIntersectionType -> 3
+      is JTCIntersectionType -> 3
       is JTCSharedType -> 4
       // is JTCNoProtocolType -> 5
       is JTCUnknownStateType -> 6
