@@ -14,9 +14,9 @@ object Subtyping {
         is JTCIntersectionType -> b.types.all { subtype(a, it) }
         else -> false
       }
-      is JTCUnknownStateType -> when (b) {
+      is JTCLinearType -> when (b) {
         is JTCUnknownType -> true
-        is JTCUnknownStateType -> a.javaType.isSubtype(b.javaType)
+        is JTCLinearType -> a.javaType.isSubtype(b.javaType)
         is JTCUnionType -> b.types.any { subtype(a, it) }
         is JTCIntersectionType -> b.types.all { subtype(a, it) }
         else -> false
@@ -24,7 +24,8 @@ object Subtyping {
       }
       is JTCStateType -> when (b) {
         is JTCUnknownType -> true
-        is JTCUnknownStateType -> a.javaType.isSubtype(b.javaType) && a.graph == b.graph
+        is JTCSharedType -> a.javaType.isSubtype(b.javaType) && a.state.canDropHere() // NEW
+        is JTCLinearType -> a.javaType.isSubtype(b.javaType) && a.graph == b.graph
         is JTCStateType -> a.javaType.isSubtype(b.javaType) && Subtyper.isSubtype(a.state, b.state)
         is JTCUnionType -> b.types.any { subtype(a, it) }
         is JTCIntersectionType -> b.types.all { subtype(a, it) }
@@ -62,6 +63,36 @@ object Subtyping {
     return result
   }
 
+  // pre: type is subtype of Shared{JavaType} | State{JavaType, ?} | Null
+  fun upcast(type: JTCType, javaType: JavaType): JTCType {
+    return when (type) {
+      is JTCUnknownType -> type
+      is JTCUnionType -> JTCType.createUnion(type.types.map {
+        upcast(it, javaType)
+      })
+      is JTCIntersectionType -> JTCType.createIntersection(type.types.map {
+        upcast(it, javaType)
+      })
+      is JTCSharedType -> JTCSharedType(javaType)
+      is JTCLinearType -> JTCLinearType(javaType, javaType.getGraph()!!)
+      is JTCStateType -> {
+        val superGraph = javaType.getGraph()
+        if (superGraph == null) {
+          JTCSharedType(javaType)
+        } else {
+          JTCType.createIntersection(
+            superGraph.getAllConcreteStates()
+              .filter { Subtyper.isSubtype(type.state, it) }
+              .map { JTCStateType(javaType, superGraph, it) }
+          )
+        }
+      }
+      is JTCPrimitiveType -> JTCPrimitiveType(javaType)
+      is JTCNullType -> type
+      is JTCBottomType -> type
+    }
+  }
+
   fun upcast(a: JTCType, b: JTCType): JTCType {
     val bot = JTCBottomType.SINGLETON
     val result = when (a) {
@@ -73,16 +104,16 @@ object Subtyping {
         is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
         else -> bot
       }
-      is JTCUnknownStateType -> when (b) {
+      is JTCLinearType -> when (b) {
         is JTCUnknownType -> b
-        is JTCUnknownStateType -> if (a.javaType.isSubtype(b.javaType)) b else bot
+        is JTCLinearType -> if (a.javaType.isSubtype(b.javaType)) b else bot
         is JTCUnionType -> JTCType.createUnion(b.types.map { upcast(a, it) })
         is JTCIntersectionType -> JTCType.createIntersection(b.types.map { upcast(a, it) })
         else -> bot
       }
       is JTCStateType -> when (b) {
         is JTCUnknownType -> b
-        is JTCUnknownStateType -> if (a.javaType.isSubtype(b.javaType)) {
+        is JTCLinearType -> if (a.javaType.isSubtype(b.javaType)) {
           when {
             a.graph == b.graph -> JTCStateType(b.javaType, b.graph, a.state)
             a.graph.getInitialState() == a.state -> JTCStateType(b.javaType, b.graph, b.graph.getInitialState())
@@ -168,16 +199,16 @@ object Subtyping {
         is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
         else -> bot
       }
-      is JTCUnknownStateType -> when (b) {
+      is JTCLinearType -> when (b) {
         is JTCUnknownType -> b
-        is JTCUnknownStateType -> b
+        is JTCLinearType -> b
         is JTCUnionType -> JTCType.createUnion(b.types.map { forceCast(a, it) })
         is JTCIntersectionType -> JTCType.createIntersection(b.types.map { forceCast(a, it) })
         else -> bot
       }
       is JTCStateType -> when (b) {
         is JTCUnknownType -> b
-        is JTCUnknownStateType -> when {
+        is JTCLinearType -> when {
           a.graph == b.graph -> JTCStateType(b.javaType, b.graph, a.state)
           a.graph.getInitialState() == a.state -> JTCStateType(b.javaType, b.graph, b.graph.getInitialState())
           a.state.isEnd() -> JTCStateType(b.javaType, b.graph, b.graph.getEndState())

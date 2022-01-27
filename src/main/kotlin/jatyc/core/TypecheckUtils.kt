@@ -46,14 +46,14 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCNullType -> false
       is JTCSharedType,
       // is JTCNoProtocolType,
-      is JTCUnknownStateType -> call.methodExpr.isAnytime
+      is JTCLinearType -> call.methodExpr.isAnytime
       is JTCStateType -> {
         val env = type.graph.getEnv()
         call.methodExpr.isAnytime || type.state.normalizedTransitions.entries.any { sameMethod(env, method, it.key) }
       }
       is JTCBottomType -> true
       is JTCUnionType -> type.types.all { check(it, call) }
-      //is JTCIntersectionType -> type.types.any { check(it, call) }
+      is JTCIntersectionType -> type.types.any { check(it, call) }
     }
   }
 
@@ -64,11 +64,11 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCNullType -> JTCBottomType.SINGLETON
       is JTCSharedType -> if (call.methodExpr.isAnytime) type else JTCBottomType.SINGLETON
       // is JTCNoProtocolType -> if (call.methodExpr.isAnytime) type else JTCBottomType.SINGLETON
-      is JTCUnknownStateType -> type
+      is JTCLinearType -> type
       is JTCStateType -> if (call.methodExpr.isAnytime) type else JTCType.createUnion(refineState(type, call, predicate))
       is JTCBottomType -> type
       is JTCUnionType -> JTCType.createUnion(type.types.map { refine(it, call, predicate) })
-      //is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) })
+      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) }) // TODO
     }
   }
 
@@ -107,11 +107,11 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCNullType -> false
       is JTCSharedType -> false
       // is JTCNoProtocolType -> false
-      is JTCUnknownStateType -> false
+      is JTCLinearType -> false
       is JTCStateType -> type.state.canDropHere() && !type.state.isEnd()
       is JTCBottomType -> false
       is JTCUnionType -> type.types.any { isInDroppableStateNotEnd(it) }
-      //is JTCIntersectionType -> type.types.all { isInDroppableStateNotEnd(it) }
+      is JTCIntersectionType -> type.types.all { isInDroppableStateNotEnd(it) }
     }
   }
 
@@ -122,11 +122,11 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCNullType -> true
       is JTCSharedType -> true
       // is JTCNoProtocolType -> type.exact
-      is JTCUnknownStateType -> false
+      is JTCLinearType -> false
       is JTCStateType -> type.state.canDropHere()
       is JTCBottomType -> true
       is JTCUnionType -> type.types.all { canDrop(it) }
-      //is JTCIntersectionType -> type.types.any { canDrop(it) }
+      is JTCIntersectionType -> type.types.any { canDrop(it) }
     }
   }
 
@@ -143,15 +143,15 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         if (graph == null) {
           JTCSharedType(javaType)//.union(JTCNoProtocolType(javaType, false))
         } else {
-          JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph))
+          JTCSharedType(javaType).union(JTCLinearType(javaType, graph))
         }
       }
       // is JTCNoProtocolType -> JTCSharedType(type.javaType).union(type)
-      is JTCUnknownStateType -> JTCSharedType(type.javaType).union(type)
-      is JTCStateType -> JTCSharedType(type.javaType).union(JTCUnknownStateType(type.javaType, type.graph))
+      is JTCLinearType -> JTCSharedType(type.javaType).union(type)
+      is JTCStateType -> JTCSharedType(type.javaType).union(JTCLinearType(type.javaType, type.graph))
       is JTCBottomType -> JTCBottomType.SINGLETON
       is JTCUnionType -> JTCType.createUnion(type.types.map { invariant(it) })
-      //is JTCIntersectionType -> JTCType.createIntersection(type.types.map { invariant(it) })
+      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { invariant(it) })
     }
   }
 }

@@ -58,18 +58,18 @@ class Inference(
       newTargetType = typeToAssign
       succeeded = true // Checking that the method can be called in this state is performed later
     } else {
-      typeToAssign = pre[rightRef].type.let {
-        // If the expected type of a parameter/return is shared, and we can drop the object now
-        if ((node is ParamAssign || node is Return) && targetType is JTCSharedType && typecheckUtils.canDrop(it)) {
-          if (typecheckUtils.isInDroppableStateNotEnd(it)) {
-            inference.addWarning(node, "This object will be dropped")
-          }
-          it.toShared()
-        } else it
-      }
+      typeToAssign = pre[rightRef].type
       typeInExpr = pre[rightRef].type.toShared()
-      newTargetType = Subtyping.upcast(typeToAssign, targetType)
-      succeeded = typeToAssign is JTCBottomType || newTargetType !is JTCBottomType
+      succeeded = Subtyping.subtype(typeToAssign, targetType)
+      newTargetType = if (succeeded) Subtyping.upcast(typeToAssign, targetType) else JTCBottomType.SINGLETON
+
+      // If the expected type of a parameter/return is shared, and we can drop the object now
+      // FIXME
+      if ((node is ParamAssign || node is Return) && Subtyping.subtype(targetType, targetType.toShared()) && typecheckUtils.isInDroppableStateNotEnd(typeToAssign)) {
+        // We want to report a warning if we have an object where some actions are allowed,
+        // but we are assigning it to a type that does not allow those operations
+        inference.addWarning(node, "This object will be dropped")
+      }
     }
 
     post[leftRef] = newTargetType

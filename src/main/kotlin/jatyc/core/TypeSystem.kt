@@ -65,16 +65,16 @@ private fun createIntersection(sequence: Sequence<JTCType>): JTCType {
 private fun areExclusive(a: JTCType, b: JTCType): Boolean {
   return when (a) {
     // is JTCNoProtocolType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType || ((b is JTCUnknownStateType || b is JTCStateType) && a.exact)
-    is JTCUnknownStateType,
+    is JTCLinearType,
     is JTCStateType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType /*|| (b is JTCNoProtocolType && b.exact)*/
-    is JTCSharedType -> b is JTCPrimitiveType || b is JTCNullType || /*b is JTCNoProtocolType ||*/ b is JTCUnknownStateType || b is JTCStateType
-    is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || /*b is JTCNoProtocolType ||*/ b is JTCUnknownStateType || b is JTCStateType
-    is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || /*b is JTCNoProtocolType ||*/ b is JTCUnknownStateType || b is JTCStateType
+    is JTCSharedType -> b is JTCPrimitiveType || b is JTCNullType || /*b is JTCNoProtocolType ||*/ b is JTCLinearType || b is JTCStateType
+    is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || /*b is JTCNoProtocolType ||*/ b is JTCLinearType || b is JTCStateType
+    is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || /*b is JTCNoProtocolType ||*/ b is JTCLinearType || b is JTCStateType
     else -> false
   }
 }
 
-private fun attemptDowncast(a: JTCStateType, b: JTCUnknownStateType): JTCType? {
+private fun attemptDowncast(a: JTCStateType, b: JTCLinearType): JTCType? {
   // FIXME
   if (b.javaType.isSubtype(a.javaType)) {
     if (a.state == a.graph.getInitialState()) {
@@ -97,10 +97,10 @@ sealed class JTCType {
   open fun intersect(other: JTCType): JTCType {
     if (this === other) return this
     if (areExclusive(this, other)) return JTCBottomType.SINGLETON
-    if (this is JTCStateType && other is JTCUnknownStateType) {
+    if (this is JTCStateType && other is JTCLinearType) {
       attemptDowncast(this, other)?.let { return@intersect it }
     }
-    if (this is JTCUnknownStateType && other is JTCStateType) {
+    if (this is JTCLinearType && other is JTCStateType) {
       attemptDowncast(other, this)?.let { return@intersect it }
     }
     return when {
@@ -127,8 +127,8 @@ sealed class JTCType {
       is JTCSharedType -> false
       is JTCPrimitiveType,
       is JTCNullType,
-      // is JTCNoProtocolType,
-      is JTCUnknownStateType,
+        // is JTCNoProtocolType,
+      is JTCLinearType,
       is JTCStateType,
       is JTCBottomType -> true
       is JTCUnionType -> types.all { it.requiresLinear() }
@@ -144,7 +144,7 @@ sealed class JTCType {
       is JTCSharedType,
       is JTCBottomType -> this
       // is JTCNoProtocolType -> JTCSharedType(javaType)
-      is JTCUnknownStateType -> JTCSharedType(javaType)
+      is JTCLinearType -> JTCSharedType(javaType)
       is JTCStateType -> JTCSharedType(javaType)
       is JTCUnionType -> createUnion(unionSeq(types.map { it.toShared() }))
       // Since "types" does not include union types, "toShared" will also not produce union types
@@ -157,7 +157,7 @@ sealed class JTCType {
     return if (nullable) this.union(JTCNullType.SINGLETON) else this
   }
 
-  fun replace(state1: JTCStateType, state2: JTCStateType): JTCType {
+  private fun replace(state1: JTCStateType, state2: JTCStateType): JTCType {
     return when (this) {
       is JTCUnknownType,
       is JTCPrimitiveType,
@@ -165,7 +165,7 @@ sealed class JTCType {
       is JTCSharedType,
       is JTCBottomType -> this
       // is JTCNoProtocolType -> this
-      is JTCUnknownStateType -> this
+      is JTCLinearType -> this
       is JTCStateType -> if (this == state1) state2 else this
       is JTCUnionType -> createUnion(types.map { it.replace(state1, state2) })
       is JTCIntersectionType -> createIntersection(types.map { it.replace(state1, state2) })
@@ -256,11 +256,11 @@ class JTCStateType internal constructor(val javaType: JavaType, val graph: Graph
   override fun format() = "State{$javaType, ${state.format()}}"
 }
 
-class JTCUnknownStateType internal constructor(val javaType: JavaType, val graph: Graph) : JTCType() {
+class JTCLinearType internal constructor(val javaType: JavaType, val graph: Graph) : JTCType() {
 
   override fun equals(other: Any?) = when {
     this === other -> true
-    other is JTCUnknownStateType -> javaType == other.javaType && graph == other.graph
+    other is JTCLinearType -> javaType == other.javaType && graph == other.graph
     else -> false
   }
 
@@ -270,7 +270,7 @@ class JTCUnknownStateType internal constructor(val javaType: JavaType, val graph
     return result
   }
 
-  override fun toString() = "JTCUnknownStateType{${javaType}}"
+  override fun toString() = "JTCLinearType{${javaType}}"
   override fun format() = "State{$javaType, ?}"
 }
 
@@ -390,7 +390,7 @@ private object JTCTypeFormatter {
       is JTCIntersectionType -> 3
       is JTCSharedType -> 4
       // is JTCNoProtocolType -> 5
-      is JTCUnknownStateType -> 6
+      is JTCLinearType -> 6
       is JTCStateType -> 7
       is JTCNullType -> 8
       is JTCPrimitiveType -> 9
@@ -407,7 +407,7 @@ private object JTCTypeFormatter {
           // t1 is JTCIntersectionType && t2 is JTCIntersectionType -> t1.types.size - t2.types.size
           t1 is JTCSharedType && t2 is JTCSharedType -> t1.javaType.toString().compareTo(t2.javaType.toString())
           // t1 is JTCNoProtocolType && t2 is JTCNoProtocolType -> t1.javaType.toString().compareTo(t2.javaType.toString())
-          t1 is JTCUnknownStateType && t2 is JTCUnknownStateType -> t1.javaType.toString().compareTo(t2.javaType.toString())
+          t1 is JTCLinearType && t2 is JTCLinearType -> t1.javaType.toString().compareTo(t2.javaType.toString())
           t1 is JTCStateType && t2 is JTCStateType -> {
             val c = t1.javaType.toString().compareTo(t2.javaType.toString())
             if (c == 0) {
