@@ -60,12 +60,12 @@ class Inference(
     } else {
       typeToAssign = pre[rightRef].type
       typeInExpr = pre[rightRef].type.toShared()
-      succeeded = Subtyping.subtype(typeToAssign, targetType)
-      newTargetType = if (succeeded) Subtyping.upcast(typeToAssign, targetType) else JTCBottomType.SINGLETON
+      succeeded = Subtyping.isSubtype(typeToAssign, targetType)
+      newTargetType = typeToAssign.intersect(targetType)
 
       // If the expected type of a parameter/return is shared, and we can drop the object now
       // FIXME
-      if ((node is ParamAssign || node is Return) && Subtyping.subtype(targetType, targetType.toShared()) && typecheckUtils.isInDroppableStateNotEnd(typeToAssign)) {
+      if ((node is ParamAssign || node is Return) && Subtyping.isSubtype(targetType, targetType.toShared()) && typecheckUtils.isInDroppableStateNotEnd(typeToAssign)) {
         // We want to report a warning if we have an object where some actions are allowed,
         // but we are assigning it to a type that does not allow those operations
         inference.addWarning(node, "This object will be dropped")
@@ -348,7 +348,7 @@ class Inference(
         } else {
           val exprRef = Reference.make(node.expr)
           val currentType = pre[exprRef].type
-          val newType = Subtyping.forceCast(currentType, node.type)
+          val newType = currentType.intersect(node.type)
           post[exprRef] = newType
 
           if (currentType is JTCBottomType || newType !is JTCBottomType) {
@@ -360,6 +360,7 @@ class Inference(
               inference.addWarning(node, "Unsafe cast")
             }
           } else {
+            // The cast is impossible
             inference.errors[node] = "Cannot perform cast from ${currentType.format()} to ${node.type.format()}"
           }
         }

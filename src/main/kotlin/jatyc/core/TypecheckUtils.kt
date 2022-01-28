@@ -45,7 +45,6 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCPrimitiveType,
       is JTCNullType -> false
       is JTCSharedType,
-      // is JTCNoProtocolType,
       is JTCLinearType -> call.methodExpr.isAnytime
       is JTCStateType -> {
         val env = type.graph.getEnv()
@@ -63,28 +62,30 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCPrimitiveType,
       is JTCNullType -> JTCBottomType.SINGLETON
       is JTCSharedType -> if (call.methodExpr.isAnytime) type else JTCBottomType.SINGLETON
-      // is JTCNoProtocolType -> if (call.methodExpr.isAnytime) type else JTCBottomType.SINGLETON
       is JTCLinearType -> type
-      is JTCStateType -> if (call.methodExpr.isAnytime) type else JTCType.createUnion(refineState(type, call, predicate))
+      is JTCStateType -> if (call.methodExpr.isAnytime) type else refineState(type, call, predicate)
       is JTCBottomType -> type
       is JTCUnionType -> JTCType.createUnion(type.types.map { refine(it, call, predicate) })
-      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) }) // TODO
+      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) })
     }
   }
 
-  private fun refineState(type: JTCStateType, call: MethodCall, predicate: (String) -> Boolean): List<JTCType> {
+  private fun refineState(type: JTCStateType, call: MethodCall, predicate: (String) -> Boolean): JTCType {
     val method = call.methodExpr
     val env = type.graph.getEnv()
     // Given a current state, produce a set of possible destination states
     return when (val dest = type.state.normalizedTransitions.entries.find { sameMethod(env, method, it.key) }?.value) {
-      is State -> listOf(JTCStateType(type.javaType, type.graph, dest))
-      is DecisionState -> dest.normalizedTransitions.entries.filter { predicate(it.key.label) }.map { JTCStateType(type.javaType, type.graph, it.value) }
-      // The method call is not allowed in this state,
-      // so return an empty list (imagine this as the bottom type).
-      // The union of some type T with the bottom type, is T,
-      // which is fine. The type-checker will later ensure a call is safe
-      // by checking that the method is available in all states.
-      else -> listOf()
+      is State -> JTCStateType(type.javaType, type.graph, dest)
+      is DecisionState -> JTCType.createUnion(dest.normalizedTransitions.entries.filter { predicate(it.key.label) }.map { JTCStateType(type.javaType, type.graph, it.value) })
+      else -> if (type.javaType.isFinal()) {
+        // If the Java class is final, then there is no substate which would allow for this call
+        // So return an empty list (representing the bottom type)
+        JTCBottomType.SINGLETON
+      } else {
+        // If the Java class is not final, then there might be a substate which would allow for this call
+        // So return an approximation
+        JTCLinearType(type.javaType, type.graph)
+      }
     }
   }
 
@@ -131,7 +132,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
   }
 
   // This returns the least upper bound type possible for a value with a given type
-  // This method should not be used to compute the upper bound of a variable/field, only of a specific value!
+  // This method should not be used to compute the upper bound of a variable/field, only of a specific object!
   fun invariant(type: JTCType): JTCType {
     return when (type) {
       is JTCUnknownType -> type

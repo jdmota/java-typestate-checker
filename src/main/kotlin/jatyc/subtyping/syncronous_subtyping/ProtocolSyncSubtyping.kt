@@ -2,16 +2,16 @@ package jatyc.subtyping.syncronous_subtyping
 
 import jatyc.typestate.graph.*
 
-class Subtyper {
+class ProtocolSyncSubtyping {
 
   companion object {
     private val cache: MutableMap<Pair<AbstractState<*>, AbstractState<*>>, Boolean> = mutableMapOf()
 
     fun isSubtype(sub: AbstractState<*>, sup: AbstractState<*>): Boolean {
-      return cache.computeIfAbsent(Pair(sub, sup)) { newSubtyping(sub, sup) }
+      return cache.computeIfAbsent(Pair(sub, sup)) { isSubtypingHelper(sub, sup) }
     }
 
-    private fun newSubtyping(derived: AbstractState<*>, base: AbstractState<*>): Boolean {
+    private fun isSubtypingHelper(derived: AbstractState<*>, base: AbstractState<*>): Boolean {
       if (derived == base) return true
       return when {
         derived is State && base is State -> {

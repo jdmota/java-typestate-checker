@@ -64,45 +64,24 @@ private fun createIntersection(sequence: Sequence<JTCType>): JTCType {
 
 private fun areExclusive(a: JTCType, b: JTCType): Boolean {
   return when (a) {
-    // is JTCNoProtocolType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType || ((b is JTCUnknownStateType || b is JTCStateType) && a.exact)
-    is JTCLinearType,
-    is JTCStateType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType /*|| (b is JTCNoProtocolType && b.exact)*/
-    is JTCSharedType -> b is JTCPrimitiveType || b is JTCNullType || /*b is JTCNoProtocolType ||*/ b is JTCLinearType || b is JTCStateType
-    is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || /*b is JTCNoProtocolType ||*/ b is JTCLinearType || b is JTCStateType
-    is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || /*b is JTCNoProtocolType ||*/ b is JTCLinearType || b is JTCStateType
+    is JTCLinearType -> b is JTCPrimitiveType || b is JTCNullType
+    is JTCStateType -> b is JTCPrimitiveType || b is JTCNullType || (b is JTCSharedType && !a.state.canDropHere())
+    is JTCSharedType -> b is JTCPrimitiveType || b is JTCNullType || (b is JTCStateType && !b.state.canDropHere())
+    is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || b is JTCLinearType || b is JTCStateType
+    is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || b is JTCLinearType || b is JTCStateType
     else -> false
   }
-}
-
-private fun attemptDowncast(a: JTCStateType, b: JTCLinearType): JTCType? {
-  // FIXME
-  if (b.javaType.isSubtype(a.javaType)) {
-    if (a.state == a.graph.getInitialState()) {
-      return JTCStateType(b.javaType, b.graph, b.graph.getInitialState())
-    }
-    if (a.state.isEnd()) {
-      return JTCStateType(b.javaType, b.graph, b.graph.getEndState())
-    }
-  }
-  return null
 }
 
 sealed class JTCType {
   abstract fun format(): String
 
-  fun isSubtype(other: JTCType): Boolean {
-    return Subtyping.subtype(this, other)
-  }
+  fun isSubtype(other: JTCType) = Subtyping.isSubtype(this, other)
 
   open fun intersect(other: JTCType): JTCType {
     if (this === other) return this
     if (areExclusive(this, other)) return JTCBottomType.SINGLETON
-    if (this is JTCStateType && other is JTCLinearType) {
-      attemptDowncast(this, other)?.let { return@intersect it }
-    }
-    if (this is JTCLinearType && other is JTCStateType) {
-      attemptDowncast(other, this)?.let { return@intersect it }
-    }
+    Subtyping.refineIntersection(this, other)?.let { return@intersect it }
     return when {
       // We need to ensure that there are no unions in intersections
       this is JTCUnionType -> createUnion(unionSeq(this.types.map { it.intersect(other) }))
@@ -127,7 +106,6 @@ sealed class JTCType {
       is JTCSharedType -> false
       is JTCPrimitiveType,
       is JTCNullType,
-        // is JTCNoProtocolType,
       is JTCLinearType,
       is JTCStateType,
       is JTCBottomType -> true
@@ -143,7 +121,6 @@ sealed class JTCType {
       is JTCNullType,
       is JTCSharedType,
       is JTCBottomType -> this
-      // is JTCNoProtocolType -> JTCSharedType(javaType)
       is JTCLinearType -> JTCSharedType(javaType)
       is JTCStateType -> JTCSharedType(javaType)
       is JTCUnionType -> createUnion(unionSeq(types.map { it.toShared() }))
@@ -155,21 +132,6 @@ sealed class JTCType {
 
   fun toMaybeNullable(nullable: Boolean): JTCType {
     return if (nullable) this.union(JTCNullType.SINGLETON) else this
-  }
-
-  private fun replace(state1: JTCStateType, state2: JTCStateType): JTCType {
-    return when (this) {
-      is JTCUnknownType,
-      is JTCPrimitiveType,
-      is JTCNullType,
-      is JTCSharedType,
-      is JTCBottomType -> this
-      // is JTCNoProtocolType -> this
-      is JTCLinearType -> this
-      is JTCStateType -> if (this == state1) state2 else this
-      is JTCUnionType -> createUnion(types.map { it.replace(state1, state2) })
-      is JTCIntersectionType -> createIntersection(types.map { it.replace(state1, state2) })
-    }
   }
 
   companion object {
