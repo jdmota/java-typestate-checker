@@ -59,16 +59,11 @@ class Inference(
       typeInExpr = pre[rightRef].type.toShared()
       succeeded = Subtyping.isSubtype(typeToAssign, targetType)
       newTargetType = typeToAssign.intersect(targetType)
-      // println("\ntargetType = $targetType")
-      // println("typeToAssign = $typeToAssign")
-      // println("typeInExpr = $typeInExpr")
-      // println("succeeded = $succeeded")
-      // println("newTargetType = $newTargetType\n")
 
       if (succeeded && typecheckUtils.isInDroppableStateNotEnd(typeToAssign) && Subtyping.isSubtype(targetType, targetType.toShared())) {
         // We want to report a warning if we have an object in a droppable state, with more actions that can be made
         // But that is being passed to a shared parameter
-        inference.addWarning(node, "This object will be dropped")
+        inference.addWarning(node, "Object [${rightRef.format()}] with type ${typeToAssign.format()} will be dropped")
       }
     }
 
