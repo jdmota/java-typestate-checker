@@ -224,7 +224,7 @@ public class Main {
     }
     // :: warning: (obj: Shared{java.lang.String})
     if (obj instanceof Base) {
-      // :: warning: (obj: (Shared{Base} & Shared{java.lang.String}))
+      // :: warning: (obj: Bottom)
       Base b = (Base) obj;
     } else {
       // :: warning: (obj: Shared{java.lang.String})

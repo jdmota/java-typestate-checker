@@ -83,9 +83,30 @@ object Subtyping {
 
   private fun areExclusive(a: JTCType, b: JTCType): Boolean {
     return when (a) {
-      is JTCLinearType -> b is JTCPrimitiveType || b is JTCNullType
-      is JTCStateType -> b is JTCPrimitiveType || b is JTCNullType || (b is JTCSharedType && !a.state.canDropHere())
-      is JTCSharedType -> b is JTCPrimitiveType || b is JTCNullType || (b is JTCStateType && !b.state.canDropHere())
+      is JTCSharedType -> when (b) {
+        is JTCPrimitiveType,
+        is JTCNullType -> true
+        is JTCSharedType -> areNotRelated(a.javaType, b.javaType)
+        is JTCLinearType -> areNotRelated(a.javaType, b.javaType)
+        is JTCStateType -> !b.state.canDropHere() || areNotRelated(a.javaType, b.javaType)
+        else -> false
+      }
+      is JTCLinearType -> when (b) {
+        is JTCPrimitiveType,
+        is JTCNullType -> true
+        is JTCSharedType -> areNotRelated(a.javaType, b.javaType)
+        is JTCLinearType -> areNotRelated(a.javaType, b.javaType)
+        is JTCStateType -> areNotRelated(a.javaType, b.javaType)
+        else -> false
+      }
+      is JTCStateType -> when (b) {
+        is JTCPrimitiveType,
+        is JTCNullType -> true
+        is JTCSharedType -> !a.state.canDropHere() || areNotRelated(a.javaType, b.javaType)
+        is JTCLinearType -> areNotRelated(a.javaType, b.javaType)
+        is JTCStateType -> areNotRelated(a.javaType, b.javaType)
+        else -> false
+      }
       is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || b is JTCLinearType || b is JTCStateType
       is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || b is JTCLinearType || b is JTCStateType
       else -> false
@@ -117,6 +138,13 @@ object Subtyping {
       )
     }
     return JTCBottomType.SINGLETON
+  }
+
+  private fun areNotRelated(a: JavaType, b: JavaType): Boolean {
+    // Two types are not related if they are not subtypes of one another
+    // And if one of them is final
+    // This means that the intersection of both must be empty
+    return !a.isSubtype(b) && !b.isSubtype(a) && (a.isFinal() || b.isFinal())
   }
 
 }
