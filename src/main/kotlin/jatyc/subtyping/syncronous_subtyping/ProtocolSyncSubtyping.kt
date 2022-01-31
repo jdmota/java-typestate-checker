@@ -8,7 +8,14 @@ class ProtocolSyncSubtyping {
     private val cache: MutableMap<Pair<AbstractState<*>, AbstractState<*>>, Boolean> = mutableMapOf()
 
     fun isSubtype(sub: AbstractState<*>, sup: AbstractState<*>): Boolean {
-      return cache.computeIfAbsent(Pair(sub, sup)) { isSubtypingHelper(sub, sup) }
+      val pair = Pair(sub, sup)
+      var value = cache[pair]
+      if (value == null) {
+        cache[pair] = true // Set to true to avoid infinite recursion
+        value = isSubtypingHelper(sub, sup)
+        cache[pair] = value // Cache now the actual result
+      }
+      return value
     }
 
     private fun isSubtypingHelper(derived: AbstractState<*>, base: AbstractState<*>): Boolean {
