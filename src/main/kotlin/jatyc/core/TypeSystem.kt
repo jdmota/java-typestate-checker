@@ -59,18 +59,7 @@ private fun createIntersection(sequence: Sequence<JTCType>): JTCType {
   // If list has only one type, return it
   if (list.size == 1) return list.first()
   // Create upper bound
-  return JTCUnionType(list.toSet())
-}
-
-private fun areExclusive(a: JTCType, b: JTCType): Boolean {
-  return when (a) {
-    is JTCLinearType -> b is JTCPrimitiveType || b is JTCNullType
-    is JTCStateType -> b is JTCPrimitiveType || b is JTCNullType || (b is JTCSharedType && !a.state.canDropHere())
-    is JTCSharedType -> b is JTCPrimitiveType || b is JTCNullType || (b is JTCStateType && !b.state.canDropHere())
-    is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || b is JTCLinearType || b is JTCStateType
-    is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || b is JTCLinearType || b is JTCStateType
-    else -> false
-  }
+  return JTCIntersectionType(list.toSet())
 }
 
 sealed class JTCType {
@@ -80,7 +69,6 @@ sealed class JTCType {
 
   open fun intersect(other: JTCType): JTCType {
     if (this === other) return this
-    if (areExclusive(this, other)) return JTCBottomType.SINGLETON
     Subtyping.refineIntersection(this, other)?.let { return@intersect it }
     return when {
       // We need to ensure that there are no unions in intersections
@@ -97,20 +85,6 @@ sealed class JTCType {
       this
     } else {
       createUnion(unionSeq(this, other))
-    }
-  }
-
-  fun requiresLinear(): Boolean {
-    return when (this) {
-      is JTCUnknownType -> false
-      is JTCSharedType -> false
-      is JTCPrimitiveType,
-      is JTCNullType,
-      is JTCLinearType,
-      is JTCStateType,
-      is JTCBottomType -> true
-      is JTCUnionType -> types.all { it.requiresLinear() }
-      is JTCIntersectionType -> types.any { it.requiresLinear() }
     }
   }
 
