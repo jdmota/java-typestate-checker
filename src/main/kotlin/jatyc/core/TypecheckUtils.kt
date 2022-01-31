@@ -61,7 +61,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCUnknownType -> type
       is JTCPrimitiveType,
       is JTCNullType -> JTCBottomType.SINGLETON
-      is JTCSharedType -> if (call.methodExpr.isAnytime) type else JTCBottomType.SINGLETON
+      is JTCSharedType -> if (call.methodExpr.isAnytime) type else JTCBottomType.SINGLETON // TODO in the worst case, we are in a droppable state
       is JTCLinearType -> type
       is JTCStateType -> if (call.methodExpr.isAnytime) type else refineState(type, call, predicate)
       is JTCBottomType -> type

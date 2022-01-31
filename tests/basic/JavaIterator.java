@@ -6,7 +6,7 @@ import jatyc.lib.Nullable;
 import java.util.function.Supplier;
 
 @Typestate("JavaIterator.protocol")
-public class JavaIterator {
+public final class JavaIterator {
 
   public boolean hasNext() {
     return false;

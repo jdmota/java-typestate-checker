@@ -1,7 +1,7 @@
 import jatyc.lib.Typestate;
 
 @Typestate("File.protocol")
-class File {
+final class File {
 
   public FileStatus open() {
     // :: warning: (FileStatus.OK: Shared{FileStatus})
@@ -153,11 +153,11 @@ class File {
       f.hasNext();
       boolean bool = false;
       while (bool) {
-        // :: warning: (f: State{File, Close} | State{File, Open} | State{File, Read})
-        // :: error: (Cannot call [read] on State{File, Close} | State{File, Open} | State{File, Read})
+        // :: warning: (f: State{File, Close})
+        // :: error: (Cannot call [read] on State{File, Close})
         f.read();
       }
-      // :: warning: (f: State{File, Close} | State{File, Open} | State{File, Read})
+      // :: warning: (f: State{File, Close})
       f.close();
     }
   }

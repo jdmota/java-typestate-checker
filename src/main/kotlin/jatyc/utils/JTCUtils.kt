@@ -18,6 +18,7 @@ import jatyc.lib.*
 import jatyc.typestate.TypestateProcessor
 import jatyc.typestate.graph.Graph
 import org.checkerframework.framework.source.SourceChecker
+import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.BugInCF
 import org.checkerframework.javacutil.TreeUtils
@@ -270,6 +271,12 @@ class JTCUtils(val checker: SourceChecker) {
       val value = AnnotationUtils.getElementValueArray(annotationMirror, "value", String::class.java, false)
       if (value.isEmpty()) return null
       return value
+    }
+
+    fun hasAnnotation(type: AnnotatedTypeMirror, annotation: String): Boolean {
+      return type.annotations.any {
+        AnnotationUtils.annotationName(it) == annotation
+      }
     }
 
     fun isBoolean(type: TypeMirror): Boolean {

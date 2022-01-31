@@ -95,7 +95,7 @@ object Subtyping {
   private fun attemptDowncast(from: JTCStateType, to: JTCLinearType): JTCType? {
     // If downcasting...
     if (to.javaType.isSubtype(from.javaType)) {
-      return JTCType.createIntersection(
+      return JTCType.createUnion(
         to.graph.getAllConcreteStates()
           .filter { ProtocolSyncSubtyping.isSubtype(it, from.state) }
           .map { JTCStateType(to.javaType, to.graph, it) }

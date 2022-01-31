@@ -59,6 +59,11 @@ class Inference(
       typeInExpr = pre[rightRef].type.toShared()
       succeeded = Subtyping.isSubtype(typeToAssign, targetType)
       newTargetType = typeToAssign.intersect(targetType)
+      // println("\ntargetType = $targetType")
+      // println("typeToAssign = $typeToAssign")
+      // println("typeInExpr = $typeInExpr")
+      // println("succeeded = $succeeded")
+      // println("newTargetType = $newTargetType\n")
 
       if (succeeded && typecheckUtils.isInDroppableStateNotEnd(typeToAssign) && Subtyping.isSubtype(targetType, targetType.toShared())) {
         // We want to report a warning if we have an object in a droppable state, with more actions that can be made
@@ -571,7 +576,7 @@ class Inference(
 
   fun analyzeEnd(func: FuncDeclaration, store: Store) {
     val thisRef = Reference.makeThis(func)
-    val params = func.parameters.associate { Pair(Reference.make(it.id), it.ensures) }
+    val params = func.parameters.associateBy { Reference.make(it.id) }
 
     val funcErrors = mutableListOf<String>()
     inference.completionErrors[func] = funcErrors
@@ -595,10 +600,14 @@ class Inference(
       }
     }
 
-    for ((ref, expected) in params) {
+    for ((ref, param) in params) {
       val actual = store[ref].type
-      if (!actual.isSubtype(expected)) {
-        funcErrors.add("Type of parameter [${ref.format()}] is ${actual.format()}, expected ${expected.format()}}")
+      if (!actual.isSubtype(param.ensures)) {
+        if (param.isThis || param.hasEnsures) {
+          funcErrors.add("Type of parameter [${ref.format()}] is ${actual.format()}, expected ${param.ensures.format()}}")
+        } else {
+          funcErrors.add("[${ref.format()}] did not complete its protocol (found: ${actual.format()})")
+        }
       }
     }
   }

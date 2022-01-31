@@ -43,7 +43,6 @@ public class Annotations {
     }
   }
 
-  // :: error: (Type of parameter [it] is State{JavaIterator, Next}, expected State{JavaIterator, HasNext}})
   public static void use3(@Requires("Next") @Ensures("HasNext") final JavaIterator it) {
 
   }

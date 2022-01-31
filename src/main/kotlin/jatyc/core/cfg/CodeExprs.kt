@@ -173,9 +173,9 @@ class MethodCall(val methodExpr: FuncInterface, val parameters: List<ParamAssign
   }
 }
 
-class FuncParam(val id: IdLHS, val requires: JTCType, val ensures: JTCType, val isThis: Boolean, val javaType: JavaType) : AdaptedThing() {
+class FuncParam(val id: IdLHS, val requires: JTCType, val ensures: JTCType, val isThis: Boolean, val javaType: JavaType, val hasEnsures: Boolean) : AdaptedThing() {
   override fun toString(): String {
-    return "Param{$id, ${requires.format()}, ${ensures.format()}, isThis=$isThis}"
+    return "Param{$id, ${requires.format()}, ${ensures.format()}, isThis=$isThis, hasEnsures=$hasEnsures}"
   }
 }
 
