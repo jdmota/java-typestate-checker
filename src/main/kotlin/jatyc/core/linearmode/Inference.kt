@@ -49,7 +49,7 @@ class Inference(
     val succeeded: Boolean
 
     if (thisParam) {
-      val move = TypecheckUtils.thisRequiresLinear(leftRef, targetType)
+      val move = TypecheckUtils.requiresLinear(leftRef, targetType)
       typeToAssign = if (move) pre[rightRef].type else pre[rightRef].type.toShared()
       typeInExpr = if (move) pre[rightRef].type.toShared() else pre[rightRef].type
       newTargetType = typeToAssign
@@ -60,7 +60,7 @@ class Inference(
       succeeded = Subtyping.isSubtype(typeToAssign, targetType)
       newTargetType = typeToAssign.intersect(targetType)
 
-      if (succeeded && typecheckUtils.isInDroppableStateNotEnd(typeToAssign) && Subtyping.isSubtype(targetType, targetType.toShared())) {
+      if (succeeded && typecheckUtils.isInDroppableStateNotEnd(typeToAssign) && !TypecheckUtils.requiresLinear(leftRef, targetType)) {
         // We want to report a warning if we have an object in a droppable state, with more actions that can be made
         // But that is being passed to a shared parameter
         inference.addWarning(node, "Object [${rightRef.format()}] with type ${typeToAssign.format()} will be dropped")
@@ -122,7 +122,7 @@ class Inference(
         val rightRef = Reference.make(node.right)
         // Do not allow field assignments unless the receiver object is "this" and we have linear access to it
         val targetType = when {
-          thisRef != null && leftRef.isFieldOf(thisRef) && (func.isConstructor || TypecheckUtils.thisRequiresLinear(thisRef, pre[thisRef].type)) ->
+          thisRef != null && leftRef.isFieldOf(thisRef) && (func.isConstructor || TypecheckUtils.requiresLinear(thisRef, pre[thisRef].type)) ->
             clazz!!.allFields(classAnalysis.classes).find { leftRef.isFieldOf(thisRef, it.id) }!!.type
           leftRef.isField() ->
             JTCBottomType.SINGLETON
@@ -239,7 +239,7 @@ class Inference(
             // Whatever is in the "parameter variable", restore it to the "parameter expression"
             // only if the method requested linear type
             // If the method did not request linear type, it means the linear permission is still in the expression
-            if (TypecheckUtils.thisRequiresLinear(argRef, param.requires)) {
+            if (TypecheckUtils.requiresLinear(argRef, param.requires)) {
               val argInfo = post[argRef]
               post[argRef] = argInfo.type.toShared()
               post[exprRef] = argInfo // Preserve conditional info!

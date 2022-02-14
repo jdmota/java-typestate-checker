@@ -12,6 +12,5 @@ public class Example1 {
 
   static void withdrawAttempt(@Requires("Attempt") BaseAccount b) {
     if (b.canWithdraw(15)) b.withdraw();
-    else b.deposit(100);
   }
 }

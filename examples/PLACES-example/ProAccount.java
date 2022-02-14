@@ -7,20 +7,26 @@ public class ProAccount extends BaseAccount {
   private final int transferFee = 5;
   private final int proAccountFee = 2;
 
-  public void deposit(int amount) {this.balance += (amount - proAccountFee);}
+  public void deposit(int amount) {
+    this.balance += amount - proAccountFee;
+  }
 
   public boolean canWithdraw(int amount) {
-    toWithdraw = amount + proAccountFee;
+    money = amount;
     return amount+proAccountFee <= balance;
   }
 
+  public void withdraw() {
+    balance -= proAccountFee + money;
+  }
+
   public boolean canTransfer(int amount) {
-    toWithdraw = amount + transferFee;
+    money = amount;
     return amount+transferFee <= balance;
   }
 
-  public void transfer(@Requires("Init") BaseAccount receiver) {
-    balance -= toWithdraw;
-    receiver.deposit(toWithdraw);
+  public void transfer(@Requires({"Init", "Attempt"}) BaseAccount target) {
+    target.deposit(money);
+    balance -= transferFee + money;
   }
 }

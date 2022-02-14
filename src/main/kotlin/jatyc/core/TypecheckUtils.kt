@@ -157,12 +157,8 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
   }
 
   companion object {
-    // To test if a method call requires a linear "this"
-    // "this" is special in that if it does not require linear access
-    // We do not give it to the method call
-    // The "thisRef" parameter is not actually used,
-    // but it is here to force us to only use this method where it makes sense
-    fun thisRequiresLinear(thisRef: Reference, type: JTCType): Boolean {
+    // This method is only used for checking if parameters may require linear types in any way
+    fun requiresLinear(ref: Reference, type: JTCType): Boolean {
       return when (type) {
         is JTCUnknownType,
         is JTCSharedType,
@@ -171,8 +167,8 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCLinearType,
         is JTCStateType,
         is JTCBottomType -> true
-        is JTCUnionType -> type.types.all { thisRequiresLinear(thisRef, it) }
-        is JTCIntersectionType -> type.types.any { thisRequiresLinear(thisRef, it) }
+        is JTCUnionType -> type.types.any { requiresLinear(ref, it) }
+        is JTCIntersectionType -> type.types.any { requiresLinear(ref, it) }
       }
     }
   }

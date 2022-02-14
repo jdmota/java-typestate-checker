@@ -4,16 +4,18 @@ import jatyc.lib.Typestate;
 public class BaseAccount {
 
   protected int balance = 0;
-  protected int toWithdraw = 0;
+  protected int money = 0;
 
-  public void login() {}
-
-  public void deposit(int amount) {balance += amount;}
+  public void deposit(int amount) {
+    balance += amount;
+  }
 
   public boolean canWithdraw(int amount) {
-    toWithdraw = amount;
+    money = amount;
     return amount <= balance;
   }
 
-  public void withdraw() {balance -= toWithdraw;}
+  public void withdraw() {
+    balance -= money;
+  }
 }
