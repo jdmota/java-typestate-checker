@@ -1,0 +1,20 @@
+typestate ProAccount {
+  Init = {
+    void deposit(int): Attempt
+  }
+
+  Attempt = {
+    boolean canWithdraw(int): <true: Withdraw, false: Init>,
+    boolean canTransfer(int): <true: Transfer, false: Init>,
+    void deposit(int): Attempt,
+    drop: end
+  }
+
+  Withdraw = {
+    void withdraw(): Attempt
+  }
+
+  Transfer = {
+    void transfer(BaseAccount): Attempt
+  }
+}

@@ -1,0 +1,15 @@
+typestate BaseAccount {
+  Init = {
+    void deposit(int): Attempt
+  }
+
+  Attempt = {
+    boolean canWithdraw(int): <true: Withdraw, false: Init>,
+    void deposit(int): Attempt,
+    drop: end
+  }
+
+  Withdraw = {
+    void withdraw(): Attempt
+  }
+}
