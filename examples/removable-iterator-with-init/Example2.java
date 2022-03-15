@@ -1,4 +1,4 @@
-public class Example3 {
+public class Example2 {
   public static void main(String[] args) {
     BaseIterator it = new BaseIterator();
     it.init(args);
