@@ -1,0 +1,12 @@
+typestate RemovableIterator {
+  HasNext = {
+    boolean hasNext(): <true: Next, false: end>
+  }
+  Next = {
+    Object next(): Remove
+  }
+  Remove = {
+    boolean hasNext(): <true: Next, false: end>,
+    void remove(): HasNext
+  }
+}
