@@ -2,7 +2,7 @@
 
 [Quick Start](#quick-start) | [Installation](#installation) | [Changelog](https://github.com/jdmota/java-typestate-checker/wiki/Changelog) | [Documentation](https://github.com/jdmota/java-typestate-checker/wiki/Documentation)
 
-**JaTyC** is a plugin for the Checker Framework. It allows one to statically check that class methods are called in a prescribed order, specified in a protocol file associated with that Java class with a `@Typestate` annotation. This tool was inspired in the [Mungo toolset](http://www.dcs.gla.ac.uk/research/mungo/index.html). It is a new implementation which includes new features and improvements over the current version of Mungo. A comparison table between Mungo and this tool is available [here](https://github.com/jdmota/java-typestate-checker/wiki/Mungo-comparison).
+**JaTyC** is a plugin for the Checker Framework. It is a purely transparent checker, i.e. does not modify the baseline Java compilation, that allows one to statically check that class methods are called in a prescribed order, specified in a protocol file associated with that Java class with a `@Typestate` annotation. This tool was inspired in the [Mungo toolset](http://www.dcs.gla.ac.uk/research/mungo/index.html). It is a new implementation which includes new features and improvements over the current version of Mungo. A comparison table between Mungo and this tool is available [here](https://github.com/jdmota/java-typestate-checker/wiki/Mungo-comparison).
 
 ## Features
 
