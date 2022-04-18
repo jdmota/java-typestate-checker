@@ -4,7 +4,6 @@ import mungo.lib.Typestate;
 // :: error: ([this.obj] did not complete its protocol (found: Shared{SomeObj} | State{SomeObj, ?}))
 public class Derived extends Base {
   public void remove() {
-    // :: warning: (this.obj: Bottom)
     this.obj.close();
   }
 }

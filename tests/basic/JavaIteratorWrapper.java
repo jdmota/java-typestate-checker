@@ -18,6 +18,7 @@ class JavaIteratorWrapper1 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
@@ -45,7 +46,6 @@ class JavaIteratorWrapper2 {
   }
 
   public String next() {
-    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -122,7 +122,6 @@ class JavaIteratorWrapper4 {
   }
 
   public String next() {
-    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -148,7 +147,6 @@ class JavaIteratorWrapper5 {
   }
 
   public String next() {
-    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -181,9 +179,7 @@ class JavaIteratorWrapper6 {
   }
 
   public String next() {
-    // :: error: (Cannot call own public method [hasNext])
     this.hasNext();
-    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -202,7 +198,9 @@ class JavaIteratorWrapper7 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, Next})
     // :: error: (Cannot call [hasNext] on Shared{JavaIterator} | State{JavaIterator, HasNext})
+    // :: error: (Cannot call [hasNext] on Shared{JavaIterator} | State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
@@ -214,7 +212,9 @@ class JavaIteratorWrapper7 {
 
   public @Ensures({"HasNext", "Next"}) JavaIterator getIterator() {
     // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: Shared{JavaIterator} | State{JavaIterator, Next})
     // :: error: (Incompatible return value: cannot cast from Shared{JavaIterator} | State{JavaIterator, HasNext} to State{JavaIterator, HasNext})
+    // :: error: (Incompatible return value: cannot cast from Shared{JavaIterator} | State{JavaIterator, Next} to State{JavaIterator, HasNext})
     return iterator;
   }
 
@@ -236,6 +236,7 @@ class JavaIteratorWrapper8 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
@@ -269,6 +270,7 @@ class JavaIteratorWrapper9 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
@@ -300,6 +302,7 @@ class JavaIteratorWrapper10 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
@@ -327,6 +330,7 @@ class JavaIteratorWrapper11 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
@@ -349,8 +353,9 @@ class JavaIteratorWrapperPropagation {
   }
 
   public boolean hasNext() {
-    // :: warning: (this.iterator: State{JavaIterator, HasNext} | State{JavaIterator, end})
-    // :: error: (Cannot call [hasNext] on State{JavaIterator, HasNext} | State{JavaIterator, end})
+    // :: warning: (this.iterator: State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: State{JavaIterator, Next} | State{JavaIterator, end})
+    // :: error: (Cannot call [hasNext] on State{JavaIterator, Next} | State{JavaIterator, end})
     iterator.hasNext();
     return true;
   }

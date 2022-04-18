@@ -60,14 +60,7 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
     val inference1 = classAnalysis.inference
     val inference2 = classAnalysis.inference.inference
 
-    for ((codeExpr, type) in inference1.debugTypes) {
-      val tree = inference2.getTree(codeExpr)
-      val root = inference2.getRoot(codeExpr)
-      checker.setCompilationRoot(root)
-      checker.reportWarning(tree, type)
-    }
-
-    for ((codeExpr, warnings) in inference1.warnings) {
+    for ((codeExpr, warnings) in inference1.warnings()) {
       val tree = inference2.getTree(codeExpr)
       val root = inference2.getRoot(codeExpr)
       checker.setCompilationRoot(root)
@@ -76,14 +69,7 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
       }
     }
 
-    for ((codeExpr, error) in inference1.errors) {
-      val tree = inference2.getTree(codeExpr)
-      val root = inference2.getRoot(codeExpr)
-      checker.setCompilationRoot(root)
-      checker.reportError(tree, error)
-    }
-
-    for ((codeExpr, errors) in inference1.completionErrors) {
+    for ((codeExpr, errors) in inference1.errors()) {
       val tree = inference2.getTree(codeExpr)
       val root = inference2.getRoot(codeExpr)
       checker.setCompilationRoot(root)
@@ -92,19 +78,7 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
       }
     }
 
-    for ((codeExpr, errors) in inference1.validationErrors) {
-      val tree = inference2.getTree(codeExpr)
-      val root = inference2.getRoot(codeExpr)
-      checker.setCompilationRoot(root)
-      for (error in errors) {
-        checker.reportError(tree, error)
-      }
-    }
-
-    inference1.warnings.clear()
-    inference1.errors.clear()
-    inference1.completionErrors.clear()
-    inference1.validationErrors.clear()
+    inference1.clearErrorsAndWarnings()
   }
 
   override fun visitAnnotation(node: AnnotationTree, p: Void?): Void? {

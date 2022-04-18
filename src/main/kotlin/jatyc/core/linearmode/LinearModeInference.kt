@@ -3,6 +3,7 @@ package jatyc.core.linearmode
 import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
+import jatyc.typestate.graph.State
 import java.util.*
 
 class LinearModeInference(
@@ -14,18 +15,61 @@ class LinearModeInference(
 ) : CfgVisitor<Store>() {
 
   val inference = Inference(cfChecker, hierarchy, typeIntroducer, typecheckUtils, this, classAnalysis)
-  val debugTypes = IdentityHashMap<CodeExpr, String>()
-  val warnings = IdentityHashMap<CodeExpr, MutableSet<String>>()
-  val errors = IdentityHashMap<CodeExpr, String>()
-  val completionErrors = IdentityHashMap<CodeExpr, List<String>>()
-  val validationErrors = IdentityHashMap<CodeExpr, List<String>>()
+  private val warnings = mutableMapOf<Pair<State, FuncDeclaration>?, IdentityHashMap<CodeExpr, MutableSet<String>>>()
+  private val errors = mutableMapOf<Pair<State, FuncDeclaration>?, IdentityHashMap<CodeExpr, MutableSet<String>>>()
+  private var errorContext: Stack<Pair<State, FuncDeclaration>?> = Stack()
 
-  fun addWarning(code: CodeExpr, warning: String) {
-    warnings.computeIfAbsent(code) { mutableSetOf() }.add(warning)
+  init {
+    // Error context stack is never empty to prevent exception when calling "peek"
+    errorContext.push(null)
   }
 
-  fun removeWarning(code: CodeExpr, warning: String) {
-    warnings[code]?.remove(warning)
+  fun <T> withErrorContext(state: State, func: FuncDeclaration, run: () -> T): T {
+    val pair = Pair(state, func)
+    errorContext.push(pair)
+    errors[pair] = IdentityHashMap() // reset
+    val result = run()
+    errorContext.pop()
+    return result
+  }
+
+  // We might analyze a code expression more than once because of loops
+  fun resetErrorsAndWarnings(code: CodeExpr) {
+    errors.computeIfAbsent(errorContext.peek()) { IdentityHashMap() }.remove(code)
+    warnings.computeIfAbsent(errorContext.peek()) { IdentityHashMap() }.remove(code)
+  }
+
+  fun addWarning(code: CodeExpr, warning: String) {
+    warnings.computeIfAbsent(errorContext.peek()) { IdentityHashMap() }.computeIfAbsent(code) { mutableSetOf() }.add(warning)
+  }
+
+  fun addError(code: CodeExpr, error: String) {
+    errors.computeIfAbsent(errorContext.peek()) { IdentityHashMap() }.computeIfAbsent(code) { mutableSetOf() }.add(error)
+  }
+
+  fun warnings(): Iterator<Map.Entry<CodeExpr, Set<String>>> {
+    val all = IdentityHashMap<CodeExpr, MutableSet<String>>()
+    for ((_, map) in warnings) {
+      for ((codeExpr, set) in map) {
+        all.computeIfAbsent(codeExpr) { mutableSetOf() }.addAll(set)
+      }
+    }
+    return all.iterator()
+  }
+
+  fun errors(): Iterator<Map.Entry<CodeExpr, Set<String>>> {
+    val all = IdentityHashMap<CodeExpr, MutableSet<String>>()
+    for ((_, map) in errors) {
+      for ((codeExpr, set) in map) {
+        all.computeIfAbsent(codeExpr) { mutableSetOf() }.addAll(set)
+      }
+    }
+    return all.iterator()
+  }
+
+  fun clearErrorsAndWarnings() {
+    warnings.clear()
+    errors.clear()
   }
 
   override fun defaultAssertion(node: SimpleNode): Store {

@@ -11,6 +11,7 @@ class JavaIteratorDroppableWrapper1 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: State{JavaIteratorDroppable, HasNext})
+    // :: warning: (this.iterator: State{JavaIteratorDroppable, Next})
     return iterator.hasNext();
   }
 
@@ -30,6 +31,7 @@ class JavaIteratorDroppableWrapper2 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: State{JavaIterator, HasNext})
+    // :: warning: (this.iterator: State{JavaIterator, Next})
     return iterator.hasNext();
   }
 
