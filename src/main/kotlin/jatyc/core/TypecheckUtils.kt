@@ -106,7 +106,8 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
     return when (val dest = type.state.normalizedTransitions.entries.find { methodSubtype(env, method, it.key) }?.value) {
       is State -> JTCStateType(type.javaType, type.graph, dest)
       is DecisionState -> JTCType.createUnion(dest.normalizedTransitions.entries.filter { predicate(it.key.label) }.map { JTCStateType(type.javaType, type.graph, it.value) })
-      else -> if (type.javaType.isFinal()) {
+      else -> JTCBottomType.SINGLETON
+      /*if (type.javaType.isFinal()) {
         // If the Java class is final, then there is no substate which would allow for this call
         // So return an empty list (representing the bottom type)
         JTCBottomType.SINGLETON
@@ -114,7 +115,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         // If the Java class is not final, then there might be a substate which would allow for this call
         // So return an approximation
         JTCLinearType(type.javaType, type.graph)
-      }
+      }*/
     }
   }
 

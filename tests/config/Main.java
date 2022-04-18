@@ -35,16 +35,15 @@ public class Main {
     }
   }
 
-  // :: error: ([it] did not complete its protocol (found: State{java.util.Iterator, ?}))
+  // :: error: ([it] did not complete its protocol (found: State{java.util.Iterator, Next}))
   public static void standardIteratorNotOk(Object[] args) {
     // :: warning: (args: Shared{java.lang.Object[]})
     Iterator<Object> it = Arrays.asList(args).iterator();
 
-    // :: warning: (it: State{java.util.Iterator, ?})
-    // :: error: (Cannot call [hasNext] on State{java.util.Iterator, ?})
+    // :: warning: (it: State{java.util.Iterator, HasNext})
     while (!it.hasNext()) {
-      // :: warning: (it: State{java.util.Iterator, ?})
-      // :: error: (Cannot call [next] on State{java.util.Iterator, ?})
+      // :: warning: (it: State{java.util.Iterator, end})
+      // :: error: (Cannot call [next] on State{java.util.Iterator, end})
       it.next();
     }
   }
