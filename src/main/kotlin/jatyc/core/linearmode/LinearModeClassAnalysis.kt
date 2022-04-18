@@ -102,7 +102,7 @@ class LinearModeClassAnalysis(
     fun getMethodToState(state: State): Map<FuncDeclaration, AbstractState<*>> {
       val map = mutableMapOf<FuncDeclaration, AbstractState<*>>()
       for ((methodNode, dest) in state.normalizedTransitions) {
-        val func = clazz.protocolMethods(classes).find { typecheckUtils.sameMethod(env, it, methodNode) }
+        val func = clazz.protocolMethods(classes).find { typecheckUtils.methodSubtype(env, it, methodNode) }
         if (func != null) {
           map[func] = dest
         }
@@ -266,7 +266,7 @@ class LinearModeClassAnalysis(
       val env = graph.getEnv()
 
       for (t in graph.getAllTransitions()) {
-        val method = clazz.allPublicMethods(classes).find { typecheckUtils.sameMethod(env, it, t) }
+        val method = clazz.allPublicMethods(classes).find { typecheckUtils.methodSubtype(env, it, t) }
         if (method == null) {
           inference.addError(clazz, "Method [${t.name}] is required by the typestate but not implemented")
         } else {

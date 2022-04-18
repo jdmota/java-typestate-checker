@@ -1,5 +1,6 @@
 package jatyc.core
 
+import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.comp.AttrContext
 import com.sun.tools.javac.comp.Env
 import jatyc.JavaTypestateChecker
@@ -12,30 +13,58 @@ import jatyc.typestate.graph.State
 class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val typeIntroducer: TypeIntroducer) {
   private val utils get() = cfChecker.utils
 
-  private fun resolveType(env: Env<AttrContext>, type: String): JTCType {
-    return utils.resolver.resolve(env, type)?.let { typeIntroducer.getUpperBound(it) } ?: JTCBottomType.SINGLETON
+  private fun resolveType(env: Env<AttrContext>, type: String): JavaType? {
+    return utils.resolver.resolve(env, type)?.let { typeIntroducer.getJavaType(it) }
   }
 
-  private fun sameParams(env: Env<AttrContext>, funcInterface: FuncInterface, node: MethodTransition): Boolean {
+  private fun isSubtype(a: JavaType?, b: JavaType?): Boolean {
+    if (a == null || b == null) return false
+    return a.isSubtype(b)
+  }
+
+  private fun paramsSubtype(env: Env<AttrContext>, funcInterface: FuncInterface, node: MethodTransition): Boolean {
     val params1 = funcInterface.parameters.dropWhile { it.isThis }
-    val params2 = node.args.map { resolveType(env, it.getName()) }
-    if (params1.size != params2.size) {
+    if (params1.size != node.args.size) {
       return false
     }
+    val params2 = node.args.map { resolveType(env, it.getName()) }
     val it2 = params2.iterator()
     for (param1 in params1) {
-      if (!param1.requires.isSubtype(it2.next())) {
+      // Input contravariance
+      if (!isSubtype(it2.next(), param1.javaType)) {
         return false
       }
     }
     return true
   }
 
-  fun sameMethod(env: Env<AttrContext>, funcInterface: FuncInterface, node: MethodTransition): Boolean {
+  fun methodSubtype(env: Env<AttrContext>, funcInterface: FuncInterface, node: MethodTransition): Boolean {
     // TODO deal with thrownTypes and typeArguments in the future
     return funcInterface.name == node.name &&
-      funcInterface.returnType.isSubtype(resolveType(env, node.returnType.getName())) &&
-      sameParams(env, funcInterface, node)
+      isSubtype(funcInterface.returnJavaType, resolveType(env, node.returnType.getName())) &&
+      paramsSubtype(env, funcInterface, node)
+  }
+
+  private fun paramsSubtype(env: Env<AttrContext>, params1: List<JavaType>, node: MethodTransition): Boolean {
+    val params2 = node.args.map { resolveType(env, it.getName()) }
+    if (params1.size != params2.size) {
+      return false
+    }
+    val it2 = params2.iterator()
+    for (param1 in params1) {
+      // Input contravariance
+      if (!isSubtype(it2.next(), param1)) {
+        return false
+      }
+    }
+    return true
+  }
+
+  fun methodSubtype(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: MethodTransition): Boolean {
+    // TODO deal with thrownTypes and typeArguments in the future
+    return sym.name.toString() == node.name &&
+      isSubtype(typeIntroducer.getJavaType(sym.type.returnType), resolveType(env, node.returnType.getName())) &&
+      paramsSubtype(env, sym.type.parameterTypes.map { typeIntroducer.getJavaType(it) }, node)
   }
 
   fun check(type: JTCType, call: MethodCall): Boolean {
@@ -48,7 +77,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCLinearType -> call.methodExpr.isAnytime
       is JTCStateType -> {
         val env = type.graph.getEnv()
-        call.methodExpr.isAnytime || type.state.normalizedTransitions.entries.any { sameMethod(env, method, it.key) }
+        call.methodExpr.isAnytime || type.state.normalizedTransitions.entries.any { methodSubtype(env, method, it.key) }
       }
       is JTCBottomType -> true
       is JTCUnionType -> type.types.all { check(it, call) }
@@ -74,7 +103,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
     val method = call.methodExpr
     val env = type.graph.getEnv()
     // Given a current state, produce a set of possible destination states
-    return when (val dest = type.state.normalizedTransitions.entries.find { sameMethod(env, method, it.key) }?.value) {
+    return when (val dest = type.state.normalizedTransitions.entries.find { methodSubtype(env, method, it.key) }?.value) {
       is State -> JTCStateType(type.javaType, type.graph, dest)
       is DecisionState -> JTCType.createUnion(dest.normalizedTransitions.entries.filter { predicate(it.key.label) }.map { JTCStateType(type.javaType, type.graph, it.value) })
       else -> if (type.javaType.isFinal()) {

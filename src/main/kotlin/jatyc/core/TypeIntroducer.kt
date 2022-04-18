@@ -76,6 +76,8 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     }
   }
 
+  fun getJavaType(type: TypeMirror) = hierarchy.get(type)
+
   fun getInitialType(type: TypeMirror): JTCType {
     val javaType = hierarchy.get(type)
     val graph = javaType.getGraph()

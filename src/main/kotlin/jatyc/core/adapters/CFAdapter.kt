@@ -206,7 +206,8 @@ private fun checkersFlowRuleToSimpleFlowRule(rule: Store.FlowRule): SimpleFlowRu
 class CFAdapter(
   val checker: JavaTypestateChecker,
   private val hierarchy: JavaTypesHierarchy,
-  private val typeIntroducer: TypeIntroducer
+  private val typeIntroducer: TypeIntroducer,
+  private val typecheckUtils: TypecheckUtils
 ) {
   private val utils get() = checker.utils
   private val processingEnv: ProcessingEnvironment = checker.processingEnvironment
@@ -225,7 +226,7 @@ class CFAdapter(
           true
         } else {
           val env = graph.getEnv()
-          graph.getAllTransitions().none { utils.methodUtils.sameErasedMethod(env, method, it.original) } ||
+          graph.getAllTransitions().none { typecheckUtils.methodSubtype(env, method, it) } ||
             AnnotatedTypes.overriddenMethods(utils.elementUtils, utils.factory.getProvider(), method).any { shouldBeAnytime(it.value as Symbol.MethodSymbol) }
         }
       }
@@ -254,7 +255,8 @@ class CFAdapter(
     } else {
       thisParam.plus(getParamTypes(it))
     }
-    FuncInterface(funcName, params, getReturnType(it).first, isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType())
+    val (returnType, returnJavaType) = getReturnType(it)
+    FuncInterface(funcName, params, returnType, returnJavaType, isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType())
   }
 
   fun setRoot(root: CompilationUnitTree) {
@@ -326,7 +328,7 @@ class CFAdapter(
           }
         }
       },
-      hierarchy.get(type.underlyingType)
+      hierarchy.get(type.returnType.underlyingType)
     )
   }
 
@@ -415,7 +417,7 @@ class CFAdapter(
     if (!hasDeclaredConstructor && initializers.isNotEmpty()) {
       if (isStatic) {
         val cfg = joinCFGs(initializers.map { it.first })
-        val method = FuncDeclaration("<init>", listOf(), cfg, JTCNullType.SINGLETON, isPublic = true, isAnytime = true, isPure = false, isAbstract = false).set(classTree).set(root)
+        val method = FuncDeclaration("<init>", listOf(), cfg, JTCNullType.SINGLETON, hierarchy.VOID, isPublic = true, isAnytime = true, isPure = false, isAbstract = false).set(classTree).set(root)
         methods.add(method)
         publicMethods.add(method)
       } else {
@@ -479,7 +481,7 @@ class CFAdapter(
 
   private fun transformMethod(method: JCTree.JCMethodDecl, cfg: SimpleCFG): FuncDeclaration {
     val func = funcInterfaces.transform(method.sym)
-    return FuncDeclaration(func.name, func.parameters, cfg, func.returnType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract).set(method).set(root)
+    return FuncDeclaration(func.name, func.parameters, cfg, func.returnType, func.returnJavaType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract).set(method).set(root)
   }
 
   private fun treeToAst(tree: Tree, classTree: JCTree.JCClassDecl): UnderlyingAST {
@@ -640,6 +642,7 @@ class CFAdapter(
       is ArrayAccessNode -> {
         val type = left.array.type as ArrayType
         val componentType = typeIntroducer.getArrayComponentType(type.componentType)
+        val componentJavaType = hierarchy.get(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
         val params = listOf(
           FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type), hasEnsures = false),
@@ -647,7 +650,7 @@ class CFAdapter(
           FuncParam(IdLHS("value", 0), componentType, componentType, isThis = false, hierarchy.get(type.componentType), hasEnsures = false)
         )
         makeCall2(
-          FuncInterface("#helpers.arraySet", params, returnType = componentType, isPublic = true, isAnytime = true, isPure = false, isAbstract = false),
+          FuncInterface("#helpers.arraySet", params, returnType = componentType, componentJavaType, isPublic = true, isAnytime = true, isPure = false, isAbstract = false),
           listOf(left.array, left.index).map(::getAdapted).plus(right),
           node
         )
@@ -687,13 +690,14 @@ class CFAdapter(
       is ArrayAccessNode -> {
         val type = node.array.type as ArrayType
         val componentType = typeIntroducer.getArrayComponentType(type.componentType)
+        val componentJavaType = hierarchy.get(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
         val params = listOf(
           FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type), hasEnsures = false),
           FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType, hasEnsures = false)
         )
         makeCall(
-          FuncInterface("#helpers.arrayAccess", params, returnType = componentType, isPublic = true, isAnytime = true, isPure = true, isAbstract = false),
+          FuncInterface("#helpers.arrayAccess", params, returnType = componentType, componentJavaType, isPublic = true, isAnytime = true, isPure = true, isAbstract = false),
           listOf(node.array, node.index),
           node
         )
@@ -767,10 +771,13 @@ class CFAdapter(
           // TODO Cannot create reference for non-anytime method
           TODO("method references are not supported yet")
         }
-        is JCTree.JCLambda -> MultipleAdaptResult(listOf(
-          FuncDeclaration(null, getParamTypes(tree), processCFG(tree), getReturnType(tree).first, isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node),
-          NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node)
-        ))
+        is JCTree.JCLambda -> {
+          val (returnType, returnJavaType) = getReturnType(tree)
+          MultipleAdaptResult(listOf(
+            FuncDeclaration(null, getParamTypes(tree), processCFG(tree), returnType, returnJavaType, isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node),
+            NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node)
+          ))
+        }
         else -> error("Unexpected tree ${node.javaClass} in FunctionalInterfaceNode")
       }
       is InstanceOfNode -> SingleAdaptResult(BinaryExpr(t(node.operand), makeTypeRef(node.refType), BinaryOP.Is).set(node))
