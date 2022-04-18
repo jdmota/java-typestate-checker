@@ -12,7 +12,6 @@ import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.file.JavacFileManager
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Context
-import com.sun.tools.javac.util.JCDiagnostic
 import com.sun.tools.javac.util.Log
 import jatyc.lib.*
 import jatyc.typestate.TypestateProcessor
@@ -85,10 +84,13 @@ class JTCUtils(val checker: SourceChecker) {
     val oldSource = log.useSource(newSource)
     try {
       if (isError) {
-        log.error(JCDiagnostic.DiagnosticFlag.MULTIPLE, JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
+        log.error(pos, "proc.messager", messageText)
       } else {
-        log.warning(JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
+        log.warning(pos, "proc.messager", messageText)
       }
+    } catch (err: Exception) {
+      println(messageText);
+      throw err;
     } finally {
       log.useSource(oldSource)
     }
