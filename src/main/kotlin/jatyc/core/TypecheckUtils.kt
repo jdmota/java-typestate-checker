@@ -95,7 +95,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCStateType -> if (call.methodExpr.isAnytime) type else refineState(type, call, predicate)
       is JTCBottomType -> type
       is JTCUnionType -> JTCType.createUnion(type.types.map { refine(it, call, predicate) })
-      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) })
+      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) }.filterNot { it == JTCBottomType.SINGLETON })
     }
   }
 
