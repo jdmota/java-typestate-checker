@@ -68,36 +68,44 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
     }
 
     for ((codeExpr, warnings) in inference1.warnings) {
-      val tree = inference2.getTree(codeExpr)
-      val root = inference2.getRoot(codeExpr)
-      checker.setCompilationRoot(root)
-      for (warn in warnings) {
-        checker.reportWarning(tree, warn)
+      if (!codeExpr.suppressWarnings) {
+        val tree = inference2.getTree(codeExpr)
+        val root = inference2.getRoot(codeExpr)
+        checker.setCompilationRoot(root)
+        for (warn in warnings) {
+          checker.reportWarning(tree, warn)
+        }
       }
     }
 
     for ((codeExpr, error) in inference1.errors) {
-      val tree = inference2.getTree(codeExpr)
-      val root = inference2.getRoot(codeExpr)
-      checker.setCompilationRoot(root)
-      checker.reportError(tree, error)
-    }
-
-    for ((codeExpr, errors) in inference1.completionErrors) {
-      val tree = inference2.getTree(codeExpr)
-      val root = inference2.getRoot(codeExpr)
-      checker.setCompilationRoot(root)
-      for (error in errors) {
+      if (!codeExpr.suppressWarnings) {
+        val tree = inference2.getTree(codeExpr)
+        val root = inference2.getRoot(codeExpr)
+        checker.setCompilationRoot(root)
         checker.reportError(tree, error)
       }
     }
 
+    for ((codeExpr, errors) in inference1.completionErrors) {
+      if (!codeExpr.suppressWarnings) {
+        val tree = inference2.getTree(codeExpr)
+        val root = inference2.getRoot(codeExpr)
+        checker.setCompilationRoot(root)
+        for (error in errors) {
+          checker.reportError(tree, error)
+        }
+      }
+    }
+
     for ((codeExpr, errors) in inference1.validationErrors) {
-      val tree = inference2.getTree(codeExpr)
-      val root = inference2.getRoot(codeExpr)
-      checker.setCompilationRoot(root)
-      for (error in errors) {
-        checker.reportError(tree, error)
+      if (!codeExpr.suppressWarnings) {
+        val tree = inference2.getTree(codeExpr)
+        val root = inference2.getRoot(codeExpr)
+        checker.setCompilationRoot(root)
+        for (error in errors) {
+          checker.reportError(tree, error)
+        }
       }
     }
 

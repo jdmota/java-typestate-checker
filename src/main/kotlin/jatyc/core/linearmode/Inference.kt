@@ -25,7 +25,7 @@ class Inference(
   }
 
   fun getTree(node: AdaptedThing): Tree {
-    return node.cfTree ?: node.cfNode?.tree ?: error("no tree? $node ${node::class.java}")
+    return node.cfTree ?: error("no tree? $node ${node::class.java}")
   }
 
   // TODO improve how we preserve conditional information!

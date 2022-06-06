@@ -3,6 +3,7 @@ package jatyc.core.cfg
 import com.sun.source.tree.CompilationUnitTree
 import javax.lang.model.type.TypeMirror
 import com.sun.source.tree.Tree
+import jatyc.JavaTypestateChecker
 import jatyc.core.JTCType
 import jatyc.core.JavaType
 import jatyc.core.Reference
@@ -14,6 +15,7 @@ sealed class AdaptedThing {
   var cfTree: Tree? = null
   var cfType: TypeMirror? = null
   var cfRoot: CompilationUnitTree? = null
+  var suppressWarnings: Boolean = false
 }
 
 fun <T : AdaptedThing> T.set(node: Node?): T {
@@ -46,6 +48,13 @@ fun <T : AdaptedThing> T.set(type: TypeMirror?): T {
 
 fun <T : AdaptedThing> T.set(root: CompilationUnitTree): T {
   cfRoot = root
+  return this
+}
+
+fun <T : AdaptedThing> T.set(checker: JavaTypestateChecker): T {
+  if (cfTree != null) {
+    suppressWarnings = checker.shouldSuppressWarnings(cfTree, "some error")
+  }
   return this
 }
 

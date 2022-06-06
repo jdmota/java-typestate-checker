@@ -2,20 +2,6 @@ plugins {
     id 'java'
 }
 
-repositories {
-    mavenCentral()
-}
-
-ext {
-    versions = [
-        checkerFramework: "3.8.0",
-    ]
-}
-
-dependencies {
-    implementation "org.checkerframework:checker:${versions.checkerFramework}"
-}
-
 task copySources(type: Copy) {
     includeEmptyDirs = false
     doFirst {
@@ -25,6 +11,9 @@ task copySources(type: Copy) {
 
     from files('../src/main/java')
     include '**/jatyc/lib/**'
+
+    from files('../src/main/java')
+    include '**/mungo/lib/**'
 
     // Make files read only.
     fileMode(0444)

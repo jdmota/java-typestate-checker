@@ -11,9 +11,10 @@ import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.file.JavacFileManager
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
-import com.sun.tools.javac.util.Context
-import com.sun.tools.javac.util.JCDiagnostic
-import com.sun.tools.javac.util.Log
+import com.sun.tools.javac.tree.JCTree.JCClassDecl
+import com.sun.tools.javac.tree.JCTree.JCCompilationUnit
+import com.sun.tools.javac.util.*
+import com.sun.tools.javac.util.DefinedBy.Api
 import jatyc.lib.*
 import jatyc.typestate.TypestateProcessor
 import jatyc.typestate.graph.Graph
@@ -22,6 +23,7 @@ import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.BugInCF
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.javacutil.TypesUtils
+import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -31,7 +33,9 @@ import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.Elements
 import javax.lang.model.util.Types
+import javax.tools.Diagnostic
 import javax.tools.JavaFileManager
+import javax.tools.JavaFileObject
 
 class JTCUtils(val checker: SourceChecker) {
 
@@ -81,15 +85,20 @@ class JTCUtils(val checker: SourceChecker) {
     }
 
     val newSource = fileManager.getJavaFileObject(getUserPath(file))
-    val oldSource = log.useSource(newSource)
-    try {
-      if (isError) {
-        log.error(JCDiagnostic.DiagnosticFlag.MULTIPLE, JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
-      } else {
-        log.warning(JCDiagnostic.SimpleDiagnosticPosition(pos), "proc.messager", messageText)
+    val tree = object : JCCompilationUnit(com.sun.tools.javac.util.List.nil()) {
+      override fun pos(): JCDiagnostic.DiagnosticPosition {
+        return JCDiagnostic.SimpleDiagnosticPosition(pos)
       }
-    } finally {
-      log.useSource(oldSource)
+
+      override fun getSourceFile(): JavaFileObject {
+        return newSource
+      }
+    }
+
+    if (isError) {
+      treeUtils.printMessage(Diagnostic.Kind.ERROR, messageText, tree, tree)
+    } else {
+      treeUtils.printMessage(Diagnostic.Kind.MANDATORY_WARNING, messageText, tree, tree)
     }
   }
 

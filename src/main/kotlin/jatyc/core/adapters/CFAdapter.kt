@@ -373,7 +373,7 @@ class CFAdapter(
         isPrivate = field.modifiers.flags.contains(Modifier.PRIVATE),
         isProtected = field.modifiers.flags.contains(Modifier.PROTECTED),
         isPublic = field.modifiers.flags.contains(Modifier.PUBLIC),
-      ).set(field).set(root))
+      ).set(field).set(root).set(checker))
     }
 
     // Build the blocks CFGs and store them for later
@@ -414,7 +414,7 @@ class CFAdapter(
     if (!hasDeclaredConstructor && initializers.isNotEmpty()) {
       if (isStatic) {
         val cfg = joinCFGs(initializers.map { it.first })
-        val method = FuncDeclaration("<init>", listOf(), cfg, JTCNullType.SINGLETON, isPublic = true, isAnytime = true, isPure = false, isAbstract = false).set(classTree).set(root)
+        val method = FuncDeclaration("<init>", listOf(), cfg, JTCNullType.SINGLETON, isPublic = true, isAnytime = true, isPure = false, isAbstract = false).set(classTree).set(root).set(checker)
         methods.add(method)
         publicMethods.add(method)
       } else {
@@ -453,7 +453,7 @@ class CFAdapter(
       overrides,
       thisRef,
       graph
-    ).set(classTree).set(root)
+    ).set(classTree).set(root).set(checker)
     for (m in methods) {
       m.clazz = clazz
     }
@@ -468,7 +468,7 @@ class CFAdapter(
       val staticClass = transformClass(classTree, isStatic = true)
       val nonStaticClass = transformClass(classTree, isStatic = false)
       classesStack.pop()
-      ClassDeclAndCompanion(nonStatic = nonStaticClass, static = staticClass).set(classTree).set(root)
+      ClassDeclAndCompanion(nonStatic = nonStaticClass, static = staticClass).set(classTree).set(root).set(checker)
     }
   }
 
@@ -478,7 +478,7 @@ class CFAdapter(
 
   private fun transformMethod(method: JCTree.JCMethodDecl, cfg: SimpleCFG): FuncDeclaration {
     val func = funcInterfaces.transform(method.sym)
-    return FuncDeclaration(func.name, func.parameters, cfg, func.returnType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract).set(method).set(root)
+    return FuncDeclaration(func.name, func.parameters, cfg, func.returnType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract).set(method).set(root).set(checker)
   }
 
   private fun treeToAst(tree: Tree, classTree: JCTree.JCClassDecl): UnderlyingAST {
@@ -585,7 +585,7 @@ class CFAdapter(
         var lastNode = prev
         for (c in result.list) {
           val simpleNode = SimpleCodeNode(c)
-          c.set(root)
+          c.set(root).set(checker)
 
           cfg.allNodes.add(simpleNode)
           lastNode.addOutEdge(SimpleEdge(if (first) flowRule else SimpleFlowRule.BOTH_TO_BOTH, simpleNode))
@@ -598,7 +598,7 @@ class CFAdapter(
       }
       is SingleAdaptResult -> {
         val simpleNode = SimpleCodeNode(result.code)
-        result.code.set(root)
+        result.code.set(root).set(checker)
 
         cfg.allNodes.add(simpleNode)
         prev.addOutEdge(SimpleEdge(flowRule, simpleNode))
