@@ -28,6 +28,8 @@ class JavaType internal constructor(val original: Type, private val checker: Jav
   fun getGraph() = checker.utils.classUtils.getGraph(original)
   fun hasProtocol() = checker.utils.classUtils.hasProtocol(original)
 
+  fun directSuperType() = superTypes.find { it.javaClass == javaClass.superclass }
+
   fun isSubtype(other: JavaType): Boolean {
     return this == other || superTypes.any { it.isSubtype(other) }
   }
