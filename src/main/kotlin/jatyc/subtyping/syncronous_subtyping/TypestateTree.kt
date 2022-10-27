@@ -7,11 +7,6 @@ class TypestateTree constructor(val jc: JavaType, val ts: JTCType, val children:
 
   fun isLeaf(): Boolean  { return children.isEmpty()}
 
-  override fun equals(other: Any?): Boolean {
-    if(other !is TypestateTree) return false
-    return jc.original == other.jc.original
-  }
-
   override fun toString(): String {
     return "(" + jc.toString() + ":" + ts.toString() + "[" +  children.map { it.toString() } + "])"
   }
