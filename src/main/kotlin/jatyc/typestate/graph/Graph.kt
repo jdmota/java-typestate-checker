@@ -9,35 +9,28 @@ import java.nio.file.Path
 class Graph private constructor(val resolvedFile: Path, val typestateName: String) {
   val userPath = JTCUtils.getUserPath(resolvedFile)
   val filename = resolvedFile.fileName
-
   private var env: Env<AttrContext>? = null
   private var initialState: State? = null
   private val endState = EndState()
   private val finalStates = HashSet<State>()
-  private val namedStates = HashMap<String, State>() // Does not include "end"
+  private val namedStates = HashMap<String, State>()
   private val referencedStates = HashSet<String>()
   private val concreteStates = mutableSetOf<State>()
   private val decisionStates = mutableSetOf<DecisionState>()
-
   var unusedStates: List<TStateNode>? = null
 
   init {
+    namedStates[END_STATE_NAME] = endState
     finalStates.add(endState)
+    concreteStates.add(endState)
   }
 
   fun getEnv() = env!!
-
   fun getInitialState() = initialState!!
-
   fun getEndState() = endState
-
   fun getFinalStates(): Set<State> = finalStates
-
-  // All non final states
   fun getAllConcreteStates(): Set<State> = concreteStates
-
   fun getDecisionStates(): Set<DecisionState> = decisionStates
-
   fun getAllTransitions(): Sequence<MethodTransition> = sequence {
     for (state in concreteStates) {
       for (method in state.normalizedTransitions) {
@@ -51,7 +44,7 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
   }
 
   fun isFinalState(name: String): Boolean {
-    return name == END_STATE_NAME || namedStates[name]?.isEnd() ?: false
+    return namedStates[name]?.isEnd() ?: false
   }
 
   private fun getStateByName(id: TIdNode): State {
@@ -86,9 +79,8 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
     if (node.name == null || referencedStates.add(node.name)) {
       if (node.methods.isEmpty()) {
         finalStates.add(state)
-      } else {
-        concreteStates.add(state)
       }
+      concreteStates.add(state)
       for (method in node.methods) {
         state.addTransition(method, traverseDestination(method.destination))
       }
@@ -117,7 +109,6 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
 
   // TODO use queue instead of recursion? just in case there are like a ton of inner states inside each other
   // TODO minimize? while minimizing, we don't want to lose information about states names...
-
   private fun traverseTypestate(node: TDeclarationNode) {
     // If we have no named states, then the end state is also the first one
     initialState = if (node.states.isEmpty()) {
@@ -128,19 +119,17 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
       }
       traverseState(node.states[0])
     }
-
     // Calculate if there are any unused states
     val unusedStates: MutableSet<String> = HashSet(namedStates.keys)
     unusedStates.removeAll(referencedStates)
     if (unusedStates.size > 0) {
-      this.unusedStates = unusedStates.map { namedStates[it]!!.node!! }
+      this.unusedStates = unusedStates.mapNotNull { namedStates[it]!!.node }
     }
   }
 
   companion object {
     const val END_STATE_NAME = "end"
     val RESERVED_STATE_NAMES: List<String> = listOf(END_STATE_NAME)
-
     fun fromTypestate(utils: JTCUtils, resolvedFile: Path, node: TTypestateNode): Graph {
       val g = Graph(resolvedFile, node.decl.name)
       g.traverseTypestate(node.decl)

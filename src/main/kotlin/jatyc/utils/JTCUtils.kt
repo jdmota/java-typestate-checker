@@ -11,7 +11,9 @@ import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.file.JavacFileManager
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
+import com.sun.tools.javac.tree.JCTree
 import com.sun.tools.javac.util.Context
+import com.sun.tools.javac.util.JCDiagnostic
 import com.sun.tools.javac.util.Log
 import jatyc.lib.*
 import jatyc.typestate.TypestateProcessor
@@ -31,29 +33,25 @@ import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 import javax.lang.model.util.Elements
 import javax.lang.model.util.Types
+import javax.tools.Diagnostic
 import javax.tools.JavaFileManager
+import javax.tools.JavaFileObject
 
 class JTCUtils(val checker: SourceChecker) {
-
   val env = (checker.processingEnvironment as JavacProcessingEnvironment)
   val ctx: Context = env.context
   val symtab: Symtab = Symtab.instance(ctx)
-  val log: Log = Log.instance(ctx)
 
   // val maker: TreeMaker = TreeMaker.instance(ctx)
   val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
-
   val treeUtils: Trees = checker.treeUtils
   val typeUtils: Types = checker.typeUtils
   val elementUtils: Elements = checker.elementUtils
-
   val resolver = Resolver(checker)
   val classUtils = ClassUtils(this)
   val configUtils = ConfigUtils(checker)
-
   val processor = TypestateProcessor(this)
   val methodUtils = MethodUtils(this)
-
   lateinit var factory: TypeFactory
 
   fun initFactory() {
@@ -79,20 +77,21 @@ class JTCUtils(val checker: SourceChecker) {
     } catch (e: Exception) {
       throw BugInCF("Invalid format string: \"$fmtString\" args: " + args.contentToString(), e)
     }
-
     val newSource = fileManager.getJavaFileObject(getUserPath(file))
-    val oldSource = log.useSource(newSource)
-    try {
-      if (isError) {
-        log.error(pos, "proc.messager", messageText)
-      } else {
-        log.warning(pos, "proc.messager", messageText)
+    val tree = object : JCTree.JCCompilationUnit(com.sun.tools.javac.util.List.nil()) {
+      override fun pos(): JCDiagnostic.DiagnosticPosition {
+        return JCDiagnostic.SimpleDiagnosticPosition(pos)
       }
-    } catch (err: Exception) {
-      println(messageText);
-      throw err;
-    } finally {
-      log.useSource(oldSource)
+
+      override fun getSourceFile(): JavaFileObject {
+        return newSource
+      }
+    }
+
+    if (isError) {
+      treeUtils.printMessage(Diagnostic.Kind.ERROR, messageText, tree, tree)
+    } else {
+      treeUtils.printMessage(Diagnostic.Kind.MANDATORY_WARNING, messageText, tree, tree)
     }
   }
 
@@ -121,7 +120,7 @@ class JTCUtils(val checker: SourceChecker) {
   }
 
   fun checkStates(graph: Graph, states: List<String>?): List<String> {
-    if (states == null || states.isEmpty()) {
+    if (states.isNullOrEmpty()) {
       return listOf("@Requires should specify one or more states")
     }
     val basename = graph.resolvedFile.fileName
@@ -204,18 +203,15 @@ class JTCUtils(val checker: SourceChecker) {
   fun wasMovedToDiffClosure(path: TreePath, tree: IdentifierTree, element: Symbol.VarSymbol): Boolean {
     // See if it has protocol
     classUtils.visitClassOfElement(element) ?: return false
-
     // If "this"...
     if (TreeUtils.isExplicitThisDereference(tree)) {
       val enclosingMethodOrLambda = enclosingMethodOrLambda(path) ?: return false
       return enclosingMethodOrLambda.leaf.kind == Tree.Kind.LAMBDA_EXPRESSION
     }
-
     // Find declaration and enclosing method/lambda
     val declarationTree = treeUtils.getTree(element) ?: return false
     val declaration = treeUtils.getPath(path.compilationUnit, declarationTree) ?: return false
     val enclosingMethodOrLambda = enclosingMethodOrLambda(path) ?: return false
-
     // See if variable declaration is enclosed in the enclosing method or lambda or not
     var path1: TreePath? = declaration
     var path2: TreePath? = enclosingMethodOrLambda
@@ -223,7 +219,6 @@ class JTCUtils(val checker: SourceChecker) {
       path1 = path1.parentPath
       path2 = path2.parentPath
     }
-
     // Was moved if:
     // 1. Declaration is closer to the root (path1 == null && path2 != null)
     // 2. Both are at the same level (path1 == null && path2 == null) and identifier is enclosed in a lambda
