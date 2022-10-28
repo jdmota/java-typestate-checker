@@ -76,7 +76,7 @@ object Subtyping {
     return when (t) {
       is JTCUnionType -> JTCUnionType(t.types.map { downcast(it,j)!! }.toSet())
       is JTCIntersectionType -> JTCIntersectionType(t.types.map { downcast(it,j)!! }.toSet())
-      is JTCStateType -> j.getGraph()?.getAllConcreteStates()?.map { JTCStateType(j, j.getGraph()!!,it) }?.filter { isSubtype(t, it) }?.let { JTCUnionType(it.toSet()) }
+      is JTCStateType -> j.getGraph()?.getAllConcreteStates()?.map { JTCStateType(j, j.getGraph()!!,it) }?.filter { isSubtype(it, t) }?.let { JTCUnionType(it.toSet()) }
       is JTCBottomType -> JTCBottomType.SINGLETON
       else -> null //should it be the top type ?
     }
