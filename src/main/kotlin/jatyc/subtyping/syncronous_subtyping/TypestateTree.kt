@@ -35,7 +35,7 @@ object TypestateTreeUtilities{
   private fun findClosestSuperClassInDomain(j: JavaType, tt: TypestateTree): JavaType {
     val dom = domain(tt)
     var curr = j
-    while(j !in dom) curr = curr.directSuperType()!!
+    while(curr !in dom) curr = curr.directSuperType()!!
     return curr
   }
 
@@ -52,7 +52,7 @@ object TypestateTreeUtilities{
 
 object TypestateTreeManager {
 
-  /* fun upcastTT(tt: TypestateTree, target: JavaType) {
+  /*fun upcastTT(tt: TypestateTree, target: JavaType) {
     return if(tt.jc == target) tt
     else upcastTT(TypestateTree(tt.jc.directSuperType(), upcast))
   }*/
