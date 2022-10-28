@@ -62,6 +62,25 @@ object Subtyping {
     }
   }
 
+  fun upcast(t: JTCType, j: JavaType): JTCType? {
+    return when (t) {
+      is JTCUnionType -> JTCUnionType(t.types.map { upcast(it,j)!! }.toSet())
+      is JTCIntersectionType -> JTCIntersectionType(t.types.map { upcast(it,j)!! }.toSet())
+      is JTCStateType -> j.getGraph()?.getAllConcreteStates()?.map { JTCStateType(j, j.getGraph()!!,it) }?.filter { isSubtype(t, it) }?.let { JTCIntersectionType(it.toSet()) }
+      is JTCBottomType -> JTCBottomType.SINGLETON
+      else -> null //should it be the top type ?
+    }
+  }
+
+  fun downcast(t: JTCType, j: JavaType): JTCType? {
+    return when (t) {
+      is JTCUnionType -> JTCUnionType(t.types.map { downcast(it,j)!! }.toSet())
+      is JTCIntersectionType -> JTCIntersectionType(t.types.map { downcast(it,j)!! }.toSet())
+      is JTCStateType -> j.getGraph()?.getAllConcreteStates()?.map { JTCStateType(j, j.getGraph()!!,it) }?.filter { isSubtype(t, it) }?.let { JTCUnionType(it.toSet()) }
+      is JTCBottomType -> JTCBottomType.SINGLETON
+      else -> null //should it be the top type ?
+    }
+  }
   fun refineIntersection(a: JTCType, b: JTCType): JTCType? {
     if (areExclusive(a, b)) {
       return JTCBottomType.SINGLETON

@@ -1,7 +1,6 @@
 package jatyc.subtyping.syncronous_subtyping
 
-import jatyc.core.JTCType
-import jatyc.core.JavaType
+import jatyc.core.*
 
 class TypestateTree constructor(val jc: JavaType, val ts: JTCType, val children: Set<TypestateTree>) {
 
@@ -52,8 +51,24 @@ object TypestateTreeUtilities{
 
 object TypestateTreeManager {
 
-  /*fun upcastTT(tt: TypestateTree, target: JavaType) {
-    return if(tt.jc == target) tt
-    else upcastTT(TypestateTree(tt.jc.directSuperType(), upcast))
-  }*/
+  fun upcastTT(tt: TypestateTree, j: JavaType): TypestateTree {
+    return if(tt.jc == j) tt
+    else upcastTT(TypestateTree(tt.jc.directSuperType()!!, Subtyping.upcast(tt.ts, tt.jc.directSuperType()!!)!!, setOf(tt))!!,j)
+  }
+
+  fun downcastTT(tt: TypestateTree, j: JavaType): TypestateTree {
+    val cl = TypestateTreeUtilities.closest(j,tt)!!
+    return if(tt.jc == cl.jc)  cl
+    else TypestateTree(j, Subtyping.downcast(cl.ts, j)!!, setOf())
+  }
+
+  fun mergeTT(tt1: TypestateTree, tt2: TypestateTree):TypestateTree = TypestateTree(tt1.jc, JTCUnionType(setOf(tt1.ts,tt2.ts)), (tt1.children.map { it.jc } union tt2.children.map { it.jc }).map { merge(tt1.children, tt2.children, it, tt1.ts, tt2.ts) }.toSet())
+
+  private fun merge(c1: Set<TypestateTree>, c2: Set<TypestateTree>, j: JavaType, t1: JTCType, t2: JTCType): TypestateTree {
+    val jcs1 = TypestateTreeUtilities.clss(c1)
+    val jcs2 = TypestateTreeUtilities.clss(c2)
+    return if(j in jcs1 && j in jcs2) mergeTT(TypestateTreeUtilities.find(j, c1)!!, TypestateTreeUtilities.find(j, c2)!!)
+    else if(j in jcs1 && j !in jcs2) mergeTT(TypestateTreeUtilities.find(j, c1)!!, TypestateTree(j, Subtyping.downcast(t2,j)!!, setOf()))
+    else mergeTT(TypestateTree(j, Subtyping.downcast(t1,j)!!, setOf()), TypestateTreeUtilities.find(j, c2)!!)
+  }
 }
