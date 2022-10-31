@@ -109,7 +109,6 @@ sealed class AbstractState<N : TNode>(var node: N?) {
 }
 
 open class State private constructor(val name: String, node: TStateNode?) : AbstractState<TStateNode>(node) {
-
   val id = uuid++
 
   protected constructor(name: String) : this(name, null)
@@ -117,7 +116,7 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
   constructor(node: TStateNode) : this(node.name ?: "unknown:${node.pos.lineCol}", node)
 
   private val markedAsDroppable = node != null && node.isDroppable
-
+  private val markedAsEnd = node != null && node.methods.isEmpty()
   val transitions: MutableMap<TMethodNode, AbstractState<*>> = LinkedHashMap()
   val normalizedTransitions: MutableMap<MethodTransition, AbstractState<*>> = LinkedHashMap()
 
@@ -126,7 +125,7 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
     normalizedTransitions[MethodTransition.make(method)] = destination
   }
 
-  fun isEnd() = normalizedTransitions.isEmpty()
+  fun isEnd() = markedAsEnd || name == Graph.END_STATE_NAME
 
   fun canDropHere() = markedAsDroppable || isEnd()
 
@@ -140,7 +139,6 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
 }
 
 class DecisionState(node: TDecisionStateNode) : AbstractState<TDecisionStateNode>(node) {
-
   val transitions: MutableMap<TDecisionNode, State> = LinkedHashMap()
   val normalizedTransitions: MutableMap<DecisionLabelTransition, State> = LinkedHashMap()
 
@@ -158,8 +156,18 @@ class DecisionState(node: TDecisionStateNode) : AbstractState<TDecisionStateNode
   }
 }
 
-class EndState : State("end") {
+class EndState : State(Graph.END_STATE_NAME) {
   override fun addTransition(method: TMethodNode, destination: AbstractState<*>) {
     throw AssertionError("end state should have no transitions")
+  }
+}
+
+class UnknownState : State("#unknown") {
+  override fun addTransition(method: TMethodNode, destination: AbstractState<*>) {
+    throw AssertionError("#unknown state should have no transitions")
+  }
+
+  override fun format(): String {
+    return "?"
   }
 }

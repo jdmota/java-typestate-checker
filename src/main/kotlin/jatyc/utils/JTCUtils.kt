@@ -14,7 +14,6 @@ import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.tree.JCTree
 import com.sun.tools.javac.util.Context
 import com.sun.tools.javac.util.JCDiagnostic
-import com.sun.tools.javac.util.Log
 import jatyc.lib.*
 import jatyc.typestate.TypestateProcessor
 import jatyc.typestate.graph.Graph
@@ -125,7 +124,7 @@ class JTCUtils(val checker: SourceChecker) {
     }
     val basename = graph.resolvedFile.fileName
     return states.mapNotNull {
-      if (graph.isFinalState(it)) {
+      if (graph.isEndState(it)) {
         "State $it is final. Will have no effect in @Requires"
       } else if (!graph.hasStateByName(it)) {
         "$basename has no $it state"

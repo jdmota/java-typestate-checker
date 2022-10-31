@@ -12,6 +12,7 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
   private var env: Env<AttrContext>? = null
   private var initialState: State? = null
   private val endState = EndState()
+  private val unknownState = UnknownState() // A state that is superstate of all states
   private val finalStates = HashSet<State>()
   private val namedStates = HashMap<String, State>()
   private val referencedStates = HashSet<String>()
@@ -23,11 +24,13 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
     namedStates[END_STATE_NAME] = endState
     finalStates.add(endState)
     concreteStates.add(endState)
+    concreteStates.add(unknownState)
   }
 
   fun getEnv() = env!!
   fun getInitialState() = initialState!!
   fun getEndState() = endState
+  fun getUnknownState() = unknownState
   fun getFinalStates(): Set<State> = finalStates
   fun getAllConcreteStates(): Set<State> = concreteStates
   fun getDecisionStates(): Set<DecisionState> = decisionStates
@@ -43,7 +46,7 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
     return namedStates[name] != null
   }
 
-  fun isFinalState(name: String): Boolean {
+  fun isEndState(name: String): Boolean {
     return namedStates[name]?.isEnd() ?: false
   }
 
@@ -107,8 +110,6 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
     throw AssertionError("wrong destination $node")
   }
 
-  // TODO use queue instead of recursion? just in case there are like a ton of inner states inside each other
-  // TODO minimize? while minimizing, we don't want to lose information about states names...
   private fun traverseTypestate(node: TDeclarationNode) {
     // If we have no named states, then the end state is also the first one
     initialState = if (node.states.isEmpty()) {

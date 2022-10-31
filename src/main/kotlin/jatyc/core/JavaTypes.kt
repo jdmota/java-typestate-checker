@@ -16,7 +16,6 @@ private var javaTypeUuid = 1L
 class JavaType internal constructor(val original: Type, private val checker: JavaTypestateChecker) {
   val id = javaTypeUuid++
   internal val superTypes = mutableSetOf<JavaType>()
-  internal var directSuperType: JavaType? = null
 
   fun isInterface() = original.isInterface
   fun isPrimitive() = original.isPrimitiveOrVoid
@@ -30,7 +29,7 @@ class JavaType internal constructor(val original: Type, private val checker: Jav
   fun getGraph() = checker.utils.classUtils.getGraph(original)
   fun hasProtocol() = checker.utils.classUtils.hasProtocol(original)
 
-  fun directSuperType() = directSuperType
+  fun directSuperType() = superTypes.find { it.hasProtocol() }
 
   fun isSubtype(other: JavaType): Boolean {
     return this == other || superTypes.any { it.isSubtype(other) }
@@ -96,15 +95,14 @@ class JavaTypesHierarchy(private val checker: JavaTypestateChecker) {
       cache[wrapper] = javaType
       val clazz = javaType.original.tsym
       if (clazz is Symbol.ClassSymbol && !javaType.isJavaObject()) {
-        // Add interfaces
-        for (inter in clazz.interfaces) {
-          javaType.superTypes.add(get(inter))
-        }
         // Register direct super class
         if (!javaType.isInterface()) {
           val superclass = get(clazz.superclass)
           javaType.superTypes.add(superclass)
-          javaType.directSuperType = superclass
+        }
+        // Add interfaces
+        for (inter in clazz.interfaces) {
+          javaType.superTypes.add(get(inter))
         }
       }
       return javaType
