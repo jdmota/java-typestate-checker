@@ -7,6 +7,8 @@ import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
 
+const val DO_ACTUAL_CASTS = false
+
 class Inference(
   private val cfChecker: JavaTypestateChecker,
   private val hierarchy: JavaTypesHierarchy,
@@ -15,7 +17,6 @@ class Inference(
   private val inference: LinearModeInference,
   private val classAnalysis: LinearModeClassAnalysis
 ) {
-
   private val allLabels: (String) -> Boolean = { true }
   private val ifTrue: (String) -> Boolean = { it == "true" }
   private val ifFalse: (String) -> Boolean = { it == "false" }
@@ -29,7 +30,6 @@ class Inference(
   }
 
   // TODO improve how we preserve conditional information!
-
   private fun assign(node: CodeExpr, targetType: JTCType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean) {
     if (node is Assign) {
       post[Reference.old(node)] = pre[leftRef]
@@ -42,7 +42,6 @@ class Inference(
         }
       }
     }
-
     val typeToAssign: JTCType
     val typeInExpr: JTCType
     val newTargetType: JTCType
@@ -57,8 +56,11 @@ class Inference(
     } else {
       typeToAssign = pre[rightRef].type
       typeInExpr = pre[rightRef].type.toShared()
-      succeeded = Subtyping.isSubtype(typeToAssign, targetType)
-      newTargetType = typeToAssign.intersect(targetType)
+      val typeToAssignCasted = if (DO_ACTUAL_CASTS) Subtyping.upcast(typeToAssign, targetType.javaType(hierarchy)) else typeToAssign
+      val castFailed = DO_ACTUAL_CASTS && typeToAssign !is JTCUnknownType && typeToAssignCasted is JTCUnknownType
+
+      succeeded = Subtyping.isSubtype(typeToAssignCasted, targetType)
+      newTargetType = if (castFailed) JTCBottomType.SINGLETON else typeToAssignCasted.intersect(targetType)
 
       if (succeeded && typecheckUtils.isInDroppableStateNotEnd(typeToAssign) && !TypecheckUtils.requiresLinear(leftRef, targetType)) {
         // We want to report a warning if we have an object in a droppable state, with more actions that can be made
@@ -75,6 +77,7 @@ class Inference(
       targetType is JTCBottomType -> inference.addError(node, "Cannot assign because [${leftRef.format()}] is not accessible here")
       succeeded -> {
       }
+
       else -> inference.addError(node, when (node) {
         is Assign -> "Cannot assign: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
         is ParamAssign -> {
@@ -86,6 +89,7 @@ class Inference(
             "Incompatible parameter: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
           }
         }
+
         is Return -> "Incompatible return value: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
         else -> "INTERNAL ERROR"
       })
@@ -94,7 +98,6 @@ class Inference(
 
   fun analyzeCode(func: FuncDeclaration, pre: Store, node: CodeExpr, post: Store) {
     inference.resetErrorsAndWarnings(node)
-
     val clazz = func.clazz
     val thisRef = Reference.makeThis(func)
 
@@ -116,9 +119,11 @@ class Inference(
 
         post[ref] = JTCNullType.SINGLETON
       }
+
       is NewObj -> {
         post[Reference.make(node)] = node.type
       }
+
       is Assign -> {
         val leftRef = Reference.makeFromLHS(node)
         val rightRef = Reference.make(node.right)
@@ -126,19 +131,23 @@ class Inference(
         val targetType = when {
           thisRef != null && leftRef.isFieldOf(thisRef) && (func.isConstructor || TypecheckUtils.requiresLinear(thisRef, pre[thisRef].type)) ->
             clazz!!.allFields(classAnalysis.classes).find { leftRef.isFieldOf(thisRef, it.id) }!!.type
+
           leftRef.isField() ->
             JTCBottomType.SINGLETON
+
           else ->
             node.type
         }
         assign(node, targetType, pre, post, leftRef, rightRef, false)
       }
+
       is ParamAssign -> {
         val leftRef = Reference.makeFromLHS(node)
         val rightRef = Reference.make(node.expr)
         val param = node.call.methodExpr.parameters[node.idx]
         assign(node, param.requires, pre, post, leftRef, rightRef, param.isThis)
       }
+
       is Return -> {
         if (node.expr == null) {
           post[Reference.returnRef] = JTCNullType.SINGLETON
@@ -149,16 +158,15 @@ class Inference(
           assign(node, node.type, pre, post, leftRef, rightRef, false)
         }
       }
+
       is MethodCall -> {
         // Note for later: a call is non-virtual if static or init or super call or private call
         val nodeRef = Reference.make(node)
         val methodExpr = node.methodExpr
         val arguments = node.parameters
         val argsIt = arguments.iterator()
-
         val parameters = methodExpr.parameters
         val paramsIt = parameters.iterator()
-
         val isSelfCall = thisRef != null && parameters.isNotEmpty() && parameters.first().isThis && Reference.make(arguments.first().expr) == thisRef
 
         if (
@@ -172,7 +180,6 @@ class Inference(
           post.toBottom()
           return
         }
-
         // We might need to invalidate some information...
         if (!methodExpr.isPure && isSelfCall) {
           checkNotNull(clazz)
@@ -185,15 +192,12 @@ class Inference(
             post[Reference.make(thisRef, field)] = field.type
           }
         }
-
         // Invariant: arguments.size == parameters.size
         while (argsIt.hasNext()) {
           val arg = argsIt.next()
           val param = paramsIt.next()
-
           val argRef = Reference.makeFromLHS(arg)
           val exprRef = Reference.make(arg.expr)
-
           // First we refine the type of the parameter variable
           if (param.isThis) {
             if (methodExpr.name == "<init>") {
@@ -212,6 +216,7 @@ class Inference(
                     typecheckUtils.refine(currentType, node, ifFalse)
                   )
                 }
+
                 returnsEnum -> {
                   if (returnType is JTCSharedType) {
                     val (qualifiedName, labels) = returnType.javaType.getEnumLabels()
@@ -224,6 +229,7 @@ class Inference(
                     post[argRef] = typecheckUtils.refine(currentType, node, allLabels)
                   }
                 }
+
                 else -> {
                   post[argRef] = typecheckUtils.refine(currentType, node, allLabels)
                 }
@@ -233,7 +239,6 @@ class Inference(
                 inference.addError(node, "Cannot call [${node.methodExpr.name}] on ${currentType.format()}")
               }
             }
-
             // Whatever is in the "parameter variable", restore it to the "parameter expression"
             // only if the method requested linear type
             // If the method did not request linear type, it means the linear permission is still in the expression
@@ -244,28 +249,25 @@ class Inference(
             }
           } else {
             post[argRef] = typecheckUtils.invariant(pre[argRef].type).intersect(param.ensures)
-
             // Whatever is in the "parameter variable", restore it to the "parameter expression"
             val argInfo = post[argRef]
             post[argRef] = argInfo.type.toShared()
             post[exprRef] = argInfo // Preserve conditional info!
           }
         }
-
         // The type of the method call is the type of the return value
         post[nodeRef] = methodExpr.returnType
-
         // This means that the method interrupts execution
         if (methodExpr.returnType is JTCBottomType) {
           post.toBottom()
         }
       }
+
       is Id -> {
         // Preserve conditional information
         for ((ref, info) in pre) {
           post[ref] = info
         }
-
         val currentType = pre[Reference.make(node)].type
         showType(func, node, currentType)
 
@@ -274,17 +276,16 @@ class Inference(
           post[Reference.make(node)] = JTCBottomType.SINGLETON
         }
       }
+
       is Select -> {
         // Preserve conditional information
         for ((ref, info) in pre) {
           post[ref] = info
         }
-
         val ref = Reference.make(node)
         val obj = node.expr
         val objRef = Reference.make(node.expr)
         val objType = pre[objRef].type
-
         var currentType: JTCType? = null
 
         if (objType is JTCBottomType || objType is JTCNullType) {
@@ -308,22 +309,24 @@ class Inference(
             inference.addError(node, "Cannot access [${node.format("")}]")
             post[ref] = JTCBottomType.SINGLETON
           }
+
           obj !is SymbolResolveExpr && JTCNullType.SINGLETON.isSubtype(objType) -> {
             inference.addError(node, "Cannot access field [${node.id}] of null")
             post[objRef] = typecheckUtils.refineToNonNull(objType)
             post[ref] = currentType
           }
+
           else -> {
             post[ref] = currentType
           }
         }
       }
+
       is Literal -> {
         // Preserve conditional information
         for ((ref, info) in pre) {
           post[ref] = info
         }
-
         val nodeRef = Reference.make(node)
         post[nodeRef] = when (node) {
           is BooleanLiteral -> hierarchy.BOOLEAN
@@ -337,6 +340,7 @@ class Inference(
           is StringLiteral -> hierarchy.STRING
         }
       }
+
       is CastExpr -> {
         if (node.type is JTCPrimitiveType) {
           // Casts to primitive values are conversions
@@ -344,30 +348,44 @@ class Inference(
         } else {
           val exprRef = Reference.make(node.expr)
           val currentType = pre[exprRef].type
-          val newType = currentType.intersect(node.type)
-          post[exprRef] = newType
 
-          if (currentType is JTCBottomType || newType !is JTCBottomType) {
-            if (!currentType.isSubtype(node.type)) {
-              inference.addWarning(node, "Unsafe cast")
+          if (DO_ACTUAL_CASTS) {
+            if (node.upcast) {
+              val newType = Subtyping.upcast(currentType, node.javaType)
+              post[exprRef] = newType
+
+              if (currentType !is JTCUnknownType && newType is JTCUnknownType) {
+                inference.addError(node, "Cannot perform cast from ${currentType.format()} to ${node.type.format()}")
+              }
+            } else {
+              val newType = Subtyping.downcast(currentType, node.javaType)
+              post[exprRef] = newType
             }
           } else {
-            // The cast is impossible
-            inference.addError(node, "Cannot perform cast from ${currentType.format()} to ${node.type.format()}")
+            val newType = currentType.intersect(node.type)
+            post[exprRef] = newType
+
+            if (currentType is JTCBottomType || newType !is JTCBottomType) {
+              if (!currentType.isSubtype(node.type)) {
+                inference.addWarning(node, "Unsafe cast")
+              }
+            } else {
+              // The cast is impossible
+              inference.addError(node, "Cannot perform cast from ${currentType.format()} to ${node.type.format()}")
+            }
           }
         }
       }
+
       is CaseExpr -> {
         // Preserve conditional information
         for ((ref, info) in pre) {
           post[ref] = info
         }
-
         val value = (node.switchOp as Assign).left
         val test = node.caseOp
         val valueRef = Reference.make(value)
         val nodeRef = Reference.make(node)
-
         val label = getLabel(test)
         if (label != null) {
           for ((ref, info) in pre) {
@@ -377,6 +395,7 @@ class Inference(
           }
         }
       }
+
       is NullCheck -> {
         val exprRef = Reference.make(node.expr)
         val currentType = pre[exprRef].type
@@ -387,10 +406,12 @@ class Inference(
           inference.addError(node, node.message)
         }
       }
+
       is BinaryExpr -> {
         when (node.operator) {
           BinaryOP.And,
           BinaryOP.Or -> post[Reference.make(node)] = hierarchy.BOOLEAN
+
           BinaryOP.Equal -> {
             val nodeRef = Reference.make(node)
             val (left, right) = literalOnTheRight(node)
@@ -414,6 +435,7 @@ class Inference(
             }
             post[nodeRef] = hierarchy.BOOLEAN
           }
+
           BinaryOP.NotEqual -> {
             val nodeRef = Reference.make(node)
             val (left, right) = literalOnTheRight(node)
@@ -437,6 +459,7 @@ class Inference(
             }
             post[nodeRef] = hierarchy.BOOLEAN
           }
+
           BinaryOP.Is -> {
             val nodeRef = Reference.make(node)
             val leftRef = Reference.make(node.left)
@@ -444,11 +467,12 @@ class Inference(
             val rightExpr = node.right as SymbolResolveExpr
             post[leftRef] = ConditionalStoreInfo(
               nodeRef,
-              typecheckUtils.refineToNonNull(currentType).intersect(rightExpr.type),
+              if (DO_ACTUAL_CASTS) typecheckUtils.refineToNonNull(currentType) else typecheckUtils.refineToNonNull(currentType).intersect(rightExpr.type),
               currentType
             )
             post[nodeRef] = hierarchy.BOOLEAN
           }
+
           BinaryOP.Add,
           BinaryOP.Sub,
           BinaryOP.Mult,
@@ -462,13 +486,16 @@ class Inference(
           BinaryOP.LeftShift,
           BinaryOP.SignedRightShift,
           BinaryOP.UnsignedRightShift -> post[Reference.make(node)] = hierarchy.getPrimitive(node.cfType as Type.JCPrimitiveType)
+
           BinaryOP.GreaterThan,
           BinaryOP.GreaterThanOrEqual,
           BinaryOP.LessThan,
           BinaryOP.LessThanOrEqual -> post[Reference.make(node)] = hierarchy.BOOLEAN
+
           BinaryOP.StringConcat -> post[Reference.make(node)] = hierarchy.STRING
         }
       }
+
       is UnaryExpr -> {
         when (node.operator) {
           UnaryOP.Minus,
@@ -476,6 +503,7 @@ class Inference(
           UnaryOP.BitwiseComplement,
           UnaryOP.Widening,
           UnaryOP.Narrowing -> post[Reference.make(node)] = hierarchy.getPrimitive(node.cfType as Type.JCPrimitiveType)
+
           UnaryOP.Not -> {
             val nodeRef = Reference.make(node)
             val exprRef = Reference.make(node.expr)
@@ -485,9 +513,11 @@ class Inference(
             }
             post[nodeRef] = hierarchy.BOOLEAN
           }
+
           UnaryOP.ToString -> post[Reference.make(node)] = hierarchy.STRING
         }
       }
+
       is NewArrayWithDimensions -> {
         for ((idx, init) in node.dimensions.withIndex()) {
           val valueType = pre[Reference.make(init)].type.toShared()
@@ -499,6 +529,7 @@ class Inference(
 
         post[Reference.make(node)] = node.type
       }
+
       is NewArrayWithValues -> {
         for ((idx, init) in node.initializers.withIndex()) {
           val valueType = pre[Reference.make(init)].type.toShared()
@@ -510,18 +541,23 @@ class Inference(
 
         post[Reference.make(node)] = node.type
       }
+
       is SynchronizedExprEnd -> {
         // TODO
       }
+
       is SynchronizedExprStart -> {
         // TODO
       }
+
       is TernaryExpr -> {
         post[Reference.make(node)] = pre[Reference.make(node.thenExpr)].union(pre[Reference.make(node.elseExpr)])
       }
+
       is ThrowExpr -> {
         post.toBottom()
       }
+
       is SymbolResolveExpr -> {
         // Preserve conditional information
         for ((ref, info) in pre) {
@@ -529,6 +565,7 @@ class Inference(
         }
         // Skip
       }
+
       is NoOPExpr -> {
         // Preserve conditional information
         for ((ref, info) in pre) {
@@ -536,17 +573,21 @@ class Inference(
         }
         // Skip
       }
+
       is FuncDeclaration -> {
         // We start with an empty store so we do not use variables in outer scopes
         classAnalysis.analyzeMethod(null, node, Store())
       }
+
       is ClassDecl -> {
         classAnalysis.analyze(node)
       }
+
       is ClassDeclAndCompanion -> {
         classAnalysis.analyze(node.nonStatic)
         classAnalysis.analyze(node.static)
       }
+
       is FuncInterface -> {
         // This case should come after FuncDeclaration since FuncDeclaration is a subtype of FuncInterface
         // Skip

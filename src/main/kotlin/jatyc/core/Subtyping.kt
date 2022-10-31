@@ -127,12 +127,13 @@ object Subtyping {
     if (areExclusive(a, b)) {
       return JTCBottomType.SINGLETON
     }
-    if (a is JTCStateType && b is JTCLinearType) {
+    // TODO disable this for now because it might be unsound
+    /*if (a is JTCStateType && b is JTCLinearType) {
       return attemptDowncast(a, b)
     }
     if (a is JTCLinearType && b is JTCStateType) {
       return attemptDowncast(b, a)
-    }
+    }*/
     if (a is JTCSharedType && b is JTCLinearType) {
       return attemptRefineToDroppable(a, b)
     }

@@ -104,6 +104,20 @@ sealed class JTCType {
     }
   }
 
+  fun javaType(hierarchy: JavaTypesHierarchy): JavaType {
+    return when (this) {
+      is JTCUnknownType -> hierarchy.NONE
+      is JTCPrimitiveType -> javaType
+      is JTCNullType -> hierarchy.OBJ
+      is JTCSharedType -> javaType
+      is JTCBottomType -> hierarchy.BOT
+      is JTCLinearType -> javaType
+      is JTCStateType -> javaType
+      is JTCUnionType -> types.first().javaType(hierarchy)
+      is JTCIntersectionType -> types.first().javaType(hierarchy)
+    }
+  }
+
   fun toMaybeNullable(nullable: Boolean): JTCType {
     return if (nullable) this.union(JTCNullType.SINGLETON) else this
   }

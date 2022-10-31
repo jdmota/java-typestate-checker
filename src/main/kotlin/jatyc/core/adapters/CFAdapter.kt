@@ -634,7 +634,7 @@ class CFAdapter(
   }
 
   private fun makeCast(what: CodeExpr, type: TypeMirror): CastExpr {
-    return CastExpr(what, typeIntroducer.getCastType(type), hierarchy.get(type))
+    return CastExpr(what, typeIntroducer.getCastType(type), hierarchy.get(type), upcast = hierarchy.get(what.cfType!!).isSubtype(hierarchy.get(type)))
   }
 
   private fun makeAssignment(left: Node, right: CodeExpr, node: Node): AdaptResult {
