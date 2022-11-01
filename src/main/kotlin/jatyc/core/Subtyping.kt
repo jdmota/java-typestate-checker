@@ -36,7 +36,6 @@ object Subtyping {
         is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
         else -> false
       }
-
       is JTCStateType -> when (b) {
         is JTCUnknownType -> true
         is JTCSharedType -> a.javaType.isSubtype(b.javaType) && a.state.canDropHere() // NEW
@@ -46,13 +45,11 @@ object Subtyping {
             findMapping(a.state, a.javaType, b.javaType).any { ProtocolSyncSubtyping.isSubtype(it, b.state) }
           } else false
         }
-
         is JTCUnionType -> b.types.any { isSubtype(a, it) }
         is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
         else -> false
         //is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
       }
-
       is JTCPrimitiveType -> when (b) {
         is JTCUnknownType -> true
         is JTCPrimitiveType -> a.javaType.isSubtype(b.javaType)
@@ -60,7 +57,6 @@ object Subtyping {
         is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
         else -> false
       }
-
       is JTCNullType -> when (b) {
         is JTCUnknownType -> true
         is JTCNullType -> true
@@ -68,7 +64,6 @@ object Subtyping {
         is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
         else -> false
       }
-
       is JTCBottomType -> true
       is JTCUnionType -> when (b) {
         is JTCUnknownType -> true
@@ -76,7 +71,6 @@ object Subtyping {
         is JTCIntersectionType -> a.types.all { itA -> isSubtype(itA, b) } || b.types.all { itB -> isSubtype(a, itB) }
         else -> a.types.all { itA -> isSubtype(itA, b) }
       }
-
       is JTCIntersectionType -> when (b) {
         is JTCUnknownType -> true
         is JTCUnionType -> a.types.any { itA -> isSubtype(itA, b) } || b.types.any { itB -> isSubtype(a, itB) }
@@ -95,11 +89,11 @@ object Subtyping {
         if (graph == null) {
           JTCUnknownType.SINGLETON
         } else {
-          graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(t, it) }.let { JTCType.createIntersection(it.toSet()) }
+          JTCType.createIntersection(graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(t, it) })
         }
       }
-      is JTCUnionType -> JTCType.createUnion(t.types.map { upcast(it, j) }.toSet())
-      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { upcast(it, j) }.toSet())
+      is JTCUnionType -> JTCType.createUnion(t.types.map { upcast(it, j) })
+      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { upcast(it, j) })
       is JTCBottomType -> JTCBottomType.SINGLETON
       is JTCPrimitiveType -> t
       is JTCNullType -> t
@@ -115,11 +109,11 @@ object Subtyping {
         if (graph == null) {
           JTCUnknownType.SINGLETON
         } else {
-          graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(it, t) }.let { JTCType.createUnion(it.toSet()) }
+          JTCType.createUnion(graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(it, t) })
         }
       }
-      is JTCUnionType -> JTCType.createUnion(t.types.map { downcast(it, j) }.toSet())
-      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { downcast(it, j) }.toSet())
+      is JTCUnionType -> JTCType.createUnion(t.types.map { downcast(it, j) })
+      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { downcast(it, j) })
       is JTCBottomType -> JTCBottomType.SINGLETON
       is JTCPrimitiveType -> t
       is JTCNullType -> t
@@ -170,11 +164,7 @@ object Subtyping {
   private fun attemptDowncast(from: JTCStateType, toJavaType: JavaType, toGraph: Graph): JTCType? {
     // If downcasting...
     if (toJavaType.isSubtype(from.javaType)) {
-      return JTCType.createUnion(
-        toGraph.getAllConcreteStates()
-          .filter { ProtocolSyncSubtyping.isSubtype(it, from.state) }
-          .map { JTCStateType(toJavaType, toGraph, it) }
-      )
+      return JTCType.createUnion(toGraph.getAllConcreteStates().map { JTCStateType(toJavaType, toGraph, it) }.filter { isSubtype(it, from) })
     }
     return null
   }
