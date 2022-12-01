@@ -5,198 +5,250 @@ import jatyc.core.JTCType
 import jatyc.core.JTCUnknownType
 import jatyc.core.Reference
 
-sealed class StoreInfo(val type: JTCType) {
-  abstract fun conditionalOn(ref: Reference): Boolean
-  abstract fun replaceCondition(ref: Reference): StoreInfo
-  abstract fun fixThis(from: Reference, to: Reference): StoreInfo
-  abstract fun union(other: StoreInfo): StoreInfo
-  abstract fun toRegular(): RegularStoreInfo
-  abstract fun withLabel(ref: Reference, label: String?): RegularStoreInfo
-  abstract fun withoutLabel(ref: Reference, label: String?): RegularStoreInfo
-  abstract fun not(original: Reference, negation: Reference): StoreInfo
+sealed class CasePattern {
+  abstract fun replaceCondition(from: Reference, to: Reference): CasePattern
+  abstract fun fixThis(from: Reference, to: Reference): CasePattern
+  abstract fun not(original: Reference, negation: Reference): CasePattern
 
-  companion object {
-    val UNKNOWN = RegularStoreInfo(JTCUnknownType.SINGLETON)
-    val BOTTOM = RegularStoreInfo(JTCBottomType.SINGLETON)
-  }
+  // If this pattern is associated with the wanted condition, return true iff the label matches
+  // Otherwise, return true
+  abstract fun withLabel(wantedCondition: Reference, wantedLabel: String): Boolean
+
+  // If this pattern is associated with the wanted condition, return true iff the label does not match
+  // Otherwise, return true
+  abstract fun withoutLabel(wantedCondition: Reference, wantedLabel: String): Boolean
+
+  abstract fun implies(other: CasePattern): Boolean
 }
 
-class RegularStoreInfo(type: JTCType) : StoreInfo(type) {
-  override fun conditionalOn(ref: Reference): Boolean {
-    return false
-  }
-
-  override fun replaceCondition(ref: Reference): StoreInfo {
+object CaseTrue : CasePattern() {
+  override fun replaceCondition(from: Reference, to: Reference): CasePattern {
     return this
   }
 
-  override fun fixThis(from: Reference, to: Reference): StoreInfo {
+  override fun fixThis(from: Reference, to: Reference): CasePattern {
     return this
   }
 
-  override fun union(other: StoreInfo): StoreInfo {
-    return RegularStoreInfo(type.union(other.type))
-  }
-
-  override fun toRegular(): RegularStoreInfo {
+  override fun not(original: Reference, negation: Reference): CasePattern {
     return this
   }
 
-  override fun withLabel(ref: Reference, label: String?): RegularStoreInfo {
-    return this
+  override fun withLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
+    return true
   }
 
-  override fun withoutLabel(ref: Reference, label: String?): RegularStoreInfo {
-    return this
+  override fun withoutLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
+    return true
   }
 
-  override fun not(original: Reference, negation: Reference): StoreInfo {
-    return this
-  }
-
-  override fun equals(other: Any?): Boolean {
-    return other is RegularStoreInfo && type == other.type
-  }
-
-  override fun hashCode(): Int {
-    return type.hashCode()
+  override fun implies(other: CasePattern): Boolean {
+    return when (other) {
+      is CaseTrue -> true
+      is CaseLabeled -> false
+    }
   }
 
   override fun toString(): String {
-    return "Regular{${type.format()}}"
+    return "#{TRUE}"
   }
 }
 
-class ConditionalStoreInfo(val condition: Reference, val thenType: JTCType, val elseType: JTCType) : StoreInfo(thenType.union(elseType)) {
-  override fun conditionalOn(ref: Reference): Boolean {
-    return condition == ref
+// TODO for more precision, store the possible label values instead of just if equal is true or not
+class CaseLabeled(val condition: Reference, val label: String, val equal: Boolean) : CasePattern() {
+  override fun replaceCondition(from: Reference, to: Reference): CasePattern {
+    return if (from == condition) CaseLabeled(to, label, equal) else this
   }
 
-  override fun replaceCondition(ref: Reference): StoreInfo {
-    return ConditionalStoreInfo(ref, thenType, elseType)
+  override fun fixThis(from: Reference, to: Reference): CasePattern {
+    return CaseLabeled(condition.fixThis(from, to), label, equal)
   }
 
-  override fun fixThis(from: Reference, to: Reference): StoreInfo {
-    return ConditionalStoreInfo(condition.fixThis(from, to), thenType, elseType)
+  override fun not(original: Reference, negation: Reference): CasePattern {
+    return if (original == condition) CaseLabeled(negation, label, !equal) else this
   }
 
-  override fun union(other: StoreInfo): StoreInfo {
-    if (other is ConditionalStoreInfo && condition == other.condition) {
-      return ConditionalStoreInfo(condition, thenType.union(other.thenType), elseType.union(other.elseType))
-    }
-    return RegularStoreInfo(type.union(other.type))
+  private fun matches(wantedLabel: String): Boolean {
+    return if (equal) label == wantedLabel else label != wantedLabel
   }
 
-  override fun toRegular(): RegularStoreInfo {
-    return RegularStoreInfo(type)
+  // If this pattern is associated with the wanted condition, return true iff the label matches
+  // Otherwise, return true
+  override fun withLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
+    return condition != wantedCondition || matches(wantedLabel)
   }
 
-  override fun withLabel(ref: Reference, label: String?): RegularStoreInfo {
-    return if (condition == ref) {
-      RegularStoreInfo(when (label) {
-        "true" -> thenType
-        "false" -> elseType
-        else -> type
-      })
-    } else {
-      RegularStoreInfo(type)
-    }
+  // If this pattern is associated with the wanted condition, return true iff the label does not match
+  // Otherwise, return true
+  override fun withoutLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
+    return condition != wantedCondition || !matches(wantedLabel)
   }
 
-  override fun withoutLabel(ref: Reference, label: String?): RegularStoreInfo {
-    return if (condition == ref) {
-      RegularStoreInfo(when (label) {
-        "true" -> elseType
-        "false" -> thenType
-        else -> type
-      })
-    } else {
-      RegularStoreInfo(type)
+  override fun implies(other: CasePattern): Boolean {
+    return when (other) {
+      is CaseTrue -> true
+      is CaseLabeled -> condition == other.condition && label == other.label && equal == other.equal
     }
   }
 
-  override fun not(original: Reference, negation: Reference): StoreInfo {
-    if (original == condition) {
-      return ConditionalStoreInfo(negation, elseType, thenType)
-    }
-    return RegularStoreInfo(type)
+  override fun toString(): String {
+    return "#{c=$condition,l=$label,eq=$equal}"
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is ConditionalStoreInfo && condition == other.condition && thenType == other.thenType && elseType == other.elseType
+    if (this === other) return true
+    return other is CaseLabeled && condition == other.condition && label == other.label && equal == other.equal
   }
 
   override fun hashCode(): Int {
     var result = condition.hashCode()
-    result = 31 * result + thenType.hashCode()
-    result = 31 * result + elseType.hashCode()
+    result = 31 * result + label.hashCode()
+    result = 31 * result + equal.hashCode()
     return result
-  }
-
-  override fun toString(): String {
-    return "Conditional{cond=$condition, then=${thenType.format()}, else=${elseType.format()}}"
   }
 }
 
-class CasesStoreInfo(val testValue: Reference, val cases: Map<String, JTCType>) : StoreInfo(JTCType.createUnion(cases.values)) {
-  override fun conditionalOn(ref: Reference): Boolean {
-    return testValue == ref
+class CasePatterns(val list: List<CasePattern>) {
+  fun replaceCondition(from: Reference, to: Reference): CasePatterns {
+    return CasePatterns(list.map { it.replaceCondition(from, to) })
   }
 
-  override fun replaceCondition(ref: Reference): StoreInfo {
-    return CasesStoreInfo(ref, cases)
+  fun fixThis(from: Reference, to: Reference): CasePatterns {
+    return CasePatterns(list.map { it.fixThis(from, to) })
   }
 
-  override fun fixThis(from: Reference, to: Reference): StoreInfo {
-    return CasesStoreInfo(testValue.fixThis(from, to), cases)
+  fun withLabel(condition: Reference, label: String): CasePatterns {
+    val newList = list.filter { it.withLabel(condition, label) }
+    return if (newList.size < list.size) CasePatterns(emptyList()) else this
   }
 
-  override fun union(other: StoreInfo): StoreInfo {
-    // TODO improve?
-    return RegularStoreInfo(type.union(other.type))
+  fun withoutLabel(condition: Reference, label: String): CasePatterns {
+    val newList = list.filter { it.withoutLabel(condition, label) }
+    return if (newList.size < list.size) CasePatterns(emptyList()) else this
   }
 
-  override fun toRegular(): RegularStoreInfo {
-    return RegularStoreInfo(type)
+  fun addCondition(pattern: CasePattern): CasePatterns {
+    return CasePatterns(list.plus(pattern))
   }
 
-  override fun withLabel(ref: Reference, label: String?): RegularStoreInfo {
-    return if (testValue == ref) {
-      RegularStoreInfo(if (label == null) type else cases[label] ?: type)
-    } else {
-      RegularStoreInfo(type)
-    }
+  fun not(original: Reference, negation: Reference): CasePatterns {
+    return CasePatterns(list.map { it.not(original, negation) })
   }
 
-  override fun withoutLabel(ref: Reference, label: String?): RegularStoreInfo {
-    return if (testValue == ref) {
-      RegularStoreInfo(if (label == null) type else JTCType.createUnion(cases.filterKeys { it != label }.values))
-    } else {
-      RegularStoreInfo(type)
-    }
-  }
+  fun isPossible() = list.isNotEmpty()
 
-  override fun not(original: Reference, negation: Reference): StoreInfo {
-    return RegularStoreInfo(type)
-  }
-
-  override fun equals(other: Any?): Boolean {
-    return other is CasesStoreInfo && testValue == other.testValue && cases == other.cases
-  }
-
-  override fun hashCode(): Int {
-    var result = testValue.hashCode()
-    result = 31 * result + cases.hashCode()
-    return result
+  fun implies(other: CasePatterns): Boolean {
+    return other.list.all { itB -> list.any { itA -> itA.implies(itB) } }
   }
 
   override fun toString(): String {
-    return "Cases{value=$testValue, cases=$cases}"
+    return "Patterns{$list}"
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    return other is CasePatterns && list == other.list
+  }
+
+  override fun hashCode(): Int {
+    return list.hashCode()
+  }
+
+  companion object {
+    fun labelled(condition: Reference, label: String, equal: Boolean): CasePatterns {
+      return CasePatterns(listOf(CaseLabeled(condition, label, equal)))
+    }
+
+    fun trueCase(): CasePatterns {
+      return CasePatterns(listOf(CaseTrue))
+    }
+  }
+}
+
+class StoreInfo private constructor(val cases: List<Pair<CasePatterns, JTCType>>) {
+  val type: JTCType get() = toType()
+  fun toRegular() = regular(toType())
+
+  private fun mapKeys(fn: (CasePatterns) -> CasePatterns) = cases(cases.map { Pair(fn(it.first), it.second) })
+
+  fun replaceCondition(from: Reference, to: Reference): StoreInfo {
+    return mapKeys { it.replaceCondition(from, to) }
+  }
+
+  fun fixThis(from: Reference, to: Reference): StoreInfo {
+    return mapKeys { it.fixThis(from, to) }
+  }
+
+  fun toType(): JTCType {
+    return JTCType.createUnion(cases.map { it.second })
+  }
+
+  fun withLabel(condition: Reference, label: String): StoreInfo {
+    return mapKeys { it.withLabel(condition, label) }
+  }
+
+  fun withoutLabel(condition: Reference, label: String): StoreInfo {
+    return mapKeys { it.withoutLabel(condition, label) }
+  }
+
+  fun and(pattern: CasePattern): StoreInfo {
+    return mapKeys { it.addCondition(pattern) }
+  }
+
+  fun not(original: Reference, negation: Reference): StoreInfo {
+    return mapKeys { it.not(original, negation) }
+  }
+
+  fun or(other: StoreInfo): StoreInfo {
+    return cases(cases.plus(other.cases))
+  }
+
+  // Returns true iff we are sure the information on "this" is contained in the "other"
+  // Returns false otherwise
+  fun implies(other: StoreInfo): Boolean {
+    return cases.all { itA -> other.cases.any { itB -> itA.first.implies(itB.first) && itA.second.isSubtype(itB.second) } }
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return other is StoreInfo && cases == other.cases
+  }
+
+  override fun hashCode(): Int {
+    return cases.hashCode()
+  }
+
+  override fun toString(): String {
+    return "Cases{$cases}"
+  }
+
+  companion object {
+    fun regular(type: JTCType): StoreInfo {
+      return cases(listOf(Pair(CasePatterns.trueCase(), type)))
+    }
+
+    fun conditional(condition: Reference, thenInfo: StoreInfo, elseInfo: StoreInfo): StoreInfo {
+      if (thenInfo == elseInfo) {
+        return thenInfo
+      }
+      val truePattern = CaseLabeled(condition, "true", true)
+      val falsePattern = CaseLabeled(condition, "true", false)
+      return thenInfo.and(truePattern).or(elseInfo.and(falsePattern))
+    }
+
+    fun conditional(condition: Reference, thenType: JTCType, elseType: JTCType): StoreInfo {
+      return conditional(condition, regular(thenType), regular(elseType))
+    }
+
+    fun cases(cases: List<Pair<CasePatterns, JTCType>>): StoreInfo {
+      return StoreInfo(cases.filter { it.first.isPossible() && !it.second.isSubtype(JTCBottomType.SINGLETON) })
+    }
+
+    val UNKNOWN = regular(JTCUnknownType.SINGLETON)
+    val BOTTOM = cases(emptyList())
   }
 }
 
 class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) {
-
   operator fun contains(ref: Reference) = map.contains(ref)
   operator fun get(ref: Reference): StoreInfo = map[ref] ?: StoreInfo.UNKNOWN
   operator fun iterator(): Iterator<Map.Entry<Reference, StoreInfo>> = map.iterator()
@@ -219,14 +271,20 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   }
 
   operator fun set(ref: Reference, type: JTCType) {
-    map[ref] = RegularStoreInfo(type)
+    map[ref] = StoreInfo.regular(type)
   }
 
   fun merge(ref: Reference, info: StoreInfo): Boolean {
     val curr = map[ref]
-    val next = curr?.union(info) ?: info
-    map[ref] = next
-    return curr != next
+    if (curr == null) {
+      map[ref] = info
+      return true // It changed
+    }
+    if (info.implies(curr)) {
+      return false
+    }
+    map[ref] = curr.or(info)
+    return true // It changed
   }
 
   fun remove(ref: Reference): StoreInfo? {
@@ -251,7 +309,7 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     }
   }
 
-  fun withLabel(condition: Reference, label: String?): Store {
+  fun withLabel(condition: Reference, label: String): Store {
     val store = Store()
     for ((ref, info) in this) {
       store[ref] = info.withLabel(condition, label)
@@ -270,7 +328,7 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   fun toShared(): Store {
     val store = Store()
     for ((ref, info) in this) {
-      store[ref] = info.type.toShared()
+      store[ref] = info.toType().toShared()
     }
     return store
   }
@@ -310,5 +368,4 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
       return store
     }
   }
-
 }
