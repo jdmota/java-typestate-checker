@@ -3,7 +3,6 @@ package jatyc.core
 import jatyc.subtyping.syncronous_subtyping.ProtocolSyncSubtyping
 
 object Subtyping {
-
   fun isSubtype(a: JTCType, b: JTCType): Boolean {
     return when (a) {
       is JTCUnknownType -> b is JTCUnknownType
@@ -14,6 +13,7 @@ object Subtyping {
         is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
         else -> false
       }
+
       is JTCLinearType -> when (b) {
         is JTCUnknownType -> true
         is JTCLinearType -> a.javaType.isSubtype(b.javaType)
@@ -22,6 +22,7 @@ object Subtyping {
         else -> false
         //is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
       }
+
       is JTCStateType -> when (b) {
         is JTCUnknownType -> true
         is JTCSharedType -> a.javaType.isSubtype(b.javaType) && a.state.canDropHere() // NEW
@@ -32,6 +33,7 @@ object Subtyping {
         else -> false
         //is JTCNoProtocolType -> javaType.isSubtype(other.javaType) && !other.exact
       }
+
       is JTCPrimitiveType -> when (b) {
         is JTCUnknownType -> true
         is JTCPrimitiveType -> a.javaType.isSubtype(b.javaType)
@@ -39,6 +41,7 @@ object Subtyping {
         is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
         else -> false
       }
+
       is JTCNullType -> when (b) {
         is JTCUnknownType -> true
         is JTCNullType -> true
@@ -46,6 +49,7 @@ object Subtyping {
         is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
         else -> false
       }
+
       is JTCBottomType -> true
       is JTCUnionType -> when (b) {
         is JTCUnknownType -> true
@@ -53,12 +57,69 @@ object Subtyping {
         is JTCIntersectionType -> a.types.all { itA -> isSubtype(itA, b) } || b.types.all { itB -> isSubtype(a, itB) }
         else -> a.types.all { itA -> isSubtype(itA, b) }
       }
+
       is JTCIntersectionType -> when (b) {
         is JTCUnknownType -> true
         is JTCUnionType -> a.types.any { itA -> isSubtype(itA, b) } || b.types.any { itB -> isSubtype(a, itB) }
         is JTCIntersectionType -> a.types.any { itA -> isSubtype(itA, b) } || b.types.all { itB -> isSubtype(a, itB) }
         else -> a.types.any { itA -> isSubtype(itA, b) }
       }
+    }
+  }
+
+  fun upcast(t: JTCType, j: JavaType): JTCType {
+    return when (t) {
+      is JTCUnknownType -> JTCUnknownType.SINGLETON
+      is JTCSharedType -> if (t.javaType.isSubtype(j)) JTCSharedType(j) else JTCUnknownType.SINGLETON
+      is JTCLinearType -> {
+        val graph = j.getGraph()
+        if (graph == null) {
+          JTCUnknownType.SINGLETON
+        } else {
+          if (t.javaType.isSubtype(j)) JTCLinearType(j, graph) else JTCUnknownType.SINGLETON
+        }
+      }
+      is JTCStateType -> {
+        val graph = j.getGraph()
+        if (graph == null) {
+          JTCUnknownType.SINGLETON
+        } else {
+          graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(t, it) }.let { JTCType.createIntersection(it.toSet()) }
+        }
+      }
+      is JTCUnionType -> JTCType.createUnion(t.types.map { upcast(it, j) }.toSet())
+      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { upcast(it, j) }.toSet())
+      is JTCBottomType -> JTCBottomType.SINGLETON
+      is JTCPrimitiveType -> t
+      is JTCNullType -> t
+    }
+  }
+
+  fun downcast(t: JTCType, j: JavaType): JTCType {
+    return when (t) {
+      is JTCUnknownType -> JTCUnknownType.SINGLETON
+      is JTCSharedType -> if (j.isSubtype(t.javaType)) JTCSharedType(j) else JTCUnknownType.SINGLETON
+      is JTCLinearType -> {
+        val graph = j.getGraph()
+        if (graph == null) {
+          JTCUnknownType.SINGLETON
+        } else {
+          if (j.isSubtype(t.javaType)) JTCLinearType(j, graph) else JTCUnknownType.SINGLETON
+        }
+      }
+      is JTCStateType -> {
+        val graph = j.getGraph()
+        if (graph == null) {
+          JTCUnknownType.SINGLETON
+        } else {
+          graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(it, t) }.let { JTCType.createUnion(it.toSet()) }
+        }
+      }
+      is JTCUnionType -> JTCType.createUnion(t.types.map { downcast(it, j) }.toSet())
+      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { downcast(it, j) }.toSet())
+      is JTCBottomType -> JTCBottomType.SINGLETON
+      is JTCPrimitiveType -> t
+      is JTCNullType -> t
     }
   }
 
@@ -91,6 +152,7 @@ object Subtyping {
         is JTCStateType -> !b.state.canDropHere() || areNotRelated(a.javaType, b.javaType)
         else -> false
       }
+
       is JTCLinearType -> when (b) {
         is JTCPrimitiveType,
         is JTCNullType -> true
@@ -99,6 +161,7 @@ object Subtyping {
         is JTCStateType -> areNotRelated(a.javaType, b.javaType)
         else -> false
       }
+
       is JTCStateType -> when (b) {
         is JTCPrimitiveType,
         is JTCNullType -> true
@@ -146,5 +209,4 @@ object Subtyping {
     // This means that the intersection of both must be empty
     return !a.isSubtype(b) && !b.isSubtype(a) && (a.isFinal() || b.isFinal())
   }
-
 }
