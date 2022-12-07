@@ -193,12 +193,13 @@ class FuncDeclaration(
   parameters: List<FuncParam>,
   val body: SimpleCFG,
   returnType: JTCType,
+  returnJavaType: JavaType,
   isPublic: Boolean,
   isAnytime: Boolean,
   isPure: Boolean,
   isAbstract: Boolean,
   var clazz: ClassDecl? = null
-) : FuncInterface(name, parameters, returnType, isPublic, isAnytime, isPure, isAbstract) {
+) : FuncInterface(name, parameters, returnType, returnJavaType, isPublic, isAnytime, isPure, isAbstract) {
   override fun format(indent: String): String {
     return "$indent(fun ${name ?: "anonymous"}(...) -> ...)" // ${parameters.joinToString(", ")}
   }
@@ -208,6 +209,7 @@ open class FuncInterface(
   val name: String?,
   val parameters: List<FuncParam>,
   val returnType: JTCType,
+  val returnJavaType: JavaType,
   val isPublic: Boolean,
   val isAnytime: Boolean,
   val isPure: Boolean,

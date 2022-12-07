@@ -19,8 +19,8 @@ class MethodUtils(private val utils: JTCUtils) {
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (other !is MethodSymbolWrapper) return false
-      // TODO use sameMethod instead of sameErasedMethod when we support generics
-      return sameErasedMethod(sym, other.sym)
+      // TODO use erasure while we do not generics
+      return sym.name.toString() == other.sym.name.toString() && utils.isSameType(erasure(sym), erasure(other.sym))
     }
 
     override fun hashCode(): Int {
@@ -69,28 +69,6 @@ class MethodUtils(private val utils: JTCUtils) {
       ),
       owner
     ), unknownTypes)
-  }
-
-  fun sameErasedMethod(a: Symbol.MethodSymbol, b: Symbol.MethodSymbol): Boolean {
-    return a.name.toString() == b.name.toString() && utils.isSameType(erasure(a), erasure(b))
-  }
-
-  // We could use "typeUtils.isSameType" with the MethodType, but it does not compare thrown types
-  private fun sameMethod(env: Env<AttrContext>, name: String, type: Type, node: TMethodNode): Boolean {
-    // TODO deal with thrownTypes and typeArguments
-    return name == node.name &&
-      utils.isSameType(type.returnType, resolver.resolve(env, node.returnType.stringName())) &&
-      utils.isSameTypes(type.parameterTypes, node.args.map { resolver.resolve(env, it.stringName()) }) // &&
-    // TODO ignore exceptions while we do not support them in typestates
-    // utils.isSameTypes(type.thrownTypes, listOf())
-  }
-
-  fun sameMethod(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
-    return sameMethod(env, sym.name.toString(), sym.type, node)
-  }
-
-  fun sameErasedMethod(env: Env<AttrContext>, sym: Symbol.MethodSymbol, node: TMethodNode): Boolean {
-    return sameMethod(env, sym.name.toString(), erasure(sym), node)
   }
 
   companion object {

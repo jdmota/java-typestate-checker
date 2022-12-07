@@ -123,6 +123,8 @@ class JavaTypesHierarchy(private val checker: JavaTypestateChecker) {
   val LONG = prim(symtab.longType)
   val SHORT = prim(symtab.shortType)
 
+  val VOID = get(symtab.voidType)
+
   val SHARED_OBJECT = JTCSharedType(get(symtab.objectType))
   val STRING = JTCSharedType(get(symtab.stringType))
   val ENUM = JTCSharedType(get(symtab.enumSym.asType()))

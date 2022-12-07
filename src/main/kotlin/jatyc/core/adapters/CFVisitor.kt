@@ -22,7 +22,7 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
   private val javaTypesHierarchy = JavaTypesHierarchy(checker)
   private var typeIntroducer = TypeIntroducer(checker, javaTypesHierarchy)
   private val typecheckUtils = TypecheckUtils(checker, typeIntroducer)
-  private val adapter = CFAdapter(checker, javaTypesHierarchy, typeIntroducer)
+  private val adapter = CFAdapter(checker, javaTypesHierarchy, typeIntroducer, typecheckUtils)
   private val classes = mutableMapOf<String, ClassDeclAndCompanion>()
   private val classAnalysis = LinearModeClassAnalysis(checker, javaTypesHierarchy, typeIntroducer, typecheckUtils, classes)
   private val pending = LinkedList<Pair<CompilationUnitTree, ClassDeclAndCompanion>>()
