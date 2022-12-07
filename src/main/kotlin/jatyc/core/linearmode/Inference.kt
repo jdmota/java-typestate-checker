@@ -72,9 +72,10 @@ class Inference(
     post[Reference.make(node)] = pre[rightRef].type.toShared()
 
     when {
-      targetType is JTCBottomType -> inference.errors[node] = "Cannot assign because [${leftRef.format()}] is not accessible here"
-      succeeded -> inference.errors.remove(node)
-      else -> inference.errors[node] = when (node) {
+      targetType is JTCBottomType -> inference.addError(node, "Cannot assign because [${leftRef.format()}] is not accessible here")
+      succeeded -> {
+      }
+      else -> inference.addError(node, when (node) {
         is Assign -> "Cannot assign: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
         is ParamAssign -> {
           val method = node.call.methodExpr
@@ -87,11 +88,13 @@ class Inference(
         }
         is Return -> "Incompatible return value: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
         else -> "INTERNAL ERROR"
-      }
+      })
     }
   }
 
   fun analyzeCode(func: FuncDeclaration, pre: Store, node: CodeExpr, post: Store) {
+    inference.resetErrorsAndWarnings(node)
+
     val clazz = func.clazz
     val thisRef = Reference.makeThis(func)
 
@@ -104,11 +107,10 @@ class Inference(
         val ref = Reference.make(node.id)
         val inLoop = ref in post
 
-        inference.errors.remove(node)
         if (inLoop) {
           val type = post[ref].type
           if (!typecheckUtils.canDrop(type)) {
-            inference.errors[node] = "The previous value of [${ref.format()}] did not complete its protocol (found: ${type.format()})"
+            inference.addError(node, "The previous value of [${ref.format()}] did not complete its protocol (found: ${type.format()})")
           }
         }
 
@@ -165,12 +167,10 @@ class Inference(
           !methodExpr.isAnytime && methodExpr.isPublic
         ) {
           // We are calling our own public method!
-          inference.errors[node] = "Cannot call own public method [${methodExpr.name}]"
+          inference.addError(node, "Cannot call own public method [${methodExpr.name}]")
           post[nodeRef] = JTCBottomType.SINGLETON
           post.toBottom()
           return
-        } else {
-          inference.errors.remove(node)
         }
 
         // We might need to invalidate some information...
@@ -229,10 +229,8 @@ class Inference(
                 }
               }
 
-              if (typecheckUtils.check(currentType, node)) {
-                inference.errors.remove(node)
-              } else {
-                inference.errors[node] = "Cannot call [${node.methodExpr.name}] on ${currentType.format()}"
+              if (!typecheckUtils.check(currentType, node)) {
+                inference.addError(node, "Cannot call [${node.methodExpr.name}] on ${currentType.format()}")
               }
             }
 
@@ -272,10 +270,8 @@ class Inference(
         showType(func, node, currentType)
 
         if (currentType is JTCUnknownType) {
-          inference.errors[node] = "Cannot access [${node.name}]"
+          inference.addError(node, "Cannot access [${node.name}]")
           post[Reference.make(node)] = JTCBottomType.SINGLETON
-        } else {
-          inference.errors.remove(node)
         }
       }
       is Select -> {
@@ -309,16 +305,15 @@ class Inference(
 
         when {
           currentType is JTCUnknownType -> {
-            inference.errors[node] = "Cannot access [${node.format("")}]"
+            inference.addError(node, "Cannot access [${node.format("")}]")
             post[ref] = JTCBottomType.SINGLETON
           }
           obj !is SymbolResolveExpr && JTCNullType.SINGLETON.isSubtype(objType) -> {
-            inference.errors[node] = "Cannot access field [${node.id}] of null"
+            inference.addError(node, "Cannot access field [${node.id}] of null")
             post[objRef] = typecheckUtils.refineToNonNull(objType)
             post[ref] = currentType
           }
           else -> {
-            inference.errors.remove(node)
             post[ref] = currentType
           }
         }
@@ -353,16 +348,12 @@ class Inference(
           post[exprRef] = newType
 
           if (currentType is JTCBottomType || newType !is JTCBottomType) {
-            inference.errors.remove(node)
-
-            if (currentType.isSubtype(node.type)) {
-              inference.removeWarning(node, "Unsafe cast")
-            } else {
+            if (!currentType.isSubtype(node.type)) {
               inference.addWarning(node, "Unsafe cast")
             }
           } else {
             // The cast is impossible
-            inference.errors[node] = "Cannot perform cast from ${currentType.format()} to ${node.type.format()}"
+            inference.addError(node, "Cannot perform cast from ${currentType.format()} to ${node.type.format()}")
           }
         }
       }
@@ -393,9 +384,7 @@ class Inference(
         post[exprRef] = notNull
 
         if (JTCNullType.SINGLETON.isSubtype(currentType)) {
-          inference.errors[node] = node.message
-        } else {
-          inference.errors.remove(node)
+          inference.addError(node, node.message)
         }
       }
       is BinaryExpr -> {
@@ -500,12 +489,10 @@ class Inference(
         }
       }
       is NewArrayWithDimensions -> {
-        inference.errors.remove(node)
-
         for ((idx, init) in node.dimensions.withIndex()) {
           val valueType = pre[Reference.make(init)].type.toShared()
           if (!valueType.isSubtype(hierarchy.INTEGER)) {
-            inference.errors[node] = "Dimension in index $idx with type ${valueType.format()} is not a subtype of ${hierarchy.INTEGER}"
+            inference.addError(node, "Dimension in index $idx with type ${valueType.format()} is not a subtype of ${hierarchy.INTEGER}")
             break
           }
         }
@@ -513,12 +500,10 @@ class Inference(
         post[Reference.make(node)] = node.type
       }
       is NewArrayWithValues -> {
-        inference.errors.remove(node)
-
         for ((idx, init) in node.initializers.withIndex()) {
           val valueType = pre[Reference.make(init)].type.toShared()
           if (!valueType.isSubtype(node.componentType)) {
-            inference.errors[node] = "Array value in index $idx with type ${valueType.format()} is not a subtype of ${node.componentType.format()}"
+            inference.addError(node, "Array value in index $idx with type ${valueType.format()} is not a subtype of ${node.componentType.format()}")
             break
           }
         }
@@ -573,9 +558,6 @@ class Inference(
     val thisRef = Reference.makeThis(func)
     val params = func.parameters.associateBy { Reference.make(it.id) }
 
-    val funcErrors = mutableListOf<String>()
-    inference.completionErrors[func] = funcErrors
-
     for ((ref, info) in store) {
       val type = info.type
       if (ref.isFieldOf(thisRef) || params.containsKey(ref) || ref == Reference.returnRef) {
@@ -586,11 +568,11 @@ class Inference(
       if (!typecheckUtils.canDrop(type)) {
         if (ref is OldReference) {
           val leftRef = Reference.make(ref.assign.left)
-          inference.completionErrors[ref.assign] = listOf("The previous value of [${leftRef.format()}] did not complete its protocol (found: ${type.format()})")
+          inference.addError(ref.assign, "The previous value of [${leftRef.format()}] did not complete its protocol (found: ${type.format()})")
         } else if (ref is CodeExprReference && ref.code is MethodCall) {
-          inference.completionErrors[ref.code] = listOf("Returned value did not complete its protocol (found: ${type.format()})")
+          inference.addError(ref.code, "Returned value did not complete its protocol (found: ${type.format()})")
         } else {
-          funcErrors.add("[${ref.format()}] did not complete its protocol (found: ${type.format()})")
+          inference.addError(func, "[${ref.format()}] did not complete its protocol (found: ${type.format()})")
         }
       }
     }
@@ -599,9 +581,9 @@ class Inference(
       val actual = store[ref].type
       if (!actual.isSubtype(param.ensures)) {
         if (param.isThis || param.hasEnsures) {
-          funcErrors.add("Type of parameter [${ref.format()}] is ${actual.format()}, expected ${param.ensures.format()}}")
+          inference.addError(func, "Type of parameter [${ref.format()}] is ${actual.format()}, expected ${param.ensures.format()}}")
         } else {
-          funcErrors.add("[${ref.format()}] did not complete its protocol (found: ${actual.format()})")
+          inference.addError(func, "[${ref.format()}] did not complete its protocol (found: ${actual.format()})")
         }
       }
     }
@@ -644,6 +626,6 @@ class Inference(
       return
     }
     val ref = Reference.make(node)
-    inference.debugTypes[node] = "${ref.format()}: ${currentType.format()}"
+    inference.addWarning(node, "${ref.format()}: ${currentType.format()}")
   }
 }

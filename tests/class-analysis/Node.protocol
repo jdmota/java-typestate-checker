@@ -1,0 +1,18 @@
+typestate NodeProtocol {
+  Init = {
+    void setValue(Object): WithValue
+  }
+  WithValue = {
+    Object getValue(): end,
+    void setNext(Node): WithBoth
+  }
+  WithNext = {
+    Node getNext(): end
+  }
+  WithBoth = {
+    Object getValue(): WithNext,
+    Node getNext(): {
+      Object getValue(): end
+    }
+  }
+}

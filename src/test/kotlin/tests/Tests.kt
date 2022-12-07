@@ -176,3 +176,17 @@ class SuppressWarningsTests(testFiles: List<File>) : PerDirectoryTest(
     val testDirs = arrayOf(dir11)
   }
 }
+
+private const val dir12 = "class-analysis"
+
+class ClassAnalysisTests(testFiles: List<File>) : PerDirectoryTest(
+  dir12,
+  testFiles,
+  defaultOpts
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir12)
+  }
+}

@@ -91,9 +91,7 @@ class LinearModeClassAnalysis(
     }
 
     // Ensure completion of objects in fields
-    val errors = mutableListOf<String>()
-    inference.completionErrors[clazz] = errors
-    ensureFieldsCompleteness(errors, upperBoundStore)
+    ensureFieldsCompleteness(clazz, upperBoundStore)
   }
 
   private fun analyzeClassWithProtocol(clazz: ClassDecl, graph: Graph, classThisRef: Reference) {
@@ -118,10 +116,6 @@ class LinearModeClassAnalysis(
 
     // States lead us to methods that may be called. So we need information about each state.
     val stateToStore = mutableMapOf<State, Store>()
-    // But since the same method may be available from different states,
-    // we also need to store the entry store and resulting store for each method.
-    val methodPreStores = mutableMapOf<FuncDeclaration, Store>()
-    val methodPostStores = mutableMapOf<FuncDeclaration, Store>()
     // States that need recomputing. Use a LinkedHashSet to keep some order and avoid duplicates.
     val stateQueue = LinkedHashSet<State>()
 
@@ -129,22 +123,12 @@ class LinearModeClassAnalysis(
 
     // Update the state's store. Queue the state again if it changed.
     fun mergeStateStore(state: State, store: Store) {
-      val currStore = stateToStore[state] ?: emptyStore
+      val currStore = stateToStore.computeIfAbsent(state) { emptyStore }
       val newStore = Store.mergeFieldsToNew(currStore, store, classThisRef)
-      if (!stateToStore.containsKey(state) || currStore != newStore) {
+      if (currStore != newStore) {
         stateToStore[state] = newStore
         stateQueue.add(state)
       }
-    }
-
-    // Returns the merge result if it changed. Returns null otherwise.
-    fun mergeMethodPreStore(method: FuncDeclaration, store: Store): Store? {
-      val currStore = methodPreStores[method] ?: emptyStore
-      val newStore = Store.mergeFieldsToNew(currStore, store, classThisRef)
-      return if (!methodPreStores.containsKey(method) || currStore != newStore) {
-        methodPreStores[method] = newStore
-        newStore
-      } else null
     }
 
     stateToStore[graph.getInitialState()] = constructorsStore
@@ -158,18 +142,18 @@ class LinearModeClassAnalysis(
       val methodToStates = methodToStatesCache.computeIfAbsent(state, ::getMethodToState)
 
       for ((method, destState) in methodToStates) {
-        val entryStore = mergeMethodPreStore(method, store)
-        val generalResult = if (entryStore == null) {
-          // Even though we might have analyzed this method with these pre-conditions before
-          // We might have not contributed with its output to all destination states
-          // (because the same method may appear in different states with different outcomes)
-          methodPostStores[method]!!
-        } else {
-          val generalResult = analyzeMethod(classThisRef, method, entryStore)
-          methodPostStores[method] = generalResult
-          generalResult
-        }
-
+        // To analyze each method, we use the store of the state we are analyzing.
+        // Previous versions of the class analysis would merge the stores of states that lead to a given method
+        // and use that as the pre-store to analyze the method. But this resulted in many issues:
+        // 1. a method available in more than one state but with different destination states had a chance
+        // that its post-store would not be propagated to all the destination states
+        // because it would be analyzed once, and then the analysis would hit the cache and not propagate the post-store;
+        // 2. even after fixing (1), because the analysis of each method would mix information from different states,
+        // that information would be propagated to different destinations states, resulting in some over-approximation.
+        // We now do not check if a method was already analyzed, we only look to states that were not analyzed.
+        // This allows us to be more precise by separating the analysis of a method from
+        // a given state from the analysis of the same method but from a different state.
+        val generalResult = inference.withErrorContext(state, method) { analyzeMethod(classThisRef, method, store) }
         val returnExprs = method.body.allNodes.mapNotNull {
           if (it is SimpleCodeNode && it.code is Return && it.code.expr != null) Pair(it, it.code.expr) else null
         }
@@ -218,19 +202,17 @@ class LinearModeClassAnalysis(
     }
 
     // Ensure completion of objects in fields
-    val errors = mutableListOf<String>()
-    inference.completionErrors[clazz] = errors
     for ((state, store) in stateToStore) {
       if (state.canDropHere()) {
-        ensureFieldsCompleteness(errors, store)
+        ensureFieldsCompleteness(clazz, store)
       }
     }
   }
 
-  private fun ensureFieldsCompleteness(errors: MutableList<String>, store: Store) {
+  private fun ensureFieldsCompleteness(clazz: ClassDecl, store: Store) {
     for ((ref, info) in store) {
       if (!typecheckUtils.canDrop(info.type)) {
-        errors.add("[${ref.format()}] did not complete its protocol (found: ${info.type.format()})")
+        inference.addError(clazz, "[${ref.format()}] did not complete its protocol (found: ${info.type.format()})")
       }
     }
   }
@@ -275,50 +257,29 @@ class LinearModeClassAnalysis(
     val graph = clazz.graph
 
     for ((method, overrides) in clazz.overrides) {
-      val errors = mutableListOf<String>()
       for (override in overrides) {
-        checkMethodSubtyping(errors, method, override)
-      }
-
-      /*if (graph != null && !method.isAnytime && !method.isConstructor && !method.isAbstract) {
-        val env = graph.getEnv()
-        if (graph.getAllTransitions().none { typecheckUtils.sameMethod(env, method, it) }) {
-          errors.add("Method [${method.name}] does not appear in the typestate")
-        }
-      }*/
-
-      if (errors.isNotEmpty()) {
-        inference.validationErrors[method] = errors
-      } else {
-        inference.validationErrors.remove(method)
+        checkMethodSubtyping(method, override)
       }
     }
 
     if (graph != null) {
-      val errors = mutableListOf<String>()
       val env = graph.getEnv()
 
       for (t in graph.getAllTransitions()) {
         val method = clazz.allPublicMethods(classes).find { typecheckUtils.sameMethod(env, it, t) }
         if (method == null) {
-          errors.add("Method [${t.name}] is required by the typestate but not implemented")
+          inference.addError(clazz, "Method [${t.name}] is required by the typestate but not implemented")
         } else {
           if (method.isAnytime) {
-            errors.add("Method [${t.name}] that is always available should not appear in the protocol")
+            inference.addError(clazz, "Method [${t.name}] that is always available should not appear in the protocol")
           }
         }
-      }
-
-      if (errors.isNotEmpty()) {
-        inference.validationErrors[clazz] = errors
-      } else {
-        inference.validationErrors.remove(clazz)
       }
     }
 
   }
 
-  private fun checkMethodSubtyping(errors: MutableList<String>, a: FuncInterface, b: FuncInterface) {
+  private fun checkMethodSubtyping(a: FuncDeclaration, b: FuncInterface) {
     val aParams = a.parameters.iterator()
     val bParams = b.parameters.iterator()
 
@@ -332,30 +293,30 @@ class LinearModeClassAnalysis(
     check(!b.isConstructor)
 
     if (b.isAnytime && !a.isAnytime) {
-      errors.add("Method should be available anytime since the overridden method is available anytime")
+      inference.addError(a, "Method should be available anytime since the overridden method is available anytime")
     }
 
     if (b.isPure && !a.isPure) {
-      errors.add("Method should be pure since the overridden method is pure")
+      inference.addError(a, "Method should be pure since the overridden method is pure")
     }
 
     if (b.isPublic && !a.isPublic) {
-      errors.add("Method should be public since the overridden method is public")
+      inference.addError(a, "Method should be public since the overridden method is public")
     }
 
     while (aParams.hasNext()) {
       val aParam = aParams.next()
       val bParam = bParams.next()
       if (!bParam.requires.isSubtype(aParam.requires)) {
-        errors.add("Parameter [${aParam.id.name}] should require a supertype of ${bParam.requires.format()} (found: ${aParam.requires.format()})")
+        inference.addError(a, "Parameter [${aParam.id.name}] should require a supertype of ${bParam.requires.format()} (found: ${aParam.requires.format()})")
       }
       if (!aParam.ensures.isSubtype(bParam.ensures)) {
-        errors.add("Parameter [${aParam.id.name}] should ensure a subtype of ${bParam.ensures.format()} (found: ${aParam.ensures.format()})")
+        inference.addError(a, "Parameter [${aParam.id.name}] should ensure a subtype of ${bParam.ensures.format()} (found: ${aParam.ensures.format()})")
       }
     }
 
     if (!a.returnType.isSubtype(b.returnType)) {
-      errors.add("Return value should be a subtype of ${b.returnType.format()} (found: ${a.returnType.format()})")
+      inference.addError(a, "Return value should be a subtype of ${b.returnType.format()} (found: ${a.returnType.format()})")
     }
   }
 
