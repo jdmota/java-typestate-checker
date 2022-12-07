@@ -1,0 +1,11 @@
+typestate C {
+  C1 = {
+    void m1(): end,
+    void m2(): end,
+    void m3(): C2
+  }
+  C2 = {
+    void m1(): end,
+    void m4(): end
+  }
+}

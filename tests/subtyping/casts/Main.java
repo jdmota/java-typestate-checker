@@ -189,9 +189,9 @@ public class Main {
   public static void main15(@Requires("HasNext") Base b) {
     // :: warning: (b: State{Base, HasNext})
     if (b instanceof Derived) {
-      // :: warning: (b: (State{Derived, ?} & State{Base, HasNext}))
+      // :: warning: (b: State{Derived, HasNext})
       while (b.hasNext()) {
-        // :: warning: (b: (State{Derived, ?} & State{Base, Next}))
+        // :: warning: (b: State{Derived, Next})
         b.next();
       }
     } else {
@@ -238,11 +238,11 @@ public class Main {
   public static void main18(@Requires("HasNext") Base b) {
     // :: warning: (b: State{Base, HasNext})
     if (b instanceof Derived) {
-      // :: warning: (b: (State{Derived, ?} & State{Base, HasNext}))
+      // :: warning: (b: State{Derived, HasNext})
       Derived d = (Derived) b;
-      // :: warning: (d: (State{Derived, ?} & State{Base, HasNext}))
+      // :: warning: (d: State{Derived, HasNext})
       // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
-      // :: error: (Incompatible parameter: cannot cast from (State{Derived, ?} & State{Base, HasNext}) to Shared{java.lang.Object} | Null)
+      // :: error: (Incompatible parameter: cannot cast from State{Derived, HasNext} to Shared{java.lang.Object} | Null)
       System.out.println(d);
     }
   }
