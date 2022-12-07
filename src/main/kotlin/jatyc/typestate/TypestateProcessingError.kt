@@ -10,22 +10,21 @@ import javax.lang.model.element.Element
 
 class TypestateProcessingError(exp: Exception) : Exception(exp) {
   fun format(): String {
-    if (cause == null) {
-      return "error without cause"
+    val c = cause ?: return "error without cause"
+    if (c is NoSuchFileException) {
+      return "Could not find file " + Paths.get(c.file).fileName
     }
-    if (cause is NoSuchFileException) {
-      return "Could not find file " + Paths.get(cause.file).fileName
+    if (c is ParseCancellationException) {
+      return errorToString(c)
     }
-    if (cause is ParseCancellationException) {
-      return errorToString(cause)
-    }
-    cause.printStackTrace()
-    return cause.message ?: "error with no message"
+    c.printStackTrace()
+    return c.message ?: "error with no message"
   }
 
   fun report(utils: JTCUtils, element: Element) {
-    if (cause is ParseCancellationException) {
-      val e = cause.cause as RecognitionException
+    val c = cause
+    if (c is ParseCancellationException) {
+      val e = c.cause as RecognitionException
       val token = e.offendingToken
       val file = token.tokenSource.sourceName
       val pos = token.startIndex

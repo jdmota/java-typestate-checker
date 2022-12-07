@@ -140,7 +140,7 @@ class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>
   }
 
   private fun checkParameterAnnotation(node: AnnotationTree, annoMirror: AnnotationMirror, parent: Tree, name: String) {
-    val typeMirror = TreeUtils.elementFromTree(parent as VariableTree)!!.asType()
+    val typeMirror = TreeUtils.elementFromDeclaration(parent as VariableTree)!!.asType()
     val graph = utils.classUtils.getGraph(typeMirror)
     if (graph == null) {
       utils.err("@$name has no meaning since this type has no protocol", node)

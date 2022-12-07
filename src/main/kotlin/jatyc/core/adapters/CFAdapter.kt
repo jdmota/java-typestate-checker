@@ -94,7 +94,6 @@ class MultipleAdaptResult(val list: List<CodeExpr>) : AdaptResult() {
 }
 
 class FunctionInterfaces(private val hierarchy: JavaTypesHierarchy, private val transformer: (Symbol.MethodSymbol) -> FuncInterface) {
-
   private val interfaces = mutableMapOf<MethodSymbolWrapper, FuncInterface>()
 
   // TODO check thrown exceptions and type parameters
@@ -122,7 +121,6 @@ class FunctionInterfaces(private val hierarchy: JavaTypesHierarchy, private val 
 }
 
 class VariableRenamer(private val hierarchy: JavaTypesHierarchy) {
-
   private var varSymbolsUuid = 1L
   private val varSymbols = mutableMapOf<VarSymbolWrapper, Long>()
 
@@ -188,7 +186,6 @@ class VariableRenamer(private val hierarchy: JavaTypesHierarchy) {
     val id = varSymbols.computeIfAbsent(sym) { varSymbolsUuid++ }
     return SelectLHS(obj, elem.simpleName.toString(), id)
   }
-
 }
 
 private fun checkersFlowRuleToSimpleFlowRule(rule: Store.FlowRule): SimpleFlowRule {
@@ -212,7 +209,6 @@ class CFAdapter(
   private val utils get() = checker.utils
   private val processingEnv: ProcessingEnvironment = checker.processingEnvironment
   private lateinit var root: JCTree.JCCompilationUnit
-
   private var renamer = VariableRenamer(hierarchy)
 
   private fun shouldBeAnytime(method: Symbol.MethodSymbol): Boolean {
@@ -336,9 +332,9 @@ class CFAdapter(
     return typeIntroducer.getInitialType(method.getCorrectReceiverType())
   }
 
-  private val classesStack = Stack<JCTree.JCClassDecl>()
+  // Stack of pairs: Java class and an isStatic boolean
+  private val classesStack = Stack<Pair<JCTree.JCClassDecl, Boolean>>()
   private val methodsStack = Stack<Tree>()
-
   private val modifiersIsStatic = { it: ModifiersTree -> it.flags.contains(Modifier.STATIC) }
   private val modifiersIsNotStatic = { it: ModifiersTree -> !it.flags.contains(Modifier.STATIC) }
 
@@ -467,8 +463,10 @@ class CFAdapter(
 
   fun transformClass(classTree: JCTree.JCClassDecl): ClassDeclAndCompanion {
     return transformedClasses.computeIfAbsent(classTree) {
-      classesStack.push(classTree)
+      classesStack.push(Pair(classTree, true))
       val staticClass = transformClass(classTree, isStatic = true)
+      classesStack.pop()
+      classesStack.push(Pair(classTree, false))
       val nonStaticClass = transformClass(classTree, isStatic = false)
       classesStack.pop()
       ClassDeclAndCompanion(nonStatic = nonStaticClass, static = staticClass).set(classTree).set(root).set(checker)
@@ -493,6 +491,7 @@ class CFAdapter(
         val mt = TreePathUtil.enclosingOfKind(utils.getPath(tree, root), Tree.Kind.METHOD) as MethodTree
         UnderlyingAST.CFGLambda(tree, classTree, mt)
       }
+
       else -> error("Unexpected tree ${tree.javaClass}")
     }
   }
@@ -506,7 +505,7 @@ class CFAdapter(
         return createOneExprCFG(ThrowExpr(null))
       }
     }
-    val ast = treeToAst(tree, classesStack.peek())
+    val ast = treeToAst(tree, classesStack.peek().first)
     methodsStack.push(tree)
     val cfg = checkersCFGtoSimpleCFG(CFCFGBuilder.build(root, ast, processingEnv))
     methodsStack.pop()
@@ -544,6 +543,7 @@ class CFAdapter(
         }
         block.successor?.let { connect(cfg, seen, last, it, block.flowRule) }
       }
+
       is ExceptionBlock -> {
         val last = connect(cfg, prev, block.node, flowRule)
         seen[block] = last
@@ -555,6 +555,7 @@ class CFAdapter(
           }
         }*/
       }
+
       is ConditionalBlock -> {
         if (prev is SimpleCodeNode) {
           prev.isCondition = true
@@ -562,19 +563,23 @@ class CFAdapter(
         block.thenSuccessor?.let { connect(cfg, seen, prev, it, block.thenFlowRule) }
         block.elseSuccessor?.let { connect(cfg, seen, prev, it, block.elseFlowRule) }
       }
+
       is SpecialBlock -> {
         block.successor?.let { connect(cfg, seen, prev, it, block.flowRule) }
         when (block.specialType!!) {
           SpecialBlock.SpecialBlockType.ENTRY -> {
           }
+
           SpecialBlock.SpecialBlockType.EXIT -> {
             prev.addOutEdge(SimpleEdge(flowRule, cfg.exit))
           }
+
           SpecialBlock.SpecialBlockType.EXCEPTIONAL_EXIT -> {
             // TODO
           }
         }
       }
+
       else -> throw RuntimeException("Unexpected block type: ${block.type}")
     }
   }
@@ -599,6 +604,7 @@ class CFAdapter(
         }
         lastNode
       }
+
       is SingleAdaptResult -> {
         val simpleNode = SimpleCodeNode(result.code)
         result.code.set(root).set(checker)
@@ -655,6 +661,7 @@ class CFAdapter(
           node
         )
       }
+
       else -> SingleAdaptResult(Assign(transformLHS(left), right, typeIntroducer.getUpperBound(left.type), hierarchy.get(left.type)).set(node))
     }
   }
@@ -683,6 +690,14 @@ class CFAdapter(
     return makeCall2(methodExpr, parameters.map(::getAdapted), cfNode)
   }
 
+  private fun makeThis(node: Node): CodeExpr {
+    val (classTree, isStatic) = classesStack.peek()
+    if (isStatic) {
+      return makeTypeRef(classTree.type).set(node)
+    }
+    return renamer.transformThis(classTree.type).set(node)
+  }
+
   // See https://github.com/typetools/checker-framework/tree/master/dataflow/src/main/java/org/checkerframework/dataflow/cfg/node
   private fun transformHelper(node: Node): AdaptResult {
     val t = ::getAdapted
@@ -702,6 +717,7 @@ class CFAdapter(
           node
         )
       }
+
       is ArrayCreationNode -> {
         val type = node.type as ArrayType
         val javaType = hierarchy.get(type)
@@ -713,6 +729,7 @@ class CFAdapter(
           NewArrayWithValues(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.initializers.map(t))
         }).set(node)
       }
+
       is ArrayTypeNode -> error("Unexpected node ${node.javaClass}")
       is AssertionErrorNode -> TODO("assertion not implemented") // makeCall(helperToFuncInterface("#helpers.assertion"), listOf(node.condition, node.detail), node)
       is AssignmentNode -> makeAssignment(node.target, t(node.expression), node)
@@ -746,7 +763,8 @@ class CFAdapter(
         }
         SingleAdaptResult(BinaryExpr(left, right, operator).set(node))
       }
-      is CaseNode -> SingleAdaptResult(CaseExpr(t(node.caseOperand), t(node.switchOperand)).set(node))
+
+      is CaseNode -> SingleAdaptResult(CaseExpr(node.caseOperands.map(t), t(node.switchOperand)).set(node))
       is ClassDeclarationNode -> SingleAdaptResult(transformClass(node.tree as JCTree.JCClassDecl))
       is ClassNameNode -> SingleAdaptResult(makeTypeRef(node.type).set(node))
       is FieldAccessNode -> SingleAdaptResult(when (node.fieldName) {
@@ -766,11 +784,13 @@ class CFAdapter(
           renamer.transformSelect(adaptedReceiver, node.element).set(node)
         }
       })
+
       is FunctionalInterfaceNode -> when (val tree = node.tree) {
         is MemberReferenceTree -> {
           // TODO Cannot create reference for non-anytime method
           TODO("method references are not supported yet")
         }
+
         is JCTree.JCLambda -> {
           val (returnType, returnJavaType) = getReturnType(tree)
           MultipleAdaptResult(listOf(
@@ -778,8 +798,10 @@ class CFAdapter(
             NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node)
           ))
         }
+
         else -> error("Unexpected tree ${node.javaClass} in FunctionalInterfaceNode")
       }
+
       is InstanceOfNode -> SingleAdaptResult(BinaryExpr(t(node.operand), makeTypeRef(node.refType), BinaryOP.Is).set(node))
       is LambdaResultExpressionNode -> SingleAdaptResult(makeReturn(node, node.result))
       is LocalVariableNode -> SingleAdaptResult(renamer.transformLocal(node).set(node))
@@ -822,6 +844,7 @@ class CFAdapter(
           ))
         }
       }
+
       is MethodInvocationNode -> {
         val method = node.target.method as Symbol.MethodSymbol
         val includeThis = !method.isStatic
@@ -834,6 +857,7 @@ class CFAdapter(
           node
         )
       }
+
       is NarrowingConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.Narrowing).set(node))
       is NullChkNode -> SingleAdaptResult(NullCheck(t(node.operand), "Potential null pointer exception").set(node).set(node.operand.tree))
       is ObjectCreationNode -> {
@@ -852,6 +876,7 @@ class CFAdapter(
           ).plus(newObj)
         )
       }
+
       is PackageNameNode -> SingleAdaptResult(makeTypeRef(node.element.asType()).set(node))
       is ParameterizedTypeNode -> SingleAdaptResult(makeTypeRef(node.type).set(node))
       is PrimitiveTypeNode -> error("Unexpected node ${node.javaClass}")
@@ -861,15 +886,18 @@ class CFAdapter(
         val concatExpr = BinaryExpr(t(left), t(node.rightOperand), BinaryOP.StringConcat).set(node)
         makeAssignment(if (left is StringConversionNode) left.operand else left, concatExpr, node)
       }
+
       is StringConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.ToString)).set(node)
-      is SuperNode -> SingleAdaptResult(renamer.transformThis(classesStack.peek().type).set(node))
+      is SuperNode -> SingleAdaptResult(makeThis(node))
       is SynchronizedNode -> SingleAdaptResult((if (node.isStartOfBlock) SynchronizedExprStart(t(node.expression)) else SynchronizedExprEnd(t(node.expression))).set(node))
       is TernaryExpressionNode -> SingleAdaptResult(TernaryExpr(t(node.conditionOperand), t(node.thenOperand), t(node.elseOperand)).set(node))
       is ThisNode -> SingleAdaptResult(when (node) {
         is ExplicitThisNode,
-        is ImplicitThisNode -> renamer.transformThis(classesStack.peek().type).set(node)
+        is ImplicitThisNode -> makeThis(node)
+
         else -> error("Unexpected node ${node.javaClass}")
       })
+
       is ThrowNode -> SingleAdaptResult(ThrowExpr(t(node.expression)).set(node))
       is TypeCastNode -> SingleAdaptResult(makeCast(t(node.operand), node.type).set(node))
       is UnaryOperationNode -> {
@@ -883,6 +911,7 @@ class CFAdapter(
         }
         SingleAdaptResult(UnaryExpr(expr, operator).set(node))
       }
+
       is ValueLiteralNode -> SingleAdaptResult(when (node) {
         is BooleanLiteralNode -> BooleanLiteral(node.value!!).set(node)
         is CharacterLiteralNode -> CharLiteral(node.value!!).set(node)
@@ -895,6 +924,7 @@ class CFAdapter(
         is StringLiteralNode -> StringLiteral(node.value!!).set(node)
         else -> error("Unexpected node ${node.javaClass}")
       })
+
       is VariableDeclarationNode -> SingleAdaptResult(VarDeclaration(renamer.transformDecl(node), JTCUnknownType.SINGLETON).set(node))
       is WideningConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.Widening).set(node))
       else -> error("Unexpected node ${node.javaClass}")

@@ -1,40 +1,40 @@
 plugins {
-    id "java"
-    id "org.jetbrains.kotlin.jvm" version "1.4.0"
-    id "antlr"
-    id "maven-publish"
-    id "idea"
+  id "java"
+  id "org.jetbrains.kotlin.jvm" version "1.7.21"
+  id "antlr"
+  id "maven-publish"
+  id "idea"
 }
 
 repositories {
-    mavenCentral()
+  mavenCentral()
 }
 
 configurations {
-    // for putting Error Prone javac in bootclasspath for running tests
-    errorproneJavac
+  // for putting Error Prone javac in bootclasspath for running tests
+  errorproneJavac
 
-    // Do not include whole antlr tool in jar
-    // https://github.com/gradle/gradle/issues/820#issuecomment-288838412
-    compile {
-        extendsFrom = extendsFrom.findAll { it != configurations.antlr }
-    }
+  // Do not include whole antlr tool in jar
+  // https://github.com/gradle/gradle/issues/820#issuecomment-288838412
+  compile {
+    extendsFrom = extendsFrom.findAll { it != configurations.antlr }
+  }
 }
 
 sourceCompatibility = 1.8
 
 ext {
-    versions = [
-        kotlin: "1.4.0",
-        antlr4: "4.8",
-        checkerFramework: "3.14.0",
-        errorproneJavacVersion: "9+181-r4173-1",
-        junit: "4.13",
-    ]
+  versions = [
+    kotlin                : "1.7.21",
+    antlr4                : "4.11.1",
+    checkerFramework      : "3.28.0",
+    errorproneJavacVersion: "9+181-r4173-1",
+    junit                 : "4.13.2",
+  ]
 }
 
 generateGrammarSource {
-    outputDirectory = new File("src/main/java")
+  outputDirectory = new File("src/main/java")
 }
 
 // Generate parser, then compile with kotlin, and then with java
@@ -43,67 +43,86 @@ compileKotlin.dependsOn generateGrammarSource
 compileJava.dependsOn compileKotlin
 
 sourceSets {
-    main {
-        java {
-            srcDirs = ["src/main/java"]
-        }
-        kotlin {
-            srcDirs = ["src/main/java", "src/main/kotlin"]
-        }
-        resources {
-            srcDirs = ["src/main/resources"]
-        }
+  main {
+    java {
+      srcDirs = ["src/main/java"]
     }
+    kotlin {
+      srcDirs = ["src/main/java", "src/main/kotlin"]
+    }
+    resources {
+      srcDirs = ["src/main/resources"]
+    }
+  }
 }
 
 tasks.withType(JavaCompile) {
-    classpath += files("build/classes/kotlin/main")
+  classpath += files("build/classes/kotlin/main")
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin}"
+  compile "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin}"
 
-    antlr "org.antlr:antlr4:${versions.antlr4}"
-    compile "org.antlr:antlr4-runtime:${versions.antlr4}"
+  antlr "org.antlr:antlr4:${versions.antlr4}"
+  compile "org.antlr:antlr4-runtime:${versions.antlr4}"
 
-    implementation "org.checkerframework:checker:${versions.checkerFramework}"
-    implementation "org.checkerframework:checker-qual:${versions.checkerFramework}"
+  implementation "org.checkerframework:checker:${versions.checkerFramework}"
+  implementation "org.checkerframework:checker-qual:${versions.checkerFramework}"
 
-    compileOnly "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
+  compileOnly "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
 
-    // Testing
-    testImplementation "junit:junit:${versions.junit}"
-    testImplementation "org.jetbrains.kotlin:kotlin-test-junit:${versions.kotlin}"
-    testImplementation "org.checkerframework:framework-test:${versions.checkerFramework}"
+  // Testing
+  testImplementation "junit:junit:${versions.junit}"
+  testImplementation "org.jetbrains.kotlin:kotlin-test-junit:${versions.kotlin}"
+  testImplementation "org.checkerframework:framework-test:${versions.checkerFramework}"
 
-    errorproneJavac "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
+  errorproneJavac "com.google.errorprone:javac:${versions.errorproneJavacVersion}"
 }
 
 jar {
-    from {
-        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
-    }
+  from {
+    configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+  }
 }
 
 task buildJar(type: Copy) {
-    from jar
-    into "dist"
+  from jar
+  into "dist"
 }
 
 tasks.withType(JavaCompile).all {
-    options.compilerArgs.add("-Xlint:all")
+  options.compilerArgs.add("-Xlint:all")
 }
 
 test {
-    testLogging.showStandardStreams = true
+  testLogging.showStandardStreams = true
 
-    inputs.files("tests")
+  inputs.files("tests")
 
-    if (!JavaVersion.current().java9Compatible) {
-        jvmArgs "-Xbootclasspath/p:${configurations.errorproneJavac.asPath}"
-    }
+  if (!JavaVersion.current().java9Compatible) {
+    jvmArgs "-Xbootclasspath/p:${configurations.errorproneJavac.asPath}"
+  } else {
+    // A list of add-export and add-open arguments to be used when running the Checker Framework.
+    // Keep this list in sync with the list in the Checker Framework manual.
+    var compilerArgsForRunningCF = [
+      // These are required in Java 16+ because the --illegal-access option is set to deny
+      // by default.  None of these packages are accessed via reflection, so the module
+      // only needs to be exported, but not opened.
+      "--add-exports", "jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+      "--add-exports", "jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED",
+      "--add-exports", "jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+      "--add-exports", "jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED",
+      "--add-exports", "jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED",
+      "--add-exports", "jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED",
+      "--add-exports", "jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+      "--add-exports", "jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
+      // Required because the Checker Framework reflectively accesses private members in com.sun.tools.javac.comp.
+      "--add-opens", "jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED",
+    ]
+    jvmArgs += compilerArgsForRunningCF
+  }
 }
 
 clean.doFirst {
-    delete "${rootDir}/tests/build/"
+  delete "${rootDir}/tests/build/"
 }

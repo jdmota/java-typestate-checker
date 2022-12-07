@@ -200,7 +200,7 @@ class JavaTypestateChecker : SourceChecker() {
       indexOfChecker = className.lastIndexOf("Subchecker")
     }
     val result = if (indexOfChecker == -1) className else className.substring(0, indexOfChecker)
-    return result.toLowerCase()
+    return result.lowercase()
   }
 
 }

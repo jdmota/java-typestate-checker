@@ -397,9 +397,9 @@ class TernaryExpr(val condition: CodeExpr, val thenExpr: CodeExpr, val elseExpr:
   }
 }
 
-class CaseExpr(val caseOp: CodeExpr, val switchOp: CodeExpr) : CodeExpr() {
+class CaseExpr(val caseOps: List<CodeExpr>, val switchOp: CodeExpr) : CodeExpr() {
   override fun format(indent: String): String {
-    return indent + "case $caseOp"
+    return indent + "case $caseOps"
   }
 }
 

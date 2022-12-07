@@ -26,13 +26,13 @@ One can also create a class with protocol that extends a class without protocol.
 
 If a class extends another class with protocol, but does not include a `@Typestate` annotation, the subclass assumes by default the same protocol of its superclass.
 
-In Java, up and down-casts may occur explicitly and up-casts may occur implicitly when assigning to local variables or fields, passing objects to parameters or returning objects. With this initial support for subtyping, up and down casting is only allowed between initial states or final states.
+In Java, up and down-casts may occur explicitly and up-casts may occur implicitly when assigning to local variables or fields, passing objects to parameters or returning objects.
 
 You may find more information in the [documentation page](https://github.com/jdmota/java-typestate-checker/wiki/Documentation).
 
 ## Quick Start
 
-1. Make sure you have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
+1. Make sure you have JDK 8 or 11 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
 1. Run the following commands:
 
 ```sh
@@ -44,18 +44,18 @@ java -jar ../../dist/checker/checker.jar -classpath ../../dist/jatyc.jar -proces
 You should get the following output:
 
 ```
-Main.java:7: error: Cannot call [next] on State{JavaIterator, end}
-      iterator.next();
-                   ^
 Main.java:2: error: [iterator] did not complete its protocol (found: State{JavaIterator, Next})
   public static void main(String[] args) {
                      ^
+Main.java:6: error: Cannot call [next] on State{JavaIterator, end}
+      iterator.next();
+                   ^
 2 errors
 ```
 
 ## Installation via git
 
-1. Recall that you must have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
+1. Recall that you must have JDK 8 or 11 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
 1. Clone this repository: `git clone https://github.com/jdmota/java-typestate-checker.git`
 1. Run the following command from the folder where the Java files you want to check are by replacing `REPO` with the appropriate path to the repository cloned in step 2.
 
@@ -66,12 +66,12 @@ java -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processo
 ## Manual installation
 
 1. Recall that you must have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
-1. Download and extract [checker-framework-3.14.0.zip](https://github.com/typetools/checker-framework/releases/tag/checker-framework-3.14.0).
+1. Download and extract [checker-framework-3.28.0.zip](https://github.com/typetools/checker-framework/releases/tag/checker-framework-3.28.0).
 1. Download [jatyc.jar](https://github.com/jdmota/java-typestate-checker/releases/tag/3.0).
 1. Run the following command from the folder where the Java files you want to check are by replacing `DOWNLOADS` with the appropriate path containing the files downloaded in steps 2 and 3.
 
 ```sh
-java -jar DOWNLOADS/checker-framework-3.14.0/checker/dist/checker.jar -classpath DOWNLOADS/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
+java -jar DOWNLOADS/checker-framework-3.28.0/checker/dist/checker.jar -classpath DOWNLOADS/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
 ```
 
 ## Resources

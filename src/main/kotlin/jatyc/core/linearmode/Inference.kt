@@ -32,7 +32,7 @@ class Inference(
   // TODO improve how we preserve conditional information!
   private fun assign(node: CodeExpr, targetType: JTCType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean) {
     if (node is Assign) {
-      post[Reference.old(node)] = pre[leftRef]
+      post[Reference.old(node)] = pre[leftRef].type.intersect(node.type)
     }
 
     if (leftRef == Reference.returnRef || leftRef.isSwitchVar()) {
@@ -125,14 +125,14 @@ class Inference(
       is Assign -> {
         val leftRef = Reference.makeFromLHS(node)
         val rightRef = Reference.make(node.right)
-        // Do not allow field assignments unless the receiver object is "this" and we have linear access to it
+        // Allow field assignments only if:
+        // - the receiver object is "this" and we have linear access to it
+        // - the target Java type has no protocol
         val targetType = when {
           thisRef != null && leftRef.isFieldOf(thisRef) && (func.isConstructor || TypecheckUtils.requiresLinear(thisRef, pre[thisRef].type)) ->
             clazz!!.allFields(classAnalysis.classes).find { leftRef.isFieldOf(thisRef, it.id) }!!.type
-
-          leftRef.isField() ->
+          leftRef.isField() && node.javaType.hasProtocol() ->
             JTCBottomType.SINGLETON
-
           else ->
             node.type
         }
@@ -381,13 +381,17 @@ class Inference(
           post[ref] = info
         }
         val value = (node.switchOp as Assign).left
-        val test = node.caseOp
+        val labels = node.caseOps.mapNotNull { getLabel(it) }
         val valueRef = Reference.make(value)
         val nodeRef = Reference.make(node)
-        val label = getLabel(test)
-        if (label != null) {
+        // If all the cases have corresponding labels, we can refine
+        if (labels.size == node.caseOps.size) {
           for ((ref, info) in pre) {
-            post[ref] = StoreInfo.conditional(nodeRef, info.withLabel(valueRef, label), info.withoutLabel(valueRef, label))
+            post[ref] = StoreInfo.conditional(
+              nodeRef,
+              labels.fold(StoreInfo.BOTTOM) { acc, it -> acc.or(info.withLabel(valueRef, it)) },
+              labels.fold(info) { acc, it -> acc.withoutLabel(valueRef, it) }
+            )
           }
         }
       }
