@@ -1,6 +1,6 @@
 import java.util.function.Consumer;
 
-public class JavaIteratorImpl {
+public final class JavaIteratorImpl {
 
   public boolean hasNext() {
     return false;

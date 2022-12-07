@@ -2,19 +2,19 @@ public class Main {
 
   public static void main() {
     Base b = new Derived();
-    // :: warning: (b: State{Base, HasNext})
+    // :: warning: (b: State{Derived, HasNext})
     while (b.hasNext()) {
-      // :: warning: (b: State{Base, Next})
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
   }
 
-  // :: error: ([b] did not complete its protocol (found: State{Base, HasNext} | State{Base, end}))
+  // :: error: ([b] did not complete its protocol (found: State{Derived, Remove} | State{Derived, end}))
   public static void main2() {
     Base b = new Derived();
-    // :: warning: (b: State{Base, HasNext})
+    // :: warning: (b: State{Derived, HasNext})
     if (b.hasNext()) {
-      // :: warning: (b: State{Base, Next})
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
   }

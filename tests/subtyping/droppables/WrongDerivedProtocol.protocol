@@ -1,0 +1,8 @@
+typestate DerivedProtocol {
+  A = {
+    void a(): B
+  }
+  B = {
+    void b(): end
+  }
+}

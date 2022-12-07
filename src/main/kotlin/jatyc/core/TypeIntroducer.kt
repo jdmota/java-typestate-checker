@@ -101,7 +101,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
           JTCSharedType(javaType)
         }
       } else {
-        JTCUnknownStateType(javaType, graph)
+        JTCLinearType(javaType, graph)
       }
     }
   }
@@ -117,7 +117,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
         if (graph == null) {
           JTCSharedType(javaType)/*.union(JTCNoProtocolType(javaType, isActualType))*/.toMaybeNullable(isNullable)
         } else {
-          JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph)).toMaybeNullable(isNullable)
+          JTCSharedType(javaType).union(JTCLinearType(javaType, graph)).toMaybeNullable(isNullable)
         }
       }
       is ExecutableType -> JTCUnknownType.SINGLETON
@@ -166,7 +166,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
         if (graph == null) {
           JTCSharedType(javaType)/*.union(JTCNoProtocolType(javaType, false))*/.toMaybeNullable(isNullable)
         } else {
-          JTCSharedType(javaType).union(JTCUnknownStateType(javaType, graph)).toMaybeNullable(isNullable)
+          JTCSharedType(javaType).union(JTCLinearType(javaType, graph)).toMaybeNullable(isNullable)
         }
       }
       is ExecutableType -> JTCUnknownType.SINGLETON

@@ -30,7 +30,7 @@ class Inference(
 
   // TODO improve how we preserve conditional information!
 
-  private fun assign(node: CodeExpr, targetType: JTCType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean = false) {
+  private fun assign(node: CodeExpr, targetType: JTCType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean) {
     if (node is Assign) {
       post[Reference.old(node)] = pre[leftRef]
     }
@@ -49,27 +49,27 @@ class Inference(
     val succeeded: Boolean
 
     if (thisParam) {
-      // FIXME use old behaviour for now with "this" param assignments
-      // If this is a normal assignment or the target expects a linear type, move ownership to the target
-      // Otherwise, the target gets the shared type and the right expression keeps the linear type
-      val move = node is Assign || targetType.requiresLinear()
+      val move = TypecheckUtils.thisRequiresLinear(leftRef, targetType)
       typeToAssign = if (move) pre[rightRef].type else pre[rightRef].type.toShared()
       typeInExpr = if (move) pre[rightRef].type.toShared() else pre[rightRef].type
       newTargetType = typeToAssign
       succeeded = true // Checking that the method can be called in this state is performed later
     } else {
-      typeToAssign = pre[rightRef].type.let {
-        // If the expected type of a parameter/return is shared, and we can drop the object now
-        if ((node is ParamAssign || node is Return) && targetType is JTCSharedType && typecheckUtils.canDrop(it)) {
-          if (typecheckUtils.isInDroppableState(it)) {
-            inference.addWarning(node, "This object will be dropped")
-          }
-          it.toShared()
-        } else it
-      }
+      typeToAssign = pre[rightRef].type
       typeInExpr = pre[rightRef].type.toShared()
-      newTargetType = Subtyping.upcast(typeToAssign, targetType)
-      succeeded = typeToAssign is JTCBottomType || newTargetType !is JTCBottomType
+      succeeded = Subtyping.isSubtype(typeToAssign, targetType)
+      newTargetType = typeToAssign.intersect(targetType)
+      // println("\ntargetType = $targetType")
+      // println("typeToAssign = $typeToAssign")
+      // println("typeInExpr = $typeInExpr")
+      // println("succeeded = $succeeded")
+      // println("newTargetType = $newTargetType\n")
+
+      if (succeeded && typecheckUtils.isInDroppableStateNotEnd(typeToAssign) && Subtyping.isSubtype(targetType, targetType.toShared())) {
+        // We want to report a warning if we have an object in a droppable state, with more actions that can be made
+        // But that is being passed to a shared parameter
+        inference.addWarning(node, "This object will be dropped")
+      }
     }
 
     post[leftRef] = newTargetType
@@ -127,14 +127,14 @@ class Inference(
         val rightRef = Reference.make(node.right)
         // Do not allow field assignments unless the receiver object is "this" and we have linear access to it
         val targetType = when {
-          thisRef != null && leftRef.isFieldOf(thisRef) && (func.isConstructor || pre[thisRef].type.requiresLinear()) ->
+          thisRef != null && leftRef.isFieldOf(thisRef) && (func.isConstructor || TypecheckUtils.thisRequiresLinear(thisRef, pre[thisRef].type)) ->
             clazz!!.allFields(classAnalysis.classes).find { leftRef.isFieldOf(thisRef, it.id) }!!.type
           leftRef.isField() ->
             JTCBottomType.SINGLETON
           else ->
             node.type
         }
-        assign(node, targetType, pre, post, leftRef, rightRef)
+        assign(node, targetType, pre, post, leftRef, rightRef, false)
       }
       is ParamAssign -> {
         val leftRef = Reference.makeFromLHS(node)
@@ -149,7 +149,7 @@ class Inference(
         } else {
           val leftRef = Reference.returnRef
           val rightRef = Reference.make(node.expr)
-          assign(node, node.type, pre, post, leftRef, rightRef)
+          assign(node, node.type, pre, post, leftRef, rightRef, false)
         }
       }
       is MethodCall -> {
@@ -240,15 +240,21 @@ class Inference(
                 inference.errors[node] = "Cannot call [${node.methodExpr.name}] on ${currentType.format()}"
               }
             }
+
+            // Whatever is in the "parameter variable", restore it to the "parameter expression"
+            // only if the method requested linear type
+            // If the method did not request linear type, it means the linear permission is still in the expression
+            if (TypecheckUtils.thisRequiresLinear(argRef, param.requires)) {
+              val argInfo = post[argRef]
+              post[argRef] = argInfo.type.toShared()
+              post[exprRef] = argInfo // Preserve conditional info!
+            }
           } else {
             post[argRef] = typecheckUtils.invariant(pre[argRef].type).intersect(param.ensures)
-          }
 
-          // Ensure the parameter expression has the ownership
-          val argInfo = post[argRef]
-          val argType = argInfo.type
-          if (argType.requiresLinear()) {
-            post[argRef] = argType.toShared()
+            // Whatever is in the "parameter variable", restore it to the "parameter expression"
+            val argInfo = post[argRef]
+            post[argRef] = argInfo.type.toShared()
             post[exprRef] = argInfo // Preserve conditional info!
           }
         }
@@ -348,7 +354,7 @@ class Inference(
         } else {
           val exprRef = Reference.make(node.expr)
           val currentType = pre[exprRef].type
-          val newType = Subtyping.forceCast(currentType, node.type)
+          val newType = currentType.intersect(node.type)
           post[exprRef] = newType
 
           if (currentType is JTCBottomType || newType !is JTCBottomType) {
@@ -360,6 +366,7 @@ class Inference(
               inference.addWarning(node, "Unsafe cast")
             }
           } else {
+            // The cast is impossible
             inference.errors[node] = "Cannot perform cast from ${currentType.format()} to ${node.type.format()}"
           }
         }
@@ -569,7 +576,7 @@ class Inference(
 
   fun analyzeEnd(func: FuncDeclaration, store: Store) {
     val thisRef = Reference.makeThis(func)
-    val params = func.parameters.mapNotNull { if (it.ensures.requiresLinear()) Pair(Reference.make(it.id), it.ensures) else null }.toMap()
+    val params = func.parameters.associateBy { Reference.make(it.id) }
 
     val funcErrors = mutableListOf<String>()
     inference.completionErrors[func] = funcErrors
@@ -593,10 +600,14 @@ class Inference(
       }
     }
 
-    for ((ref, expected) in params) {
+    for ((ref, param) in params) {
       val actual = store[ref].type
-      if (!actual.isSubtype(expected)) {
-        funcErrors.add("Type of parameter [${ref.format()}] is ${actual.format()}, expected ${expected.format()}}")
+      if (!actual.isSubtype(param.ensures)) {
+        if (param.isThis || param.hasEnsures) {
+          funcErrors.add("Type of parameter [${ref.format()}] is ${actual.format()}, expected ${param.ensures.format()}}")
+        } else {
+          funcErrors.add("[${ref.format()}] did not complete its protocol (found: ${actual.format()})")
+        }
       }
     }
   }

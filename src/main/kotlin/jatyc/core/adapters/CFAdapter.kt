@@ -245,7 +245,7 @@ class CFAdapter(
       emptyList()
     } else {
       val thisType = typeIntroducer.getThisType(receiver, isAnytime = isAnytime, isConstructor = isConstructor)
-      listOf(FuncParam(renamer.transformThisLHS(receiver), thisType, thisType, isThis = true, hierarchy.get(receiver)))
+      listOf(FuncParam(renamer.transformThisLHS(receiver), thisType, thisType, isThis = true, hierarchy.get(receiver), hasEnsures = false))
     }
     val params = if (isConstructor && receiver.toString() == "java.lang.Enum<E>") {
       // It seems the java.lang.Enum constructor has more parameters (String, Int), but is called with zero
@@ -303,7 +303,8 @@ class CFAdapter(
         requires = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcRequiresAnno)).toMaybeNullable(typeIntroducer.acceptsNull(type)),
         ensures = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcEnsuresAnno)),
         isThis = false,
-        javaType = hierarchy.get(paramType.underlyingType)
+        javaType = hierarchy.get(paramType.underlyingType),
+        hasEnsures = JTCUtils.hasAnnotation(paramType, JTCUtils.jtcEnsuresAnno)
       ))
     }
     return funcParams
@@ -641,9 +642,9 @@ class CFAdapter(
         val componentType = typeIntroducer.getArrayComponentType(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
         val params = listOf(
-          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type)),
-          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType),
-          FuncParam(IdLHS("value", 0), componentType, componentType, isThis = false, hierarchy.get(type.componentType))
+          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type), hasEnsures = false),
+          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType, hasEnsures = false),
+          FuncParam(IdLHS("value", 0), componentType, componentType, isThis = false, hierarchy.get(type.componentType), hasEnsures = false)
         )
         makeCall2(
           FuncInterface("#helpers.arraySet", params, returnType = componentType, isPublic = true, isAnytime = true, isPure = false, isAbstract = false),
@@ -688,8 +689,8 @@ class CFAdapter(
         val componentType = typeIntroducer.getArrayComponentType(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
         val params = listOf(
-          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type)),
-          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType)
+          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type), hasEnsures = false),
+          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType, hasEnsures = false)
         )
         makeCall(
           FuncInterface("#helpers.arrayAccess", params, returnType = componentType, isPublic = true, isAnytime = true, isPure = true, isAbstract = false),

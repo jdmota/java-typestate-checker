@@ -8,6 +8,21 @@ val only = emptyList<String>()
 
 private val defaultOpts = arrayOf("-Anomsgtext", "-AshowTypeInfo")
 
+private const val dir0 = "debug"
+
+// A folder where we can make tests and narrow down an issue
+class DebugTests(testFiles: List<File>) : PerDirectoryTest(
+  dir0,
+  testFiles,
+  defaultOpts
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir0)
+  }
+}
+
 private const val dir1 = "basic"
 
 class BasicTests(testFiles: List<File>) : PerDirectoryTest(

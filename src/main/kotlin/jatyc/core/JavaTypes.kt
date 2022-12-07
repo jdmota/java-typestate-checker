@@ -17,6 +17,7 @@ class JavaType internal constructor(val original: Type, private val checker: Jav
   val id = javaTypeUuid++
   internal val superTypes = mutableSetOf<JavaType>()
 
+  fun isPrimitive() = original.isPrimitiveOrVoid
   fun isFinal() = original.isFinal || original.isPrimitiveOrVoid || original.kind == TypeKind.NULL
   fun isImmutable() = TypesUtils.isImmutableTypeInJdk(original)
   fun isEnum() = original.tsym.let { it is Symbol.ClassSymbol && it.isEnum }

@@ -4,7 +4,7 @@ import com.sun.tools.javac.code.Symbol
 import org.antlr.v4.runtime.BailErrorStrategy
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import jatyc.subtyping.syncronous_subtyping.Subtyper
+import jatyc.subtyping.syncronous_subtyping.ProtocolSyncSubtyping
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
 import jatyc.typestate.graph.DecisionState
@@ -148,7 +148,7 @@ class TypestateProcessor(private val utils: JTCUtils) {
       for (supertype in ClassUtils.getSuperTypes(element)) {
         val superGraph = utils.classUtils.visitClassSymbol(supertype)
         if (superGraph != null) {
-          val subtyper = Subtyper()
+          val subtyper = ProtocolSyncSubtyping()
           subtyper.subtyping(graph, superGraph, Pair(graph.getInitialState(), superGraph.getInitialState()))
           for (error in subtyper.errors) {
             utils.err(error, element)

@@ -1,0 +1,5 @@
+typestate BaseProtocol {
+  A = {
+    void a(): end
+  }
+}

@@ -8,19 +8,19 @@ public class Main {
     A a2 = a;
   }
 
-  // :: error: ([a] did not complete its protocol (found: State{A, S1}))
+  // :: error: ([a] did not complete its protocol (found: State{B, S1}))
   public static void main2() {
     B b = new B();
     // :: warning: (b: State{B, S1})
     A a = b;
   }
 
+  // :: error: ([a] did not complete its protocol (found: State{B, S2}))
   public static void main3() {
     B b = new B();
     // :: warning: (b: State{B, S1})
     b.m2();
     // :: warning: (b: State{B, S2})
-    // :: error: (Cannot assign: cannot cast from State{B, S2} to Shared{A} | State{A, ?} | Null)
     A a = b;
   }
 
@@ -56,7 +56,6 @@ public class Main {
     // :: warning: (b: State{B, S1})
     b.m2();
     // :: warning: (b: State{B, S2})
-    // :: error: (Incompatible parameter: cannot cast from State{B, S2} to State{A, S1})
     play2(b);
   }
 

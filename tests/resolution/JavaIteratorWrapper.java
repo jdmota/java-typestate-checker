@@ -14,7 +14,7 @@ class JavaIteratorWrapper1 {
   }
 
   public boolean hasNext() {
-    // :: warning: (this.iterator: State{utils.JavaIterator, HasNext} | State{utils.JavaIterator, Next})
+    // :: warning: (this.iterator: State{utils.JavaIterator, HasNext})
     return iterator.hasNext();
   }
 

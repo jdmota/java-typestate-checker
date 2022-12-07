@@ -10,8 +10,8 @@ private fun unionSeq(a: JTCType, b: JTCType) = sequence {
 }
 
 private fun intersectionSeq(a: JTCType, b: JTCType) = sequence {
-  /*if (a is JTCIntersectionType) yieldAll(a.types) else*/ yield(a)
-  /*if (b is JTCIntersectionType) yieldAll(b.types) else*/ yield(b)
+  if (a is JTCIntersectionType) yieldAll(a.types) else yield(a)
+  if (b is JTCIntersectionType) yieldAll(b.types) else yield(b)
 }
 
 // Sequence does not produce union types
@@ -24,7 +24,7 @@ private fun unionSeq(list: Collection<JTCType>) = sequence {
 // Sequence does not produce intersection or union types assuming "list" does not contain union types
 private fun intersectionSeq(list: Collection<JTCType>) = sequence {
   for (type in list) {
-    /*if (type is JTCIntersectionType) yieldAll(type.types) else*/ yield(type)
+    if (type is JTCIntersectionType) yieldAll(type.types) else yield(type)
   }
 }
 
@@ -59,49 +59,17 @@ private fun createIntersection(sequence: Sequence<JTCType>): JTCType {
   // If list has only one type, return it
   if (list.size == 1) return list.first()
   // Create upper bound
-  return JTCUnionType(list.toSet())
-}
-
-private fun areExclusive(a: JTCType, b: JTCType): Boolean {
-  return when (a) {
-    // is JTCNoProtocolType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType || ((b is JTCUnknownStateType || b is JTCStateType) && a.exact)
-    is JTCUnknownStateType,
-    is JTCStateType -> b is JTCPrimitiveType || b is JTCNullType || b is JTCSharedType /*|| (b is JTCNoProtocolType && b.exact)*/
-    is JTCSharedType -> b is JTCPrimitiveType || b is JTCNullType || /*b is JTCNoProtocolType ||*/ b is JTCUnknownStateType || b is JTCStateType
-    is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || /*b is JTCNoProtocolType ||*/ b is JTCUnknownStateType || b is JTCStateType
-    is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || /*b is JTCNoProtocolType ||*/ b is JTCUnknownStateType || b is JTCStateType
-    else -> false
-  }
-}
-
-private fun attemptDowncast(a: JTCStateType, b: JTCUnknownStateType): JTCType? {
-  if (b.javaType.isSubtype(a.javaType)) {
-    if (a.state == a.graph.getInitialState()) {
-      return JTCStateType(b.javaType, b.graph, b.graph.getInitialState())
-    }
-    if (a.state.isEnd()) {
-      return JTCStateType(b.javaType, b.graph, b.graph.getEndState())
-    }
-  }
-  return null
+  return JTCIntersectionType(list.toSet())
 }
 
 sealed class JTCType {
   abstract fun format(): String
 
-  fun isSubtype(other: JTCType): Boolean {
-    return Subtyping.subtype(this, other)
-  }
+  fun isSubtype(other: JTCType) = Subtyping.isSubtype(this, other)
 
   open fun intersect(other: JTCType): JTCType {
     if (this === other) return this
-    if (areExclusive(this, other)) return JTCBottomType.SINGLETON
-    if (this is JTCStateType && other is JTCUnknownStateType) {
-      attemptDowncast(this, other)?.let { return@intersect it }
-    }
-    if (this is JTCUnknownStateType && other is JTCStateType) {
-      attemptDowncast(other, this)?.let { return@intersect it }
-    }
+    Subtyping.refineIntersection(this, other)?.let { return@intersect it }
     return when {
       // We need to ensure that there are no unions in intersections
       this is JTCUnionType -> createUnion(unionSeq(this.types.map { it.intersect(other) }))
@@ -120,21 +88,6 @@ sealed class JTCType {
     }
   }
 
-  fun requiresLinear(): Boolean {
-    return when (this) {
-      is JTCUnknownType -> false
-      is JTCSharedType -> false
-      is JTCPrimitiveType,
-      is JTCNullType,
-      // is JTCNoProtocolType,
-      is JTCUnknownStateType,
-      is JTCStateType,
-      is JTCBottomType -> true
-      is JTCUnionType -> types.all { it.requiresLinear() }
-      // is JTCIntersectionType -> types.any { it.requiresLinear() }
-    }
-  }
-
   fun toShared(): JTCType {
     return when (this) {
       is JTCUnknownType,
@@ -142,33 +95,17 @@ sealed class JTCType {
       is JTCNullType,
       is JTCSharedType,
       is JTCBottomType -> this
-      // is JTCNoProtocolType -> JTCSharedType(javaType)
-      is JTCUnknownStateType -> JTCSharedType(javaType)
+      is JTCLinearType -> JTCSharedType(javaType)
       is JTCStateType -> JTCSharedType(javaType)
       is JTCUnionType -> createUnion(unionSeq(types.map { it.toShared() }))
       // Since "types" does not include union types, "toShared" will also not produce union types
       // So we do not break the pre-condition of "intersectionSeq"
-      // is JTCIntersectionType -> createIntersection(intersectionSeq(types.map { it.toShared() }))
+      is JTCIntersectionType -> createIntersection(intersectionSeq(types.map { it.toShared() }))
     }
   }
 
   fun toMaybeNullable(nullable: Boolean): JTCType {
     return if (nullable) this.union(JTCNullType.SINGLETON) else this
-  }
-
-  fun replace(state1: JTCStateType, state2: JTCStateType): JTCType {
-    return when (this) {
-      is JTCUnknownType,
-      is JTCPrimitiveType,
-      is JTCNullType,
-      is JTCSharedType,
-      is JTCBottomType -> this
-      // is JTCNoProtocolType -> this
-      is JTCUnknownStateType -> this
-      is JTCStateType -> if (this == state1) state2 else this
-      is JTCUnionType -> createUnion(types.map { it.replace(state1, state2) })
-      // is JTCIntersectionType -> createIntersection(types.map { it.replace(state1, state2) })
-    }
   }
 
   companion object {
@@ -207,7 +144,7 @@ class JTCUnionType internal constructor(val types: Set<JTCType>) : JTCType() {
   }
 }
 
-/*class JTCIntersectionType internal constructor(val types: Set<JTCType>) : JTCType() {
+class JTCIntersectionType internal constructor(val types: Set<JTCType>) : JTCType() {
 
   init {
     if (types.size <= 1) {
@@ -235,7 +172,7 @@ class JTCUnionType internal constructor(val types: Set<JTCType>) : JTCType() {
     formatCache = cache
     cache
   }
-}*/
+}
 
 class JTCStateType internal constructor(val javaType: JavaType, val graph: Graph, val state: State) : JTCType() {
   override fun equals(other: Any?) = when {
@@ -255,11 +192,11 @@ class JTCStateType internal constructor(val javaType: JavaType, val graph: Graph
   override fun format() = "State{$javaType, ${state.format()}}"
 }
 
-class JTCUnknownStateType internal constructor(val javaType: JavaType, val graph: Graph) : JTCType() {
+class JTCLinearType internal constructor(val javaType: JavaType, val graph: Graph) : JTCType() {
 
   override fun equals(other: Any?) = when {
     this === other -> true
-    other is JTCUnknownStateType -> javaType == other.javaType && graph == other.graph
+    other is JTCLinearType -> javaType == other.javaType && graph == other.graph
     else -> false
   }
 
@@ -269,7 +206,7 @@ class JTCUnknownStateType internal constructor(val javaType: JavaType, val graph
     return result
   }
 
-  override fun toString() = "JTCUnknownStateType{${javaType}}"
+  override fun toString() = "JTCLinearType{${javaType}}"
   override fun format() = "State{$javaType, ?}"
 }
 
@@ -386,10 +323,10 @@ private object JTCTypeFormatter {
     return when (t) {
       is JTCUnknownType -> 1
       is JTCUnionType -> 2
-      // is JTCIntersectionType -> 3
+      is JTCIntersectionType -> 3
       is JTCSharedType -> 4
       // is JTCNoProtocolType -> 5
-      is JTCUnknownStateType -> 6
+      is JTCLinearType -> 6
       is JTCStateType -> 7
       is JTCNullType -> 8
       is JTCPrimitiveType -> 9
@@ -406,7 +343,7 @@ private object JTCTypeFormatter {
           // t1 is JTCIntersectionType && t2 is JTCIntersectionType -> t1.types.size - t2.types.size
           t1 is JTCSharedType && t2 is JTCSharedType -> t1.javaType.toString().compareTo(t2.javaType.toString())
           // t1 is JTCNoProtocolType && t2 is JTCNoProtocolType -> t1.javaType.toString().compareTo(t2.javaType.toString())
-          t1 is JTCUnknownStateType && t2 is JTCUnknownStateType -> t1.javaType.toString().compareTo(t2.javaType.toString())
+          t1 is JTCLinearType && t2 is JTCLinearType -> t1.javaType.toString().compareTo(t2.javaType.toString())
           t1 is JTCStateType && t2 is JTCStateType -> {
             val c = t1.javaType.toString().compareTo(t2.javaType.toString())
             if (c == 0) {

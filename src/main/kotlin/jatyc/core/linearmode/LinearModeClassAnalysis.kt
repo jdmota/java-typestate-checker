@@ -119,8 +119,9 @@ class LinearModeClassAnalysis(
     // States lead us to methods that may be called. So we need information about each state.
     val stateToStore = mutableMapOf<State, Store>()
     // But since the same method may be available from different states,
-    // we also need to store the entry store for each method.
-    val methodToStore = mutableMapOf<FuncDeclaration, Store>()
+    // we also need to store the entry store and resulting store for each method.
+    val methodPreStores = mutableMapOf<FuncDeclaration, Store>()
+    val methodPostStores = mutableMapOf<FuncDeclaration, Store>()
     // States that need recomputing. Use a LinkedHashSet to keep some order and avoid duplicates.
     val stateQueue = LinkedHashSet<State>()
 
@@ -137,11 +138,11 @@ class LinearModeClassAnalysis(
     }
 
     // Returns the merge result if it changed. Returns null otherwise.
-    fun mergeMethodStore(method: FuncDeclaration, store: Store): Store? {
-      val currStore = methodToStore[method] ?: emptyStore
+    fun mergeMethodPreStore(method: FuncDeclaration, store: Store): Store? {
+      val currStore = methodPreStores[method] ?: emptyStore
       val newStore = Store.mergeFieldsToNew(currStore, store, classThisRef)
-      return if (!methodToStore.containsKey(method) || currStore != newStore) {
-        methodToStore[method] = newStore
+      return if (!methodPreStores.containsKey(method) || currStore != newStore) {
+        methodPreStores[method] = newStore
         newStore
       } else null
     }
@@ -157,8 +158,18 @@ class LinearModeClassAnalysis(
       val methodToStates = methodToStatesCache.computeIfAbsent(state, ::getMethodToState)
 
       for ((method, destState) in methodToStates) {
-        val entryStore = mergeMethodStore(method, store) ?: continue
-        val generalResult = analyzeMethod(classThisRef, method, entryStore)
+        val entryStore = mergeMethodPreStore(method, store)
+        val generalResult = if (entryStore == null) {
+          // Even though we might have analyzed this method with these pre-conditions before
+          // We might have not contributed with its output to all destination states
+          // (because the same method may appear in different states with different outcomes)
+          methodPostStores[method]!!
+        } else {
+          val generalResult = analyzeMethod(classThisRef, method, entryStore)
+          methodPostStores[method] = generalResult
+          generalResult
+        }
+
         val returnExprs = method.body.allNodes.mapNotNull {
           if (it is SimpleCodeNode && it.code is Return && it.code.expr != null) Pair(it, it.code.expr) else null
         }
@@ -210,7 +221,7 @@ class LinearModeClassAnalysis(
     val errors = mutableListOf<String>()
     inference.completionErrors[clazz] = errors
     for ((state, store) in stateToStore) {
-      if (state.canEndHere()) {
+      if (state.canDropHere()) {
         ensureFieldsCompleteness(errors, store)
       }
     }

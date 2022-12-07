@@ -19,9 +19,9 @@ public class Main {
     Derived d = new Derived();
     // :: warning: (d: State{Derived, HasNext})
     Base b = d;
-    // :: warning: (b: State{Base, HasNext})
+    // :: warning: (b: State{Derived, HasNext})
     while (b.hasNext()) {
-      // :: warning: (b: State{Base, Next})
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
   }
@@ -40,9 +40,9 @@ public class Main {
 
   public static void main3() {
     Derived d = new Derived();
-    // :: warning: (d: State{Derived, HasNext} | State{Derived, Remove})
+    // :: warning: (d: State{Derived, HasNext})
     while (d.hasNext()) {
-      // :: warning: (d: State{Derived, Next} | State{Derived, NextRemove})
+      // :: warning: (d: State{Derived, Next})
       d.next();
     }
     // :: warning: (d: State{Derived, end})
@@ -51,9 +51,9 @@ public class Main {
 
   public static void main4() {
     Base b = new Derived();
-    // :: warning: (b: State{Base, HasNext})
+    // :: warning: (b: State{Derived, HasNext})
     while (b.hasNext()) {
-      // :: warning: (b: State{Base, Next})
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
   }
@@ -102,9 +102,9 @@ public class Main {
 
   public static void main7() {
     Base b = (Base) new Derived();
-    // :: warning: (b: State{Base, HasNext})
+    // :: warning: (b: State{Derived, HasNext})
     while (b.hasNext()) {
-      // :: warning: (b: State{Base, Next})
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
   }
@@ -125,12 +125,11 @@ public class Main {
     Derived d = new Derived();
     // :: warning: (d: State{Derived, HasNext})
     Base b = (Base) d;
-    // :: warning: (b: State{Base, HasNext})
-    // :: warning: (Unsafe cast)
+    // :: warning: (b: State{Derived, HasNext})
     Derived d2 = (Derived) b;
-    // :: warning: (d2: State{Derived, HasNext} | State{Derived, Remove})
+    // :: warning: (d2: State{Derived, HasNext})
     while (d2.hasNext()) {
-      // :: warning: (d2: State{Derived, Next} | State{Derived, NextRemove})
+      // :: warning: (d2: State{Derived, Next})
       d2.next();
     }
   }
@@ -139,39 +138,37 @@ public class Main {
     Derived d = new Derived();
     // :: warning: (d: State{Derived, HasNext})
     Base b = (Base) d;
-    // :: warning: (b: State{Base, HasNext})
+    // :: warning: (b: State{Derived, HasNext})
     while (b.hasNext()) {
-      // :: warning: (b: State{Base, Next})
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
-    // :: warning: (b: State{Base, end})
-    // :: warning: (Unsafe cast)
+    // :: warning: (b: State{Derived, end})
     Derived d2 = (Derived) b;
   }
 
-  // :: error: ([d2] did not complete its protocol (found: State{Derived, HasNext} | State{Derived, end}))
+  // :: error: ([d2] did not complete its protocol (found: State{Derived, Remove} | State{Derived, end}))
   public static void main11() {
     Derived d = new Derived();
     // :: warning: (d: State{Derived, HasNext})
     Base b = (Base) d;
-    // :: warning: (b: State{Base, HasNext})
+    // :: warning: (b: State{Derived, HasNext})
     if (b.hasNext()) {
-      // :: warning: (b: State{Base, Next})
+      // :: warning: (b: State{Derived, Next})
       b.next();
     }
-    // :: warning: (b: State{Base, HasNext} | State{Base, end})
-    // :: warning: (Unsafe cast)
+    // :: warning: (b: State{Derived, Remove} | State{Derived, end})
     Derived d2 = (Derived) b;
   }
 
+  // :: error: ([d2] did not complete its protocol (found: State{Derived, Next} | State{Derived, end}))
   public static void main12() {
     Derived d = new Derived();
     // :: warning: (d: State{Derived, HasNext})
     Base b = (Base) d;
-    // :: warning: (b: State{Base, HasNext})
+    // :: warning: (b: State{Derived, HasNext})
     b.hasNext();
-    // :: warning: (b: State{Base, Next} | State{Base, end})
-    // :: error: (Cannot perform cast from State{Base, Next} | State{Base, end} to Shared{Derived} | State{Derived, ?} | Null)
+    // :: warning: (b: State{Derived, Next} | State{Derived, end})
     Derived d2 = (Derived) b;
   }
 
@@ -192,9 +189,9 @@ public class Main {
   public static void main15(@Requires("HasNext") Base b) {
     // :: warning: (b: State{Base, HasNext})
     if (b instanceof Derived) {
-      // :: warning: (b: State{Derived, HasNext} | State{Derived, Remove})
+      // :: warning: (b: State{Derived, HasNext})
       while (b.hasNext()) {
-        // :: warning: (b: State{Derived, Next} | State{Derived, NextRemove})
+        // :: warning: (b: State{Derived, Next})
         b.next();
       }
     } else {
@@ -225,13 +222,12 @@ public class Main {
       // :: warning: (obj: Null)
       obj = new String();
     }
-    // :: warning: (obj: Shared{java.lang.Object})
+    // :: warning: (obj: Shared{java.lang.String})
     if (obj instanceof Base) {
-      // :: warning: (obj: Shared{Base})
+      // :: warning: (obj: Bottom)
       Base b = (Base) obj;
     } else {
-      // :: warning: (obj: Shared{java.lang.Object})
-      // :: warning: (Unsafe cast)
+      // :: warning: (obj: Shared{java.lang.String})
       String str = (String) obj;
       // :: warning: (str: Shared{java.lang.String})
       str.toUpperCase();
