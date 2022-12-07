@@ -20,4 +20,12 @@ public class Main {
     // :: warning: (c: State{C, C1})
     c.m2();
   }
+
+  public static void use2(@Requires("A1") A a) {
+    // :: warning: (Unsafe cast)
+    // :: warning: (a: State{A, A1})
+    C c = (C) a;
+    // :: warning: (c: State{C, C1})
+    c.m2();
+  }
 }
