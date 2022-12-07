@@ -67,7 +67,7 @@ java -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processo
 
 1. Recall that you must have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
 1. Download and extract [checker-framework-3.28.0.zip](https://github.com/typetools/checker-framework/releases/tag/checker-framework-3.28.0).
-1. Download [jatyc.jar](https://github.com/jdmota/java-typestate-checker/releases/tag/3.0).
+1. Download [jatyc.jar](https://github.com/jdmota/java-typestate-checker/raw/master/dist/jatyc.jar).
 1. Run the following command from the folder where the Java files you want to check are by replacing `DOWNLOADS` with the appropriate path containing the files downloaded in steps 2 and 3.
 
 ```sh
