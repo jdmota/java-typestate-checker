@@ -37,9 +37,7 @@ class Inference(
 
     if (leftRef == Reference.returnRef || leftRef.isSwitchVar()) {
       for ((ref, info) in pre) {
-        if (info.conditionalOn(rightRef)) {
-          post[ref] = info.replaceCondition(leftRef)
-        }
+        post[ref] = info.replaceCondition(rightRef, leftRef)
       }
     }
     val typeToAssign: JTCType
@@ -210,7 +208,7 @@ class Inference(
 
               when {
                 returnsBool -> {
-                  post[argRef] = ConditionalStoreInfo(
+                  post[argRef] = StoreInfo.conditional(
                     nodeRef,
                     typecheckUtils.refine(currentType, node, ifTrue),
                     typecheckUtils.refine(currentType, node, ifFalse)
@@ -220,11 +218,11 @@ class Inference(
                 returnsEnum -> {
                   if (returnType is JTCSharedType) {
                     val (qualifiedName, labels) = returnType.javaType.getEnumLabels()
-                    val cases = mutableMapOf<String, JTCType>()
+                    val cases = mutableMapOf<CasePatterns, JTCType>()
                     for (label in labels) {
-                      cases["$qualifiedName.$label"] = typecheckUtils.refine(currentType, node) { it == label }
+                      cases[CasePatterns.labelled(nodeRef, "$qualifiedName.$label", true)] = typecheckUtils.refine(currentType, node) { it == label }
                     }
-                    post[argRef] = CasesStoreInfo(nodeRef, cases)
+                    post[argRef] = StoreInfo.cases(cases.toList())
                   } else {
                     post[argRef] = typecheckUtils.refine(currentType, node, allLabels)
                   }
@@ -389,9 +387,7 @@ class Inference(
         val label = getLabel(test)
         if (label != null) {
           for ((ref, info) in pre) {
-            if (info.conditionalOn(valueRef)) {
-              post[ref] = ConditionalStoreInfo(nodeRef, info.withLabel(valueRef, label).type, info.withoutLabel(valueRef, label).type)
-            }
+            post[ref] = StoreInfo.conditional(nodeRef, info.withLabel(valueRef, label), info.withoutLabel(valueRef, label))
           }
         }
       }
@@ -418,7 +414,7 @@ class Inference(
             val leftRef = Reference.make(left)
             val currentType = pre[leftRef].type
             if (right is NullLiteral) {
-              post[leftRef] = ConditionalStoreInfo(
+              post[leftRef] = StoreInfo.conditional(
                 nodeRef,
                 typecheckUtils.refineToNull(currentType),
                 typecheckUtils.refineToNonNull(currentType)
@@ -427,9 +423,7 @@ class Inference(
               val label = getLabel(right)
               if (label != null) {
                 for ((ref, info) in pre) {
-                  if (info.conditionalOn(leftRef)) {
-                    post[ref] = ConditionalStoreInfo(nodeRef, info.withLabel(leftRef, label).type, info.withoutLabel(leftRef, label).type)
-                  }
+                  post[ref] = StoreInfo.conditional(nodeRef, info.withLabel(leftRef, label), info.withoutLabel(leftRef, label))
                 }
               }
             }
@@ -442,7 +436,7 @@ class Inference(
             val leftRef = Reference.make(left)
             val currentType = pre[leftRef].type
             if (right is NullLiteral) {
-              post[leftRef] = ConditionalStoreInfo(
+              post[leftRef] = StoreInfo.conditional(
                 nodeRef,
                 typecheckUtils.refineToNonNull(currentType),
                 typecheckUtils.refineToNull(currentType)
@@ -451,9 +445,7 @@ class Inference(
               val label = getLabel(right)
               if (label != null) {
                 for ((ref, info) in pre) {
-                  if (info.conditionalOn(leftRef)) {
-                    post[ref] = ConditionalStoreInfo(nodeRef, info.withoutLabel(leftRef, label).type, info.withLabel(leftRef, label).type)
-                  }
+                  post[ref] = StoreInfo.conditional(nodeRef, info.withoutLabel(leftRef, label), info.withLabel(leftRef, label))
                 }
               }
             }
@@ -465,7 +457,7 @@ class Inference(
             val leftRef = Reference.make(node.left)
             val currentType = pre[leftRef].type
             val rightExpr = node.right as SymbolResolveExpr
-            post[leftRef] = ConditionalStoreInfo(
+            post[leftRef] = StoreInfo.conditional(
               nodeRef,
               if (DO_ACTUAL_CASTS) typecheckUtils.refineToNonNull(currentType) else typecheckUtils.refineToNonNull(currentType).intersect(rightExpr.type),
               currentType
@@ -551,7 +543,7 @@ class Inference(
       }
 
       is TernaryExpr -> {
-        post[Reference.make(node)] = pre[Reference.make(node.thenExpr)].union(pre[Reference.make(node.elseExpr)])
+        post[Reference.make(node)] = pre[Reference.make(node.thenExpr)].or(pre[Reference.make(node.elseExpr)])
       }
 
       is ThrowExpr -> {

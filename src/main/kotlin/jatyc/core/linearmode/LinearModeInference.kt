@@ -147,11 +147,11 @@ class LinearModeInference(
       val bool = inference.getBooleanValue(code)
       if (bool == true) {
         for ((ref, info) in post) {
-          post[ref] = ConditionalStoreInfo(codeRef, info.type, JTCBottomType.SINGLETON)
+          post[ref] = StoreInfo.conditional(codeRef, info.type, JTCBottomType.SINGLETON)
         }
       } else if (bool == false) {
         for ((ref, info) in post) {
-          post[ref] = ConditionalStoreInfo(codeRef, JTCBottomType.SINGLETON, info.type)
+          post[ref] = StoreInfo.conditional(codeRef, JTCBottomType.SINGLETON, info.type)
         }
       }
     }

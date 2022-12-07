@@ -190,3 +190,17 @@ class ClassAnalysisTests(testFiles: List<File>) : PerDirectoryTest(
     val testDirs = arrayOf(dir12)
   }
 }
+
+private const val dir13 = "switch-case-order"
+
+class SwitchCaseOrderTests(testFiles: List<File>) : PerDirectoryTest(
+  dir13,
+  testFiles,
+  defaultOpts
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir13)
+  }
+}
