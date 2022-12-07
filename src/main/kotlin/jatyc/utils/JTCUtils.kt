@@ -126,7 +126,7 @@ class JTCUtils(val checker: SourceChecker) {
     }
     val basename = graph.resolvedFile.fileName
     return states.mapNotNull {
-      if (graph.isFinalState(it)) {
+      if (graph.isEndState(it)) {
         "State $it is final. Will have no effect in @Requires"
       } else if (!graph.hasStateByName(it)) {
         "$basename has no $it state"

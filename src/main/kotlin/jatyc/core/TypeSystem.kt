@@ -95,7 +95,6 @@ sealed class JTCType {
       is JTCNullType,
       is JTCSharedType,
       is JTCBottomType -> this
-      is JTCLinearType -> JTCSharedType(javaType)
       is JTCStateType -> JTCSharedType(javaType)
       is JTCUnionType -> createUnion(unionSeq(types.map { it.toShared() }))
       // Since "types" does not include union types, "toShared" will also not produce union types
@@ -111,7 +110,6 @@ sealed class JTCType {
       is JTCNullType -> hierarchy.OBJ
       is JTCSharedType -> javaType
       is JTCBottomType -> hierarchy.BOT
-      is JTCLinearType -> javaType
       is JTCStateType -> javaType
       is JTCUnionType -> types.first().javaType(hierarchy)
       is JTCIntersectionType -> types.first().javaType(hierarchy)
@@ -204,24 +202,8 @@ class JTCStateType internal constructor(val javaType: JavaType, val graph: Graph
 
   override fun toString() = "JTCStateType{$javaType, ${graph.typestateName}, $state}"
   override fun format() = "State{$javaType, ${state.format()}}"
-}
 
-class JTCLinearType internal constructor(val javaType: JavaType, val graph: Graph) : JTCType() {
-
-  override fun equals(other: Any?) = when {
-    this === other -> true
-    other is JTCLinearType -> javaType == other.javaType && graph == other.graph
-    else -> false
-  }
-
-  override fun hashCode(): Int {
-    var result = javaType.hashCode()
-    result = 31 * result + graph.hashCode()
-    return result
-  }
-
-  override fun toString() = "JTCLinearType{${javaType}}"
-  override fun format() = "State{$javaType, ?}"
+  fun isUnknown() = state == graph.getUnknownState()
 }
 
 /*class JTCNoProtocolType internal constructor(val javaType: JavaType, isActualType: Boolean) : JTCType() {
@@ -340,7 +322,6 @@ private object JTCTypeFormatter {
       is JTCIntersectionType -> 3
       is JTCSharedType -> 4
       // is JTCNoProtocolType -> 5
-      is JTCLinearType -> 6
       is JTCStateType -> 7
       is JTCNullType -> 8
       is JTCPrimitiveType -> 9
@@ -357,7 +338,6 @@ private object JTCTypeFormatter {
           // t1 is JTCIntersectionType && t2 is JTCIntersectionType -> t1.types.size - t2.types.size
           t1 is JTCSharedType && t2 is JTCSharedType -> t1.javaType.toString().compareTo(t2.javaType.toString())
           // t1 is JTCNoProtocolType && t2 is JTCNoProtocolType -> t1.javaType.toString().compareTo(t2.javaType.toString())
-          t1 is JTCLinearType && t2 is JTCLinearType -> t1.javaType.toString().compareTo(t2.javaType.toString())
           t1 is JTCStateType && t2 is JTCStateType -> {
             val c = t1.javaType.toString().compareTo(t2.javaType.toString())
             if (c == 0) {
