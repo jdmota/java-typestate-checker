@@ -409,7 +409,7 @@ class ThrowExpr(val expr: CodeExpr?) : CodeExpr() {
   }
 }
 
-class CastExpr(val expr: CodeExpr, val type: JTCType, val javaType: JavaType) : CodeExpr() {
+class CastExpr(val expr: CodeExpr, val type: JTCType, val javaType: JavaType, val upcast: Boolean) : CodeExpr() {
   override fun format(indent: String): String {
     return "$indent($javaType) ${expr.format("")}"
   }

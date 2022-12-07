@@ -122,6 +122,9 @@ class JavaTypesHierarchy(private val checker: JavaTypestateChecker) {
   val SHORT = prim(symtab.shortType)
 
   val VOID = get(symtab.voidType)
+  val OBJ = get(symtab.objectType)
+  val NONE = get(Type.noType)
+  val BOT = get(symtab.botType)
 
   val SHARED_OBJECT = JTCSharedType(get(symtab.objectType))
   val STRING = JTCSharedType(get(symtab.stringType))
