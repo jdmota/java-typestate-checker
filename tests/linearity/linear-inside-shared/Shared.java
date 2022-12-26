@@ -1,5 +1,5 @@
+// :: error: ([this.l] did not complete its protocol (found: Shared{Linear} | State{Linear, ?}))
 public class Shared {
-  // :: error: (Object did not complete its protocol. Type: State "Init" | Ended)
   private Linear l;
 
   public Shared() {
@@ -7,8 +7,12 @@ public class Shared {
   }
 
   public void change() {
-    // :: error: (Cannot call change on ended protocol)
-    // :: error: (Access of object with protocol inside object without protocol might break linearity)
+    // :: error: (Cannot call [change] on Shared{Linear})
     l.change();
+  }
+
+  public void change2() {
+    // :: error: (Cannot assign because [this.l] is not accessible here)
+    l = new Linear();
   }
 }

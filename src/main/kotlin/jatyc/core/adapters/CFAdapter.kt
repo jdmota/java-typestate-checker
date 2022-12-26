@@ -66,8 +66,8 @@ private fun isSideEffectFree(utils: JTCUtils, hierarchy: JavaTypesHierarchy, met
 
 sealed class AdaptResult {
   abstract val code: CodeExpr
-  fun set(node: Node?): AdaptResult {
-    code.set(node)
+  fun set(node: Node, hierarchy: JavaTypesHierarchy): AdaptResult {
+    code.set(node, hierarchy)
     return this
   }
 
@@ -76,8 +76,8 @@ sealed class AdaptResult {
     return this
   }
 
-  fun set(type: TypeMirror?): AdaptResult {
-    code.set(type)
+  fun set(type: TypeMirror?, hierarchy: JavaTypesHierarchy): AdaptResult {
+    code.set(type, hierarchy)
     return this
   }
 
@@ -140,24 +140,25 @@ class VariableRenamer(private val hierarchy: JavaTypesHierarchy) {
   fun transformLocal(node: LocalVariableNode): Id {
     val sym = VarSymbolWrapper(node.element as Symbol.VarSymbol)
     val id = varSymbols.computeIfAbsent(sym) { varSymbolsUuid++ }
-    return Id(node.name, id)
+    return Id(node.name, id, hierarchy.get(node.type))
   }
 
   fun transformThis(typeMirror: TypeMirror): Id {
     val type = hierarchy.get(typeMirror as Type)
-    return Id("this", type.id)
+    return Id("this", type.id, type)
   }
 
   fun transformSelect(obj: CodeExpr, elem: VariableElement): Select {
     val sym = VarSymbolWrapper(elem as Symbol.VarSymbol)
     val id = varSymbols.computeIfAbsent(sym) { varSymbolsUuid++ }
-    return Select(obj, elem.simpleName.toString(), id)
+    return Select(obj, elem.simpleName.toString(), id, hierarchy.get(elem.asType()))
   }
 
   fun transformDecl(tree: VariableTree): IdLHS {
-    val sym = VarSymbolWrapper(TreeUtils.elementFromDeclaration(tree) as Symbol.VarSymbol)
+    val elem = TreeUtils.elementFromDeclaration(tree) as Symbol.VarSymbol
+    val sym = VarSymbolWrapper(elem)
     val id = varSymbols.computeIfAbsent(sym) { varSymbolsUuid++ }
-    return IdLHS(tree.name.toString(), id)
+    return IdLHS(tree.name.toString(), id, hierarchy.get(elem.asType()))
   }
 
   fun transformDecl(node: VariableDeclarationNode): IdLHS {
@@ -167,24 +168,24 @@ class VariableRenamer(private val hierarchy: JavaTypesHierarchy) {
   fun transformLocalLHS(node: LocalVariableNode): IdLHS {
     val sym = VarSymbolWrapper(node.element as Symbol.VarSymbol)
     val id = varSymbols.computeIfAbsent(sym) { varSymbolsUuid++ }
-    return IdLHS(node.name, id)
+    return IdLHS(node.name, id, hierarchy.get(node.type))
   }
 
   fun transformParamLHS(varSym: Symbol.VarSymbol): IdLHS {
     val sym = VarSymbolWrapper(varSym)
     val id = varSymbols.computeIfAbsent(sym) { varSymbolsUuid++ }
-    return IdLHS(varSym.simpleName.toString(), id)
+    return IdLHS(varSym.simpleName.toString(), id, hierarchy.get(varSym.asType()))
   }
 
   fun transformThisLHS(typeMirror: TypeMirror): IdLHS {
     val type = hierarchy.get(typeMirror as Type)
-    return IdLHS("this", type.id)
+    return IdLHS("this", type.id, type)
   }
 
   fun transformSelectLHS(obj: CodeExpr, elem: VariableElement): SelectLHS {
     val sym = VarSymbolWrapper(elem as Symbol.VarSymbol)
     val id = varSymbols.computeIfAbsent(sym) { varSymbolsUuid++ }
-    return SelectLHS(obj, elem.simpleName.toString(), id)
+    return SelectLHS(obj, elem.simpleName.toString(), id, hierarchy.get(elem.asType()))
   }
 }
 
@@ -242,7 +243,7 @@ class CFAdapter(
       emptyList()
     } else {
       val thisType = typeIntroducer.getThisType(receiver, isAnytime = isAnytime, isConstructor = isConstructor)
-      listOf(FuncParam(renamer.transformThisLHS(receiver), thisType, thisType, isThis = true, hierarchy.get(receiver), hasEnsures = false))
+      listOf(FuncParam(renamer.transformThisLHS(receiver), thisType, thisType, isThis = true, hasEnsures = false))
     }
     val params = if (isConstructor && receiver.toString() == "java.lang.Enum<E>") {
       // It seems the java.lang.Enum constructor has more parameters (String, Int), but is called with zero
@@ -251,13 +252,18 @@ class CFAdapter(
     } else {
       thisParam.plus(getParamTypes(it))
     }
-    val (returnType, returnJavaType) = getReturnType(it)
-    FuncInterface(funcName, params, returnType, returnJavaType, isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType())
+    val (returnType, returnJavaType) = if (isConstructor) Pair(JTCNullType.SINGLETON, hierarchy.VOID) else getReturnType(it)
+    FuncInterface(funcName, params, returnType, returnJavaType, isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType(), hierarchy)
   }
 
   fun setRoot(root: CompilationUnitTree) {
     this.root = root as JCTree.JCCompilationUnit
     utils.factory.setRoot(root)
+  }
+
+  private fun getFieldJavaType(tree: VariableTree): JavaType {
+    val type = utils.factory.getAnnotatedType(tree).underlyingType
+    return hierarchy.get(type)
   }
 
   private fun getFieldType(tree: VariableTree): JTCType {
@@ -301,7 +307,6 @@ class CFAdapter(
         requires = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcRequiresAnno)).toMaybeNullable(typeIntroducer.acceptsNull(type)),
         ensures = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcEnsuresAnno)),
         isThis = false,
-        javaType = hierarchy.get(paramType.underlyingType),
         hasEnsures = JTCUtils.hasAnnotation(paramType, JTCUtils.jtcEnsuresAnno)
       ))
     }
@@ -368,6 +373,7 @@ class CFAdapter(
       }
       fields.add(FieldDeclaration(
         renamer.transformDecl(field),
+        getFieldJavaType(field),
         getFieldType(field),
         isPrivate = field.modifiers.flags.contains(Modifier.PRIVATE),
         isProtected = field.modifiers.flags.contains(Modifier.PROTECTED),
@@ -469,7 +475,7 @@ class CFAdapter(
       classesStack.push(Pair(classTree, false))
       val nonStaticClass = transformClass(classTree, isStatic = false)
       classesStack.pop()
-      ClassDeclAndCompanion(nonStatic = nonStaticClass, static = staticClass).set(classTree).set(root).set(checker)
+      ClassDeclAndCompanion(nonStatic = nonStaticClass, static = staticClass).set(classTree).set(classTree.type, hierarchy).set(root).set(checker)
     }
   }
 
@@ -491,7 +497,6 @@ class CFAdapter(
         val mt = TreePathUtil.enclosingOfKind(utils.getPath(tree, root), Tree.Kind.METHOD) as MethodTree
         UnderlyingAST.CFGLambda(tree, classTree, mt)
       }
-
       else -> error("Unexpected tree ${tree.javaClass}")
     }
   }
@@ -499,10 +504,11 @@ class CFAdapter(
   private fun processCFG(tree: Tree): SimpleCFG {
     if (tree is MethodTree) {
       if (tree.modifiers.flags.contains(Modifier.NATIVE)) {
-        return createOneExprCFG(NoOPExpr("native method")) // TODO should be an expression that invalidates the information right?
+        // TODO should be an expression that invalidates the information right?
+        return createOneExprCFG(NoOPExpr("native method").let { it.javaType2 = hierarchy.VOID; it })
       } else if (tree.modifiers.flags.contains(Modifier.ABSTRACT) || tree.body == null) {
         // Note that abstract methods in an interface have a null body but do not have an ABSTRACT flag
-        return createOneExprCFG(ThrowExpr(null))
+        return createOneExprCFG(ThrowExpr(null).let { it.javaType2 = hierarchy.BOT; it })
       }
     }
     val ast = treeToAst(tree, classesStack.peek().first)
@@ -618,21 +624,15 @@ class CFAdapter(
 
   private fun transformLHS(node: Node): LeftHS {
     return when (node) {
-      is ThisNode -> renamer.transformThisLHS(node.type).set(node)
-      is LocalVariableNode -> renamer.transformLocalLHS(node).set(node)
-      is FieldAccessNode -> renamer.transformSelectLHS(getAdapted(node.receiver), node.element).set(node)
+      is ThisNode -> renamer.transformThisLHS(node.type).set(node, hierarchy)
+      is LocalVariableNode -> renamer.transformLocalLHS(node).set(node, hierarchy)
+      is FieldAccessNode -> renamer.transformSelectLHS(getAdapted(node.receiver), node.element).set(node, hierarchy)
       else -> error("Unexpected ${node.javaClass} in LHS - $node")
     }
   }
 
   private fun getAdapted(node: Node): CodeExpr {
-    var code = adaptedCache.computeIfAbsent(node) { transformHelper(it) }.code
-    // Prefer the casted expression,
-    // except when the type is primitive (in that case the cast is a conversion)
-    while (code is CastExpr && code.type !is JTCPrimitiveType) {
-      code = code.expr
-    }
-    return code
+    return adaptedCache.computeIfAbsent(node) { transformHelper(it) }.code
   }
 
   private fun makeTypeRef(type: TypeMirror): SymbolResolveExpr {
@@ -651,9 +651,9 @@ class CFAdapter(
         val componentJavaType = hierarchy.get(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
         val params = listOf(
-          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type), hasEnsures = false),
-          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType, hasEnsures = false),
-          FuncParam(IdLHS("value", 0), componentType, componentType, isThis = false, hierarchy.get(type.componentType), hasEnsures = false)
+          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hasEnsures = false),
+          FuncParam(IdLHS("index", 0, hierarchy.INTEGER.javaType), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hasEnsures = false),
+          FuncParam(IdLHS("value", 0, hierarchy.get(type.componentType)), componentType, componentType, isThis = false, hasEnsures = false)
         )
         makeCall2(
           FuncInterface("#helpers.arraySet", params, returnType = componentType, componentJavaType, isPublic = true, isAnytime = true, isPure = false, isAbstract = false),
@@ -661,18 +661,19 @@ class CFAdapter(
           node
         )
       }
-
-      else -> SingleAdaptResult(Assign(transformLHS(left), right, typeIntroducer.getUpperBound(left.type), hierarchy.get(left.type)).set(node))
+      else -> SingleAdaptResult(Assign(transformLHS(left), right, typeIntroducer.getUpperBound(left.type)).set(node, hierarchy))
     }
   }
 
-  private fun makeReturn(node: Node, result: Node?): CodeExpr {
+  private fun makeReturn(node: Node, result: Node?): Return {
     val (type, javaType) = when (val enclosing = methodsStack.peek()) {
       is JCTree.JCMethodDecl -> getReturnType(enclosing)
       is JCTree.JCLambda -> getReturnType(enclosing)
       else -> error("Unexpected enclosing method ${enclosing::class.java}")
     }
-    return Return(if (result == null) null else getAdapted(result), type, javaType).set(node)
+    val ret = Return(if (result == null) null else getAdapted(result), type, javaType).set(node, hierarchy)
+    ret.javaType2 = hierarchy.BOT
+    return ret
   }
 
   private fun makeCall2(methodExpr: FuncInterface, parameters: List<CodeExpr>, cfNode: Node): AdaptResult {
@@ -681,9 +682,9 @@ class CFAdapter(
       val select = tree.methodSelect
       select is IdentifierTree && select.name.contentEquals("super")
     } else false
-    val params = parameters.mapIndexed { i, p -> ParamAssign(i, p).set(p.cfTree).set(p.cfNode) }
-    val call = MethodCall(methodExpr, params, isSuperCall).set(cfNode)
-    return MultipleAdaptResult(params.plus(call)).set(cfNode)
+    val params = parameters.mapIndexed { i, p -> ParamAssign(i, p).set(p.cfTree).set(p.cfType, hierarchy) }
+    val call = MethodCall(methodExpr, params, isSuperCall).set(cfNode, hierarchy)
+    return MultipleAdaptResult(params.plus(call)).set(cfNode, hierarchy)
   }
 
   private fun makeCall(methodExpr: FuncInterface, parameters: List<Node>, cfNode: Node): AdaptResult {
@@ -693,9 +694,9 @@ class CFAdapter(
   private fun makeThis(node: Node): CodeExpr {
     val (classTree, isStatic) = classesStack.peek()
     if (isStatic) {
-      return makeTypeRef(classTree.type).set(node)
+      return makeTypeRef(classTree.type).set(node, hierarchy)
     }
-    return renamer.transformThis(classTree.type).set(node)
+    return renamer.transformThis(classTree.type).set(node, hierarchy)
   }
 
   // See https://github.com/typetools/checker-framework/tree/master/dataflow/src/main/java/org/checkerframework/dataflow/cfg/node
@@ -708,8 +709,8 @@ class CFAdapter(
         val componentJavaType = hierarchy.get(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
         val params = listOf(
-          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hierarchy.get(type), hasEnsures = false),
-          FuncParam(IdLHS("index", 0), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hierarchy.INTEGER.javaType, hasEnsures = false)
+          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hasEnsures = false),
+          FuncParam(IdLHS("index", 0, hierarchy.INTEGER.javaType), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hasEnsures = false)
         )
         makeCall(
           FuncInterface("#helpers.arrayAccess", params, returnType = componentType, componentJavaType, isPublic = true, isAnytime = true, isPure = true, isAbstract = false),
@@ -727,7 +728,7 @@ class CFAdapter(
           NewArrayWithDimensions(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.dimensions.map(t))
         } else {
           NewArrayWithValues(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.initializers.map(t))
-        }).set(node)
+        }).set(node, hierarchy)
       }
 
       is ArrayTypeNode -> error("Unexpected node ${node.javaClass}")
@@ -761,19 +762,22 @@ class CFAdapter(
           is UnsignedRightShiftNode -> BinaryOP.UnsignedRightShift
           else -> error("Unexpected node ${node.javaClass}")
         }
-        SingleAdaptResult(BinaryExpr(left, right, operator).set(node))
+        SingleAdaptResult(BinaryExpr(left, right, operator).set(node, hierarchy))
       }
-
-      is CaseNode -> SingleAdaptResult(CaseExpr(node.caseOperands.map(t), t(node.switchOperand)).set(node))
+      is CaseNode -> SingleAdaptResult(CaseExpr(node.caseOperands.map(t), t(node.switchOperand)).set(node, hierarchy))
       is ClassDeclarationNode -> SingleAdaptResult(transformClass(node.tree as JCTree.JCClassDecl))
-      is ClassNameNode -> SingleAdaptResult(makeTypeRef(node.type).set(node))
+      is ClassNameNode -> SingleAdaptResult(makeTypeRef(node.type).set(node, hierarchy))
       is FieldAccessNode -> SingleAdaptResult(when (node.fieldName) {
         // Handle "className.this"
-        "this" -> renamer.transformThis(node.receiver.type).set(node).set(node.receiver.type)
+        "this" -> renamer.transformThis(node.receiver.type).set(node, hierarchy).set(node.receiver.type, hierarchy)
         // Handle "className.class"
-        "class" -> Select(makeTypeRef(node.receiver.type).set(node), "class", 0).set(node)
+        "class" -> {
+          val symResolveExpr = makeTypeRef(node.receiver.type)
+          Select(symResolveExpr.set(node, hierarchy), "class", 0, symResolveExpr.javaType).set(node, hierarchy)
+        }
         else -> if (node.isStatic) {
-          Select(makeTypeRef(node.receiver.type).set(node), node.fieldName, 0).set(node)
+          val symResolveExpr = makeTypeRef(node.receiver.type)
+          Select(symResolveExpr.set(node, hierarchy), node.fieldName, 0, hierarchy.get(node.type)).set(node, hierarchy)
         } else {
           // Make sure the corresponding tree of the receiver is not null
           // This can occur if the receiver is ClassNameNode or ImplicitThisNode
@@ -781,7 +785,7 @@ class CFAdapter(
           if (adaptedReceiver.cfTree == null) {
             adaptedReceiver.set(node.tree)
           }
-          renamer.transformSelect(adaptedReceiver, node.element).set(node)
+          renamer.transformSelect(adaptedReceiver, node.element).set(node, hierarchy)
         }
       })
 
@@ -794,18 +798,18 @@ class CFAdapter(
         is JCTree.JCLambda -> {
           val (returnType, returnJavaType) = getReturnType(tree)
           MultipleAdaptResult(listOf(
-            FuncDeclaration(null, getParamTypes(tree), processCFG(tree), returnType, returnJavaType, isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node),
-            NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node)
+            FuncDeclaration(null, getParamTypes(tree), processCFG(tree), returnType, returnJavaType, isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node, hierarchy),
+            NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node, hierarchy)
           ))
         }
 
         else -> error("Unexpected tree ${node.javaClass} in FunctionalInterfaceNode")
       }
 
-      is InstanceOfNode -> SingleAdaptResult(BinaryExpr(t(node.operand), makeTypeRef(node.refType), BinaryOP.Is).set(node))
+      is InstanceOfNode -> SingleAdaptResult(BinaryExpr(t(node.operand), makeTypeRef(node.refType), BinaryOP.Is).set(node, hierarchy))
       is LambdaResultExpressionNode -> SingleAdaptResult(makeReturn(node, node.result))
-      is LocalVariableNode -> SingleAdaptResult(renamer.transformLocal(node).set(node))
-      is MarkerNode -> SingleAdaptResult(NoOPExpr(node.message).set(node))
+      is LocalVariableNode -> SingleAdaptResult(renamer.transformLocal(node).set(node, hierarchy))
+      is MarkerNode -> SingleAdaptResult(NoOPExpr(node.message).set(node, hierarchy))
       /*
       How method calls are interpreted. Take for example
       setC(a.b, a.b)
@@ -822,7 +826,7 @@ class CFAdapter(
       call setC
       */
       is MethodAccessNode -> {
-        val method = transformMethod(node.method as Symbol.MethodSymbol).set(node)
+        val method = transformMethod(node.method as Symbol.MethodSymbol).set(node, hierarchy)
         val receiver = node.receiver
         if (receiver is ClassNameNode || receiver is ThisNode || receiver is SuperNode) {
           // Make sure the corresponding tree of the receiver is not null
@@ -838,7 +842,7 @@ class CFAdapter(
           // the receiver object is checked to see if it is not null first,
           // before the parameters are evaluated
           MultipleAdaptResult(listOf(
-            NullCheck(t(node.receiver), "Cannot call ${method.name} on null").set(node).set(node.tree
+            NullCheck(t(node.receiver), "Cannot call ${method.name} on null").set(node, hierarchy).set(node.tree
               ?: node.receiver.tree),
             method
           ))
@@ -858,14 +862,14 @@ class CFAdapter(
         )
       }
 
-      is NarrowingConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.Narrowing).set(node))
-      is NullChkNode -> SingleAdaptResult(NullCheck(t(node.operand), "Potential null pointer exception").set(node).set(node.operand.tree))
+      is NarrowingConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.Narrowing).set(node, hierarchy))
+      is NullChkNode -> SingleAdaptResult(NullCheck(t(node.operand), "Potential null pointer exception").set(node, hierarchy).set(node.operand.tree))
       is ObjectCreationNode -> {
         val methodSym = TreeUtils.elementFromUse(node.tree!!) as Symbol.MethodSymbol
-        val method = transformMethod(methodSym).set(node)
+        val method = transformMethod(methodSym).set(node, hierarchy)
         // Transform object creation node "new Object()" into
         // o = new Object; Object.<init>(o); o
-        val newObj = NewObj(getInitialType(methodSym), hierarchy.get(methodSym.getCorrectReceiverType())).set(node)
+        val newObj = NewObj(getInitialType(methodSym), hierarchy.get(methodSym.getCorrectReceiverType())).set(node, hierarchy)
         MultipleAdaptResult(
           (node.classBody?.let { listOf(t(it), newObj) } ?: listOf(newObj)).plus(
             makeCall2(
@@ -877,29 +881,27 @@ class CFAdapter(
         )
       }
 
-      is PackageNameNode -> SingleAdaptResult(makeTypeRef(node.element.asType()).set(node))
-      is ParameterizedTypeNode -> SingleAdaptResult(makeTypeRef(node.type).set(node))
+      is PackageNameNode -> SingleAdaptResult(makeTypeRef(node.element.asType()).set(node, hierarchy))
+      is ParameterizedTypeNode -> SingleAdaptResult(makeTypeRef(node.type).set(node, hierarchy))
       is PrimitiveTypeNode -> error("Unexpected node ${node.javaClass}")
       is ReturnNode -> SingleAdaptResult(makeReturn(node, node.result))
       is StringConcatenateAssignmentNode -> {
         val left = node.leftOperand
-        val concatExpr = BinaryExpr(t(left), t(node.rightOperand), BinaryOP.StringConcat).set(node)
+        val concatExpr = BinaryExpr(t(left), t(node.rightOperand), BinaryOP.StringConcat).set(node, hierarchy)
         makeAssignment(if (left is StringConversionNode) left.operand else left, concatExpr, node)
       }
 
-      is StringConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.ToString)).set(node)
+      is StringConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.ToString)).set(node, hierarchy)
       is SuperNode -> SingleAdaptResult(makeThis(node))
-      is SynchronizedNode -> SingleAdaptResult((if (node.isStartOfBlock) SynchronizedExprStart(t(node.expression)) else SynchronizedExprEnd(t(node.expression))).set(node))
-      is TernaryExpressionNode -> SingleAdaptResult(TernaryExpr(t(node.conditionOperand), t(node.thenOperand), t(node.elseOperand)).set(node))
+      is SynchronizedNode -> SingleAdaptResult((if (node.isStartOfBlock) SynchronizedExprStart(t(node.expression)) else SynchronizedExprEnd(t(node.expression))).set(node, hierarchy))
+      is TernaryExpressionNode -> SingleAdaptResult(TernaryExpr(t(node.conditionOperand), t(node.thenOperand), t(node.elseOperand)).set(node, hierarchy))
       is ThisNode -> SingleAdaptResult(when (node) {
         is ExplicitThisNode,
         is ImplicitThisNode -> makeThis(node)
-
         else -> error("Unexpected node ${node.javaClass}")
       })
-
-      is ThrowNode -> SingleAdaptResult(ThrowExpr(t(node.expression)).set(node))
-      is TypeCastNode -> SingleAdaptResult(makeCast(t(node.operand), node.type).set(node))
+      is ThrowNode -> SingleAdaptResult(ThrowExpr(t(node.expression)).set(node, hierarchy))
+      is TypeCastNode -> SingleAdaptResult(makeCast(t(node.operand), node.type).set(node, hierarchy))
       is UnaryOperationNode -> {
         val expr = t(node.operand)
         val operator = when (node) {
@@ -909,24 +911,24 @@ class CFAdapter(
           is NumericalPlusNode -> UnaryOP.Plus
           else -> error("Unexpected node ${node.javaClass}")
         }
-        SingleAdaptResult(UnaryExpr(expr, operator).set(node))
+        SingleAdaptResult(UnaryExpr(expr, operator).set(node, hierarchy))
       }
 
       is ValueLiteralNode -> SingleAdaptResult(when (node) {
-        is BooleanLiteralNode -> BooleanLiteral(node.value!!).set(node)
-        is CharacterLiteralNode -> CharLiteral(node.value!!).set(node)
-        is DoubleLiteralNode -> DoubleLiteral(node.value!!).set(node)
-        is FloatLiteralNode -> FloatLiteral(node.value!!).set(node)
-        is IntegerLiteralNode -> IntegerLiteral(node.value!!).set(node)
-        is LongLiteralNode -> LongLiteral(node.value!!).set(node)
-        is NullLiteralNode -> NullLiteral().set(node)
-        is ShortLiteralNode -> ShortLiteral(node.value!!).set(node)
-        is StringLiteralNode -> StringLiteral(node.value!!).set(node)
+        is BooleanLiteralNode -> BooleanLiteral(node.value!!).set(node, hierarchy)
+        is CharacterLiteralNode -> CharLiteral(node.value!!).set(node, hierarchy)
+        is DoubleLiteralNode -> DoubleLiteral(node.value!!).set(node, hierarchy)
+        is FloatLiteralNode -> FloatLiteral(node.value!!).set(node, hierarchy)
+        is IntegerLiteralNode -> IntegerLiteral(node.value!!).set(node, hierarchy)
+        is LongLiteralNode -> LongLiteral(node.value!!).set(node, hierarchy)
+        is NullLiteralNode -> NullLiteral().set(node, hierarchy)
+        is ShortLiteralNode -> ShortLiteral(node.value!!).set(node, hierarchy)
+        is StringLiteralNode -> StringLiteral(node.value!!).set(node, hierarchy)
         else -> error("Unexpected node ${node.javaClass}")
       })
 
-      is VariableDeclarationNode -> SingleAdaptResult(VarDeclaration(renamer.transformDecl(node), JTCUnknownType.SINGLETON).set(node))
-      is WideningConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.Widening).set(node))
+      is VariableDeclarationNode -> SingleAdaptResult(VarDeclaration(renamer.transformDecl(node), hierarchy.get(node.type), JTCUnknownType.SINGLETON).set(node, hierarchy))
+      is WideningConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.Widening).set(node, hierarchy))
       else -> error("Unexpected node ${node.javaClass}")
     }
   }

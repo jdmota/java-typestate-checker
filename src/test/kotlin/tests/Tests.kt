@@ -3,7 +3,7 @@ package tests
 import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
-val ignore = listOf("linearity", "linked-list", "generics")
+val ignore = listOf("linked-list", "generics")
 val only = emptyList<String>()
 
 private val defaultOpts = arrayOf("-Anomsgtext", "-AshowTypeInfo")

@@ -1,5 +1,6 @@
-package jatyc.core
+package jatyc.core.typesystem
 
+import jatyc.core.*
 import jatyc.subtyping.syncronous_subtyping.ProtocolSyncSubtyping
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
@@ -80,40 +81,41 @@ object Subtyping {
     }
   }
 
-  fun upcast(t: JTCType, j: JavaType): JTCType {
+  fun cast(t: JTCType, j: JavaType, doUpcast: Boolean): JTCType {
     return when (t) {
       is JTCUnknownType -> JTCUnknownType.SINGLETON
-      is JTCSharedType -> if (t.javaType.isSubtype(j)) JTCSharedType(j) else JTCUnknownType.SINGLETON
-      is JTCStateType -> {
-        val graph = j.getGraph()
-        if (graph == null) {
-          JTCUnknownType.SINGLETON
-        } else {
-          JTCType.createIntersection(graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(t, it) })
-        }
+      is JTCSharedType -> when {
+        // Upcast
+        t.javaType.isSubtype(j) -> if (doUpcast) JTCSharedType(j) else t
+        // Downcast
+        j.isSubtype(t.javaType) -> JTCSharedType(j)
+        else -> JTCUnknownType.SINGLETON
       }
-      is JTCUnionType -> JTCType.createUnion(t.types.map { upcast(it, j) })
-      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { upcast(it, j) })
-      is JTCBottomType -> JTCBottomType.SINGLETON
-      is JTCPrimitiveType -> t
-      is JTCNullType -> t
-    }
-  }
-
-  fun downcast(t: JTCType, j: JavaType): JTCType {
-    return when (t) {
-      is JTCUnknownType -> JTCUnknownType.SINGLETON
-      is JTCSharedType -> if (j.isSubtype(t.javaType)) JTCSharedType(j) else JTCUnknownType.SINGLETON
-      is JTCStateType -> {
-        val graph = j.getGraph()
-        if (graph == null) {
-          JTCUnknownType.SINGLETON
-        } else {
-          JTCType.createUnion(graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(it, t) })
+      is JTCStateType -> when {
+        // Upcast
+        t.javaType.isSubtype(j) -> {
+          if (doUpcast) {
+            val graph = j.getGraph()
+            if (graph == null) {
+              JTCUnknownType.SINGLETON
+            } else {
+              JTCType.createIntersection(graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(t, it) })
+            }
+          } else t
         }
+        // Downcast
+        j.isSubtype(t.javaType) -> {
+          val graph = j.getGraph()
+          if (graph == null) {
+            JTCUnknownType.SINGLETON
+          } else {
+            JTCType.createUnion(graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(it, t) })
+          }
+        }
+        else -> JTCUnknownType.SINGLETON
       }
-      is JTCUnionType -> JTCType.createUnion(t.types.map { downcast(it, j) })
-      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { downcast(it, j) })
+      is JTCUnionType -> JTCType.createUnion(t.types.map { cast(it, j, doUpcast) })
+      is JTCIntersectionType -> JTCType.createIntersection(t.types.map { cast(it, j, doUpcast) })
       is JTCBottomType -> JTCBottomType.SINGLETON
       is JTCPrimitiveType -> t
       is JTCNullType -> t

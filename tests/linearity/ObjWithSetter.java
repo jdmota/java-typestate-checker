@@ -1,12 +1,13 @@
-import mungo.lib.Typestate;
+import jatyc.lib.Typestate;
 import jatyc.lib.Nullable;
+import jatyc.lib.Requires;
 
 @Typestate("ObjWithSetter")
 public class ObjWithSetter {
 
   private @Nullable ObjWithSetter f = null;
 
-  public void setF(ObjWithSetter f) {
+  public void setF(@Requires({"Start", "Set"}) ObjWithSetter f) {
     this.f = f;
   }
 
@@ -32,7 +33,7 @@ public class ObjWithSetter {
     ObjWithSetter o2 = new ObjWithSetter();
     ObjWithSetter o3 = new ObjWithSetter();
     o1.setF(o2);
-    // :: error: (Cannot call setF on moved value)
+    // :: error: (Cannot call [setF] on Shared{ObjWithSetter})
     o2.setF(o3);
     o1.finish();
   }
@@ -52,7 +53,7 @@ public class ObjWithSetter {
   public static void circular1() {
     // o1 -> o1
     ObjWithSetter o1 = new ObjWithSetter();
-    // :: error: (argument.type.incompatible)
+    // :: error: (Incompatible parameter: cannot cast from Shared{ObjWithSetter} to State{ObjWithSetter, Set})
     o1.setF(o1);
     o1.finish();
   }
@@ -62,7 +63,7 @@ public class ObjWithSetter {
     ObjWithSetter o1 = new ObjWithSetter();
     ObjWithSetter o2 = new ObjWithSetter();
     o1.setF(o2);
-    // :: error: (Cannot call setF on moved value)
+    // :: error: (Cannot call [setF] on Shared{ObjWithSetter})
     o2.setF(o1);
   }
 
@@ -72,9 +73,9 @@ public class ObjWithSetter {
     ObjWithSetter o2 = new ObjWithSetter();
     ObjWithSetter o3 = new ObjWithSetter();
     o1.setF(o2);
-    // :: error: (Cannot call setF on moved value)
+    // :: error: (Cannot call [setF] on Shared{ObjWithSetter})
     o2.setF(o3);
-    // :: error: (Cannot call setF on moved value)
+    // :: error: (Cannot call [setF] on Shared{ObjWithSetter})
     o3.setF(o1);
   }
 
@@ -85,7 +86,7 @@ public class ObjWithSetter {
     ObjWithSetter o3 = new ObjWithSetter();
     o3.setF(o1);
     o2.setF(o3);
-    // :: error: (Cannot call setF on moved value)
+    // :: error: (Cannot call [setF] on Shared{ObjWithSetter})
     o1.setF(o2);
   }
 
@@ -96,7 +97,7 @@ public class ObjWithSetter {
     createChainNotOk(new ObjWithSetter(), 10);
   }
 
-  public static void createChainOk(ObjWithSetter o2, int len) {
+  public static void createChainOk(@Requires({"Start", "Set"}) ObjWithSetter o2, int len) {
     if (len > 0) {
       ObjWithSetter o1 = new ObjWithSetter();
       o1.setF(o2);
@@ -106,12 +107,12 @@ public class ObjWithSetter {
     }
   }
 
-  public static void createChainNotOk(ObjWithSetter o2, int len) {
+  // :: error: ([o1] did not complete its protocol (found: State{ObjWithSetter, Set}))
+  public static void createChainNotOk(@Requires({"Start", "Set"}) ObjWithSetter o2, int len) {
     if (len > 0) {
-      // :: error: (Object did not complete its protocol. Type: State "Set")
       ObjWithSetter o1 = new ObjWithSetter();
       o1.setF(o2);
-      // :: error: (argument.type.incompatible)
+      // :: error: (Incompatible parameter: cannot cast from Shared{ObjWithSetter} to State{ObjWithSetter, Set})
       createChainNotOk(o2, len - 1);
     } else {
       o2.finish();

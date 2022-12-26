@@ -58,7 +58,7 @@ class ClassUtils(private val utils: JTCUtils) {
     return if (type is DeclaredType) visitClassSymbol(type.asElement()) else null
   }
 
-  fun getSuperGraph(element: Symbol.ClassSymbol): Graph? {
+  private fun getSuperGraph(element: Symbol.ClassSymbol): Graph? {
     // TODO combine the union of the graphs instead of returning the first
     for (supertype in getSuperTypes(element)) {
       val graph = visitClassSymbol(supertype)

@@ -4,6 +4,7 @@ import com.sun.source.tree.VariableTree
 import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.code.Type
 import jatyc.JavaTypestateChecker
+import jatyc.core.typesystem.TypeInfo
 import jatyc.utils.JTCUtils
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.framework.type.AnnotatedTypeMirror.*
@@ -182,14 +183,17 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     }
   }
 
-  fun getEnumFieldType(typeMirror: TypeMirror, field: String): JTCType? {
+  fun getEnumFieldType(typeMirror: TypeMirror, field: String): TypeInfo? {
     val type = (typeMirror as Type).tsym
     if (type is Symbol.ClassSymbol && type.isEnum) {
       val symbol = type.members().symbols.find {
         it is Symbol.VarSymbol && it.simpleName.toString() == field && ElementUtils.isStatic(it)
       }
       if (symbol != null) {
-        return getUpperBound(symbol.asType(), isNullable = false, isActualType = true).toShared()
+        return TypeInfo.make(
+          hierarchy.get(symbol.asType()),
+          getUpperBound(symbol.asType(), isNullable = false, isActualType = true).toShared()
+        )
       }
     }
     return null
@@ -205,7 +209,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     jdkStaticFields["java.lang.System"] = listOf("err", "in", "out").associateWith { nonNullActual }
   }
 
-  fun getJDKStaticFieldType(typeMirror: TypeMirror, field: String): JTCType? {
+  fun getJDKStaticFieldType(typeMirror: TypeMirror, field: String): TypeInfo? {
     val type = (typeMirror as Type).tsym
     if (type is Symbol.ClassSymbol) {
       val classQualifiedName = type.qualifiedName.toString()
@@ -214,7 +218,10 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
         it is Symbol.VarSymbol && it.simpleName.toString() == field && ElementUtils.isStatic(it)
       }
       if (opts != null && symbol != null) {
-        return getUpperBound(symbol.asType(), isNullable = opts.isNullable, isActualType = opts.isActualType).toShared()
+        return TypeInfo.make(
+          hierarchy.get(symbol.asType()),
+          getUpperBound(symbol.asType(), isNullable = opts.isNullable, isActualType = opts.isActualType).toShared()
+        )
       }
     }
     return null

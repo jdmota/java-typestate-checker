@@ -1,4 +1,5 @@
-import mungo.lib.Typestate;
+import jatyc.lib.Typestate;
+import jatyc.lib.Requires;
 
 @Typestate("ObjProtocol")
 public class Obj {
@@ -10,7 +11,7 @@ public class Obj {
   public static void move1() {
     Obj obj = new Obj();
     use(obj);
-    // :: error: (Cannot call finish on moved value)
+    // :: error: (Cannot call [finish] on Shared{Obj})
     obj.finish();
   }
 
@@ -18,27 +19,26 @@ public class Obj {
     Obj obj1 = new Obj();
     Obj obj2 = new Obj();
     use(obj1, obj2);
-    // :: error: (Cannot call finish on moved value)
+    // :: error: (Cannot call [finish] on Shared{Obj})
     obj1.finish();
-    // :: error: (Cannot call finish on moved value)
+    // :: error: (Cannot call [finish] on Shared{Obj})
     obj2.finish();
   }
 
   public static void moveTwice() {
     Obj obj = new Obj();
-    // :: error: (argument.type.incompatible)
+    // :: error: (Incompatible parameter: cannot cast from Shared{Obj} to State{Obj, Start})
     use(obj, obj);
-    // :: error: (Cannot call finish on moved value)
     obj.finish();
   }
 
   // Helpers
 
-  public static void use(Obj obj) {
+  public static void use(@Requires("Start") Obj obj) {
     obj.finish();
   }
 
-  public static void use(Obj obj1, Obj obj2) {
+  public static void use(@Requires("Start") Obj obj1, @Requires("Start") Obj obj2) {
     obj1.finish();
     obj2.finish();
   }

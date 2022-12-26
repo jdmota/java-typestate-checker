@@ -1,5 +1,6 @@
 package jatyc.core
 
+import jatyc.core.typesystem.Subtyping
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
 import jatyc.utils.JTCUtils
@@ -100,19 +101,6 @@ sealed class JTCType {
       // Since "types" does not include union types, "toShared" will also not produce union types
       // So we do not break the pre-condition of "intersectionSeq"
       is JTCIntersectionType -> createIntersection(intersectionSeq(types.map { it.toShared() }))
-    }
-  }
-
-  fun javaType(hierarchy: JavaTypesHierarchy): JavaType {
-    return when (this) {
-      is JTCUnknownType -> hierarchy.NONE
-      is JTCPrimitiveType -> javaType
-      is JTCNullType -> hierarchy.OBJ
-      is JTCSharedType -> javaType
-      is JTCBottomType -> hierarchy.BOT
-      is JTCStateType -> javaType
-      is JTCUnionType -> types.first().javaType(hierarchy)
-      is JTCIntersectionType -> types.first().javaType(hierarchy)
     }
   }
 

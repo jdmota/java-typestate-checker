@@ -121,14 +121,13 @@ class JavaTypesHierarchy(private val checker: JavaTypestateChecker) {
 
   val VOID = get(symtab.voidType)
   val OBJ = get(symtab.objectType)
-  val NONE = get(Type.noType)
   val BOT = get(symtab.botType)
 
   val SHARED_OBJECT = JTCSharedType(get(symtab.objectType))
   val STRING = JTCSharedType(get(symtab.stringType))
   val ENUM = JTCSharedType(get(symtab.enumSym.asType()))
 
-  fun getPrimitive(type: Type.JCPrimitiveType): JTCType {
+  fun getPrimitive(type: Type.JCPrimitiveType): JTCPrimitiveType {
     return when (type.tag) {
       TypeTag.BYTE -> BYTE
       TypeTag.CHAR -> CHAR

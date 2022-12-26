@@ -24,49 +24,29 @@ class ReverseRefId(val id: String) : ReverseRefComponent() {
   }
 }
 
-class ReverseRef(val id: ReverseRefComponent, val rest: ReverseRef?) {
-  companion object {
-    fun make(initialRef: Reference): ReverseRef {
-      var rest: ReverseRef? = null
-      var ref: Reference? = initialRef
-      while (ref != null) {
-        when (ref) {
-          is SelectReference -> {
-            val select = ref
-            ref = select.parent
-            rest = ReverseRef(ReverseRefId(select.id), rest)
-          }
-          is RootReference -> {
-            rest = ReverseRef(ReverseRefRoot(ref), rest)
-            ref = null
-          }
-        }
-      }
-      return rest!!
-    }
-  }
-}
-
-sealed class Reference {
+sealed class Reference(val javaType: JavaType) {
   companion object {
     fun make(code: LeftHS): Reference {
       return when (code) {
-        is IdLHS -> IdReference(code.name, code.uuid)
-        is SelectLHS -> SelectReference(make(code.obj), code.id, code.uuid)
+        is IdLHS -> IdReference(code.name, code.uuid, code.javaType)
+        is SelectLHS -> SelectReference(make(code.obj), code.id, code.uuid, code.javaType)
       }
     }
 
     fun make(code: CodeExpr): Reference {
       return when (code) {
-        is Id -> IdReference(code.name, code.uuid)
-        is Select -> SelectReference(make(code.expr), code.id, code.uuid)
-        else -> CodeExprReference(code)
+        is Id -> IdReference(code.name, code.uuid, code.javaType)
+        is Select -> SelectReference(make(code.expr), code.id, code.uuid, code.javaType)
+        else -> {
+          val javaType = code.javaType2 ?: error("no javaType in $code")
+          CodeExprReference(code, javaType)
+        }
       }
     }
 
-    fun make(thisRef: Reference, field: FieldDeclaration) = SelectReference(thisRef, field.id.name, field.id.uuid)
+    fun make(thisRef: Reference, field: FieldDeclaration) = SelectReference(thisRef, field.id.name, field.id.uuid, field.javaType)
 
-    val returnRef = IdReference("#ret", 0)
+    fun returnRef(javaType: JavaType) = IdReference("#ret", 0, javaType)
 
     fun makeFromLHS(assign: Assign) = make(assign.left)
     fun makeFromLHS(assign: ParamAssign) = ParamInReference(assign.call, assign.idx)
@@ -97,7 +77,7 @@ sealed class Reference {
   fun fixThis(from: Reference, to: Reference): Reference {
     return when (this) {
       is IdReference -> if (this == from) to else this
-      is SelectReference -> SelectReference(parent.fixThis(from, to), id, uuid)
+      is SelectReference -> SelectReference(parent.fixThis(from, to), id, uuid, javaType)
       is OldReference -> this
       is ParamInReference -> this
       is CodeExprReference -> this
@@ -105,7 +85,7 @@ sealed class Reference {
   }
 }
 
-class SelectReference(val parent: Reference, val id: String, val uuid: Long) : Reference() {
+class SelectReference(val parent: Reference, val id: String, val uuid: Long, javaType: JavaType) : Reference(javaType) {
   override fun equals(other: Any?): Boolean {
     return other is SelectReference && id == other.id && uuid == other.uuid && parent == other.parent
   }
@@ -126,9 +106,9 @@ class SelectReference(val parent: Reference, val id: String, val uuid: Long) : R
   }
 }
 
-sealed class RootReference : Reference()
+sealed class RootReference(javaType: JavaType) : Reference(javaType)
 
-class IdReference(val name: String, val uuid: Long) : RootReference() {
+class IdReference(val name: String, val uuid: Long, javaType: JavaType) : RootReference(javaType) {
   override fun equals(other: Any?): Boolean {
     return other is IdReference && name == other.name && uuid == other.uuid
   }
@@ -148,7 +128,7 @@ class IdReference(val name: String, val uuid: Long) : RootReference() {
   }
 }
 
-class ParamInReference(val call: MethodCall, val idx: Int) : RootReference() {
+class ParamInReference(val call: MethodCall, val idx: Int) : RootReference(call.methodExpr.parameters[idx].id.javaType) {
   override fun equals(other: Any?): Boolean {
     return other is ParamInReference && idx == other.idx && call == other.call
   }
@@ -166,7 +146,7 @@ class ParamInReference(val call: MethodCall, val idx: Int) : RootReference() {
   }
 }
 
-class CodeExprReference(val code: CodeExpr) : RootReference() {
+class CodeExprReference(val code: CodeExpr, javaType: JavaType) : RootReference(javaType) {
   override fun equals(other: Any?): Boolean {
     return other is CodeExprReference && code === other.code
   }
@@ -176,7 +156,7 @@ class CodeExprReference(val code: CodeExpr) : RootReference() {
   }
 
   override fun toString(): String {
-    return "CodeRef{$code,${code.cfNode?.uid}}"
+    return "CodeRef{$code}"
   }
 
   override fun format(): String {
@@ -184,7 +164,7 @@ class CodeExprReference(val code: CodeExpr) : RootReference() {
   }
 }
 
-class OldReference(val assign: Assign) : RootReference() {
+class OldReference(val assign: Assign) : RootReference(assign.left.javaType) {
   override fun equals(other: Any?): Boolean {
     return other is OldReference && assign === other.assign
   }

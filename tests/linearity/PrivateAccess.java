@@ -1,4 +1,4 @@
-import mungo.lib.Typestate;
+import jatyc.lib.Typestate;
 
 @Typestate("ObjProtocol")
 public class PrivateAccess {
@@ -11,7 +11,7 @@ public class PrivateAccess {
 
   public static void privateAccess() {
     PrivateAccess w = new PrivateAccess();
-    // :: error: (Cannot call finish on unknown)
+    // :: error: (Cannot access [w.o])
     w.o.finish();
     w.finish();
   }

@@ -3,6 +3,7 @@ package jatyc.core.linearmode
 import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
+import jatyc.core.typesystem.TypeInfo
 import jatyc.typestate.graph.State
 import java.util.*
 
@@ -79,7 +80,7 @@ class LinearModeInference(
   override fun makeInitialAssertion(func: FuncDeclaration, cfg: SimpleCFG, initialAssertion: Store): Store {
     val store = initialAssertion.toRegular()
     for (param in func.parameters) {
-      store[Reference.make(param.id)] = param.requires
+      store[Reference.make(param.id)] = TypeInfo.make(param.id.javaType, param.requires)
     }
     return store
   }
@@ -147,11 +148,11 @@ class LinearModeInference(
       val bool = inference.getBooleanValue(code)
       if (bool == true) {
         for ((ref, info) in post) {
-          post[ref] = StoreInfo.conditional(codeRef, info.type, JTCBottomType.SINGLETON)
+          post[ref] = StoreInfo.conditional(codeRef, info.type, info.type.toBottom())
         }
       } else if (bool == false) {
         for ((ref, info) in post) {
-          post[ref] = StoreInfo.conditional(codeRef, JTCBottomType.SINGLETON, info.type)
+          post[ref] = StoreInfo.conditional(codeRef, info.type.toBottom(), info.type)
         }
       }
     }

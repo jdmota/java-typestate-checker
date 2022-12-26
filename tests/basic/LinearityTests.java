@@ -278,6 +278,7 @@ public class LinearityTests {
   public static void main2_3() {
     Linearity obj = new Linearity();
     // :: warning: (obj: State{Linearity, State0})
+    // :: warning: (obj: Shared{Linearity})
     // :: error: (Incompatible parameter: cannot cast from Shared{Linearity} to State{Linearity, State0} | State{Linearity, State1})
     use2((Linearity) ((Linearity) obj), obj);
     // :: warning: (obj: Bottom)

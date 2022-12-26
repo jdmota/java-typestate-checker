@@ -2,6 +2,7 @@ package jatyc.subtyping.syncronous_subtyping
 
 import jatyc.core.*
 import jatyc.core.cfg.MethodCall
+import jatyc.core.typesystem.Subtyping
 
 class TypestateTree constructor(val jc: JavaType, val ts: JTCType, val children: List<TypestateTree>) {
   fun clss(): Set<JavaType> = children.map { it.jc }.toSet()
@@ -45,13 +46,13 @@ object TypestateTreeUtilities {
 object TypestateTreeManager {
   fun upcastTT(tt: TypestateTree, j: JavaType): TypestateTree {
     return if (tt.jc == j) tt
-    else upcastTT(TypestateTree(tt.jc.directSuperType()!!, Subtyping.upcast(tt.ts, tt.jc.directSuperType()!!), listOf(tt)), j)
+    else upcastTT(TypestateTree(tt.jc.directSuperType()!!, Subtyping.cast(tt.ts, tt.jc.directSuperType()!!, true), listOf(tt)), j)
   }
 
   fun downcastTT(tt: TypestateTree, j: JavaType): TypestateTree {
     val closest = TypestateTreeUtilities.closest(j, tt)
     return if (tt.jc == closest.jc) closest
-    else TypestateTree(j, Subtyping.downcast(closest.ts, j), listOf())
+    else TypestateTree(j, Subtyping.cast(closest.ts, j, true), listOf())
   }
 
   fun mergeTT(tt1: TypestateTree, tt2: TypestateTree): TypestateTree {
@@ -64,8 +65,8 @@ object TypestateTreeManager {
     val inC1 = TypestateTreeUtilities.find(j, c1)
     val inC2 = TypestateTreeUtilities.find(j, c2)
     return if (inC1 != null && inC2 != null) mergeTT(inC1, inC2)
-    else if (inC1 != null) mergeTT(inC1, TypestateTree(j, Subtyping.downcast(t2, j), listOf()))
-    else if (inC2 != null) mergeTT(TypestateTree(j, Subtyping.downcast(t1, j), listOf()), inC2)
+    else if (inC1 != null) mergeTT(inC1, TypestateTree(j, Subtyping.cast(t2, j, true), listOf()))
+    else if (inC2 != null) mergeTT(TypestateTree(j, Subtyping.cast(t1, j, true), listOf()), inC2)
     else error("non well-formed typestate tree")
   }
 

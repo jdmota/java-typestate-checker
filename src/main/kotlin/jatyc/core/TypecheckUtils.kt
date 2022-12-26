@@ -31,7 +31,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
     val it2 = params2.iterator()
     for (param1 in params1) {
       // Input contravariance
-      if (!isSubtype(it2.next(), param1.javaType)) {
+      if (!isSubtype(it2.next(), param1.id.javaType)) {
         return false
       }
     }
@@ -73,13 +73,11 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCUnknownType,
       is JTCPrimitiveType,
       is JTCNullType -> false
-
       is JTCSharedType -> call.methodExpr.isAnytime
       is JTCStateType -> {
         val env = type.graph.getEnv()
         call.methodExpr.isAnytime || type.state.normalizedTransitions.entries.any { methodSubtype(env, method, it.key) }
       }
-
       is JTCBottomType -> true
       is JTCUnionType -> type.types.all { check(it, call) }
       is JTCIntersectionType -> type.types.any { check(it, call) }
@@ -91,7 +89,6 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCUnknownType -> type
       is JTCPrimitiveType,
       is JTCNullType -> JTCBottomType.SINGLETON
-
       is JTCSharedType -> if (call.methodExpr.isAnytime) type else JTCBottomType.SINGLETON // TODO in the worst case, we are in a droppable state
       is JTCStateType -> if (call.methodExpr.isAnytime) type else refineState(type, call, predicate)
       is JTCBottomType -> type
@@ -120,71 +117,71 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
     }
   }
 
-  fun refineToNonNull(type: JTCType): JTCType {
-    return when (type) {
-      is JTCNullType -> JTCBottomType.SINGLETON
-      is JTCUnionType -> JTCType.createUnion(type.types.map { refineToNonNull(it) })
-      else -> type
-    }
-  }
-
-  fun refineToNull(type: JTCType): JTCType {
-    return if (JTCNullType.SINGLETON.isSubtype(type)) JTCNullType.SINGLETON else JTCBottomType.SINGLETON
-  }
-
-  fun isInDroppableStateNotEnd(type: JTCType): Boolean {
-    return when (type) {
-      is JTCUnknownType -> false
-      is JTCPrimitiveType -> false
-      is JTCNullType -> false
-      is JTCSharedType -> false
-      // is JTCNoProtocolType -> false
-      is JTCStateType -> type.state.canDropHere() && !type.state.isEnd()
-      is JTCBottomType -> false
-      is JTCUnionType -> type.types.any { isInDroppableStateNotEnd(it) }
-      is JTCIntersectionType -> type.types.any { isInDroppableStateNotEnd(it) }
-    }
-  }
-
-  fun canDrop(type: JTCType): Boolean {
-    return when (type) {
-      is JTCUnknownType -> false
-      is JTCPrimitiveType -> true
-      is JTCNullType -> true
-      is JTCSharedType -> true
-      // is JTCNoProtocolType -> type.exact
-      is JTCStateType -> type.state.canDropHere()
-      is JTCBottomType -> true
-      is JTCUnionType -> type.types.all { canDrop(it) }
-      is JTCIntersectionType -> type.types.any { canDrop(it) }
-    }
-  }
-
-  // This returns the least upper bound type possible for a value with a given type
-  // This method should not be used to compute the upper bound of a variable/field, only of a specific object!
-  fun invariant(type: JTCType): JTCType {
-    return when (type) {
-      is JTCUnknownType -> type
-      is JTCPrimitiveType -> type
-      is JTCNullType -> type
-      is JTCSharedType -> {
-        val javaType = type.javaType
-        val graph = javaType.getGraph()
-        if (graph == null) {
-          JTCSharedType(javaType)//.union(JTCNoProtocolType(javaType, false))
-        } else {
-          JTCSharedType(javaType).union(JTCStateType(javaType, graph, graph.getUnknownState()))
-        }
-      }
-      // is JTCNoProtocolType -> JTCSharedType(type.javaType).union(type)
-      is JTCStateType -> JTCSharedType(type.javaType).union(JTCStateType(type.javaType, type.graph, type.graph.getUnknownState()))
-      is JTCBottomType -> JTCBottomType.SINGLETON
-      is JTCUnionType -> JTCType.createUnion(type.types.map { invariant(it) })
-      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { invariant(it) })
-    }
-  }
-
   companion object {
+    fun refineToNonNull(type: JTCType): JTCType {
+      return when (type) {
+        is JTCNullType -> JTCBottomType.SINGLETON
+        is JTCUnionType -> JTCType.createUnion(type.types.map { refineToNonNull(it) })
+        else -> type
+      }
+    }
+
+    fun refineToNull(type: JTCType): JTCType {
+      return if (JTCNullType.SINGLETON.isSubtype(type)) JTCNullType.SINGLETON else JTCBottomType.SINGLETON
+    }
+
+    fun isInDroppableStateNotEnd(type: JTCType): Boolean {
+      return when (type) {
+        is JTCUnknownType -> false
+        is JTCPrimitiveType -> false
+        is JTCNullType -> false
+        is JTCSharedType -> false
+        // is JTCNoProtocolType -> false
+        is JTCStateType -> type.state.canDropHere() && !type.state.isEnd()
+        is JTCBottomType -> false
+        is JTCUnionType -> type.types.any { isInDroppableStateNotEnd(it) }
+        is JTCIntersectionType -> type.types.any { isInDroppableStateNotEnd(it) }
+      }
+    }
+
+    fun canDrop(type: JTCType): Boolean {
+      return when (type) {
+        is JTCUnknownType -> false
+        is JTCPrimitiveType -> true
+        is JTCNullType -> true
+        is JTCSharedType -> true
+        // is JTCNoProtocolType -> type.exact
+        is JTCStateType -> type.state.canDropHere()
+        is JTCBottomType -> true
+        is JTCUnionType -> type.types.all { canDrop(it) }
+        is JTCIntersectionType -> type.types.any { canDrop(it) }
+      }
+    }
+
+    // This returns the least upper bound type possible for a value with a given type
+    // This method should not be used to compute the upper bound of a variable/field, only of a specific object!
+    fun invariant(type: JTCType): JTCType {
+      return when (type) {
+        is JTCUnknownType -> type
+        is JTCPrimitiveType -> type
+        is JTCNullType -> type
+        is JTCSharedType -> {
+          val javaType = type.javaType
+          val graph = javaType.getGraph()
+          if (graph == null) {
+            JTCSharedType(javaType)//.union(JTCNoProtocolType(javaType, false))
+          } else {
+            JTCSharedType(javaType).union(JTCStateType(javaType, graph, graph.getUnknownState()))
+          }
+        }
+        // is JTCNoProtocolType -> JTCSharedType(type.javaType).union(type)
+        is JTCStateType -> JTCSharedType(type.javaType).union(JTCStateType(type.javaType, type.graph, type.graph.getUnknownState()))
+        is JTCBottomType -> JTCBottomType.SINGLETON
+        is JTCUnionType -> JTCType.createUnion(type.types.map { invariant(it) })
+        is JTCIntersectionType -> JTCType.createIntersection(type.types.map { invariant(it) })
+      }
+    }
+
     // This method is only used for checking if parameters may require linear types in any way
     fun requiresLinear(ref: Reference, type: JTCType): Boolean {
       return when (type) {
@@ -192,10 +189,8 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCSharedType,
         is JTCPrimitiveType,
         is JTCNullType -> false
-
         is JTCStateType,
         is JTCBottomType -> true
-
         is JTCUnionType -> type.types.any { requiresLinear(ref, it) }
         is JTCIntersectionType -> type.types.any { requiresLinear(ref, it) }
       }

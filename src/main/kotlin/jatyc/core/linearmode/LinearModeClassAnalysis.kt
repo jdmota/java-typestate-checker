@@ -3,6 +3,7 @@ package jatyc.core.linearmode
 import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
+import jatyc.core.typesystem.TypeInfo
 import jatyc.typestate.graph.AbstractState
 import jatyc.typestate.graph.DecisionState
 import jatyc.typestate.graph.Graph
@@ -43,7 +44,7 @@ class LinearModeClassAnalysis(
     val store = Store()
     if (thisRef != null) {
       for (field in clazz.allFields(classes)) {
-        store[Reference.make(thisRef, field)] = JTCNullType.SINGLETON
+        store[Reference.make(thisRef, field)] = TypeInfo.make(field.javaType, JTCNullType.SINGLETON)
       }
     }
     return store
@@ -71,7 +72,7 @@ class LinearModeClassAnalysis(
     val store = Store()
     if (thisRef != null) {
       for (field in clazz.allFields(classes)) {
-        store[Reference.make(thisRef, field)] = field.type
+        store[Reference.make(thisRef, field)] = TypeInfo.make(field.javaType, field.type)
       }
     }
     // Making sure that non-initialized fields have the null type, even if they are not declared with @Nullable
@@ -178,8 +179,8 @@ class LinearModeClassAnalysis(
                 for ((label, dest) in destState.transitions) {
                   if (mayGoToLabel(returnExpr, label.label)) {
                     when (label.label) {
-                      "true" -> mergeStateStore(dest, result.withLabel(Reference.returnRef, "true"))
-                      "false" -> mergeStateStore(dest, result.withLabel(Reference.returnRef, "false"))
+                      "true" -> mergeStateStore(dest, result.withLabel(Reference.returnRef(returnExpr.javaType2!!), "true"))
+                      "false" -> mergeStateStore(dest, result.withLabel(Reference.returnRef(returnExpr.javaType2!!), "false"))
                       else -> mergeStateStore(dest, result.toRegular())
                     }
                   } else {
@@ -211,7 +212,7 @@ class LinearModeClassAnalysis(
 
   private fun ensureFieldsCompleteness(clazz: ClassDecl, store: Store) {
     for ((ref, info) in store) {
-      if (!typecheckUtils.canDrop(info.type)) {
+      if (!info.type.canDrop()) {
         inference.addError(clazz, "[${ref.format()}] did not complete its protocol (found: ${info.type.format()})")
       }
     }

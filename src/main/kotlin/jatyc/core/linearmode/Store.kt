@@ -1,9 +1,10 @@
 package jatyc.core.linearmode
 
-import jatyc.core.JTCBottomType
-import jatyc.core.JTCType
 import jatyc.core.JTCUnknownType
+import jatyc.core.JavaType
 import jatyc.core.Reference
+import jatyc.core.typesystem.TypeInfo
+import jatyc.utils.JTCUtils
 
 sealed class CasePattern {
   abstract fun replaceCondition(from: Reference, to: Reference): CasePattern
@@ -165,11 +166,19 @@ class CasePatterns(val list: List<CasePattern>) {
   }
 }
 
-class StoreInfo private constructor(val cases: List<Pair<CasePatterns, JTCType>>) {
-  val type: JTCType get() = toType()
+class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair<CasePatterns, TypeInfo>>) {
+  fun debugJavaType(javaType: JavaType) {
+    if (this.javaType !== javaType) {
+      JTCUtils.printStack()
+      error("StoreInfo.javaType: expected ${this.javaType} got $javaType")
+    }
+  }
+
+  val type: TypeInfo get() = toType()
   fun toRegular() = regular(toType())
 
-  private fun mapKeys(fn: (CasePatterns) -> CasePatterns) = cases(cases.map { Pair(fn(it.first), it.second) })
+  private fun mapKeys(javaType: JavaType, fn: (CasePatterns) -> CasePatterns) = cases(javaType, cases.map { Pair(fn(it.first), it.second) })
+  private fun mapKeys(fn: (CasePatterns) -> CasePatterns) = mapKeys(javaType, fn)
 
   fun replaceCondition(from: Reference, to: Reference): StoreInfo {
     return mapKeys { it.replaceCondition(from, to) }
@@ -179,8 +188,8 @@ class StoreInfo private constructor(val cases: List<Pair<CasePatterns, JTCType>>
     return mapKeys { it.fixThis(from, to) }
   }
 
-  fun toType(): JTCType {
-    return JTCType.createUnion(cases.map { it.second })
+  fun toType(): TypeInfo {
+    return TypeInfo.createUnion(javaType, cases.map { it.second })
   }
 
   fun withLabel(condition: Reference, label: String): StoreInfo {
@@ -200,13 +209,18 @@ class StoreInfo private constructor(val cases: List<Pair<CasePatterns, JTCType>>
   }
 
   fun or(other: StoreInfo): StoreInfo {
-    return cases(cases.plus(other.cases))
+    debugJavaType(other.javaType)
+    return cases(javaType, cases.plus(other.cases))
   }
 
   // Returns true iff we are sure the information on "this" is contained in the "other"
   // Returns false otherwise
   fun implies(other: StoreInfo): Boolean {
     return cases.all { itA -> other.cases.any { itB -> itA.first.implies(itB.first) && itA.second.isSubtype(itB.second) } }
+  }
+
+  fun cast(javaType: JavaType, doUpcast: Boolean): StoreInfo {
+    return StoreInfo(javaType, cases.map { Pair(it.first, it.second.cast(javaType, doUpcast)) })
   }
 
   override fun equals(other: Any?): Boolean {
@@ -222,11 +236,12 @@ class StoreInfo private constructor(val cases: List<Pair<CasePatterns, JTCType>>
   }
 
   companion object {
-    fun regular(type: JTCType): StoreInfo {
-      return cases(listOf(Pair(CasePatterns.trueCase(), type)))
+    fun regular(type: TypeInfo): StoreInfo {
+      return cases(type.javaType, listOf(Pair(CasePatterns.trueCase(), type)))
     }
 
     fun conditional(condition: Reference, thenInfo: StoreInfo, elseInfo: StoreInfo): StoreInfo {
+      thenInfo.debugJavaType(elseInfo.javaType)
       if (thenInfo == elseInfo) {
         return thenInfo
       }
@@ -235,22 +250,26 @@ class StoreInfo private constructor(val cases: List<Pair<CasePatterns, JTCType>>
       return thenInfo.and(truePattern).or(elseInfo.and(falsePattern))
     }
 
-    fun conditional(condition: Reference, thenType: JTCType, elseType: JTCType): StoreInfo {
+    fun conditional(condition: Reference, thenType: TypeInfo, elseType: TypeInfo): StoreInfo {
       return conditional(condition, regular(thenType), regular(elseType))
     }
 
-    fun cases(cases: List<Pair<CasePatterns, JTCType>>): StoreInfo {
-      return StoreInfo(cases.filter { it.first.isPossible() && !it.second.isSubtype(JTCBottomType.SINGLETON) })
+    fun cases(javaType: JavaType, cases: List<Pair<CasePatterns, TypeInfo>>): StoreInfo {
+      cases.forEach { it.second.debugJavaType(javaType) }
+      return StoreInfo(javaType, cases.filter { it.first.isPossible() && !it.second.isBottom() })
     }
 
-    val UNKNOWN = regular(JTCUnknownType.SINGLETON)
-    val BOTTOM = cases(emptyList())
+    fun bottom(javaType: JavaType): StoreInfo {
+      return StoreInfo(javaType, emptyList())
+    }
   }
 }
 
 class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) {
   operator fun contains(ref: Reference) = map.contains(ref)
-  operator fun get(ref: Reference): StoreInfo = map[ref] ?: StoreInfo.UNKNOWN
+  operator fun get(ref: Reference): StoreInfo = map[ref]
+    ?: StoreInfo.regular(TypeInfo.make(ref.javaType, JTCUnknownType.SINGLETON))
+
   operator fun iterator(): Iterator<Map.Entry<Reference, StoreInfo>> = map.iterator()
 
   override fun equals(other: Any?): Boolean {
@@ -267,10 +286,12 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   }
 
   operator fun set(ref: Reference, info: StoreInfo) {
+    info.debugJavaType(ref.javaType)
     map[ref] = info
   }
 
-  operator fun set(ref: Reference, type: JTCType) {
+  operator fun set(ref: Reference, type: TypeInfo) {
+    type.debugJavaType(ref.javaType)
     map[ref] = StoreInfo.regular(type)
   }
 
@@ -287,25 +308,13 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     return true // It changed
   }
 
-  fun remove(ref: Reference): StoreInfo? {
-    return map.remove(ref)
-  }
-
   fun clone(): Store {
     return Store(map.toMutableMap())
   }
 
   fun toBottom() {
     for ((ref, _) in map) {
-      map[ref] = StoreInfo.BOTTOM
-    }
-  }
-
-  fun invalidateFieldsOf(thisRef: Reference) {
-    for ((ref, _) in map) {
-      if (ref.isFieldOf(thisRef)) {
-        map[ref] = StoreInfo.UNKNOWN
-      }
+      map[ref] = StoreInfo.bottom(ref.javaType)
     }
   }
 
@@ -344,20 +353,18 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   fun fixThis(from: Reference, to: Reference): Store {
     val store = Store()
     for ((ref, info) in this) {
-      store[ref.fixThis(from, to)] = info.fixThis(from, to)
+      val newRef = ref.fixThis(from, to)
+      if (to === newRef) {
+        // Ignore the old "this", as well as any local vars, params, ...
+      } else {
+        // Keep information about fields on "this"
+        store[newRef] = info.fixThis(from, to)
+      }
     }
     return store
   }
 
   companion object {
-    fun mergeToNew(a: Store, b: Store): Store {
-      val store = a.clone()
-      for ((ref, info) in b) {
-        store.merge(ref, info)
-      }
-      return store
-    }
-
     fun mergeFieldsToNew(a: Store, b: Store, thisRef: Reference): Store {
       val store = a.clone()
       for ((ref, info) in b) {

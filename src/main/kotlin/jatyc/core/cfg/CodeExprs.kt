@@ -6,28 +6,22 @@ import com.sun.source.tree.Tree
 import jatyc.JavaTypestateChecker
 import jatyc.core.JTCType
 import jatyc.core.JavaType
+import jatyc.core.JavaTypesHierarchy
 import jatyc.core.Reference
 import org.checkerframework.dataflow.cfg.node.*
 import jatyc.typestate.graph.Graph
 
 sealed class AdaptedThing {
-  var cfNode: Node? = null
   var cfTree: Tree? = null
   var cfType: TypeMirror? = null
   var cfRoot: CompilationUnitTree? = null
   var suppressWarnings: Boolean = false
+  var javaType2: JavaType? = null
 }
 
-fun <T : AdaptedThing> T.set(node: Node?): T {
-  if (node != null) {
-    cfNode = node
-    if (cfTree == null) {
-      cfTree = node.tree
-    }
-    if (cfType == null) {
-      cfType = node.type
-    }
-  }
+fun <T : AdaptedThing> T.set(node: Node, hierarchy: JavaTypesHierarchy): T {
+  set(node.tree)
+  set(node.type, hierarchy)
   return this
 }
 
@@ -35,13 +29,15 @@ fun <T : AdaptedThing> T.set(tree: Tree?): T {
   if (tree != null) {
     cfTree = tree
   }
-  // cfType = TreeUtils.typeOf(t)
   return this
 }
 
-fun <T : AdaptedThing> T.set(type: TypeMirror?): T {
+fun <T : AdaptedThing> T.set(type: TypeMirror?, hierarchy: JavaTypesHierarchy): T {
   if (type != null) {
     cfType = type
+    if (javaType2 == null) {
+      javaType2 = hierarchy.get(type)
+    }
   }
   return this
 }
@@ -59,14 +55,13 @@ fun <T : AdaptedThing> T.set(checker: JavaTypestateChecker): T {
 }
 
 /** Left Hand Side */
-
-sealed class LeftHS : AdaptedThing() {
+sealed class LeftHS(val javaType: JavaType) : AdaptedThing() {
   abstract fun toCode(): CodeExpr
 }
 
-class SelectLHS(val obj: CodeExpr, val id: String, val uuid: Long) : LeftHS() {
+class SelectLHS(val obj: CodeExpr, val id: String, val uuid: Long, javaType: JavaType) : LeftHS(javaType) {
   override fun toCode(): CodeExpr {
-    return Select(obj, id, uuid)
+    return Select(obj, id, uuid, javaType)
   }
 
   override fun equals(other: Any?): Boolean {
@@ -83,9 +78,9 @@ class SelectLHS(val obj: CodeExpr, val id: String, val uuid: Long) : LeftHS() {
   override fun toString() = "$obj.$id[${uuid}]"
 }
 
-class IdLHS(val name: String, val uuid: Long) : LeftHS() {
+class IdLHS(val name: String, val uuid: Long, javaType: JavaType) : LeftHS(javaType) {
   override fun toCode(): CodeExpr {
-    return Id(name, uuid)
+    return Id(name, uuid, javaType)
   }
 
   override fun equals(other: Any?): Boolean {
@@ -102,13 +97,16 @@ class IdLHS(val name: String, val uuid: Long) : LeftHS() {
 }
 
 /** Code expressions */
-
 sealed class CodeExpr : AdaptedThing() {
   abstract fun format(indent: String): String
   override fun toString() = format("")
 }
 
-class Select(val expr: CodeExpr, val id: String, val uuid: Long) : CodeExpr() {
+class Select(val expr: CodeExpr, val id: String, val uuid: Long, val javaType: JavaType) : CodeExpr() {
+  init {
+    javaType2 = javaType
+  }
+
   override fun format(indent: String): String {
     return "${expr.format(indent)}.$id"
   }
@@ -118,7 +116,11 @@ class Select(val expr: CodeExpr, val id: String, val uuid: Long) : CodeExpr() {
   }
 }
 
-class Id(val name: String, val uuid: Long) : CodeExpr() {
+class Id(val name: String, val uuid: Long, val javaType: JavaType) : CodeExpr() {
+  init {
+    javaType2 = javaType
+  }
+
   override fun format(indent: String): String {
     return "$indent$name"
   }
@@ -128,16 +130,25 @@ class Id(val name: String, val uuid: Long) : CodeExpr() {
   }
 }
 
-class Assign(val left: LeftHS, val right: CodeExpr, val type: JTCType, val javaType: JavaType) : CodeExpr() {
+class Assign(val left: LeftHS, val right: CodeExpr, val type: JTCType) : CodeExpr() {
+  init {
+    javaType2 = right.javaType2
+  }
+
   override fun format(indent: String): String {
     return "$left = $right"
   }
 }
 
 class ParamAssign(val idx: Int, val expr: CodeExpr) : CodeExpr() {
+  init {
+    javaType2 = expr.javaType2
+  }
+
   lateinit var call: MethodCall
+
   override fun format(indent: String): String {
-    return "param$idx = $expr"
+    return "param$idx = $expr (the call: $call)"
   }
 }
 
@@ -148,18 +159,30 @@ class Return(val expr: CodeExpr?, val type: JTCType, val javaType: JavaType) : C
 }
 
 class NewObj(val type: JTCType, val javaType: JavaType) : CodeExpr() {
+  init {
+    javaType2 = javaType
+  }
+
   override fun format(indent: String): String {
     return "${indent}new $javaType"
   }
 }
 
 class NewArrayWithDimensions(val type: JTCType, val javaType: JavaType, val componentType: JTCType, val componentJavaType: JavaType, val dimensions: List<CodeExpr>) : CodeExpr() {
+  init {
+    javaType2 = javaType
+  }
+
   override fun format(indent: String): String {
     return "${indent}new $javaType [${dimensions.joinToString(", ") { it.format("") }}]"
   }
 }
 
 class NewArrayWithValues(val type: JTCType, val javaType: JavaType, val componentType: JTCType, val componentJavaType: JavaType, val initializers: List<CodeExpr>) : CodeExpr() {
+  init {
+    javaType2 = javaType
+  }
+
   override fun format(indent: String): String {
     return "${indent}new $javaType {${initializers.joinToString(", ") { it.format("") }}}"
   }
@@ -170,6 +193,8 @@ class MethodCall(val methodExpr: FuncInterface, val parameters: List<ParamAssign
     if (methodExpr.parameters.size != parameters.size) {
       error("Arguments and parameters have different sizes: ${methodExpr.parameters.size} and ${parameters.size}")
     }
+
+    javaType2 = methodExpr.returnJavaType
 
     for (param in parameters) {
       param.call = this
@@ -182,7 +207,7 @@ class MethodCall(val methodExpr: FuncInterface, val parameters: List<ParamAssign
   }
 }
 
-class FuncParam(val id: IdLHS, val requires: JTCType, val ensures: JTCType, val isThis: Boolean, val javaType: JavaType, val hasEnsures: Boolean) : AdaptedThing() {
+class FuncParam(val id: IdLHS, val requires: JTCType, val ensures: JTCType, val isThis: Boolean, val hasEnsures: Boolean) : AdaptedThing() {
   override fun toString(): String {
     return "Param{$id, ${requires.format()}, ${ensures.format()}, isThis=$isThis, hasEnsures=$hasEnsures}"
   }
@@ -221,13 +246,13 @@ open class FuncInterface(
   }
 }
 
-class VarDeclaration(val id: IdLHS, val type: JTCType) : CodeExpr() {
+class VarDeclaration(val id: IdLHS, val javaType: JavaType, val type: JTCType) : CodeExpr() {
   override fun format(indent: String): String {
     return indent + "var $id"
   }
 }
 
-class FieldDeclaration(val id: IdLHS, val type: JTCType, val isPrivate: Boolean, val isProtected: Boolean, val isPublic: Boolean) : AdaptedThing() {
+class FieldDeclaration(val id: IdLHS, val javaType: JavaType, val type: JTCType, val isPrivate: Boolean, val isProtected: Boolean, val isPublic: Boolean) : AdaptedThing() {
   override fun toString(): String {
     return "field $id"
   }
