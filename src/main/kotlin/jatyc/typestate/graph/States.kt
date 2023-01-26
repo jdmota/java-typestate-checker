@@ -2,13 +2,13 @@ package jatyc.typestate.graph
 
 import jatyc.typestate.*
 
-sealed class JavaType {
+sealed class UnresolvedJavaType {
   companion object {
-    fun make(node: TRefNode): JavaType {
+    fun make(node: TRefNode): UnresolvedJavaType {
       return when (node) {
-        is TIdNode -> JavaTypeId(node.name)
-        is TMemberNode -> JavaTypeSelect(make(node.ref), node.id.name)
-        is TArrayTypeNode -> JavaTypeArray(make(node.ref))
+        is TIdNode -> UnresolvedJavaTypeId(node.name)
+        is TMemberNode -> UnresolvedJavaTypeSelect(make(node.ref), node.id.name)
+        is TArrayTypeNode -> UnresolvedJavaTypeArray(make(node.ref))
       }
     }
   }
@@ -16,13 +16,13 @@ sealed class JavaType {
   abstract fun getName(): String
 }
 
-class JavaTypeId(val id: String) : JavaType() {
+class UnresolvedJavaTypeId(val id: String) : UnresolvedJavaType() {
   override fun getName(): String {
     return id
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is JavaTypeId && id == other.id
+    return other is UnresolvedJavaTypeId && id == other.id
   }
 
   override fun hashCode(): Int {
@@ -30,13 +30,13 @@ class JavaTypeId(val id: String) : JavaType() {
   }
 }
 
-class JavaTypeSelect(val parent: JavaType, val id: String) : JavaType() {
+class UnresolvedJavaTypeSelect(val parent: UnresolvedJavaType, val id: String) : UnresolvedJavaType() {
   override fun getName(): String {
     return parent.getName() + "." + id
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is JavaTypeSelect && id == other.id && parent == other.parent
+    return other is UnresolvedJavaTypeSelect && id == other.id && parent == other.parent
   }
 
   override fun hashCode(): Int {
@@ -46,13 +46,13 @@ class JavaTypeSelect(val parent: JavaType, val id: String) : JavaType() {
   }
 }
 
-class JavaTypeArray(val component: JavaType) : JavaType() {
+class UnresolvedJavaTypeArray(val component: UnresolvedJavaType) : UnresolvedJavaType() {
   override fun getName(): String {
     return component.getName() + "[]"
   }
 
   override fun equals(other: Any?): Boolean {
-    return other is JavaTypeArray && component == other.component
+    return other is UnresolvedJavaTypeArray && component == other.component
   }
 
   override fun hashCode(): Int {
@@ -62,7 +62,8 @@ class JavaTypeArray(val component: JavaType) : JavaType() {
 
 sealed class Transition<N : TNode>(val nodes: List<N> = mutableListOf())
 
-class MethodTransition(val returnType: JavaType, val name: String, val args: List<JavaType>, val original: TMethodNode) : Transition<TMethodNode>() {
+class MethodTransition(val returnType: UnresolvedJavaType, val name: String, val args: List<UnresolvedJavaType>, val original: TMethodNode) : Transition<TMethodNode>() {
+  // TODO actually resolve the JavaType instead of comparing names
   override fun equals(other: Any?): Boolean {
     return other is MethodTransition && returnType == other.returnType && name == other.name && args == other.args
   }
@@ -77,9 +78,9 @@ class MethodTransition(val returnType: JavaType, val name: String, val args: Lis
   companion object {
     fun make(node: TMethodNode): MethodTransition {
       return MethodTransition(
-        JavaType.make(node.returnType),
+        UnresolvedJavaType.make(node.returnType),
         node.name,
-        node.args.map { JavaType.make(it) },
+        node.args.map { UnresolvedJavaType.make(it) },
         node
       )
     }

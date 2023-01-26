@@ -1,7 +1,6 @@
 package jatyc.core.typesystem
 
 import jatyc.core.*
-import jatyc.subtyping.syncronous_subtyping.ProtocolSyncSubtyping
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
 
@@ -11,8 +10,8 @@ object Subtyping {
     var subTypes = listOf(aState)
     var superTypes = mutableListOf<State>()
     while (subClass != b) {
-      val superClass = subClass.directSuperType()!!
-      val graph = superClass.getGraph()!!
+      val superClass = subClass.getSingleSuperType() ?: return emptyList()
+      val graph = superClass.getGraph() ?: return emptyList()
       for (superState in graph.getAllConcreteStates()) {
         for (subState in subTypes) {
           if (ProtocolSyncSubtyping.isSubtype(subState, superState)) {
@@ -39,7 +38,7 @@ object Subtyping {
       }
       is JTCStateType -> when (b) {
         is JTCUnknownType -> true
-        is JTCSharedType -> a.javaType.isSubtype(b.javaType) && a.state.canDropHere() // NEW
+        is JTCSharedType -> a.javaType.isSubtype(b.javaType) && a.state.canDropHere()
         is JTCStateType -> {
           if (a.javaType.isSubtype(b.javaType)) {
             // We need to check subtyping level by level to preserve the soundness of downcast later on

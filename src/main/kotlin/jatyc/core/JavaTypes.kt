@@ -13,9 +13,9 @@ private var javaTypeUuid = 1L
 
 // Given the fact that, in practise, there will be only one instance of the JavaTypesHierarchy,
 // JavaType's can and will be compared by reference
-class JavaType internal constructor(val original: Type, private val checker: JavaTypestateChecker) {
+class JavaType internal constructor(val original: Type, val superTypes: Set<JavaType>, private val checker: JavaTypestateChecker, val getDefaultJTCType: () -> JTCType) {
   val id = javaTypeUuid++
-  internal val superTypes = mutableSetOf<JavaType>()
+  val isBot = original.tag == TypeTag.BOT
 
   fun isInterface() = original.isInterface
   fun isPrimitive() = original.isPrimitiveOrVoid
@@ -29,10 +29,12 @@ class JavaType internal constructor(val original: Type, private val checker: Jav
   fun getGraph() = checker.utils.classUtils.getGraph(original)
   fun hasProtocol() = checker.utils.classUtils.hasProtocol(original)
 
-  fun directSuperType() = superTypes.find { it.hasProtocol() }
+  fun getSingleSuperType(): JavaType? {
+    return superTypes.singleOrNull()
+  }
 
   fun isSubtype(other: JavaType): Boolean {
-    return this == other || superTypes.any { it.isSubtype(other) }
+    return isBot || this == other || superTypes.any { it.isSubtype(other) }
   }
 
   fun qualifiedName(): String {
@@ -43,16 +45,17 @@ class JavaType internal constructor(val original: Type, private val checker: Jav
   fun getEnumLabels(): Pair<String, List<String>> {
     val type = original.tsym
     if (type is Symbol.ClassSymbol && type.isEnum) {
-      return Pair(
-        "${type.qualifiedName}",
-        type.members().symbols.filter { it.isEnum && ElementUtils.isStatic(it) }.map { "${it.simpleName}" }
-      )
+      return Pair("${type.qualifiedName}", getEnumLabels(type))
     }
     error("JavaType.getEnumLabels should only be called on enum types")
   }
 
   override fun toString(): String {
     return original.toString()
+  }
+
+  companion object {
+    fun getEnumLabels(classSymbol: Symbol.ClassSymbol) = classSymbol.members().symbols.filter { it.isEnum && ElementUtils.isStatic(it) }.map { "${it.simpleName}" }
   }
 }
 
@@ -61,6 +64,8 @@ class JavaTypesHierarchy(private val checker: JavaTypestateChecker) {
   private val types = Types.instance(env.context)
   private val symtab = Symtab.instance(env.context)
   private val typeUtils = env.typeUtils
+
+  val typesIntroducer = TypeIntroducer(checker, this)
 
   private fun isSameType(a: Type, b: Type): Boolean {
     if (a.tag == TypeTag.UNKNOWN) return b.tag == TypeTag.UNKNOWN
@@ -91,18 +96,25 @@ class JavaTypesHierarchy(private val checker: JavaTypestateChecker) {
     val wrapper = JavaTypeWrapper(type)
     val curr = cache[wrapper]
     if (curr == null) {
-      val javaType = JavaType(wrapper.original, checker)
+      val superTypes = mutableSetOf<JavaType>()
+      val javaType = JavaType(wrapper.original, superTypes, checker) { typesIntroducer.getUpperBound(wrapper.original) }
       cache[wrapper] = javaType
       val clazz = javaType.original.tsym
       if (clazz is Symbol.ClassSymbol && !javaType.isJavaObject()) {
-        // Register direct super class
+        // Register direct super class (unless Object)
         if (!javaType.isInterface()) {
           val superclass = get(clazz.superclass)
-          javaType.superTypes.add(superclass)
+          // Only add Object as direct super type if there are none (see below)
+          if (!superclass.isJavaObject())
+           superTypes.add(superclass)
         }
         // Add interfaces
         for (inter in clazz.interfaces) {
-          javaType.superTypes.add(get(inter))
+          superTypes.add(get(inter))
+        }
+        // Add the Object as super type is there are none
+        if (superTypes.isEmpty()) {
+          superTypes.add(OBJ)
         }
       }
       return javaType
@@ -118,12 +130,10 @@ class JavaTypesHierarchy(private val checker: JavaTypestateChecker) {
   val INTEGER = prim(symtab.intType)
   val LONG = prim(symtab.longType)
   val SHORT = prim(symtab.shortType)
-
   val VOID = get(symtab.voidType)
   val OBJ = get(symtab.objectType)
   val BOT = get(symtab.botType)
 
-  val SHARED_OBJECT = JTCSharedType(get(symtab.objectType))
   val STRING = JTCSharedType(get(symtab.stringType))
   val ENUM = JTCSharedType(get(symtab.enumSym.asType()))
 
@@ -156,9 +166,7 @@ class JavaTypesHierarchy(private val checker: JavaTypestateChecker) {
     if (b == null) return false
     return a == get(b)
   }
-
 }
-
 /*class TypeTable(val leastTypes: Set<JavaType>, val map: Map<JavaType, JTCType>, val knowsActualType: Boolean) {
 
   fun toUnknown(): TypeTable {

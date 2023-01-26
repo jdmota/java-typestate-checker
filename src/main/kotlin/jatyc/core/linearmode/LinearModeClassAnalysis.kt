@@ -1,6 +1,5 @@
 package jatyc.core.linearmode
 
-import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
 import jatyc.core.typesystem.TypeInfo
@@ -8,16 +7,16 @@ import jatyc.typestate.graph.AbstractState
 import jatyc.typestate.graph.DecisionState
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
+import jatyc.utils.JTCUtils
 import java.util.LinkedHashSet
 
 class LinearModeClassAnalysis(
-  cfChecker: JavaTypestateChecker,
-  hierarchy: JavaTypesHierarchy,
-  typeIntroducer: TypeIntroducer,
-  private val typecheckUtils: TypecheckUtils,
+  val utils: JTCUtils,
   val classes: Map<String, ClassDeclAndCompanion>
 ) {
-  val inference = LinearModeInference(cfChecker, hierarchy, typeIntroducer, typecheckUtils, this)
+  private val typecheckUtils get() = utils.typecheckUtils
+
+  val inference = LinearModeInference(utils, this)
 
   fun analyze(clazz: ClassDecl) {
     if (clazz.graph == null) {
@@ -103,8 +102,8 @@ class LinearModeClassAnalysis(
     fun getMethodToState(state: State): Map<FuncDeclaration, AbstractState<*>> {
       val map = mutableMapOf<FuncDeclaration, AbstractState<*>>()
       for ((methodNode, dest) in state.normalizedTransitions) {
-        val func = clazz.protocolMethods(classes).find { typecheckUtils.methodSubtype(env, it, methodNode) }
-        if (func != null) {
+        val funcs = clazz.protocolMethods(classes).filter { typecheckUtils.methodSubtype(env, it, methodNode) }
+        for (func in funcs) {
           map[func] = dest
         }
         // If the declaration of a method is not available, that is fine
@@ -267,17 +266,18 @@ class LinearModeClassAnalysis(
       val env = graph.getEnv()
 
       for (t in graph.getAllTransitions()) {
-        val method = clazz.allPublicMethods(classes).find { typecheckUtils.methodSubtype(env, it, t) }
-        if (method == null) {
+        val methods = clazz.allPublicMethods(classes).filter { typecheckUtils.methodSubtype(env, it, t) }.toList()
+        if (methods.isEmpty()) {
           inference.addError(clazz, "Method [${t.name}] is required by the typestate but not implemented")
         } else {
-          if (method.isAnytime) {
-            inference.addError(clazz, "Method [${t.name}] that is always available should not appear in the protocol")
+          methods.forEach {
+            if (it.isAnytime) {
+              inference.addError(clazz, "Method [${t.name}] that is always available should not appear in the protocol")
+            }
           }
         }
       }
     }
-
   }
 
   private fun checkMethodSubtyping(a: FuncDeclaration, b: FuncInterface) {

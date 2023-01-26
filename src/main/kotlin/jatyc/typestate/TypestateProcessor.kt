@@ -1,10 +1,11 @@
 package jatyc.typestate
 
 import com.sun.tools.javac.code.Symbol
+import jatyc.core.JavaType
 import org.antlr.v4.runtime.BailErrorStrategy
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import jatyc.subtyping.syncronous_subtyping.ProtocolSyncSubtyping
+import jatyc.core.typesystem.ProtocolSyncSubtyping
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
 import jatyc.typestate.graph.DecisionState
@@ -128,7 +129,7 @@ class TypestateProcessor(private val utils: JTCUtils) {
               }
             } else if (method.returnsEnum()) {
               val classSymbol = method.sym.returnType.tsym as Symbol.ClassSymbol
-              val enumLabels = ClassUtils.getEnumLabels(classSymbol)
+              val enumLabels = JavaType.getEnumLabels(classSymbol)
               val labels = dest.transitions.map { it.key.label }
               if (labels.size != enumLabels.size || !labels.containsAll(enumLabels)) {
                 err("Expected decision state to include all enumeration labels", transition.destination)
@@ -143,10 +144,10 @@ class TypestateProcessor(private val utils: JTCUtils) {
       return if (hasErrors) null else graph
     }
 
-    fun validateSubtyping(utils: JTCUtils, element: Symbol.ClassSymbol, graph: Graph): Graph? {
+    fun validateSubtyping(utils: JTCUtils, element: Symbol.ClassSymbol, graph: Graph, supers: Set<JavaType>): Graph? {
       var hasErrors = false
-      for (supertype in ClassUtils.getSuperTypes(element)) {
-        val superGraph = utils.classUtils.visitClassSymbol(supertype)
+      for (superType in supers) {
+        val superGraph = superType.getGraph()
         if (superGraph != null) {
           val subtyper = ProtocolSyncSubtyping()
           subtyper.subtyping(graph, superGraph, Pair(graph.getInitialState(), superGraph.getInitialState()))

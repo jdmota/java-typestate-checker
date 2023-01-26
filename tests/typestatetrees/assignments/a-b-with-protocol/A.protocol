@@ -1,0 +1,5 @@
+typestate A {
+  S1 = {
+    void m(): end
+  }
+}

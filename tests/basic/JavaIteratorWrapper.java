@@ -225,7 +225,6 @@ class JavaIteratorWrapper8 {
 
   private @Nullable JavaIterator iterator = null;
 
-  // :: error: (Type of parameter [this] is Shared{JavaIteratorWrapper8}, expected State{JavaIteratorWrapper8, ?}})
   public void init(@Requires("HasNext") JavaIterator it) {
     // :: warning: (this.iterator: Null)
     // :: warning: (it: State{JavaIterator, HasNext})

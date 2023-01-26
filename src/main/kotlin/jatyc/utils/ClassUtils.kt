@@ -58,20 +58,11 @@ class ClassUtils(private val utils: JTCUtils) {
     return if (type is DeclaredType) visitClassSymbol(type.asElement()) else null
   }
 
-  private fun getSuperGraph(element: Symbol.ClassSymbol): Graph? {
-    // TODO combine the union of the graphs instead of returning the first
-    for (supertype in getSuperTypes(element)) {
-      val graph = visitClassSymbol(supertype)
-      if (graph != null) {
-        return graph
-      }
-    }
-    return null
-  }
-
   fun visitClassSymbol(element: Element?): Graph? {
     if (element !is Symbol.ClassSymbol) return null
     return classNameToGraph.computeIfAbsent(element) { sym ->
+      val supers = utils.hierarchy.get(element.asType()).superTypes
+
       val qualifiedName = sym.qualifiedName.toString()
       val classFile = sym.sourcefile?.name?.let { Paths.get(it).toAbsolutePath() }
       val protocolFromConfig = utils.configUtils.getConfig().getProtocol(qualifiedName)
@@ -91,28 +82,24 @@ class ClassUtils(private val utils: JTCUtils) {
         }
       } ?: protocolFromConfig
 
-      val graph = protocolFile?.let { getGraph(protocolFile, sym) }?.let { TypestateProcessor.validateSubtyping(utils, sym, it) }
-        ?: getSuperGraph(element)
+      val graph = protocolFile?.let { getGraph(protocolFile, sym) }?.let { TypestateProcessor.validateSubtyping(utils, sym, it, supers) }
 
       // "computeIfAbsent" does not store null values, store an Optional instead
-      Optional.ofNullable(graph)
+      Optional.ofNullable(if (graph == null) {
+        val superGraphs = supers.mapNotNull { it.getGraph() }
+        if (superGraphs.isNotEmpty()) {
+          if (superGraphs.size == 1) {
+            superGraphs.first()
+          } else {
+            utils.err("Multi-inheritance of protocols is not yet supported ($element)", sym)
+            null
+          }
+        } else null
+      } else graph)
     }.orElse(null)
   }
 
   fun hasProtocol(type: TypeMirror): Boolean {
     return getGraph(type) != null
   }
-
-  companion object {
-    fun getSuperTypes(element: Symbol.ClassSymbol): List<Symbol.TypeSymbol> {
-      val supertypes = mutableListOf(element.superclass.asElement())
-      for (i in element.interfaces) {
-        supertypes.add(i.asElement())
-      }
-      return supertypes
-    }
-
-    fun getEnumLabels(classSymbol: Symbol.ClassSymbol) = classSymbol.members().symbols.filter { it.isEnum }.map { it.name.toString() }
-  }
-
 }

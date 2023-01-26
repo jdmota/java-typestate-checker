@@ -17,4 +17,10 @@ public class SomeObjNotOk {
   public Object d(Object o) {
     return "";
   }
+  public Object e(A o) {
+    return "";
+  }
+  public Object e(B o) {
+    return "";
+  }
 }

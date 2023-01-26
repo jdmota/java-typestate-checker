@@ -1,5 +1,6 @@
 package jatyc.core.linearmode
 
+import jatyc.core.JTCSharedType
 import jatyc.core.JTCUnknownType
 import jatyc.core.JavaType
 import jatyc.core.Reference
@@ -167,7 +168,7 @@ class CasePatterns(val list: List<CasePattern>) {
 }
 
 class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair<CasePatterns, TypeInfo>>) {
-  fun debugJavaType(javaType: JavaType) {
+  fun checkJavaTypeInvariant(javaType: JavaType) {
     if (this.javaType !== javaType) {
       JTCUtils.printStack()
       error("StoreInfo.javaType: expected ${this.javaType} got $javaType")
@@ -188,8 +189,12 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
     return mapKeys { it.fixThis(from, to) }
   }
 
-  fun toType(): TypeInfo {
+  private fun toType(): TypeInfo {
     return TypeInfo.createUnion(javaType, cases.map { it.second })
+  }
+
+  fun toShared(): TypeInfo {
+    return TypeInfo.createUnion(javaType, cases.map { it.second.toShared() })
   }
 
   fun withLabel(condition: Reference, label: String): StoreInfo {
@@ -209,7 +214,7 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
   }
 
   fun or(other: StoreInfo): StoreInfo {
-    debugJavaType(other.javaType)
+    checkJavaTypeInvariant(other.javaType)
     return cases(javaType, cases.plus(other.cases))
   }
 
@@ -219,8 +224,8 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
     return cases.all { itA -> other.cases.any { itB -> itA.first.implies(itB.first) && itA.second.isSubtype(itB.second) } }
   }
 
-  fun cast(javaType: JavaType, doUpcast: Boolean): StoreInfo {
-    return StoreInfo(javaType, cases.map { Pair(it.first, it.second.cast(javaType, doUpcast)) })
+  fun cast(javaType: JavaType): StoreInfo {
+    return StoreInfo(javaType, cases.map { Pair(it.first, it.second.cast(javaType)) })
   }
 
   override fun equals(other: Any?): Boolean {
@@ -241,7 +246,7 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
     }
 
     fun conditional(condition: Reference, thenInfo: StoreInfo, elseInfo: StoreInfo): StoreInfo {
-      thenInfo.debugJavaType(elseInfo.javaType)
+      thenInfo.checkJavaTypeInvariant(elseInfo.javaType)
       if (thenInfo == elseInfo) {
         return thenInfo
       }
@@ -255,7 +260,7 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
     }
 
     fun cases(javaType: JavaType, cases: List<Pair<CasePatterns, TypeInfo>>): StoreInfo {
-      cases.forEach { it.second.debugJavaType(javaType) }
+      cases.forEach { it.second.checkJavaTypeInvariant(javaType) }
       return StoreInfo(javaType, cases.filter { it.first.isPossible() && !it.second.isBottom() })
     }
 
@@ -268,9 +273,11 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
 class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) {
   operator fun contains(ref: Reference) = map.contains(ref)
   operator fun get(ref: Reference): StoreInfo = map[ref]
-    ?: StoreInfo.regular(TypeInfo.make(ref.javaType, JTCUnknownType.SINGLETON))
+    ?: StoreInfo.regular(TypeInfo.make(ref.javaType, ref.javaType.getDefaultJTCType()))
 
   operator fun iterator(): Iterator<Map.Entry<Reference, StoreInfo>> = map.iterator()
+
+  fun getOrNull(ref: Reference): StoreInfo? = map[ref]
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -286,12 +293,12 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   }
 
   operator fun set(ref: Reference, info: StoreInfo) {
-    info.debugJavaType(ref.javaType)
+    info.checkJavaTypeInvariant(ref.javaType)
     map[ref] = info
   }
 
   operator fun set(ref: Reference, type: TypeInfo) {
-    type.debugJavaType(ref.javaType)
+    type.checkJavaTypeInvariant(ref.javaType)
     map[ref] = StoreInfo.regular(type)
   }
 
@@ -337,7 +344,7 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   fun toShared(): Store {
     val store = Store()
     for ((ref, info) in this) {
-      store[ref] = info.toType().toShared()
+      store[ref] = info.toShared()
     }
     return store
   }
@@ -350,6 +357,8 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     return changed
   }
 
+  // This function is only used when transferring information about fields
+  // between method analyses of a class
   fun fixThis(from: Reference, to: Reference): Store {
     val store = Store()
     for ((ref, info) in this) {

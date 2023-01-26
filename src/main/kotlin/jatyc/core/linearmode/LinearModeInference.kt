@@ -1,21 +1,17 @@
 package jatyc.core.linearmode
 
-import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
 import jatyc.core.typesystem.TypeInfo
 import jatyc.typestate.graph.State
+import jatyc.utils.JTCUtils
 import java.util.*
 
 class LinearModeInference(
-  private val cfChecker: JavaTypestateChecker,
-  private val hierarchy: JavaTypesHierarchy,
-  private val typeIntroducer: TypeIntroducer,
-  private val typecheckUtils: TypecheckUtils,
-  private val classAnalysis: LinearModeClassAnalysis
+  utils: JTCUtils,
+  classAnalysis: LinearModeClassAnalysis
 ) : CfgVisitor<Store>() {
-
-  val inference = Inference(cfChecker, hierarchy, typeIntroducer, typecheckUtils, this, classAnalysis)
+  val inference = Inference(utils, this, classAnalysis)
   private val warnings = mutableMapOf<Pair<State, FuncDeclaration>?, IdentityHashMap<CodeExpr, MutableSet<String>>>()
   private val errors = mutableMapOf<Pair<State, FuncDeclaration>?, IdentityHashMap<CodeExpr, MutableSet<String>>>()
   private var errorContext: Stack<Pair<State, FuncDeclaration>?> = Stack()

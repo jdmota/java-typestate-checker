@@ -18,13 +18,10 @@ import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.Modifier
 
 class CFVisitor(val checker: JavaTypestateChecker) : SourceVisitor<Void?, Void?>(checker) {
-  private val utils get() = checker.utils
-  private val javaTypesHierarchy = JavaTypesHierarchy(checker)
-  private var typeIntroducer = TypeIntroducer(checker, javaTypesHierarchy)
-  private val typecheckUtils = TypecheckUtils(checker, typeIntroducer)
-  private val adapter = CFAdapter(checker, javaTypesHierarchy, typeIntroducer, typecheckUtils)
+  private val utils = checker.utils
+  private val adapter = CFAdapter(checker)
   private val classes = mutableMapOf<String, ClassDeclAndCompanion>()
-  private val classAnalysis = LinearModeClassAnalysis(checker, javaTypesHierarchy, typeIntroducer, typecheckUtils, classes)
+  private val classAnalysis = LinearModeClassAnalysis(checker.utils, classes)
   private val pending = LinkedList<Pair<CompilationUnitTree, ClassDeclAndCompanion>>()
 
   override fun setRoot(root: CompilationUnitTree) {

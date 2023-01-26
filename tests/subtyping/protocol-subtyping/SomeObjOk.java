@@ -14,4 +14,7 @@ public class SomeObjOk {
   public String d(Object o) {
     return "";
   }
+  public Object e(A o) {
+    return "";
+  }
 }

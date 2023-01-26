@@ -1,4 +1,4 @@
-package jatyc.subtyping.syncronous_subtyping
+package jatyc.core.typesystem
 
 import jatyc.typestate.graph.*
 

@@ -1,6 +1,7 @@
 package jatyc.core
 
 import jatyc.core.cfg.*
+import jatyc.utils.JTCUtils
 
 sealed class ReverseRefComponent
 
@@ -38,7 +39,7 @@ sealed class Reference(val javaType: JavaType) {
         is Id -> IdReference(code.name, code.uuid, code.javaType)
         is Select -> SelectReference(make(code.expr), code.id, code.uuid, code.javaType)
         else -> {
-          val javaType = code.javaType2 ?: error("no javaType in $code")
+          val javaType = code.javaType2 ?: JTCUtils.error("no javaType in $code")
           CodeExprReference(code, javaType)
         }
       }

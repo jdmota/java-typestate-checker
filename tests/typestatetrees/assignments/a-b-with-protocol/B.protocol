@@ -1,0 +1,9 @@
+typestate B {
+  S1 = {
+    void m(): end,
+    void m2(): S2
+  }
+  S2 = {
+    void m(): end
+  }
+}

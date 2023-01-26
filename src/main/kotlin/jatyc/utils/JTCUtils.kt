@@ -11,20 +11,20 @@ import com.sun.tools.javac.code.Type
 import com.sun.tools.javac.code.TypeTag
 import com.sun.tools.javac.file.JavacFileManager
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
-import com.sun.tools.javac.tree.JCTree.JCClassDecl
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit
 import com.sun.tools.javac.util.*
-import com.sun.tools.javac.util.DefinedBy.Api
+import jatyc.JavaTypestateChecker
+import jatyc.core.JavaTypesHierarchy
+import jatyc.core.TypeIntroducer
+import jatyc.core.TypecheckUtils
 import jatyc.lib.*
 import jatyc.typestate.TypestateProcessor
 import jatyc.typestate.graph.Graph
-import org.checkerframework.framework.source.SourceChecker
 import org.checkerframework.framework.type.AnnotatedTypeMirror
 import org.checkerframework.javacutil.AnnotationUtils
 import org.checkerframework.javacutil.BugInCF
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.javacutil.TypesUtils
-import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -38,26 +38,39 @@ import javax.tools.Diagnostic
 import javax.tools.JavaFileManager
 import javax.tools.JavaFileObject
 
-class JTCUtils(val checker: SourceChecker) {
-  val env = (checker.processingEnvironment as JavacProcessingEnvironment)
-  val ctx: Context = env.context
-  val symtab: Symtab = Symtab.instance(ctx)
-
+class JTCUtils(val checker: JavaTypestateChecker) {
+  val env get() = (checker.processingEnvironment as JavacProcessingEnvironment)
+  val ctx: Context get() = env.context
+  val symtab: Symtab get() = Symtab.instance(ctx)
   // val maker: TreeMaker = TreeMaker.instance(ctx)
-  val fileManager = ctx.get(JavaFileManager::class.java) as JavacFileManager
-  val treeUtils: Trees = checker.treeUtils
-  val typeUtils: Types = checker.typeUtils
-  val elementUtils: Elements = checker.elementUtils
-  val resolver = Resolver(checker)
-  val classUtils = ClassUtils(this)
-  val configUtils = ConfigUtils(checker)
-  val processor = TypestateProcessor(this)
-  val methodUtils = MethodUtils(this)
-  lateinit var factory: TypeFactory
+  val fileManager get() = ctx.get(JavaFileManager::class.java) as JavacFileManager
+  val treeUtils: Trees get() = checker.treeUtils
+  val typeUtils: Types get() = checker.typeUtils
+  val elementUtils: Elements get() = checker.elementUtils
 
-  fun initFactory() {
+  lateinit var resolver: Resolver
+  lateinit var classUtils: ClassUtils
+  lateinit var configUtils: ConfigUtils
+  lateinit var processor: TypestateProcessor
+  lateinit var methodUtils: MethodUtils
+  lateinit var factory: TypeFactory
+  lateinit var hierarchy: JavaTypesHierarchy
+  lateinit var typeIntroducer: TypeIntroducer
+  lateinit var typecheckUtils: TypecheckUtils
+
+  fun init() {
+    resolver = Resolver(checker)
+    classUtils = ClassUtils(this)
+    configUtils = ConfigUtils(checker)
+    processor = TypestateProcessor(this)
+    methodUtils = MethodUtils(this)
     factory = TypeFactory(checker)
+    hierarchy = JavaTypesHierarchy(checker)
+    typeIntroducer = hierarchy.typesIntroducer
+    typecheckUtils = TypecheckUtils(checker, typeIntroducer)
   }
+
+  fun shouldReportTypeInfo() = checker.shouldReportTypeInfo()
 
   fun getTypeFromStub(elt: Element) = factory.getTypeFromStub(elt)
 
@@ -313,6 +326,11 @@ class JTCUtils(val checker: SourceChecker) {
       } catch (exp: RuntimeException) {
         exp.printStackTrace()
       }
+    }
+
+    fun error(msg: String): Nothing {
+      printStack()
+      kotlin.error(msg)
     }
 
   }

@@ -4,12 +4,15 @@ import jatyc.core.*
 import jatyc.core.cfg.MethodCall
 import jatyc.utils.JTCUtils
 
-class TypeInfo private constructor(val javaType: JavaType, val jtcType: JTCType) {
+sealed class TypeInfo {
+  abstract val javaType: JavaType
+  abstract val jtcType: JTCType
+
   fun debugIsPrimitive(): Boolean {
     return jtcType is JTCPrimitiveType
   }
 
-  fun debugJavaType(javaType: JavaType) {
+  fun checkJavaTypeInvariant(javaType: JavaType) {
     if (this.javaType !== javaType) {
       JTCUtils.printStack()
       error("TypeInfo.javaType: expected ${this.javaType} got $javaType")
@@ -24,20 +27,8 @@ class TypeInfo private constructor(val javaType: JavaType, val jtcType: JTCType)
     return jtcType.isSubtype(other)
   }
 
-  fun toShared(): TypeInfo {
-    return TypeInfo(javaType, jtcType.toShared())
-  }
-
-  fun toUnknown(): TypeInfo {
-    return TypeInfo(javaType, JTCUnknownType.SINGLETON)
-  }
-
   fun isUnknown(): Boolean {
     return JTCUnknownType.SINGLETON.isSubtype(jtcType)
-  }
-
-  fun toBottom(): TypeInfo {
-    return TypeInfo(javaType, JTCBottomType.SINGLETON)
   }
 
   fun isBottom(): Boolean {
@@ -52,14 +43,6 @@ class TypeInfo private constructor(val javaType: JavaType, val jtcType: JTCType)
     return JTCNullType.SINGLETON.isSubtype(jtcType)
   }
 
-  fun intersect(other: JTCType): TypeInfo {
-    return TypeInfo(javaType, jtcType.intersect(other))
-  }
-
-  fun cast(javaType: JavaType, doUpcast: Boolean): TypeInfo {
-    return TypeInfo(javaType, Subtyping.cast(jtcType, javaType, doUpcast))
-  }
-
   fun isInDroppableStateNotEnd(): Boolean {
     return TypecheckUtils.isInDroppableStateNotEnd(jtcType)
   }
@@ -72,42 +55,48 @@ class TypeInfo private constructor(val javaType: JavaType, val jtcType: JTCType)
     return TypecheckUtils.requiresLinear(ref, jtcType)
   }
 
-  fun invariant(): TypeInfo {
-    return TypeInfo(javaType, TypecheckUtils.invariant(jtcType))
-  }
-
-  fun refine(utils: TypecheckUtils, call: MethodCall, predicate: (String) -> Boolean): TypeInfo {
-    return TypeInfo(javaType, utils.refine(jtcType, call, predicate))
-  }
-
   fun check(utils: TypecheckUtils, call: MethodCall): Boolean {
     return utils.check(jtcType, call)
   }
 
-  fun refineToNonNull(): TypeInfo {
-    return TypeInfo(javaType, TypecheckUtils.refineToNonNull(jtcType))
-  }
-
-  fun refineToNull(): TypeInfo {
-    return TypeInfo(javaType, TypecheckUtils.refineToNull(jtcType))
-  }
+  abstract fun toShared(): TypeInfo
+  abstract fun toUnknown(): TypeInfo
+  abstract fun toBottom(): TypeInfo
+  abstract fun intersect(other: JTCType): TypeInfo
+  abstract fun cast(target: JavaType): TypeInfo
+  abstract fun ensures(ensures: JTCType): TypeInfo
+  abstract fun refine(utils: TypecheckUtils, call: MethodCall, predicate: (String) -> Boolean): TypeInfo
+  abstract fun refineToNonNull(): TypeInfo
+  abstract fun refineToNull(): TypeInfo
 
   fun format(): String {
     return jtcType.format()
   }
 
-  override fun toString(): String {
-    return "TypeInfo{$javaType, $jtcType}"
-  }
+  abstract override fun toString(): String
 
   companion object {
+    var useTypestateTrees = false
+
+    fun setUseTypestateTreesFlag(flag: Boolean) {
+      useTypestateTrees = flag
+    }
+
     fun createUnion(javaType: JavaType, list: List<TypeInfo>): TypeInfo {
-      list.forEach { it.debugJavaType(javaType) }
-      return TypeInfo(javaType, JTCType.createUnion(list.map { it.jtcType }))
+      list.forEach { it.checkJavaTypeInvariant(javaType) }
+      return if (useTypestateTrees) {
+        if (list.isEmpty()) {
+          TypestateTreeInfo(javaType, JTCBottomType.SINGLETON)
+        } else {
+          list.singleOrNull() ?: TypestateTreeInfo(list.map { (it as TypestateTreeInfo).tree }.reduce { acc, it -> TypestateTreeManager.mergeTT(acc, it)})
+        }
+      } else {
+        BasicTypeInfo(javaType, JTCType.createUnion(list.map { it.jtcType }))
+      }
     }
 
     fun make(javaType: JavaType, jtcType: JTCType): TypeInfo {
-      return TypeInfo(javaType, jtcType)
+      return if (useTypestateTrees) TypestateTreeInfo(javaType, jtcType) else BasicTypeInfo(javaType, jtcType)
     }
 
     fun make(prim: JTCPrimitiveType): TypeInfo {
@@ -117,5 +106,106 @@ class TypeInfo private constructor(val javaType: JavaType, val jtcType: JTCType)
     fun make(type: JTCSharedType): TypeInfo {
       return make(type.javaType, type)
     }
+  }
+}
+
+class BasicTypeInfo internal constructor(override val javaType: JavaType, override val jtcType: JTCType) : TypeInfo() {
+  override fun toShared(): TypeInfo {
+    return BasicTypeInfo(javaType, jtcType.toShared())
+  }
+
+  override fun toUnknown(): TypeInfo {
+    return BasicTypeInfo(javaType, JTCUnknownType.SINGLETON)
+  }
+
+  override fun toBottom(): TypeInfo {
+    return BasicTypeInfo(javaType, JTCBottomType.SINGLETON)
+  }
+
+  override fun intersect(other: JTCType): TypeInfo {
+    return BasicTypeInfo(javaType, jtcType.intersect(other))
+  }
+
+  override fun cast(target: JavaType): TypeInfo {
+    return BasicTypeInfo(target, Subtyping.cast(jtcType, target, false))
+  }
+
+  override fun ensures(ensures: JTCType): TypeInfo {
+    return BasicTypeInfo(javaType, TypecheckUtils.invariant(jtcType).intersect(ensures))
+  }
+
+  override fun refine(utils: TypecheckUtils, call: MethodCall, predicate: (String) -> Boolean): TypeInfo {
+    return BasicTypeInfo(javaType, utils.refine(jtcType, call, predicate))
+  }
+
+  override fun refineToNonNull(): TypeInfo {
+    return BasicTypeInfo(javaType, TypecheckUtils.refineToNonNull(jtcType))
+  }
+
+  override fun refineToNull(): TypeInfo {
+    return BasicTypeInfo(javaType, TypecheckUtils.refineToNull(jtcType))
+  }
+
+  override fun toString(): String {
+    return "BasicTypeInfo{$javaType, $jtcType}"
+  }
+}
+
+class TypestateTreeInfo internal constructor(val tree: TypestateTree) : TypeInfo() {
+  internal constructor(javaType: JavaType, jtcType: JTCType) : this(TypestateTreeManager.make(javaType, jtcType))
+  internal constructor(tree: TypestateTree, fn: (JTCType) -> JTCType) : this(TypestateTreeManager.visit(tree, fn))
+
+  override val javaType get() = tree.jc
+  override val jtcType get() = tree.ts
+
+  override fun toShared(): TypeInfo {
+    return TypestateTreeInfo(tree) { it.toShared() }
+  }
+
+  override fun toUnknown(): TypeInfo {
+    return TypestateTreeInfo(javaType, JTCUnknownType.SINGLETON)
+  }
+
+  override fun toBottom(): TypeInfo {
+    return TypestateTreeInfo(javaType, JTCBottomType.SINGLETON)
+  }
+
+  override fun intersect(other: JTCType): TypeInfo {
+    // When doing actual casts, intersecting does nothing
+    return this
+  }
+
+  override fun cast(target: JavaType): TypeInfo {
+    if (javaType == target) {
+      return this
+    }
+    return TypestateTreeInfo(when {
+      // Upcast
+      javaType.isSubtype(target) -> TypestateTreeManager.upcastTT(tree, target) ?: TypestateTreeManager.make(target, Subtyping.cast(jtcType, target, true))
+      // Downcast
+      target.isSubtype(javaType) -> TypestateTreeManager.downcastTT(tree, target) ?: TypestateTreeManager.make(target, Subtyping.cast(jtcType, target, true))
+      // Impossible cast
+      else -> TypestateTreeManager.make(target, JTCUnknownType.SINGLETON)
+    })
+  }
+
+  override fun ensures(ensures: JTCType): TypeInfo {
+    return TypestateTreeInfo(javaType, TypecheckUtils.invariant(jtcType).intersect(ensures))
+  }
+
+  override fun refine(utils: TypecheckUtils, call: MethodCall, predicate: (String) -> Boolean): TypeInfo {
+    return TypestateTreeInfo(TypestateTreeManager.evolveTT(utils, tree, call, predicate))
+  }
+
+  override fun refineToNonNull(): TypeInfo {
+    return TypestateTreeInfo(tree) { TypecheckUtils.refineToNonNull(it) }
+  }
+
+  override fun refineToNull(): TypeInfo {
+    return TypestateTreeInfo(tree) { TypecheckUtils.refineToNull(it) }
+  }
+
+  override fun toString(): String {
+    return "TypestateTreeInfo{${tree.toSimpleString()}}"
   }
 }

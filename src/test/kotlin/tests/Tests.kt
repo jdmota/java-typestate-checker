@@ -6,7 +6,8 @@ import java.io.File
 val ignore = listOf("linked-list", "generics")
 val only = emptyList<String>()
 
-private val defaultOpts = arrayOf("-Anomsgtext", "-AshowTypeInfo")
+private val defaultOptsNoTypeInfo = arrayOf("-Anomsgtext", "-AtypestateTrees=disable")
+private val defaultOpts = defaultOptsNoTypeInfo.plus("-AshowTypeInfo")
 
 private const val dir0 = "debug"
 
@@ -98,7 +99,7 @@ private const val dir6 = "linearity"
 class LinearityTest(testFiles: List<File>) : PerDirectoryTest(
   dir6,
   testFiles,
-  arrayOf("-Anomsgtext")
+  defaultOptsNoTypeInfo
 ) {
   companion object {
     @JvmStatic
@@ -202,5 +203,19 @@ class SwitchCaseOrderTests(testFiles: List<File>) : PerDirectoryTest(
     @JvmStatic
     @get:Parameters
     val testDirs = arrayOf(dir13)
+  }
+}
+
+private const val dir14 = "typestatetrees"
+
+class TypestateTreesTests(testFiles: List<File>) : PerDirectoryTest(
+  dir14,
+  testFiles,
+  arrayOf("-Anomsgtext", "-AtypestateTrees=enable", "-AshowTypeInfo")
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir14)
   }
 }

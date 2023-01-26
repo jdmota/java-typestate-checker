@@ -6,6 +6,7 @@ import com.sun.source.util.TreePath
 import com.sun.tools.javac.processing.JavacProcessingEnvironment
 import com.sun.tools.javac.util.Log
 import jatyc.core.adapters.CFVisitor
+import jatyc.core.typesystem.TypeInfo
 import jatyc.utils.JTCUtils
 import org.checkerframework.framework.source.SourceChecker
 import org.checkerframework.framework.source.SourceVisitor
@@ -18,13 +19,14 @@ import javax.tools.Diagnostic
 
 const val showTypeInfoOpt = "showTypeInfo"
 const val configFileOpt = "configFile"
+const val typestateTreesOpt = "typestateTrees"
 const val messagesFile = "/messages.properties"
 
 class JavaTypestateChecker : SourceChecker() {
 
-  lateinit var utils: JTCUtils
+  val utils = JTCUtils(this)
 
-  override fun getSupportedOptions() = super.getSupportedOptions().plus(arrayOf(showTypeInfoOpt, configFileOpt))
+  override fun getSupportedOptions() = super.getSupportedOptions().plus(arrayOf(showTypeInfoOpt, configFileOpt, typestateTreesOpt))
 
   fun shouldReportTypeInfo() = hasOption(showTypeInfoOpt)
 
@@ -32,11 +34,12 @@ class JavaTypestateChecker : SourceChecker() {
     return CFVisitor(this)
   }
 
+  private fun shouldUseTypestateTrees() = getOption(typestateTreesOpt, "disable").equals("enable")
+
   override fun initChecker() {
     super.initChecker()
-    val utils = JTCUtils(this)
-    utils.initFactory()
-    this.utils = utils
+    TypeInfo.setUseTypestateTreesFlag(shouldUseTypestateTrees())
+    utils.init()
   }
 
   fun setCompilationRoot(root: CompilationUnitTree) {

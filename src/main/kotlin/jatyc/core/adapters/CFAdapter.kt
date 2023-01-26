@@ -23,7 +23,6 @@ import org.checkerframework.javacutil.TreePathUtil
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
-import javax.annotation.processing.ProcessingEnvironment
 import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.VariableElement
@@ -93,7 +92,7 @@ class MultipleAdaptResult(val list: List<CodeExpr>) : AdaptResult() {
   override fun toList() = list
 }
 
-class FunctionInterfaces(private val hierarchy: JavaTypesHierarchy, private val transformer: (Symbol.MethodSymbol) -> FuncInterface) {
+class FunctionInterfaces(private val utils: JTCUtils, private val transformer: (Symbol.MethodSymbol) -> FuncInterface) {
   private val interfaces = mutableMapOf<MethodSymbolWrapper, FuncInterface>()
 
   // TODO check thrown exceptions and type parameters
@@ -105,9 +104,9 @@ class FunctionInterfaces(private val hierarchy: JavaTypesHierarchy, private val 
       val b = other.sym
       if (a === b) return true
       return a.name.toString() == b.name.toString() &&
-        hierarchy.sameType(a.getCorrectReceiverType(), b.getCorrectReceiverType()) &&
-        hierarchy.sameType(a.returnType, b.returnType) &&
-        a.params().map { hierarchy.get(it.asType()) } == b.params().map { hierarchy.get(it.asType()) }
+        utils.hierarchy.sameType(a.getCorrectReceiverType(), b.getCorrectReceiverType()) &&
+        utils.hierarchy.sameType(a.returnType, b.returnType) &&
+        a.params().map { utils.hierarchy.get(it.asType()) } == b.params().map { utils.hierarchy.get(it.asType()) }
     }
 
     override fun hashCode(): Int {
@@ -120,7 +119,8 @@ class FunctionInterfaces(private val hierarchy: JavaTypesHierarchy, private val 
   }
 }
 
-class VariableRenamer(private val hierarchy: JavaTypesHierarchy) {
+class VariableRenamer(private val utils: JTCUtils) {
+  private val hierarchy get() = utils.hierarchy
   private var varSymbolsUuid = 1L
   private val varSymbols = mutableMapOf<VarSymbolWrapper, Long>()
 
@@ -201,16 +201,14 @@ private fun checkersFlowRuleToSimpleFlowRule(rule: Store.FlowRule): SimpleFlowRu
   }
 }
 
-class CFAdapter(
-  val checker: JavaTypestateChecker,
-  private val hierarchy: JavaTypesHierarchy,
-  private val typeIntroducer: TypeIntroducer,
-  private val typecheckUtils: TypecheckUtils
-) {
-  private val utils get() = checker.utils
-  private val processingEnv: ProcessingEnvironment = checker.processingEnvironment
+class CFAdapter(val checker: JavaTypestateChecker) {
+  private val utils = checker.utils
+  private val hierarchy get() = utils.hierarchy
+  private val typeIntroducer get() = utils.typeIntroducer
+  private val typecheckUtils get() = utils.typecheckUtils
+  private val processingEnv = utils.env
   private lateinit var root: JCTree.JCCompilationUnit
-  private var renamer = VariableRenamer(hierarchy)
+  private var renamer = VariableRenamer(utils)
 
   private fun shouldBeAnytime(method: Symbol.MethodSymbol): Boolean {
     return when {
@@ -230,7 +228,7 @@ class CFAdapter(
     }
   }
 
-  private var funcInterfaces = FunctionInterfaces(hierarchy) {
+  private var funcInterfaces = FunctionInterfaces(utils) {
     val funcName = it.simpleName.toString()
     // Because it.getReceiverType() might return null
     val receiver = it.getCorrectReceiverType()
@@ -254,6 +252,14 @@ class CFAdapter(
     }
     val (returnType, returnJavaType) = if (isConstructor) Pair(JTCNullType.SINGLETON, hierarchy.VOID) else getReturnType(it)
     FuncInterface(funcName, params, returnType, returnJavaType, isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType(), hierarchy)
+  }
+
+  private fun fixThisType(func: FuncInterface, type: TypeMirror): FuncInterface {
+    val params = func.parameters.map { if (it.isThis) {
+      val thisType = typeIntroducer.getThisType(type, isAnytime = func.isAnytime, isConstructor = func.isConstructor)
+      FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hasEnsures = false)
+    } else it }
+    return FuncInterface(func.name, params, func.returnType, func.returnJavaType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract)
   }
 
   fun setRoot(root: CompilationUnitTree) {
@@ -788,13 +794,11 @@ class CFAdapter(
           renamer.transformSelect(adaptedReceiver, node.element).set(node, hierarchy)
         }
       })
-
       is FunctionalInterfaceNode -> when (val tree = node.tree) {
         is MemberReferenceTree -> {
           // TODO Cannot create reference for non-anytime method
           TODO("method references are not supported yet")
         }
-
         is JCTree.JCLambda -> {
           val (returnType, returnJavaType) = getReturnType(tree)
           MultipleAdaptResult(listOf(
@@ -802,14 +806,13 @@ class CFAdapter(
             NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node, hierarchy)
           ))
         }
-
         else -> error("Unexpected tree ${node.javaClass} in FunctionalInterfaceNode")
       }
-
       is InstanceOfNode -> SingleAdaptResult(BinaryExpr(t(node.operand), makeTypeRef(node.refType), BinaryOP.Is).set(node, hierarchy))
       is LambdaResultExpressionNode -> SingleAdaptResult(makeReturn(node, node.result))
       is LocalVariableNode -> SingleAdaptResult(renamer.transformLocal(node).set(node, hierarchy))
       is MarkerNode -> SingleAdaptResult(NoOPExpr(node.message).set(node, hierarchy))
+      is MethodAccessNode -> SingleAdaptResult(NoOPExpr("").set(node, hierarchy)) // Leave method accesses handling for later
       /*
       How method calls are interpreted. Take for example
       setC(a.b, a.b)
@@ -825,43 +828,46 @@ class CFAdapter(
       #param2 = a.b
       call setC
       */
-      is MethodAccessNode -> {
-        val method = transformMethod(node.method as Symbol.MethodSymbol).set(node, hierarchy)
-        val receiver = node.receiver
-        if (receiver is ClassNameNode || receiver is ThisNode || receiver is SuperNode) {
+      is MethodInvocationNode -> {
+        val access = node.target
+        val method = access.method as Symbol.MethodSymbol
+        val receiver = access.receiver
+        val includeThis = !method.isStatic
+        val funcInterface =
+          if (includeThis) {
+            // If a class B extends class A but does not override method m from A,
+            // the call b.m() would have receiver type A, we want it to be B.
+            fixThisType(transformMethod(access.method as Symbol.MethodSymbol), receiver.type)
+          } else {
+            transformMethod(access.method as Symbol.MethodSymbol)
+          }.set(access, hierarchy)
+        val checks = if (receiver is ClassNameNode || receiver is ThisNode || receiver is SuperNode) {
           // Make sure the corresponding tree of the receiver is not null
           // This can occur if the receiver is ClassNameNode or ImplicitThisNode
           val adaptedReceiver = t(receiver)
           if (adaptedReceiver.cfTree == null) {
-            adaptedReceiver.set(node.tree)
+            adaptedReceiver.set(access.tree)
           }
           // No NullPointerException can be thrown
-          SingleAdaptResult(method)
+          SingleAdaptResult(funcInterface)
         } else {
           // When calling a method on an object,
           // the receiver object is checked to see if it is not null first,
           // before the parameters are evaluated
           MultipleAdaptResult(listOf(
-            NullCheck(t(node.receiver), "Cannot call ${method.name} on null").set(node, hierarchy).set(node.tree
-              ?: node.receiver.tree),
-            method
+            NullCheck(t(access.receiver), "Cannot call ${funcInterface.name} on null").set(access, hierarchy).set(access.tree ?: access.receiver.tree),
+            funcInterface
           ))
         }
-      }
-
-      is MethodInvocationNode -> {
-        val method = node.target.method as Symbol.MethodSymbol
-        val includeThis = !method.isStatic
-        makeCall(
-          t(node.target) as FuncInterface,
+        MultipleAdaptResult(checks.toList().plus(makeCall(
+          funcInterface,
           if (includeThis)
-            listOf(node.target.receiver).plus(node.arguments)
+            listOf(access.receiver).plus(node.arguments)
           else
             node.arguments,
           node
-        )
+        ).toList()))
       }
-
       is NarrowingConversionNode -> SingleAdaptResult(UnaryExpr(t(node.operand), UnaryOP.Narrowing).set(node, hierarchy))
       is NullChkNode -> SingleAdaptResult(NullCheck(t(node.operand), "Potential null pointer exception").set(node, hierarchy).set(node.operand.tree))
       is ObjectCreationNode -> {
@@ -880,7 +886,6 @@ class CFAdapter(
           ).plus(newObj)
         )
       }
-
       is PackageNameNode -> SingleAdaptResult(makeTypeRef(node.element.asType()).set(node, hierarchy))
       is ParameterizedTypeNode -> SingleAdaptResult(makeTypeRef(node.type).set(node, hierarchy))
       is PrimitiveTypeNode -> error("Unexpected node ${node.javaClass}")

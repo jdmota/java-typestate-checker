@@ -3,21 +3,20 @@ package jatyc.core.linearmode
 import com.sun.source.tree.CompilationUnitTree
 import com.sun.source.tree.Tree
 import com.sun.tools.javac.code.Type
-import jatyc.JavaTypestateChecker
 import jatyc.core.*
 import jatyc.core.cfg.*
 import jatyc.core.typesystem.TypeInfo
-
-const val DO_ACTUAL_CASTS = false
+import jatyc.utils.JTCUtils
 
 class Inference(
-  private val cfChecker: JavaTypestateChecker,
-  private val hierarchy: JavaTypesHierarchy,
-  private val typeIntroducer: TypeIntroducer,
-  private val typecheckUtils: TypecheckUtils,
+  private val utils: JTCUtils,
   private val inference: LinearModeInference,
   private val classAnalysis: LinearModeClassAnalysis
 ) {
+  private val hierarchy get() = utils.hierarchy
+  private val typeIntroducer get() = utils.typeIntroducer
+  private val typecheckUtils get() = utils.typecheckUtils
+
   private val allLabels: (String) -> Boolean = { true }
   private val ifTrue: (String) -> Boolean = { it == "true" }
   private val ifFalse: (String) -> Boolean = { it == "false" }
@@ -30,19 +29,20 @@ class Inference(
     return node.cfTree ?: error("no tree? $node ${node::class.java}")
   }
 
-  // TODO improve how we preserve conditional information!
   private fun assign(node: CodeExpr, targetType: JTCType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean) {
     val targetJavaType = leftRef.javaType
 
     if (node is Assign) {
-      post[Reference.old(node)] = pre[leftRef].type.intersect(node.type)
+      post[Reference.old(node)] = pre[leftRef].type
     }
 
+    // Correct conditional information to account for the assignment
     if (leftRef == Reference.returnRef(leftRef.javaType) || leftRef.isSwitchVar()) {
       for ((ref, info) in pre) {
         post[ref] = info.replaceCondition(rightRef, leftRef)
       }
     }
+
     val typeToAssign: TypeInfo
     val typeInExpr: TypeInfo
     val newTargetType: TypeInfo
@@ -50,18 +50,21 @@ class Inference(
 
     if (thisParam) {
       val move = TypecheckUtils.requiresLinear(leftRef, targetType)
-      typeToAssign = if (move) pre[rightRef].type else pre[rightRef].type.toShared()
-      typeInExpr = if (move) pre[rightRef].type.toShared() else pre[rightRef].type
-      newTargetType = typeToAssign.cast(targetJavaType, DO_ACTUAL_CASTS)
+      typeToAssign = if (move) pre[rightRef].type else pre[rightRef].toShared()
+      typeInExpr = if (move) pre[rightRef].toShared() else pre[rightRef].type
+      newTargetType = typeToAssign.cast(targetJavaType)
       succeeded = true // Checking that the method can be called in this state is performed later
     } else {
       typeToAssign = pre[rightRef].type
-      typeInExpr = pre[rightRef].type.toShared()
-      val typeToAssignCasted = typeToAssign.cast(targetJavaType, DO_ACTUAL_CASTS)
+      typeInExpr = pre[rightRef].toShared()
+      val typeToAssignCasted = typeToAssign.cast(targetJavaType)
       val castFailed = !typeToAssign.isUnknown() && typeToAssignCasted.isUnknown()
 
       succeeded = typeToAssignCasted.isSubtype(targetType)
-      newTargetType = if (castFailed) typeToAssignCasted.toBottom() else typeToAssignCasted.intersect(targetType)
+      newTargetType = if (castFailed || !succeeded) {
+        // Avoid error propagation
+        typeToAssignCasted.toBottom()
+      } else typeToAssignCasted
 
       if (succeeded && typeToAssign.isInDroppableStateNotEnd() && !TypecheckUtils.requiresLinear(leftRef, targetType)) {
         // We want to report a warning if we have an object in a droppable state, with more actions that can be made
@@ -72,7 +75,7 @@ class Inference(
 
     post[leftRef] = newTargetType
     post[rightRef] = typeInExpr
-    post[Reference.make(node)] = if (node is Return) TypeInfo.make(hierarchy.BOT, JTCBottomType.SINGLETON) else pre[rightRef].type.toShared()
+    post[Reference.make(node)] = if (node is Return) TypeInfo.make(hierarchy.BOT, JTCBottomType.SINGLETON) else pre[rightRef].toShared()
 
     when {
       targetType is JTCBottomType -> inference.addError(node, "Cannot assign because [${leftRef.format()}] is not accessible here")
@@ -202,7 +205,7 @@ class Inference(
           // First we refine the type of the parameter variable
           if (param.isThis) {
             if (methodExpr.name == "<init>") {
-              post[argRef] = pre[argRef].type.invariant().intersect(param.ensures)
+              post[argRef] = pre[argRef].type.ensures(param.ensures)
             } else {
               val returnType = methodExpr.returnType
               val returnsBool = returnType.isSubtype(hierarchy.BOOLEAN)
@@ -245,15 +248,15 @@ class Inference(
             // If the method did not request linear type, it means the linear permission is still in the expression
             if (TypecheckUtils.requiresLinear(argRef, param.requires)) {
               val argInfo = post[argRef]
-              post[argRef] = argInfo.type.toShared()
-              post[exprRef] = argInfo.cast(exprRef.javaType, DO_ACTUAL_CASTS) // Preserve conditional info!
+              post[argRef] = argInfo.toShared()
+              post[exprRef] = argInfo.cast(exprRef.javaType) // Preserve conditional info!
             }
           } else {
-            post[argRef] = pre[argRef].type.invariant().intersect(param.ensures)
+            post[argRef] = pre[argRef].type.ensures(param.ensures)
             // Whatever is in the "parameter variable", restore it to the "parameter expression"
             val argInfo = post[argRef]
-            post[argRef] = argInfo.type.toShared()
-            post[exprRef] = argInfo.cast(exprRef.javaType, DO_ACTUAL_CASTS) // Preserve conditional info!
+            post[argRef] = argInfo.toShared()
+            post[exprRef] = argInfo.cast(exprRef.javaType) // Preserve conditional info!
           }
         }
         // The type of the method call is the type of the return value
@@ -269,12 +272,16 @@ class Inference(
         for ((ref, info) in pre) {
           post[ref] = info
         }
-        val currentType = pre[Reference.make(node)].type
-        showType(func, node, currentType)
 
-        if (currentType.isUnknown()) {
+        val ref = Reference.make(node)
+        val currentType = pre.getOrNull(ref)?.type
+        if (currentType == null) {
+          showType(func, node, TypeInfo.make(ref.javaType, JTCUnknownType.SINGLETON))
+
           inference.addError(node, "Cannot access [${node.name}]")
           post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCBottomType.SINGLETON)
+        } else {
+          showType(func, node, currentType)
         }
       }
 
@@ -300,24 +307,28 @@ class Inference(
               ?: typeIntroducer.getJDKStaticFieldType(obj.javaType.original, node.id)
           }
           // Or default to what we currently know
-          currentType = currentType ?: pre[ref].type
+          currentType = currentType ?: pre.getOrNull(ref)?.type
         }
 
-        showType(func, node, currentType)
-
         when {
-          currentType.isUnknown() -> {
+          currentType == null -> {
+            showType(func, node, TypeInfo.make(ref.javaType, JTCUnknownType.SINGLETON))
+
             inference.addError(node, "Cannot access [${node.format("")}]")
             post[ref] = TypeInfo.make(ref.javaType, JTCBottomType.SINGLETON)
           }
 
           obj !is SymbolResolveExpr && objType.isNullable() -> {
+            showType(func, node, currentType)
+
             inference.addError(node, "Cannot access field [${node.id}] of null")
             post[objRef] = objType.refineToNonNull()
             post[ref] = currentType
           }
 
           else -> {
+            showType(func, node, currentType)
+
             post[ref] = currentType
           }
         }
@@ -352,15 +363,16 @@ class Inference(
           val currentType = pre[Reference.make(node.expr)].type
           post[Reference.make(node.expr)] = currentType.toShared()
 
-          if (DO_ACTUAL_CASTS) {
-            val newType = currentType.cast(node.javaType, true)
+          if (TypeInfo.useTypestateTrees) {
+            val newType = currentType.cast(node.javaType)
             post[nodeRef] = newType
 
             if (!currentType.isUnknown() && newType.isUnknown()) {
               inference.addError(node, "Cannot perform cast from ${currentType.format()} to ${node.type.format()}")
+              post[nodeRef] = newType.toBottom() // Avoid error propagation
             }
           } else {
-            val newType = currentType.intersect(node.type).cast(node.javaType, false)
+            val newType = currentType.intersect(node.type).cast(node.javaType)
             post[nodeRef] = newType
 
             if (currentType.isBottom() || !newType.isBottom()) {
@@ -460,7 +472,7 @@ class Inference(
             val rightExpr = node.right as SymbolResolveExpr
             post[leftRef] = StoreInfo.conditional(
               nodeRef,
-              if (DO_ACTUAL_CASTS) currentType.refineToNonNull() else currentType.refineToNonNull().intersect(rightExpr.type),
+              currentType.refineToNonNull().intersect(rightExpr.type),
               currentType
             )
             post[nodeRef] = TypeInfo.make(hierarchy.BOOLEAN)
@@ -508,7 +520,7 @@ class Inference(
 
       is NewArrayWithDimensions -> {
         for ((idx, init) in node.dimensions.withIndex()) {
-          val valueType = pre[Reference.make(init)].type.toShared()
+          val valueType = pre[Reference.make(init)].toShared()
           if (!valueType.isSubtype(hierarchy.INTEGER)) {
             inference.addError(node, "Dimension in index $idx with type ${valueType.format()} is not a subtype of ${hierarchy.INTEGER}")
             break
@@ -519,7 +531,7 @@ class Inference(
 
       is NewArrayWithValues -> {
         for ((idx, init) in node.initializers.withIndex()) {
-          val valueType = pre[Reference.make(init)].type.toShared()
+          val valueType = pre[Reference.make(init)].toShared()
           if (!valueType.isSubtype(node.componentType)) {
             inference.addError(node, "Array value in index $idx with type ${valueType.format()} is not a subtype of ${node.componentType.format()}")
             break
@@ -656,7 +668,7 @@ class Inference(
     if (node is Id && (node.name == "this" || node.name.contains("#"))) {
       return
     }
-    if (!cfChecker.shouldReportTypeInfo()) {
+    if (!utils.shouldReportTypeInfo()) {
       return
     }
     if (currentType.debugIsPrimitive()) {

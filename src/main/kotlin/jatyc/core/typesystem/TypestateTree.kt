@@ -1,26 +1,30 @@
-package jatyc.subtyping.syncronous_subtyping
+package jatyc.core.typesystem
 
 import jatyc.core.*
 import jatyc.core.cfg.MethodCall
-import jatyc.core.typesystem.Subtyping
 
 class TypestateTree constructor(val jc: JavaType, val ts: JTCType, val children: List<TypestateTree>) {
   fun clss(): Set<JavaType> = children.map { it.jc }.toSet()
 
+  fun toSimpleString(): String {
+    return "($jc:$ts[${children.size}])"
+  }
+
   override fun toString(): String {
-    return "(" + jc + ":" + ts + "[" + children.map { it.toString() } + "])"
+    return "($jc:$ts[${children}])"
   }
 }
 
 object TypestateTreeUtilities {
   fun find(j: JavaType, tts: List<TypestateTree>): TypestateTree? = tts.find { it.jc == j }
 
-  // To build the path from "a" to "b" we start on "b" and go up in the hierarchy and build the path
-  private fun path(a: JavaType, b: JavaType): List<JavaType> {
+  // To build the path from "a" to "b" we start on "b" and go up in the hierarchy and build the path in reverse
+  private fun path(a: JavaType, b: JavaType): List<JavaType>? {
     return if (a == b) {
       emptyList()
     } else {
-      path(a, b.directSuperType()!!) + b
+      val supB = b.getSingleSuperType() ?: return null
+      path(a, supB)?.plus(b)
     }
   }
 
@@ -37,21 +41,23 @@ object TypestateTreeUtilities {
     }
   }
 
-  fun closest(j: JavaType, tt: TypestateTree): TypestateTree {
-    return closestByPath(path(tt.jc, j), tt)
+  fun closest(j: JavaType, tt: TypestateTree): TypestateTree? {
+    return path(tt.jc, j)?.let { closestByPath(it, tt) }
   }
-
 }
 
 object TypestateTreeManager {
-  fun upcastTT(tt: TypestateTree, j: JavaType): TypestateTree {
+  fun upcastTT(tt: TypestateTree, j: JavaType): TypestateTree? {
     return if (tt.jc == j) tt
-    else upcastTT(TypestateTree(tt.jc.directSuperType()!!, Subtyping.cast(tt.ts, tt.jc.directSuperType()!!, true), listOf(tt)), j)
+    else {
+      val sup = tt.jc.getSingleSuperType() ?: return null
+      upcastTT(TypestateTree(sup, Subtyping.cast(tt.ts, sup, true), listOf(tt)), j)
+    }
   }
 
-  fun downcastTT(tt: TypestateTree, j: JavaType): TypestateTree {
-    val closest = TypestateTreeUtilities.closest(j, tt)
-    return if (tt.jc == closest.jc) closest
+  fun downcastTT(tt: TypestateTree, j: JavaType): TypestateTree? {
+    val closest = TypestateTreeUtilities.closest(j, tt) ?: return null
+    return if (j == closest.jc) closest
     else TypestateTree(j, Subtyping.cast(closest.ts, j, true), listOf())
   }
 
@@ -71,6 +77,14 @@ object TypestateTreeManager {
   }
 
   fun evolveTT(utils: TypecheckUtils, tt: TypestateTree, call: MethodCall, outputs: (String) -> Boolean): TypestateTree {
-    return TypestateTree(tt.jc, utils.refine(tt.ts, call, outputs), tt.children.map { evolveTT(utils, tt, call, outputs) })
+    return TypestateTree(tt.jc, utils.refine(tt.ts, call, outputs), tt.children.map { evolveTT(utils, it, call, outputs) })
+  }
+
+  fun visit(tt: TypestateTree, fn : (JTCType) -> JTCType): TypestateTree {
+    return TypestateTree(tt.jc, fn(tt.ts), tt.children.map { visit(it, fn) })
+  }
+
+  fun make(jc: JavaType, ts: JTCType): TypestateTree {
+    return TypestateTree(jc, ts, emptyList())
   }
 }
