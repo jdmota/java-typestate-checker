@@ -421,8 +421,36 @@ class Inference(
 
       is BinaryExpr -> {
         when (node.operator) {
-          BinaryOP.And,
-          BinaryOP.Or -> post[Reference.make(node)] = TypeInfo.make(hierarchy.BOOLEAN)
+          BinaryOP.And -> {
+            val nodeRef = Reference.make(node)
+            // Short-circuit
+            val leftRef = Reference.make(node.left)
+            val rightRef = Reference.make(node.right)
+            for ((ref, info) in pre) {
+              post[ref] = StoreInfo.conditional(
+                nodeRef,
+                info.withLabel(leftRef, "true").withLabel(rightRef, "true"),
+                info.withLabel(leftRef, "false").or(info.withLabel(rightRef, "false"))
+              )
+            }
+            // This is expression evaluates to a boolean
+            post[nodeRef] = TypeInfo.make(hierarchy.BOOLEAN)
+          }
+          BinaryOP.Or -> {
+            val nodeRef = Reference.make(node)
+            // Short-circuit
+            val leftRef = Reference.make(node.left)
+            val rightRef = Reference.make(node.right)
+            for ((ref, info) in pre) {
+              post[ref] = StoreInfo.conditional(
+                nodeRef,
+                info.withLabel(leftRef, "true").or(info.withLabel(rightRef, "true")),
+                info.withLabel(leftRef, "false").withLabel(rightRef, "false")
+              )
+            }
+            // This is expression evaluates to a boolean
+            post[nodeRef] = TypeInfo.make(hierarchy.BOOLEAN)
+          }
           BinaryOP.Equal -> {
             val nodeRef = Reference.make(node)
             val (left, right) = literalOnTheRight(node)

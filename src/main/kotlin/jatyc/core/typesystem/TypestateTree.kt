@@ -7,11 +7,11 @@ class TypestateTree constructor(val jc: JavaType, val ts: JTCType, val children:
   fun clss(): Set<JavaType> = children.map { it.jc }.toSet()
 
   fun toSimpleString(): String {
-    return "($jc:$ts[${children.size}])"
+    return "($jc:$ts:[${children.size}])"
   }
 
   override fun toString(): String {
-    return "($jc:$ts[${children}])"
+    return "($jc:$ts:[${children.map { it.toSimpleString() }}])"
   }
 }
 

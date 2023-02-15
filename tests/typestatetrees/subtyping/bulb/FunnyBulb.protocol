@@ -1,0 +1,21 @@
+typestate FunnyBulb {
+  OFF = {
+    boolean connect(): <true: STD_CONN, false: OFF>,
+    drop: end
+  }
+
+  STD_CONN = {
+    void disconnect(): OFF,
+    void setBrightness(int): STD_CONN,
+    boolean isFunnyMode(): <true: FUNNY_CONN, false: STD_CONN>,
+    void funnyMode(): FUNNY_CONN
+  }
+
+  FUNNY_CONN = {
+    void disconnect(): OFF,
+    void setBrightness(int): FUNNY_CONN,
+    boolean isFunnyMode(): <true: FUNNY_CONN, false: STD_CONN>,
+    void randomBrightness(): FUNNY_CONN,
+    void stdMode(): STD_CONN
+  }
+}

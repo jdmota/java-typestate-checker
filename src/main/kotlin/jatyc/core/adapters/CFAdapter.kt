@@ -191,13 +191,13 @@ class VariableRenamer(private val utils: JTCUtils) {
 
 private fun checkersFlowRuleToSimpleFlowRule(rule: Store.FlowRule): SimpleFlowRule {
   return when (rule) {
-    Store.FlowRule.EACH_TO_EACH -> SimpleFlowRule.EACH_TO_EACH
-    Store.FlowRule.THEN_TO_BOTH -> SimpleFlowRule.THEN_TO_BOTH
-    Store.FlowRule.ELSE_TO_BOTH -> SimpleFlowRule.ELSE_TO_BOTH
-    Store.FlowRule.THEN_TO_THEN -> SimpleFlowRule.THEN_TO_THEN
-    Store.FlowRule.ELSE_TO_ELSE -> SimpleFlowRule.ELSE_TO_ELSE
-    Store.FlowRule.BOTH_TO_THEN -> SimpleFlowRule.BOTH_TO_THEN
-    Store.FlowRule.BOTH_TO_ELSE -> SimpleFlowRule.BOTH_TO_ELSE
+    Store.FlowRule.EACH_TO_EACH -> SimpleFlowRule.ALL
+    Store.FlowRule.THEN_TO_BOTH -> SimpleFlowRule.THEN
+    Store.FlowRule.ELSE_TO_BOTH -> SimpleFlowRule.ELSE
+    Store.FlowRule.THEN_TO_THEN -> SimpleFlowRule.THEN
+    Store.FlowRule.ELSE_TO_ELSE -> SimpleFlowRule.ELSE
+    Store.FlowRule.BOTH_TO_THEN -> SimpleFlowRule.ALL
+    Store.FlowRule.BOTH_TO_ELSE -> SimpleFlowRule.ALL
   }
 }
 
@@ -527,7 +527,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   private fun checkersCFGtoSimpleCFG(original: ControlFlowGraph): SimpleCFG {
     val seen = IdentityHashMap<Block, SimpleNode>()
     val cfg = SimpleCFG()
-    connect(cfg, seen, cfg.entry, original.entryBlock, SimpleFlowRule.EACH_TO_EACH)
+    connect(cfg, seen, cfg.entry, original.entryBlock, SimpleFlowRule.ALL)
     return cfg
   }
 
@@ -547,7 +547,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
         var lastFlow = flowRule
         for (n in block.nodes) {
           last = connect(cfg, last, n, lastFlow)
-          lastFlow = SimpleFlowRule.EACH_TO_EACH
+          lastFlow = SimpleFlowRule.ALL
           if (first) {
             seen[block] = last
             first = false
@@ -608,7 +608,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
           c.set(root).set(checker)
 
           cfg.allNodes.add(simpleNode)
-          lastNode.addOutEdge(SimpleEdge(if (first) flowRule else SimpleFlowRule.BOTH_TO_BOTH, simpleNode))
+          lastNode.addOutEdge(SimpleEdge(if (first) flowRule else SimpleFlowRule.ALL, simpleNode))
           lastNode = simpleNode
           if (first) {
             first = false

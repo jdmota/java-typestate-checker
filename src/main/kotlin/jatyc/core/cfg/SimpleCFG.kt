@@ -5,19 +5,12 @@ import java.util.*
 // This file includes the implementation of a simplified version of Checker's CFG
 // Differences:
 // - Does not include blocks, only nodes
-// - Includes a BOTH_TO_BOTH flow rule
-// This allows for our analysis to be simple and more independent from Checker,
+// - Flow rules are simpler
+// This allows for our analysis to be simple and more independent of Checker,
 // potentially allowing for our type system to be employed in other languages.
 
 enum class SimpleFlowRule {
-  EACH_TO_EACH,
-  THEN_TO_BOTH,
-  ELSE_TO_BOTH,
-  THEN_TO_THEN,
-  ELSE_TO_ELSE,
-  BOTH_TO_THEN,
-  BOTH_TO_ELSE,
-  BOTH_TO_BOTH
+  THEN, ELSE, ALL
 }
 
 class SimpleEdge(val rule: SimpleFlowRule, val node: SimpleNode) {
@@ -60,7 +53,7 @@ fun joinCFGs(list: Collection<SimpleCFG>): SimpleCFG {
   allNodes.addAll(first.allNodes)
   while (iterator.hasNext()) {
     val next = iterator.next()
-    last.addOutEdge(SimpleEdge(SimpleFlowRule.BOTH_TO_BOTH, next.entry))
+    last.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, next.entry))
     last = next.exit
     allNodes.addAll(next.allNodes)
   }
@@ -71,8 +64,8 @@ fun createOneExprCFG(expr: CodeExpr): SimpleCFG {
   val entry = SimpleMarkerEntry()
   val node = SimpleCodeNode(expr)
   val exit = SimpleMarkerExit()
-  entry.addOutEdge(SimpleEdge(SimpleFlowRule.BOTH_TO_BOTH, node))
-  node.addOutEdge(SimpleEdge(SimpleFlowRule.BOTH_TO_BOTH, exit))
+  entry.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, node))
+  node.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, exit))
   return SimpleCFG(entry, exit, mutableListOf(node))
 }
 

@@ -94,38 +94,11 @@ class LinearModeInference(
     }
 
     val ref = Reference.make(from.code)
-    var changed = false
-
-    // TODO improve this to support short-circuit of && and ||
-
-    when (rule) {
-      SimpleFlowRule.EACH_TO_EACH -> {
-        changed = a.propagateTo(b) || changed
-      }
-      SimpleFlowRule.THEN_TO_BOTH -> {
-        changed = a.withLabel(ref, "true").propagateTo(b) || changed
-      }
-      SimpleFlowRule.ELSE_TO_BOTH -> {
-        changed = a.withLabel(ref, "false").propagateTo(b) || changed
-      }
-      SimpleFlowRule.THEN_TO_THEN -> {
-        changed = a.withLabel(ref, "true").propagateTo(b) || changed
-      }
-      SimpleFlowRule.ELSE_TO_ELSE -> {
-        changed = a.withLabel(ref, "false").propagateTo(b) || changed
-      }
-      SimpleFlowRule.BOTH_TO_THEN -> {
-        changed = a.propagateTo(b) || changed
-      }
-      SimpleFlowRule.BOTH_TO_ELSE -> {
-        changed = a.propagateTo(b) || changed
-      }
-      SimpleFlowRule.BOTH_TO_BOTH -> {
-        changed = a.propagateTo(b) || changed // a.withLabel(ref, null).propagateTo(b) || changed
-      }
+    return when (rule) {
+      SimpleFlowRule.ALL -> a.propagateTo(b)
+      SimpleFlowRule.THEN -> a.withLabel(ref, "true").propagateTo(b)
+      SimpleFlowRule.ELSE -> a.withLabel(ref, "false").propagateTo(b)
     }
-
-    return changed
   }
 
   override fun analyzeNode(func: FuncDeclaration, pre: Store, node: SimpleNode, post: Store) {
