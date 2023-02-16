@@ -1,9 +1,10 @@
 import jatyc.lib.Requires;
+import jatyc.lib.Ensures;
 
 public class ClientCode {
   public static void example1() {
     FunnyBulb b = new FunnyBulb();
-    // :: warning: (b: State{FunnyBulb, OFF})
+    // :: warning: (b: State{FunnyBulb, DISCONN})
     // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
     while (!b.connect()) { System.out.println("connecting..."); }
     // :: warning: (b: State{FunnyBulb, STD_CONN})
@@ -12,7 +13,7 @@ public class ClientCode {
 
   public static void example2() {
     FunnyBulb b = new FunnyBulb();
-    // :: warning: (b: State{FunnyBulb, OFF})
+    // :: warning: (b: State{FunnyBulb, DISCONN})
     // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
     while (!b.connect()) { System.out.println("connecting..."); }
     // :: warning: (b: State{FunnyBulb, STD_CONN})
@@ -76,5 +77,30 @@ public class ClientCode {
     }
     // :: warning: (b: State{Bulb, CONN})
     b.disconnect();
+  }
+
+  public static void example3() {
+    FunnyBulb b = new FunnyBulb();
+    // :: warning: (b: State{FunnyBulb, DISCONN})
+    // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
+    while (!b.connect()) { System.out.println("connecting..."); }
+    // :: warning: (b: State{FunnyBulb, STD_CONN})
+    b.funnyMode();
+    // :: warning: (b: State{FunnyBulb, FUNNY_CONN})
+    setBrightness4(b);
+    // :: warning: (b: State{FunnyBulb, FUNNY_CONN} | State{FunnyBulb, STD_CONN})
+    b.disconnect();
+  }
+
+  private static void setBrightness4(final @Requires("CONN") @Ensures("CONN") Bulb b) {
+    // :: warning: (b: State{Bulb, CONN})
+    // :: warning: (b: State{FunnyBulb, FUNNY_CONN} | State{FunnyBulb, STD_CONN})
+    if (b instanceof FunnyBulb && ((FunnyBulb) b).isFunnyMode()) {
+      // :: warning: (b: State{FunnyBulb, FUNNY_CONN})
+      ((FunnyBulb) b).randomBrightness();
+    } else {
+      // :: warning: (b: State{Bulb, CONN})
+      b.setBrightness(10);
+    }
   }
 }
