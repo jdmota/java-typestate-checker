@@ -1,0 +1,11 @@
+typestate Bulb {
+  DISCONN = {
+    boolean connect(): <true: CONN, false: DISCONN>,
+    drop: end
+  }
+
+  CONN = {
+    void disconnect(): DISCONN,
+    void setBrightness(int): CONN
+  }
+}
