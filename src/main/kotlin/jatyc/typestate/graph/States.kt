@@ -117,7 +117,6 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
   constructor(node: TStateNode) : this(node.name ?: "unknown:${node.pos.lineCol}", node)
 
   private val markedAsDroppable = node != null && node.isDroppable
-  private val markedAsEnd = node != null && node.methods.isEmpty()
   val transitions: MutableMap<TMethodNode, AbstractState<*>> = LinkedHashMap()
   val normalizedTransitions: MutableMap<MethodTransition, AbstractState<*>> = LinkedHashMap()
 
@@ -126,9 +125,9 @@ open class State private constructor(val name: String, node: TStateNode?) : Abst
     normalizedTransitions[MethodTransition.make(method)] = destination
   }
 
-  fun isEnd() = markedAsEnd || name == Graph.END_STATE_NAME
+  fun hasTransitions() = transitions.isNotEmpty()
 
-  fun canDropHere() = markedAsDroppable || isEnd()
+  fun canDropHere() = markedAsDroppable || name == Graph.END_STATE_NAME
 
   override fun format(): String {
     return name

@@ -6,34 +6,29 @@ import jatyc.typestate.*
 import jatyc.utils.JTCUtils
 import java.nio.file.Path
 
-class Graph private constructor(val resolvedFile: Path, val typestateName: String) {
+class Graph constructor(val resolvedFile: Path, val typestateName: String) {
   val userPath = JTCUtils.getUserPath(resolvedFile)
   val filename = resolvedFile.fileName
   private var env: Env<AttrContext>? = null
   private var initialState: State? = null
   private val endState = EndState()
   private val unknownState = UnknownState() // A state that is superstate of all states
-  private val finalStates = HashSet<State>()
   private val namedStates = HashMap<String, State>()
   private val referencedStates = HashSet<String>()
   private val concreteStates = mutableSetOf<State>()
-  private val decisionStates = mutableSetOf<DecisionState>()
   var unusedStates: List<TStateNode>? = null
 
   init {
     namedStates[END_STATE_NAME] = endState
-    finalStates.add(endState)
-    concreteStates.add(endState)
-    concreteStates.add(unknownState)
   }
 
   fun getEnv() = env!!
+  fun setEnv(env: Env<AttrContext>) {
+    this.env = env
+  }
   fun getInitialState() = initialState!!
-  fun getEndState() = endState
   fun getUnknownState() = unknownState
-  fun getFinalStates(): Set<State> = finalStates
   fun getAllConcreteStates(): Set<State> = concreteStates
-  fun getDecisionStates(): Set<DecisionState> = decisionStates
   fun getAllTransitions(): Sequence<MethodTransition> = sequence {
     for (state in concreteStates) {
       for (method in state.normalizedTransitions) {
@@ -44,10 +39,6 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
 
   fun hasStateByName(name: String): Boolean {
     return namedStates[name] != null
-  }
-
-  fun isEndState(name: String): Boolean {
-    return namedStates[name]?.isEnd() ?: false
   }
 
   private fun getStateByName(id: TIdNode): State {
@@ -65,24 +56,9 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
     return DecisionState(node)
   }
 
-  private fun addNamedState(node: TStateNode) {
-    if (node.name == null) {
-      throw AssertionError("state without name?")
-    }
-    if (RESERVED_STATE_NAMES.contains(node.name)) {
-      throw ReservedStateName(node)
-    }
-    namedStates.compute(node.name) { _: String?, old: State? ->
-      if (old == null) State(node) else throw DuplicateState(old.node!!, node)
-    }
-  }
-
   private fun traverseState(node: TStateNode): State {
     val state = getStateByNode(node)
     if (node.name == null || referencedStates.add(node.name)) {
-      if (node.methods.isEmpty()) {
-        finalStates.add(state)
-      }
       concreteStates.add(state)
       for (method in node.methods) {
         state.addTransition(method, traverseDestination(method.destination))
@@ -102,6 +78,7 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
   private fun traverseDestination(node: TNode): AbstractState<*> {
     if (node is TIdNode) {
       return if (node.name == END_STATE_NAME) {
+        concreteStates.add(endState)
         endState
       } else traverseState(getStateByName(node).node!!)
     }
@@ -110,16 +87,23 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
     throw AssertionError("wrong destination $node")
   }
 
-  private fun traverseTypestate(node: TDeclarationNode) {
-    // If we have no named states, then the end state is also the first one
-    initialState = if (node.states.isEmpty()) {
-      endState
-    } else {
-      for (state in node.states) {
-        addNamedState(state)
-      }
-      traverseState(node.states[0])
+  private fun addNamedState(node: TStateNode) {
+    if (node.name == null) {
+      throw AssertionError("state without name?")
     }
+    if (RESERVED_STATE_NAMES.contains(node.name)) {
+      throw ReservedStateName(node)
+    }
+    namedStates.compute(node.name) { _: String?, old: State? ->
+      if (old == null) State(node) else throw DuplicateState(old.node!!, node)
+    }
+  }
+
+  fun traverseTypestate(node: TDeclarationNode) {
+    for (state in node.states) {
+      addNamedState(state)
+    }
+    initialState = traverseState(node.states[0])
     // Calculate if there are any unused states
     val unusedStates: MutableSet<String> = HashSet(namedStates.keys)
     unusedStates.removeAll(referencedStates)
@@ -131,11 +115,5 @@ class Graph private constructor(val resolvedFile: Path, val typestateName: Strin
   companion object {
     const val END_STATE_NAME = "end"
     val RESERVED_STATE_NAMES: List<String> = listOf(END_STATE_NAME)
-    fun fromTypestate(utils: JTCUtils, resolvedFile: Path, node: TTypestateNode): Graph {
-      val g = Graph(resolvedFile, node.decl.name)
-      g.traverseTypestate(node.decl)
-      g.env = utils.resolver.createEnv(g.userPath, node) ?: throw EnvCreationError()
-      return g
-    }
   }
 }

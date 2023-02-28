@@ -9,9 +9,9 @@ import jatyc.core.typesystem.ProtocolSyncSubtyping
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
 import jatyc.typestate.graph.DecisionState
+import jatyc.typestate.graph.EnvCreationError
 import jatyc.typestate.parser.TypestateLexer
 import jatyc.typestate.parser.TypestateParser
-import jatyc.utils.ClassUtils
 import jatyc.utils.MethodUtils
 import jatyc.utils.JTCUtils
 import java.nio.file.NoSuchFileException
@@ -69,8 +69,7 @@ class TypestateProcessor(private val utils: JTCUtils) {
       parser.errorHandler = BailErrorStrategy()
       val ast = parser.start().ast
       // println(Dot.fromGraph(graph))
-      val graph = Graph.fromTypestate(utils, resolvedFile, ast)
-      return validateGraph(utils, graph)
+      return createAndValidateGraph(utils, resolvedFile, ast)
     }
 
     fun fromString(utils: JTCUtils, protocol: String, file: Path): Graph? {
@@ -81,18 +80,26 @@ class TypestateProcessor(private val utils: JTCUtils) {
       parser.errorHandler = BailErrorStrategy()
       val ast = parser.start().ast
       // println(Dot.fromGraph(graph))
-      val graph = Graph.fromTypestate(utils, file, ast)
-      return validateGraph(utils, graph)
+      return createAndValidateGraph(utils, file, ast)
     }
 
     // Validate typestate by itself
-    private fun validateGraph(utils: JTCUtils, graph: Graph): Graph? {
+    private fun createAndValidateGraph(utils: JTCUtils, file: Path, ast: TTypestateNode): Graph? {
+      val graph = Graph(file, ast.decl.name)
       var hasErrors = false
 
       fun err(text: String, node: TNode) {
         utils.err(text, graph.userPath, node.pos.pos)
         hasErrors = true
       }
+
+      if (ast.decl.states.isEmpty()) {
+        err("Expected at least one defined state", ast.decl)
+        return null
+      }
+
+      graph.setEnv(utils.resolver.createEnv(graph.userPath, ast) ?: throw EnvCreationError())
+      graph.traverseTypestate(ast.decl)
 
       val unused = graph.unusedStates
       if (unused != null) {

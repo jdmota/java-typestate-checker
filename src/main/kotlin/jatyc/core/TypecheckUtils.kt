@@ -134,7 +134,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCNullType -> false
         is JTCSharedType -> false
         // is JTCNoProtocolType -> false
-        is JTCStateType -> type.state.canDropHere() && !type.state.isEnd()
+        is JTCStateType -> type.state.canDropHere() && type.state.hasTransitions()
         is JTCBottomType -> false
         is JTCUnionType -> type.types.any { isInDroppableStateNotEnd(it) }
         is JTCIntersectionType -> type.types.any { isInDroppableStateNotEnd(it) }

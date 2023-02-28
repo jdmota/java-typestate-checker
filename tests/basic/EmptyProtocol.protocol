@@ -1,0 +1,4 @@
+// :: error: (Expected at least one defined state)
+typestate EmptyProtocol {
+
+}

@@ -494,8 +494,7 @@ public final class JavaIterator {
   }
 
   // :: error: (JavaIterator.protocol has no WrongName state)
-  // :: error: (State end is final. Will have no effect in @Requires)
-  public static void use3(@Requires({"Next", "WrongName", "end"}) JavaIterator it) {
+  public static void use3(@Requires({"Next", "WrongName"}) JavaIterator it) {
     // :: warning: (it: State{JavaIterator, Next})
     it.next();
     // :: warning: (it: State{JavaIterator, HasNext})

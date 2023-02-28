@@ -52,8 +52,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
           if (stateNames == null) {
             JTCSharedType(javaType)
           } else {
-            // "end" states do not make sense in @Requires annotations
-            val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) && !it.isEnd() }
+            val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
             JTCType.createUnion(states.map { JTCStateType(javaType, graph, it) })
           }
         }
