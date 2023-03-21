@@ -34,7 +34,7 @@ class JavaTypestateChecker : SourceChecker() {
     return CFVisitor(this)
   }
 
-  private fun shouldUseTypestateTrees() = getOption(typestateTreesOpt, "disable").equals("enable")
+  private fun shouldUseTypestateTrees() = getOption(typestateTreesOpt, "enable").equals("enable")
 
   override fun initChecker() {
     super.initChecker()

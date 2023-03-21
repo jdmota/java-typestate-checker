@@ -1,0 +1,20 @@
+typestate FunnyBulb {
+  DISCONN = {
+    boolean connect(): <true: STD_CONN, false: DISCONN>,
+    drop: end
+  }
+
+  STD_CONN = {
+    void disconnect(): DISCONN,
+    void setBrightness(int): STD_CONN,
+    Mode switchMode(): <RND: RND_CONN, STD: STD_CONN>,
+    void setColor(String): STD_CONN
+  }
+
+  RND_CONN = {
+    void disconnect(): DISCONN,
+    void setBrightness(int): RND_CONN,
+    Mode switchMode(): <RND: RND_CONN, STD: STD_CONN>,
+    void randomColor(): RND_CONN
+  }
+}
