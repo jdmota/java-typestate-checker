@@ -2,11 +2,13 @@
 
 [Quick Start](#quick-start) | [Installation](#installation) | [Changelog](https://github.com/jdmota/java-typestate-checker/wiki/Changelog) | [Documentation](https://github.com/jdmota/java-typestate-checker/wiki/Documentation)
 
-**JaTyC** is a plugin for the [Checker Framework](https://checkerframework.org/). It is a purely transparent checker, i.e. does not modify the baseline Java compilation, that allows one to statically check that class methods are called in a prescribed order, specified in a protocol file associated with that Java class with a `@Typestate` annotation. This tool was inspired in the [Mungo toolset](http://www.dcs.gla.ac.uk/research/mungo/index.html). It is a new implementation which includes new features and improvements over the current version of Mungo. A comparison table between Mungo and this tool is available [here](https://github.com/jdmota/java-typestate-checker/wiki/Mungo-comparison).
+The **Java Typestate Checker (JaTyC)** is a tool that verifies Java source code with respect to typestates. A typestate is associated with a Java class with the `@Typestate` annotation and defines: the object's states, the methods that can be safely called in each state, and the states resulting from the calls. The tool statically verifies that when a Java program runs: sequences of method calls obey to object's protocols; objects' protocols are completed; null-pointer exceptions are not raised; subclasses' instances respect the protocol of their superclasses.
+
+**JaTyC** is a plugin for the [Checker Framework](https://checkerframework.org/). It is a purely transparent checker, i.e. does not modify the baseline Java compilation. This tool was inspired in the [Mungo toolset](http://www.dcs.gla.ac.uk/research/mungo/index.html). It is a new implementation which includes new features and improvements over the current version of Mungo. A comparison table between Mungo and this tool is available [here](https://github.com/jdmota/java-typestate-checker/wiki/Mungo-comparison).
 
 ## Features
 
-**Latest feature: initial support for subtyping!**
+**Latest feature: support for subtyping!**
 
 - checking that **methods are called in the correct order** specified by the protocol;
 - checking that **protocols of objects are completed**;
