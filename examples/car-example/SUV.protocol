@@ -1,0 +1,20 @@
+typestate SUV {
+  OFF = {
+    boolean turnOn(): <true: COMFORT_ON, false: OFF>,
+    drop: end
+  }
+
+  COMFORT_ON = {
+    void turnOff(): OFF,
+    void setSpeed(int): COMFORT_ON
+    Mode switchMode(): <SPORT: SPORT_ON, COMFORT: COMFORT_ON>,
+    void setEcoDrive(boolean): COMFORT_ON
+  }
+
+  SPORT_ON = {
+    void turnOff(): OFF,
+    void setSpeed(int): SPORT_ON,
+    Mode switchMode(): <SPORT: SPORT_ON, COMFORT: COMFORT_ON>,
+    void setFourWheels(boolean): SPORT_ON
+  }
+}
