@@ -6,7 +6,7 @@ typestate SUV {
 
   COMFORT_ON = {
     void turnOff(): OFF,
-    void setSpeed(int): COMFORT_ON
+    void setSpeed(int): COMFORT_ON,
     Mode switchMode(): <SPORT: SPORT_ON, COMFORT: COMFORT_ON>,
     void setEcoDrive(boolean): COMFORT_ON
   }
