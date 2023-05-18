@@ -738,7 +738,15 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       }
 
       is ArrayTypeNode -> error("Unexpected node ${node.javaClass}")
-      is AssertionErrorNode -> TODO("assertion not implemented") // makeCall(helperToFuncInterface("#helpers.assertion"), listOf(node.condition, node.detail), node)
+      is AssertionErrorNode -> {
+        val argNumber = if (node.detail == null) 1 else 2
+        val params = listOf(
+          FuncParam(IdLHS("condition", 0, hierarchy.BOOLEAN.javaType), hierarchy.BOOLEAN, hierarchy.BOOLEAN, isThis = false, hasEnsures = false),
+          FuncParam(IdLHS("detail", 0, hierarchy.STRING.javaType), hierarchy.STRING, hierarchy.STRING, isThis = false, hasEnsures = false)
+        ).subList(0, argNumber)
+        val paramExprs = listOf(node.condition, node.detail).subList(0, argNumber)
+        makeCall(FuncInterface("#helpers.assert$argNumber", params, returnType = JTCNullType.SINGLETON, hierarchy.VOID, isPublic = true, isAnytime = true, isPure = true, isAbstract = false), paramExprs, node)
+      }
       is AssignmentNode -> makeAssignment(node.target, t(node.expression), node)
       is BinaryOperationNode -> {
         val left = t(node.leftOperand)
