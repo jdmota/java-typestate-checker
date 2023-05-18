@@ -950,11 +950,11 @@ public class TypestateParser extends Parser {
 	public static class DecisionContext extends ParserRuleContext {
 		public TDecisionNode node;
 		public Token label;
-		public RefContext ref;
+		public IdContext id;
 		public StateContext state;
 		public TerminalNode ID() { return getToken(TypestateParser.ID, 0); }
-		public RefContext ref() {
-			return getRuleContext(RefContext.class,0);
+		public IdContext id() {
+			return getRuleContext(IdContext.class,0);
 		}
 		public StateContext state() {
 			return getRuleContext(StateContext.class,0);
@@ -991,8 +991,8 @@ public class TypestateParser extends Parser {
 			case ID:
 				{
 				setState(167);
-				((DecisionContext)_localctx).ref = ref(0);
-				((DecisionContext)_localctx).node = new TDecisionNode(tokenToPos(((DecisionContext)_localctx).label), ((DecisionContext)_localctx).label.getText(), ((DecisionContext)_localctx).ref.node);
+				((DecisionContext)_localctx).id = id();
+				((DecisionContext)_localctx).node = new TDecisionNode(tokenToPos(((DecisionContext)_localctx).label), ((DecisionContext)_localctx).label.getText(), ((DecisionContext)_localctx).id.node);
 				}
 				break;
 			case T__8:
@@ -1209,17 +1209,17 @@ public class TypestateParser extends Parser {
 		"\u0000\u0000\u00a1\u009f\u0001\u0000\u0000\u0000\u00a2\u00a3\u0005\u0011"+
 		"\u0000\u0000\u00a3\u00a4\u0006\n\uffff\uffff\u0000\u00a4\u0015\u0001\u0000"+
 		"\u0000\u0000\u00a5\u00a6\u0005\u0014\u0000\u0000\u00a6\u00ad\u0005\r\u0000"+
-		"\u0000\u00a7\u00a8\u0003\u0002\u0001\u0000\u00a8\u00a9\u0006\u000b\uffff"+
-		"\uffff\u0000\u00a9\u00ae\u0001\u0000\u0000\u0000\u00aa\u00ab\u0003\u0010"+
-		"\b\u0000\u00ab\u00ac\u0006\u000b\uffff\uffff\u0000\u00ac\u00ae\u0001\u0000"+
-		"\u0000\u0000\u00ad\u00a7\u0001\u0000\u0000\u0000\u00ad\u00aa\u0001\u0000"+
-		"\u0000\u0000\u00ae\u0017\u0001\u0000\u0000\u0000\u00af\u00b0\u0005\u0012"+
-		"\u0000\u0000\u00b0\u00b6\u0006\f\uffff\uffff\u0000\u00b1\u00b2\u0005\u0013"+
-		"\u0000\u0000\u00b2\u00b6\u0006\f\uffff\uffff\u0000\u00b3\u00b4\u0005\u0014"+
-		"\u0000\u0000\u00b4\u00b6\u0006\f\uffff\uffff\u0000\u00b5\u00af\u0001\u0000"+
-		"\u0000\u0000\u00b5\u00b1\u0001\u0000\u0000\u0000\u00b5\u00b3\u0001\u0000"+
-		"\u0000\u0000\u00b6\u0019\u0001\u0000\u0000\u0000\u0010\u001d\"3?IN^nv"+
-		"x\u0085\u0088\u0095\u009f\u00ad\u00b5";
+		"\u0000\u00a7\u00a8\u0003\u0018\f\u0000\u00a8\u00a9\u0006\u000b\uffff\uffff"+
+		"\u0000\u00a9\u00ae\u0001\u0000\u0000\u0000\u00aa\u00ab\u0003\u0010\b\u0000"+
+		"\u00ab\u00ac\u0006\u000b\uffff\uffff\u0000\u00ac\u00ae\u0001\u0000\u0000"+
+		"\u0000\u00ad\u00a7\u0001\u0000\u0000\u0000\u00ad\u00aa\u0001\u0000\u0000"+
+		"\u0000\u00ae\u0017\u0001\u0000\u0000\u0000\u00af\u00b0\u0005\u0012\u0000"+
+		"\u0000\u00b0\u00b6\u0006\f\uffff\uffff\u0000\u00b1\u00b2\u0005\u0013\u0000"+
+		"\u0000\u00b2\u00b6\u0006\f\uffff\uffff\u0000\u00b3\u00b4\u0005\u0014\u0000"+
+		"\u0000\u00b4\u00b6\u0006\f\uffff\uffff\u0000\u00b5\u00af\u0001\u0000\u0000"+
+		"\u0000\u00b5\u00b1\u0001\u0000\u0000\u0000\u00b5\u00b3\u0001\u0000\u0000"+
+		"\u0000\u00b6\u0019\u0001\u0000\u0000\u0000\u0010\u001d\"3?IN^nvx\u0085"+
+		"\u0088\u0095\u009f\u00ad\u00b5";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

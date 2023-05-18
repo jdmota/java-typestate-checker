@@ -19,7 +19,7 @@ class TArrayTypeNode(pos: Position, val ref: TRefNode) : TRefNode(pos) {
   override fun stringName() = "$ref[]"
 }
 
-class TDecisionNode(pos: Position, val label: String, /*TRefNode | TStateNode*/val destination: TNode) : TNode(pos)
+class TDecisionNode(pos: Position, val label: String, /*TIdNode | TStateNode*/val destination: TNode) : TNode(pos)
 
 class TDecisionStateNode(pos: Position, val decisions: List<TDecisionNode>) : TNode(pos)
 

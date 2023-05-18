@@ -70,7 +70,7 @@ decision_state returns [TDecisionStateNode node] :
 
 decision returns [TDecisionNode node] :
   label=ID ':' (
-    ref {$node=new TDecisionNode(tokenToPos($label), $label.getText(), $ref.node);} |
+    id {$node=new TDecisionNode(tokenToPos($label), $label.getText(), $id.node);} |
     state {$node=new TDecisionNode(tokenToPos($label), $label.getText(), $state.node);}
   )
 ;
