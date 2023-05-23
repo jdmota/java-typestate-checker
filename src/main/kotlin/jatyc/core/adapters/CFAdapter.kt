@@ -23,7 +23,6 @@ import org.checkerframework.javacutil.TreePathUtil
 import org.checkerframework.javacutil.TreeUtils
 import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
-import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.VariableElement
 import javax.lang.model.type.ArrayType
@@ -37,16 +36,38 @@ fun Symbol.MethodSymbol.isAbstract(): Boolean {
   return flags_field and Flags.ABSTRACT.toLong() != 0L
 }
 
-fun Symbol.MethodSymbol.getCorrectReceiverType(): Type {
-  // Because this.getReceiverType() might return null
-  return ElementUtils.enclosingTypeElement(this)!!.asType() as Type
+fun getCorrectReceiverType(sym: Symbol.MethodSymbol): Type {
+  if (sym is CorrectedMethodSymbol) {
+    return sym.getCorrectReceiverType()
+  }
+  // Because sym.getReceiverType() might return null
+  return ElementUtils.enclosingTypeElement(sym)!!.asType() as Type
+}
+
+class CorrectedMethodSymbol(private val sym: Symbol.MethodSymbol, private val newReceiverType: Type) : Symbol.MethodSymbol(sym.flags_field, sym.name, sym.type, sym.owner) {
+  init {
+    this.code = sym.code
+    this.extraParams = sym.extraParams
+    this.capturedLocals = sym.capturedLocals
+    this.params = sym.params
+    this.defaultValue = sym.defaultValue
+    this.completer = sym.completer
+  }
+
+  fun getCorrectReceiverType(): Type {
+    return newReceiverType
+  }
+
+  override fun baseSymbol(): Symbol {
+    return sym
+  }
 }
 
 private fun isSideEffectFree(utils: JTCUtils, hierarchy: JavaTypesHierarchy, method: Symbol.MethodSymbol): Boolean {
   /*if (method.isStatic) {
     return utils.factory.isSideEffectFree(method)
   }*/
-  val receiver = hierarchy.get(method.getCorrectReceiverType())
+  val receiver = hierarchy.get(getCorrectReceiverType(method))
   if (method.simpleName.toString() == "<init>") {
     if (receiver.isJavaObject()) {
       // java.lang.Object's constructor is side effect free
@@ -104,7 +125,7 @@ class FunctionInterfaces(private val utils: JTCUtils, private val transformer: (
       val b = other.sym
       if (a === b) return true
       return a.name.toString() == b.name.toString() &&
-        utils.hierarchy.sameType(a.getCorrectReceiverType(), b.getCorrectReceiverType()) &&
+        utils.hierarchy.sameType(getCorrectReceiverType(a), getCorrectReceiverType(b)) &&
         utils.hierarchy.sameType(a.returnType, b.returnType) &&
         a.params().map { utils.hierarchy.get(it.asType()) } == b.params().map { utils.hierarchy.get(it.asType()) }
     }
@@ -114,8 +135,8 @@ class FunctionInterfaces(private val utils: JTCUtils, private val transformer: (
     }
   }
 
-  fun transform(sym: ExecutableElement): FuncInterface {
-    return interfaces.computeIfAbsent(MethodSymbolWrapper(sym as Symbol.MethodSymbol)) { transformer(it.sym) }
+  fun transform(sym: Symbol.MethodSymbol): FuncInterface {
+    return interfaces.computeIfAbsent(MethodSymbolWrapper(sym)) { transformer(it.sym) }
   }
 }
 
@@ -216,7 +237,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       method.isStatic -> true
       !method.isPublic() -> true
       else -> {
-        val graph = utils.classUtils.getGraph(method.getCorrectReceiverType())
+        val graph = utils.classUtils.getGraph(getCorrectReceiverType(method))
         if (graph == null) {
           true
         } else {
@@ -230,8 +251,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
 
   private var funcInterfaces = FunctionInterfaces(utils) {
     val funcName = it.simpleName.toString()
-    // Because it.getReceiverType() might return null
-    val receiver = it.getCorrectReceiverType()
+    val receiver = getCorrectReceiverType(it)
     val isPublic = it.isPublic()
     val isPure = isSideEffectFree(utils, hierarchy, it)
     val isConstructor = funcName == "<init>"
@@ -254,14 +274,6 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     FuncInterface(funcName, params, returnType, returnJavaType, isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType(), hierarchy)
   }
 
-  private fun fixThisType(func: FuncInterface, type: TypeMirror): FuncInterface {
-    val params = func.parameters.map { if (it.isThis) {
-      val thisType = typeIntroducer.getThisType(type, isAnytime = func.isAnytime, isConstructor = func.isConstructor)
-      FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hasEnsures = false)
-    } else it }
-    return FuncInterface(func.name, params, func.returnType, func.returnJavaType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract)
-  }
-
   fun setRoot(root: CompilationUnitTree) {
     this.root = root as JCTree.JCCompilationUnit
     utils.factory.setRoot(root)
@@ -278,7 +290,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   }
 
   private fun getParamTypes(sym: Symbol.MethodSymbol): List<FuncParam> {
-    val type = utils.factory.getAnnotatedType(sym) as AnnotatedTypeMirror.AnnotatedExecutableType
+    val type = utils.factory.getAnnotatedType(sym.baseSymbol()) as AnnotatedTypeMirror.AnnotatedExecutableType
     return getParamTypes(type, sym.params())
   }
 
@@ -287,7 +299,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   }
 
   private fun getReturnType(sym: Symbol.MethodSymbol): Pair<JTCType, JavaType> {
-    val type = utils.factory.getAnnotatedType(sym) as AnnotatedTypeMirror.AnnotatedExecutableType
+    val type = utils.factory.getAnnotatedType(sym.baseSymbol()) as AnnotatedTypeMirror.AnnotatedExecutableType
     return getReturnType(type)
   }
 
@@ -308,10 +320,11 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     while (params.hasNext()) {
       val param = params.next()
       val paramType = paramTypes.next()
+      val maybeNullable = typeIntroducer.acceptsNull(type)
       funcParams.add(FuncParam(
         renamer.transformParamLHS(param),
-        requires = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcRequiresAnno)).toMaybeNullable(typeIntroducer.acceptsNull(type)),
-        ensures = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcEnsuresAnno)),
+        requires = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcRequiresAnno)).toMaybeNullable(maybeNullable),
+        ensures = typeIntroducer.get(paramType, TypeIntroOpts(annotation = JTCUtils.jtcEnsuresAnno)).toMaybeNullable(maybeNullable),
         isThis = false,
         hasEnsures = JTCUtils.hasAnnotation(paramType, JTCUtils.jtcEnsuresAnno)
       ))
@@ -340,7 +353,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   }
 
   private fun getInitialType(method: Symbol.MethodSymbol): JTCType {
-    return typeIntroducer.getInitialType(method.getCorrectReceiverType())
+    return typeIntroducer.getInitialType(getCorrectReceiverType(method))
   }
 
   // Stack of pairs: Java class and an isStatic boolean
@@ -419,7 +432,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
         nonPublicMethods.add(func)
       }
 
-      overrides[func] = AnnotatedTypes.overriddenMethods(utils.elementUtils, utils.factory.getProvider(), sym).map { funcInterfaces.transform(it.value) }
+      overrides[func] = AnnotatedTypes.overriddenMethods(utils.elementUtils, utils.factory.getProvider(), sym).map { funcInterfaces.transform(it.value as Symbol.MethodSymbol) }
     }
 
     if (!hasDeclaredConstructor && initializers.isNotEmpty()) {
@@ -845,9 +858,9 @@ class CFAdapter(val checker: JavaTypestateChecker) {
           if (includeThis) {
             // If a class B extends class A but does not override method m from A,
             // the call b.m() would have receiver type A, we want it to be B.
-            fixThisType(transformMethod(access.method as Symbol.MethodSymbol), receiver.type)
+            transformMethod(CorrectedMethodSymbol(method, receiver.type as Type))
           } else {
-            transformMethod(access.method as Symbol.MethodSymbol)
+            transformMethod(method)
           }.set(access, hierarchy)
         val checks = if (receiver is ClassNameNode || receiver is ThisNode || receiver is SuperNode) {
           // Make sure the corresponding tree of the receiver is not null
@@ -883,7 +896,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
         val method = transformMethod(methodSym).set(node, hierarchy)
         // Transform object creation node "new Object()" into
         // o = new Object; Object.<init>(o); o
-        val newObj = NewObj(getInitialType(methodSym), hierarchy.get(methodSym.getCorrectReceiverType())).set(node, hierarchy)
+        val newObj = NewObj(getInitialType(methodSym), hierarchy.get(getCorrectReceiverType(methodSym))).set(node, hierarchy)
         MultipleAdaptResult(
           (node.classBody?.let { listOf(t(it), newObj) } ?: listOf(newObj)).plus(
             makeCall2(

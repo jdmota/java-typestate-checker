@@ -69,7 +69,7 @@ class ClassUtils(private val utils: JTCUtils) {
 
       utils.getTypeFromStub(sym)?.let {
         if (getJTCTypestateAnnotation(it.annotations) != null) {
-          utils.err("@Typestate annotations in stub files are not supported. Use jtc.config instead", sym)
+          utils.err("@Typestate annotations in stub files are not supported. Use a config file instead", sym)
         }
       }
 
@@ -86,7 +86,7 @@ class ClassUtils(private val utils: JTCUtils) {
 
       // "computeIfAbsent" does not store null values, store an Optional instead
       Optional.ofNullable(if (graph == null) {
-        val superGraphs = supers.mapNotNull { it.getGraph() }
+        val superGraphs = supers.mapNotNull { it.getGraph() }.toSet()
         if (superGraphs.isNotEmpty()) {
           if (superGraphs.size == 1) {
             superGraphs.first()

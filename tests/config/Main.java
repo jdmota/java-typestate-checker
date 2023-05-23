@@ -1,4 +1,5 @@
 import java.util.*;
+import java.io.*;
 
 public class Main {
 
@@ -48,4 +49,15 @@ public class Main {
     }
   }
 
+  public static void fileReader() {
+    try {
+      FileReader f = new FileReader("Main.java");
+      // :: warning: (f: State{java.io.FileReader, Read})
+      f.read();
+      // :: warning: (f: State{java.io.FileReader, Read})
+      f.close();
+    } catch (IOException exp) {
+
+    }
+  }
 }

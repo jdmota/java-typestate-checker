@@ -19,7 +19,7 @@ class MethodUtils(private val utils: JTCUtils) {
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (other !is MethodSymbolWrapper) return false
-      // TODO use erasure while we do not generics
+      // TODO use erasure while we do not support generics
       return sym.name.toString() == other.sym.name.toString() && utils.isSameType(erasure(sym), erasure(other.sym))
     }
 

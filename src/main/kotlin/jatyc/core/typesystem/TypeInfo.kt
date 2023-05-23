@@ -206,6 +206,6 @@ class TypestateTreeInfo internal constructor(val tree: TypestateTree) : TypeInfo
   }
 
   override fun toString(): String {
-    return "TypestateTreeInfo{${tree.toString()}}"
+    return "TypestateTreeInfo{$tree}"
   }
 }

@@ -1,0 +1,5 @@
+typestate AutoCloseable {
+  Close = {
+    void close(): end
+  }
+}

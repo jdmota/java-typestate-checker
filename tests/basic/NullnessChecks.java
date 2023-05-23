@@ -63,7 +63,7 @@ public class NullnessChecks {
     }
   }
 
-  public class WithOutProtocol {
+  public class WithoutProtocol {
     public String str;
 
     public void action1() {
