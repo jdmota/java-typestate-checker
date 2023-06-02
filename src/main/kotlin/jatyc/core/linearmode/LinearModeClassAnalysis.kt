@@ -123,9 +123,9 @@ class LinearModeClassAnalysis(
 
     // Update the state's store. Queue the state again if it changed.
     fun mergeStateStore(state: State, store: Store) {
-      val currStore = stateToStore.computeIfAbsent(state) { emptyStore }
-      val newStore = Store.mergeFieldsToNew(currStore, store, classThisRef)
-      if (currStore != newStore) {
+      val currStore = stateToStore[state]
+      val newStore = Store.mergeFieldsToNew(currStore ?: emptyStore, store, classThisRef)
+      if (currStore == null || currStore != newStore) {
         stateToStore[state] = newStore
         stateQueue.add(state)
       }
@@ -182,8 +182,6 @@ class LinearModeClassAnalysis(
                       "false" -> mergeStateStore(dest, result.withLabel(Reference.returnRef(returnExpr.javaType2!!), "false"))
                       else -> mergeStateStore(dest, result.toRegular())
                     }
-                  } else {
-                    mergeStateStore(dest, emptyStore)
                   }
                 }
               }

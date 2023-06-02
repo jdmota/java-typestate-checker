@@ -1,0 +1,24 @@
+typestate ThirdPartyRequestor {
+  Init = {
+    void await(): AvailableToShare
+  }
+  AvailableToShare = {
+    SharingState requestAccess(): <
+      PENDING: SharingRequestPending,
+      SHARING: SharingWithThirdParty,
+      TERMINATED: end
+    >,
+    drop: end
+  }
+  SharingRequestPending = {
+    OwnerResponse awaitResponse():
+      <
+        ACCEPT: SharingWithThirdParty,
+        REJECT: AvailableToShare,
+        TERMINATED: end
+      >
+  }
+  SharingWithThirdParty = {
+    void releaseAccess(): AvailableToShare
+  }
+}

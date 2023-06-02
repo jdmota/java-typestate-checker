@@ -41,11 +41,13 @@ class JavaIteratorWrapper2 {
 
   public boolean hasNext() {
     // :: warning: (this.iterator: Null)
+    // :: warning: (this.iterator: Bottom)
     // :: error: (Cannot call hasNext on null)
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -143,10 +145,12 @@ class JavaIteratorWrapper5 {
   public boolean hasNext() {
     // :: warning: (this.iterator: Shared{JavaIterator})
     // :: error: (Cannot call [hasNext] on Shared{JavaIterator})
+    // :: warning: (this.iterator: Bottom)
     return iterator.hasNext();
   }
 
   public String next() {
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -179,7 +183,9 @@ class JavaIteratorWrapper6 {
   }
 
   public String next() {
+    // :: error: (Cannot call own public method [hasNext])
     this.hasNext();
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
