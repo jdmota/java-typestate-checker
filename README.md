@@ -34,7 +34,7 @@ You may find more information in the [documentation page](https://github.com/jdm
 
 ## Quick Start
 
-1. Make sure you have JDK 11 installed. Other versions might work but were not tested. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
+1. Make sure you have JDK 11 installed. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
 1. Run the following commands:
 
 ```sh
@@ -59,7 +59,7 @@ Main.java:6: error: Cannot call [next] on State{JavaIterator, end}
 
 ### Via Git
 
-1. Make sure you have JDK 11 installed. Other versions might work but were not tested. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
+1. Make sure you have JDK 11 installed. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
 1. Clone this repository: `git clone https://github.com/jdmota/java-typestate-checker.git`
 1. Run the following command from the folder where your source Java files are. Replace `REPO` with the appropriate path to the repository cloned in step 2.
 
@@ -69,7 +69,7 @@ java -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processo
 
 ### Manual
 
-1. Make sure you have JDK 11 installed. Other versions might work but were not tested. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
+1. Make sure you have JDK 11 installed. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
 1. Download and extract [checker-framework-3.28.0.zip](https://github.com/typetools/checker-framework/releases/tag/checker-framework-3.28.0).
 1. Download [jatyc.jar](https://github.com/jdmota/java-typestate-checker/raw/master/dist/jatyc.jar).
 1. Run the following command from the folder where your source Java files are. Replace `DOWNLOADS` with the appropriate path containing the files downloaded in steps 2 and 3.

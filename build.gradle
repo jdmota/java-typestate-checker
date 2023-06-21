@@ -21,7 +21,22 @@ configurations {
   }
 }
 
-sourceCompatibility = 1.8
+java {
+  sourceCompatibility = JavaVersion.VERSION_11
+  targetCompatibility = JavaVersion.VERSION_11
+}
+
+compileKotlin {
+  kotlinOptions {
+    jvmTarget = "11"
+  }
+}
+
+compileTestKotlin {
+  kotlinOptions {
+    jvmTarget = "11"
+  }
+}
 
 ext {
   versions = [
