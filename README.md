@@ -1,6 +1,6 @@
 # Java Typestate Checker
 
-[Quick Start](#quick-start) | [Installation](#installation) | [Changelog](https://github.com/jdmota/java-typestate-checker/wiki/Changelog) | [Documentation](https://github.com/jdmota/java-typestate-checker/wiki/Documentation)
+[Quick Start](#quick-start) | [Installation](#installation) | [Resources](#resources) | [Publications](#publications) | [Changelog](https://github.com/jdmota/java-typestate-checker/wiki/Changelog) | [Documentation](https://github.com/jdmota/java-typestate-checker/wiki/Documentation)
 
 The **Java Typestate Checker (JaTyC)** is a tool that verifies Java source code with respect to typestates. A typestate is associated with a Java class with the `@Typestate` annotation and defines: the object's states, the methods that can be safely called in each state, and the states resulting from the calls. The tool statically verifies that when a Java program runs: sequences of method calls obey to object's protocols; objects' protocols are completed; null-pointer exceptions are not raised; subclasses' instances respect the protocol of their superclasses.
 
@@ -18,7 +18,7 @@ The **Java Typestate Checker (JaTyC)** is a tool that verifies Java source code 
 - support for **transitions of state to depend on boolean values or enumeration values** returned by methods.
 - invalid sequences of method calls are ignored when analyzing the use of objects stored inside other objects by taking into account that the methods of the outer object will only be called in the order specified by the corresponding protocol, thus **avoiding false positives**.
 
-*Note: if you are looking for the experimental non-linear mode (where objects may be aliased), check out the [non-linear-mode branch](https://github.com/jdmota/java-typestate-checker/tree/non-linear-mode).*
+_Note: if you are looking for the experimental non-linear mode (where objects may be aliased), check out the [non-linear-mode branch](https://github.com/jdmota/java-typestate-checker/tree/non-linear-mode)._
 
 ## Subtyping
 
@@ -34,7 +34,7 @@ You may find more information in the [documentation page](https://github.com/jdm
 
 ## Quick Start
 
-1. Make sure you have JDK 8 or 11 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
+1. Make sure you have JDK 11 installed. Other versions might work but were not tested. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
 1. Run the following commands:
 
 ```sh
@@ -55,22 +55,24 @@ Main.java:6: error: Cannot call [next] on State{JavaIterator, end}
 2 errors
 ```
 
-## Installation via git
+## Installation
 
-1. Recall that you must have JDK 8 or 11 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
+### Via Git
+
+1. Make sure you have JDK 11 installed. Other versions might work but were not tested. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
 1. Clone this repository: `git clone https://github.com/jdmota/java-typestate-checker.git`
-1. Run the following command from the folder where the Java files you want to check are by replacing `REPO` with the appropriate path to the repository cloned in step 2.
+1. Run the following command from the folder where your source Java files are. Replace `REPO` with the appropriate path to the repository cloned in step 2.
 
 ```sh
 java -jar REPO/dist/checker/checker.jar -classpath REPO/dist/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
 ```
 
-## Manual installation
+### Manual
 
-1. Recall that you must have JDK 8 installed. We recommend the [OpenJDK distribution](https://adoptopenjdk.net/?variant=openjdk8&jvmVariant=hotspot).
+1. Make sure you have JDK 11 installed. Other versions might work but were not tested. We recommend [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=11).
 1. Download and extract [checker-framework-3.28.0.zip](https://github.com/typetools/checker-framework/releases/tag/checker-framework-3.28.0).
 1. Download [jatyc.jar](https://github.com/jdmota/java-typestate-checker/raw/master/dist/jatyc.jar).
-1. Run the following command from the folder where the Java files you want to check are by replacing `DOWNLOADS` with the appropriate path containing the files downloaded in steps 2 and 3.
+1. Run the following command from the folder where your source Java files are. Replace `DOWNLOADS` with the appropriate path containing the files downloaded in steps 2 and 3.
 
 ```sh
 java -jar DOWNLOADS/checker-framework-3.28.0/checker/dist/checker.jar -classpath DOWNLOADS/jatyc.jar -processor jatyc.JavaTypestateChecker *.java
