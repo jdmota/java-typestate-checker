@@ -242,6 +242,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     jdkNonNullReturns.add("java.lang.String#toUpperCase")
     jdkNonNullReturns.add("java.lang.String#toLowerCase")
     jdkNonNullReturns.add("java.lang.String#toString")
+    jdkNonNullReturns.add("java.lang.String#getBytes")
     jdkNonNullReturns.add("java.lang.StringBuilder#toString")
     jdkNonNullReturns.add("java.util.Scanner#next")
     jdkNonNullReturns.add("java.util.Scanner#nextLine")
