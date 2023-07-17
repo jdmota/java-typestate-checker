@@ -238,6 +238,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     jdkNonNullReturns.add("java.util.Arrays.asList")
     jdkNonNullReturns.add("java.net.Socket#getInputStream")
     jdkNonNullReturns.add("java.net.Socket#getOutputStream")
+    jdkNonNullReturns.add("java.net.ServerSocket#accept")
     jdkNonNullReturns.add("java.lang.String#toUpperCase")
     jdkNonNullReturns.add("java.lang.String#toLowerCase")
     jdkNonNullReturns.add("java.lang.String#toString")
