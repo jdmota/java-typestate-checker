@@ -558,16 +558,14 @@ class CFAdapter(val checker: JavaTypestateChecker) {
         var first = true
         var last = prev
         var lastFlow = flowRule
-        for (n in block.nodes) {
+        val nodes = if (block.nodes.isEmpty()) listOf(MarkerNode(null, "empty block", utils.typeUtils)) else block.nodes
+        for (n in nodes) {
           last = connect(cfg, last, n, lastFlow)
           lastFlow = SimpleFlowRule.ALL
           if (first) {
             seen[block] = last
             first = false
           }
-        }
-        if (block.nodes.isEmpty()) {
-          seen[block] = last
         }
         block.successor?.let { connect(cfg, seen, last, it, block.flowRule) }
       }
