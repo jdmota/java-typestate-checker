@@ -23,14 +23,12 @@ public class CRole {
       addr = InetAddress.getByName("www.google.co.uk");
       // :: warning: (addr: Shared{java.net.InetAddress} | Null)
       if (addr == null) {
-        // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
-        System.out.println("Unable to listen on ports");
-        System.exit(-1);
+        throw new RuntimeException("Unable to listen on ports");
       }
       // :: warning: (socket: Null)
       // :: warning: (addr: Shared{java.net.InetAddress})
       socket = new Socket(addr, 80);
-    } catch (IOException e) {
+    } catch (Exception e) {
       System.out.println("Unable to listen on ports");
       System.exit(-1);
     }

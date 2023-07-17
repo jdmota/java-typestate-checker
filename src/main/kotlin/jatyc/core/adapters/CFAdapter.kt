@@ -566,6 +566,9 @@ class CFAdapter(val checker: JavaTypestateChecker) {
             first = false
           }
         }
+        if (block.nodes.isEmpty()) {
+          seen[block] = last
+        }
         block.successor?.let { connect(cfg, seen, last, it, block.flowRule) }
       }
 

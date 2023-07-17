@@ -219,3 +219,17 @@ class TypestateTreesTests(testFiles: List<File>) : PerDirectoryTest(
     val testDirs = arrayOf(dir14)
   }
 }
+
+private const val dir15 = "cfg"
+
+class CFGTests(testFiles: List<File>) : PerDirectoryTest(
+  dir15,
+  testFiles,
+  defaultOpts
+) {
+  companion object {
+    @JvmStatic
+    @get:Parameters
+    val testDirs = arrayOf(dir15)
+  }
+}

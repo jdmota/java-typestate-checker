@@ -263,6 +263,7 @@ class Inference(
         post[nodeRef] = TypeInfo.make(methodExpr.returnJavaType, methodExpr.returnType)
         // This means that the method interrupts execution
         if (methodExpr.returnType is JTCBottomType) {
+          analyzeExit(methodExpr, post)
           post.toBottom()
         }
       }
@@ -648,12 +649,28 @@ class Inference(
     }
 
     for ((ref, param) in params) {
-      val actual = store[ref].type
+      val actual = store.getOrNull(ref)?.type ?: continue // If param is not in store, it means there is some while (true) loop in the code
       if (!actual.isSubtype(param.ensures)) {
         if (param.isThis || param.hasEnsures) {
           inference.addError(func, "Type of parameter [${ref.format()}] is ${actual.format()}, expected ${param.ensures.format()}}")
         } else {
           inference.addError(func, "[${ref.format()}] did not complete its protocol (found: ${actual.format()})")
+        }
+      }
+    }
+  }
+
+  fun analyzeExit(exit: CodeExpr, store: Store) {
+    for ((ref, info) in store) {
+      val type = info.type
+      if (!type.canDrop()) {
+        if (ref is OldReference) {
+          val leftRef = Reference.make(ref.assign.left)
+          inference.addError(ref.assign, "The previous value of [${leftRef.format()}] did not complete its protocol (found: ${type.format()})")
+        } else if (ref is CodeExprReference && ref.code is MethodCall) {
+          inference.addError(ref.code, "Returned value did not complete its protocol (found: ${type.format()})")
+        } else {
+          inference.addError(exit, "[${ref.format()}] did not complete its protocol (found: ${type.format()})")
         }
       }
     }
