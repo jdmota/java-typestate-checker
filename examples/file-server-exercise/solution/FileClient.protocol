@@ -1,0 +1,15 @@
+typestate FileClient {
+  Init = {
+    boolean start(): <true: Ask, false: end>
+  }
+  Ask = {
+    void request(String): Open,
+    void close(): end
+  }
+  Open = {
+    boolean hasNextByte(): <true: Read, false: Ask>
+  }
+  Read = {
+    int nextByte(): Open
+  }
+}

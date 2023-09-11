@@ -1,0 +1,20 @@
+import java.net.*;
+
+typestate FileServer {
+  Init = {
+    boolean start(Socket): <true: HasRequest, false: end>
+  }
+  HasRequest = {
+    boolean hasRequest(): <true: ReceiveFilename, false: Close>
+  }
+  ReceiveFilename = {
+    String receiveFilename(): SendData
+  }
+  SendData = {
+    void sendEof(): HasRequest,
+    void sendByte(int): SendData
+  }
+  Close = {
+    void close(): end
+  }
+}
