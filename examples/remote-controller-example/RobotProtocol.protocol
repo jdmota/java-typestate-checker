@@ -1,0 +1,17 @@
+typestate RobotProtocol {
+
+  OFF = {
+    void turnOn(): IDLE,
+    drop: end
+  }
+
+  IDLE = {
+    void turnOff(): OFF,
+    boolean task(): <true: IDLE, false: RECHARGE>
+  }
+
+  RECHARGE = {
+    void turnOff(): OFF,
+    void recharge(): IDLE
+  }
+}

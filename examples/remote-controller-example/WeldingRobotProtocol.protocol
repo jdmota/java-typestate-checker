@@ -1,0 +1,23 @@
+typestate WeldingRobotProtocol {
+
+  OFF = {
+    void turnOn(): IDLE,
+    drop: end
+  }
+
+  IDLE = {
+    void turnOff(): OFF,
+    boolean task(): <true:IDLE, false: RECHARGE>,
+    boolean weldMetal(): <true: IDLE, false: HEAT>
+  }
+
+  RECHARGE = {
+    void turnOff(): OFF,
+    void recharge(): IDLE
+  }
+
+  HEAT = {
+    void turnOff(): OFF,
+    void heating(): IDLE
+  }
+}

@@ -1,0 +1,22 @@
+typestate TimeoutSocketProtocol {
+
+  DISC = {
+    boolean connect(): <true: CONN, false: DISC>,
+    drop: end
+  }
+
+  CONN = {
+    boolean canSend(String): <true: SEND, false: CONN>,
+    boolean canReceive(String): <true: REC, false: CONN>,
+    void close(): end
+  }
+
+  SEND = {
+    void send(String): CONN
+  }
+
+  REC = {
+    void receive(String): CONN,
+    boolean timeoutReceive(String): <true: CONN, false: REC>
+  }
+}
