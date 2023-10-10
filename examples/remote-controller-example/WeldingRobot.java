@@ -4,7 +4,7 @@ import jatyc.lib.Typestate;
 public class WeldingRobot extends Robot {
   public WeldingRobot() { }
 
-  public void start() { } //overriding the start method
+  public void turnOn() { } //overriding the start method
 
   public boolean weldMetal() {return true;}
 

@@ -4,9 +4,9 @@ import jatyc.lib.Typestate;
 class Robot {
   public Robot() { }
 
-  public void start() { }
+  public void turnOn() { }
 
-  public void stop() { }
+  public void turnOff() { }
 
   public boolean task() {return true; }
 

@@ -8,8 +8,8 @@ class RemoteController {
     List<String> tasks = initTasks("weld", "task", "weld", "weld", "task");
     Robot r1 = new Robot();
     Robot r2 = new WeldingRobot();
-    r1.start();
-    r2.start();
+    r1.turnOn();
+    r2.turnOn();
     while (tasks.size() > 0) {
       String curr_task = tasks.remove(0);
       r1 = attemptTask(r1, curr_task);
@@ -18,8 +18,8 @@ class RemoteController {
         if(!r2.taskResult()) tasks.add(curr_task);
       }
     }
-    r1.stop();
-    r2.stop();
+    r1.turnOff();
+    r2.turnOff();
   }
 
   private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
