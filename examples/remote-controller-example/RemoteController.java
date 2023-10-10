@@ -4,7 +4,7 @@ import jatyc.lib.Nullable;
 import java.util.*;
 
 class RemoteController {
-  public static void main(String[] args) {
+ /* public static void goodBehaviour(String[] args) {
     List<String> tasks = initTasks("weld", "task", "weld", "weld", "task");
     Robot r1 = new Robot();
     Robot r2 = new WeldingRobot();
@@ -20,9 +20,28 @@ class RemoteController {
     }
     r1.turnOff();
     r2.turnOff();
+  }*/
+
+  public static void badBehaviour(String[] args) {
+    List<String> tasks = initTasks("weld", "task", "weld", "weld", "task");
+    Robot r1 = new WeldingRobot();
+    r1.turnOn();
+    while (tasks.size() > 0) {
+      String curr_task = tasks.remove(0);
+      switch(curr_task) {
+        case "task":
+          r1.task();
+          break;
+        case "weld":
+          if(r1 instanceof WeldingRobot) ((WeldingRobot) r1).weldMetal();
+          break;
+      }
+      if(!r1.taskResult()) tasks.add(curr_task);
+    }
+    r1.turnOff();
   }
 
-  private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
+  /*private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
     switch(task) {
       case "weld":
         if(r instanceof WeldingRobot && !((WeldingRobot) r).weldMetal()) ((WeldingRobot) r).heating();
@@ -32,7 +51,7 @@ class RemoteController {
         break;
     }
     return r;
-  }
+  }*/
 
   private static List<String> initTasks(String... tasks) {
     List<String> taskList = new ArrayList<>();
