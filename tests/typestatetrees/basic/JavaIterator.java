@@ -55,7 +55,7 @@ public final class JavaIterator {
     it = null;
 
     // :: warning: (it: Null)
-    // :: error: (Cannot call hasNext on null)
+    // :: error: (Cannot call [hasNext] on null (found: Null))
     while (it.hasNext()) {
       // :: warning: (it: Bottom)
       it.next();
@@ -65,7 +65,7 @@ public final class JavaIterator {
   public static void nullUse2() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext} | Null)
-    // :: error: (Cannot call hasNext on null)
+    // :: error: (Cannot call [hasNext] on null (found: State{JavaIterator, HasNext} | Null))
     while (it.hasNext()) {
       // :: warning: (it: State{JavaIterator, Next})
       it.next();
@@ -134,7 +134,7 @@ public final class JavaIterator {
     // :: warning: (it: Shared{JavaIterator} | Null)
     if (it == null) {
       // :: warning: (it: Null)
-      // :: error: (Cannot call hasNext on null)
+      // :: error: (Cannot call [hasNext] on null (found: Null))
       it.hasNext();
     } else {
       // :: warning: (it: Shared{JavaIterator})

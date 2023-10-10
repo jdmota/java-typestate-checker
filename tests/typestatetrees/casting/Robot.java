@@ -1,7 +1,7 @@
 import jatyc.lib.Typestate;
 
 @Typestate("RobotProtocol")
-class Robot {
+public class Robot {
   public Robot() {
   }
 

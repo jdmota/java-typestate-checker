@@ -85,8 +85,7 @@ class Inference(
         is Assign -> "Cannot assign: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
         is ParamAssign -> {
           val method = node.call.methodExpr
-          val param = method.parameters[node.idx]
-          if (param.isThis) {
+          if (thisParam) {
             "Cannot call [${method.name}] on ${typeToAssign.format()}"
           } else {
             "Incompatible parameter: cannot cast from ${typeToAssign.format()} to ${targetType.format()}"
@@ -96,6 +95,18 @@ class Inference(
         else -> "INTERNAL ERROR"
       })
     }
+  }
+
+  private fun castParamAfterCall(node: CodeExpr, info: StoreInfo, javaType: JavaType): StoreInfo {
+    val newInfo = info.cast(javaType)
+    if (newInfo.type.isUnknown()) {
+      val currentType = info.type
+      if (!currentType.isUnknown()) {
+        inference.addError(node, "Cannot perform upcast on [${node}] from ${currentType.format()} to class [$javaType] after call")
+        return StoreInfo.bottom(javaType)
+      }
+    }
+    return newInfo
   }
 
   fun analyzeCode(func: FuncDeclaration, pre: Store, node: CodeExpr, post: Store) {
@@ -249,14 +260,14 @@ class Inference(
             if (TypecheckUtils.requiresLinear(argRef, param.requires)) {
               val argInfo = post[argRef]
               post[argRef] = argInfo.toShared()
-              post[exprRef] = argInfo.cast(exprRef.javaType) // Preserve conditional info!
+              post[exprRef] = castParamAfterCall(arg.expr, argInfo, exprRef.javaType) // Preserve conditional info!
             }
           } else {
             post[argRef] = pre[argRef].type.ensures(param.ensures)
             // Whatever is in the "parameter variable", restore it to the "parameter expression"
             val argInfo = post[argRef]
             post[argRef] = argInfo.toShared()
-            post[exprRef] = argInfo.cast(exprRef.javaType) // Preserve conditional info!
+            post[exprRef] = castParamAfterCall(arg.expr, argInfo, exprRef.javaType) // Preserve conditional info!
           }
         }
         // The type of the method call is the type of the return value
@@ -419,7 +430,7 @@ class Inference(
         post[exprRef] = notNull
 
         if (currentType.isNullable()) {
-          inference.addError(node, node.message)
+          inference.addError(node, "${node.message} (found: ${currentType.format()})")
         }
       }
 
@@ -434,7 +445,7 @@ class Inference(
               post[ref] = StoreInfo.conditional(
                 nodeRef,
                 info.withLabel(leftRef, "true").withLabel(rightRef, "true"),
-                info.withLabel(leftRef, "false").or(info.withLabel(rightRef, "false"))
+                info.withLabel(leftRef, "false").removeCondition(rightRef).or(info.withLabel(rightRef, "false"))
               )
             }
             // This is expression evaluates to a boolean
@@ -448,7 +459,7 @@ class Inference(
             for ((ref, info) in pre) {
               post[ref] = StoreInfo.conditional(
                 nodeRef,
-                info.withLabel(leftRef, "true").or(info.withLabel(rightRef, "true")),
+                info.withLabel(leftRef, "true").removeCondition(rightRef).or(info.withLabel(rightRef, "true")),
                 info.withLabel(leftRef, "false").withLabel(rightRef, "false")
               )
             }

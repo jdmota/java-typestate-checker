@@ -253,7 +253,7 @@ public class LinearityTests {
     @Nullable Linearity obj = null;
     useNullable(null);
     // :: warning: (obj: Null)
-    // :: error: (Cannot call finish on null)
+    // :: error: (Cannot call [finish] on null (found: Null))
     obj.finish();
   }
 

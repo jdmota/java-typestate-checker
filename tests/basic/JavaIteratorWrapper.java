@@ -42,7 +42,7 @@ class JavaIteratorWrapper2 {
   public boolean hasNext() {
     // :: warning: (this.iterator: Null)
     // :: warning: (this.iterator: Bottom)
-    // :: error: (Cannot call hasNext on null)
+    // :: error: (Cannot call [hasNext] on null (found: Null))
     return iterator.hasNext();
   }
 

@@ -6,7 +6,6 @@ public class WeldingRobot extends Robot {
   }
 
   public void turnOn() {
-    // overriding
   }
 
   public boolean weldMetal() {
@@ -15,4 +14,5 @@ public class WeldingRobot extends Robot {
 
   public void heating() {
   }
+
 }

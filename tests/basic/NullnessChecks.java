@@ -40,7 +40,7 @@ public class NullnessChecks {
     // :: warning: (obj: Shared{java.lang.String} | Null)
     if ((obj != null) == false) {
       // :: warning: (obj: Null)
-      // :: error: (Cannot call toString on null)
+      // :: error: (Cannot call [toString] on null (found: Null))
       obj.toString();
     }
   }
@@ -49,7 +49,7 @@ public class NullnessChecks {
     // :: warning: (obj: Shared{java.lang.String} | Null)
     if (!(obj == null) == false) {
       // :: warning: (obj: Null)
-      // :: error: (Cannot call toString on null)
+      // :: error: (Cannot call [toString] on null (found: Null))
       obj.toString();
     }
   }
@@ -58,7 +58,7 @@ public class NullnessChecks {
     // :: warning: (obj: Shared{java.lang.String} | Null)
     if ((obj == null) == true) {
       // :: warning: (obj: Null)
-      // :: error: (Cannot call toString on null)
+      // :: error: (Cannot call [toString] on null (found: Null))
       obj.toString();
     }
   }
@@ -69,7 +69,7 @@ public class NullnessChecks {
     public void action1() {
       // :: warning: (java.lang.System.out: Shared{java.io.PrintStream})
       // :: warning: (this.str: Shared{java.lang.String} | Null)
-      // :: error: (Cannot call toUpperCase on null)
+      // :: error: (Cannot call [toUpperCase] on null (found: Shared{java.lang.String} | Null))
       System.out.println(str.toUpperCase());
     }
 

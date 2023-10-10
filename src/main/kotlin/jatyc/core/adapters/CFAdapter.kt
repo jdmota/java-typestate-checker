@@ -877,7 +877,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
           // the receiver object is checked to see if it is not null first,
           // before the parameters are evaluated
           MultipleAdaptResult(listOf(
-            NullCheck(t(access.receiver), "Cannot call ${funcInterface.name} on null").set(access, hierarchy).set(access.tree ?: access.receiver.tree),
+            NullCheck(t(access.receiver), "Cannot call [${funcInterface.name}] on null").set(access, hierarchy).set(access.tree ?: access.receiver.tree),
             funcInterface
           ))
         }

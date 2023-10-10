@@ -1,73 +1,26 @@
 package jatyc.core.linearmode
 
-import jatyc.core.JTCSharedType
-import jatyc.core.JTCUnknownType
 import jatyc.core.JavaType
 import jatyc.core.Reference
 import jatyc.core.typesystem.TypeInfo
 import jatyc.utils.JTCUtils
 
-sealed class CasePattern {
-  abstract fun replaceCondition(from: Reference, to: Reference): CasePattern
-  abstract fun fixThis(from: Reference, to: Reference): CasePattern
-  abstract fun not(original: Reference, negation: Reference): CasePattern
-
-  // If this pattern is associated with the wanted condition, return true iff the label matches
-  // Otherwise, return true
-  abstract fun withLabel(wantedCondition: Reference, wantedLabel: String): Boolean
-
-  // If this pattern is associated with the wanted condition, return true iff the label does not match
-  // Otherwise, return true
-  abstract fun withoutLabel(wantedCondition: Reference, wantedLabel: String): Boolean
-
-  abstract fun implies(other: CasePattern): Boolean
-}
-
-object CaseTrue : CasePattern() {
-  override fun replaceCondition(from: Reference, to: Reference): CasePattern {
-    return this
+// TODO for more precision, store the possible label values instead of just if equal is true or not?
+class CasePattern(val condition: Reference, val label: String, val equal: Boolean) {
+  fun matchesCondition(wantedCondition: Reference): Boolean {
+    return condition == wantedCondition
   }
 
-  override fun fixThis(from: Reference, to: Reference): CasePattern {
-    return this
+  fun replaceCondition(from: Reference, to: Reference): CasePattern {
+    return if (from == condition) CasePattern(to, label, equal) else this
   }
 
-  override fun not(original: Reference, negation: Reference): CasePattern {
-    return this
+  fun fixThis(from: Reference, to: Reference): CasePattern {
+    return CasePattern(condition.fixThis(from, to), label, equal)
   }
 
-  override fun withLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
-    return true
-  }
-
-  override fun withoutLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
-    return true
-  }
-
-  override fun implies(other: CasePattern): Boolean {
-    return when (other) {
-      is CaseTrue -> true
-      is CaseLabeled -> false
-    }
-  }
-
-  override fun toString(): String {
-    return "#{TRUE}"
-  }
-}
-
-// TODO for more precision, store the possible label values instead of just if equal is true or not
-class CaseLabeled(val condition: Reference, val label: String, val equal: Boolean) : CasePattern() {
-  override fun replaceCondition(from: Reference, to: Reference): CasePattern {
-    return if (from == condition) CaseLabeled(to, label, equal) else this
-  }
-
-  override fun fixThis(from: Reference, to: Reference): CasePattern {
-    return CaseLabeled(condition.fixThis(from, to), label, equal)
-  }
-
-  override fun not(original: Reference, negation: Reference): CasePattern {
-    return if (original == condition) CaseLabeled(negation, label, !equal) else this
+  fun not(original: Reference, negation: Reference): CasePattern {
+    return if (original == condition) CasePattern(negation, label, !equal) else this
   }
 
   private fun matches(wantedLabel: String): Boolean {
@@ -76,21 +29,18 @@ class CaseLabeled(val condition: Reference, val label: String, val equal: Boolea
 
   // If this pattern is associated with the wanted condition, return true iff the label matches
   // Otherwise, return true
-  override fun withLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
+  fun withLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
     return condition != wantedCondition || matches(wantedLabel)
   }
 
   // If this pattern is associated with the wanted condition, return true iff the label does not match
   // Otherwise, return true
-  override fun withoutLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
+  fun withoutLabel(wantedCondition: Reference, wantedLabel: String): Boolean {
     return condition != wantedCondition || !matches(wantedLabel)
   }
 
-  override fun implies(other: CasePattern): Boolean {
-    return when (other) {
-      is CaseTrue -> true
-      is CaseLabeled -> condition == other.condition && label == other.label && equal == other.equal
-    }
+  fun implies(other: CasePattern): Boolean {
+    return condition == other.condition && label == other.label && equal == other.equal
   }
 
   override fun toString(): String {
@@ -99,7 +49,7 @@ class CaseLabeled(val condition: Reference, val label: String, val equal: Boolea
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
-    return other is CaseLabeled && condition == other.condition && label == other.label && equal == other.equal
+    return other is CasePattern && condition == other.condition && label == other.label && equal == other.equal
   }
 
   override fun hashCode(): Int {
@@ -111,6 +61,10 @@ class CaseLabeled(val condition: Reference, val label: String, val equal: Boolea
 }
 
 class CasePatterns(val list: List<CasePattern>) {
+  fun removeCondition(condition: Reference): CasePatterns? {
+    return if (list.any { it.matchesCondition(condition) }) null else this
+  }
+
   fun replaceCondition(from: Reference, to: Reference): CasePatterns {
     return CasePatterns(list.map { it.replaceCondition(from, to) })
   }
@@ -119,14 +73,14 @@ class CasePatterns(val list: List<CasePattern>) {
     return CasePatterns(list.map { it.fixThis(from, to) })
   }
 
-  fun withLabel(condition: Reference, label: String): CasePatterns {
+  fun withLabel(condition: Reference, label: String): CasePatterns? {
     val newList = list.filter { it.withLabel(condition, label) }
-    return if (newList.size < list.size) CasePatterns(emptyList()) else this
+    return if (newList.size == list.size) this else null
   }
 
-  fun withoutLabel(condition: Reference, label: String): CasePatterns {
+  fun withoutLabel(condition: Reference, label: String): CasePatterns? {
     val newList = list.filter { it.withoutLabel(condition, label) }
-    return if (newList.size < list.size) CasePatterns(emptyList()) else this
+    return if (newList.size == list.size) this else null
   }
 
   fun addCondition(pattern: CasePattern): CasePatterns {
@@ -136,8 +90,6 @@ class CasePatterns(val list: List<CasePattern>) {
   fun not(original: Reference, negation: Reference): CasePatterns {
     return CasePatterns(list.map { it.not(original, negation) })
   }
-
-  fun isPossible() = list.isNotEmpty()
 
   fun implies(other: CasePatterns): Boolean {
     return other.list.all { itB -> list.any { itA -> itA.implies(itB) } }
@@ -158,11 +110,11 @@ class CasePatterns(val list: List<CasePattern>) {
 
   companion object {
     fun labelled(condition: Reference, label: String, equal: Boolean): CasePatterns {
-      return CasePatterns(listOf(CaseLabeled(condition, label, equal)))
+      return CasePatterns(listOf(CasePattern(condition, label, equal)))
     }
 
     fun trueCase(): CasePatterns {
-      return CasePatterns(listOf(CaseTrue))
+      return CasePatterns(listOf())
     }
   }
 }
@@ -178,8 +130,15 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
   val type: TypeInfo get() = toType()
   fun toRegular() = regular(toType())
 
-  private fun mapKeys(javaType: JavaType, fn: (CasePatterns) -> CasePatterns) = cases(javaType, cases.map { Pair(fn(it.first), it.second) })
-  private fun mapKeys(fn: (CasePatterns) -> CasePatterns) = mapKeys(javaType, fn)
+  private fun mapKeys(fn: (CasePatterns) -> CasePatterns?) = mapKeys(javaType, fn)
+  private fun mapKeys(javaType: JavaType, fn: (CasePatterns) -> CasePatterns?) = cases(javaType, cases.mapNotNull {
+    val f = fn(it.first)
+    if (f != null) Pair(f, it.second) else null
+  })
+
+  fun removeCondition(condition: Reference): StoreInfo {
+    return mapKeys { it.removeCondition(condition) }
+  }
 
   fun replaceCondition(from: Reference, to: Reference): StoreInfo {
     return mapKeys { it.replaceCondition(from, to) }
@@ -250,8 +209,8 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
       if (thenInfo == elseInfo) {
         return thenInfo
       }
-      val truePattern = CaseLabeled(condition, "true", true)
-      val falsePattern = CaseLabeled(condition, "true", false)
+      val truePattern = CasePattern(condition, "true", true)
+      val falsePattern = CasePattern(condition, "true", false)
       return thenInfo.and(truePattern).or(elseInfo.and(falsePattern))
     }
 
@@ -261,7 +220,7 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
 
     fun cases(javaType: JavaType, cases: List<Pair<CasePatterns, TypeInfo>>): StoreInfo {
       cases.forEach { it.second.checkJavaTypeInvariant(javaType) }
-      return StoreInfo(javaType, cases.filter { it.first.isPossible() && !it.second.isBottom() })
+      return StoreInfo(javaType, cases.filter { !it.second.isBottom() })
     }
 
     fun bottom(javaType: JavaType): StoreInfo {
