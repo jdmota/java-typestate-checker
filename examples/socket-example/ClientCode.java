@@ -18,7 +18,7 @@ class ClientCode {
   }
 
 
-  private static @Ensures("CONN") Socket forward(@Requires("CONN") Socket s, @Nullable String datum) {
+  /*private static @Ensures("CONN") Socket forward(@Requires("CONN") Socket s, @Nullable String datum) {
     if(s.canReceive(datum)) {
       if(s instanceof TimeoutSocket) {
         if(!((TimeoutSocket) s).timeoutReceive(datum)) s.receive(datum);
@@ -26,18 +26,18 @@ class ClientCode {
       if(s.canSend()) s.send();
     }
     return s;
-  }
+  }*/
 
-  /*
-  this does not compile
+
+  //this does not compile
   private static @Ensures("CONN") Socket forward(@Requires("CONN") Socket s, @Nullable String datum) {
     if(s.canReceive(datum)) {
-      if(s instanceof TimeoutSocket && !((TimeoutSocket) s).timeoutReceive(datum)) s.receive(datum);
+      if(!(s instanceof TimeoutSocket) || !((TimeoutSocket) s).timeoutReceive(datum)) s.receive(datum);
       if(s.canSend()) s.send();
     }
     return s;
   }
-  * */
+
 
 
 
