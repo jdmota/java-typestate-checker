@@ -5,17 +5,17 @@ typestate TimeoutSocketProtocol {
   }
 
   CONN = {
-    boolean canSend(): <true: SEND, false: CONN>,
-    boolean canReceive(String): <true: REC, false: CONN>,
+    boolean canSend(String): <true: SEND, false: CONN>,
+    boolean canReceive(): <true: REC, false: CONN>,
     void close(): end
   }
 
   SEND = {
-    void send(): CONN
+    void send(String): CONN
   }
 
   REC = {
-    void receive(String): CONN,
-    boolean timeoutReceive(String): <true: CONN, false: REC>
+    String receive(): CONN,
+    boolean timeoutReceive(): <true: CONN, false: REC>
   }
 }

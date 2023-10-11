@@ -5,5 +5,5 @@ import jatyc.lib.Nullable;
 class TimeoutSocket extends Socket {
   public TimeoutSocket() {}
 
-  public boolean timeoutReceive(@Nullable String datum) { return true; }
+  public boolean timeoutReceive() { return true; }
 }

@@ -31,7 +31,11 @@ class RemoteController {
           r1.task();
           break;
         case "weld":
-          if (r1 instanceof WeldingRobot) ((WeldingRobot) r1).weldMetal();
+          if (r1 instanceof WeldingRobot) {
+            WeldingRobot tmp = (WeldingRobot) r1;
+            if(!tmp.weldMetal()) tmp.heating();
+            r1 = tmp;
+          }
           break;
       }
       if (!r1.taskResult()) tasks.add(curr_task);
@@ -42,7 +46,11 @@ class RemoteController {
   private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
     switch(task) {
       case "weld":
-        if (r instanceof WeldingRobot && !((WeldingRobot) r).weldMetal()) ((WeldingRobot) r).heating();
+        if (r instanceof WeldingRobot) {
+          WeldingRobot tmp = (WeldingRobot) r;
+          if(!tmp.weldMetal()) tmp.heating();
+          r = tmp;
+        }
         break;
       case "task":
         if(!r.task()) r.recharge();

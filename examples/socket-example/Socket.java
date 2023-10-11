@@ -7,13 +7,13 @@ class Socket {
 
   public boolean connect() { return true; }
 
-  public void send() {}
+  public void send(String datum) {}
 
-  public boolean canReceive(@Nullable String datum) { return true; }
+  public boolean canReceive() { return true; }
 
-  public boolean canSend() { return true; }
+  public boolean canSend(String datum) { return true; }
 
-  public void receive(@Nullable String datum) {}
+  public String receive() {return "";}
 
   public void close() {}
 }
