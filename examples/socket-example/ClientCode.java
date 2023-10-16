@@ -1,6 +1,4 @@
-import jatyc.lib.Requires;
-import jatyc.lib.Ensures;
-import jatyc.lib.Nullable;
+import jatyc.lib.*;
 import java.util.*;
 
 class ClientCode {
@@ -10,7 +8,7 @@ class ClientCode {
     if (socket.connect()) {
       while (data.size() > 0) {
         String datum = data.remove(0);
-        if(datum == null) throw new RuntimeException();
+        if (datum == null) throw new RuntimeException();
         socket = forward(socket, datum);
       }
       socket.close();

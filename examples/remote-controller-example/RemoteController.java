@@ -33,7 +33,7 @@ class RemoteController {
         case "weld":
           if (r1 instanceof WeldingRobot) {
             WeldingRobot tmp = (WeldingRobot) r1;
-            if(!tmp.weldMetal()) tmp.heating();
+            if (!tmp.weldMetal()) tmp.heating();
             r1 = tmp;
           }
           break;
@@ -48,12 +48,12 @@ class RemoteController {
       case "weld":
         if (r instanceof WeldingRobot) {
           WeldingRobot tmp = (WeldingRobot) r;
-          if(!tmp.weldMetal()) tmp.heating();
+          if (!tmp.weldMetal()) tmp.heating();
           r = tmp;
         }
         break;
       case "task":
-        if(!r.task()) r.recharge();
+        if (!r.task()) r.recharge();
         break;
     }
     return r;

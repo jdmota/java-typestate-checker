@@ -1,18 +1,18 @@
 typestate SmartDeviceProtocol {
 
-    IDLE = {
-       void notify(double): NOTIFIED,
-       drop: end
-    }
+  IDLE = {
+    void notify(double): NOTIFIED,
+    drop: end
+  }
 
-    NOTIFIED =  {
-      boolean isTrainingNeeded(): <true: TRAIN, false: NOTIFIED>,
-      void ack(): IDLE
-    }
+  NOTIFIED =  {
+    boolean isTrainingNeeded(): <true: TRAIN, false: NOTIFIED>,
+    void ack(): IDLE
+  }
 
-    TRAIN = {
-      void train(): NOTIFIED,
-      void ack(): IDLE
-    }
+  TRAIN = {
+    void train(): NOTIFIED,
+    void ack(): IDLE
+  }
 
 }

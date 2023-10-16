@@ -7,5 +7,4 @@ public class AlarmDevice extends Observer {
   public boolean process() {return true;}
   public void alert() {}
 
-
 }
