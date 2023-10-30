@@ -2,17 +2,34 @@ typestate SmartDeviceProtocol {
 
   IDLE = {
     void notify(double): NOTIFIED,
+    double forecast(String): IDLE,
     drop: end
   }
 
   NOTIFIED =  {
-    boolean isTrainingNeeded(): <true: TRAIN, false: NOTIFIED>,
-    void ack(): IDLE
+    boolean isTrainingNeeded(): <true: DATA_VALIDATION, false: NOTIFIED>,
+    void ack(): IDLE,
+    double forecast(String): NOTIFIED
+  }
+
+  DATA_VALIDATION = {
+    boolean dataValidation(): <true: TRAIN, false: DATA_PRUNING>
+  }
+
+  DATA_PRUNING = {
+   void pruneData(): NOTIFIED
   }
 
   TRAIN = {
-    void train(): NOTIFIED,
-    void ack(): IDLE
+    void train(): MODEL_EVALUATION
+  }
+
+  MODEL_EVALUATION = {
+    boolean modelEvaluation(): <true: NOTIFIED, false: UPDATE_HYPERPARAMS>
+  }
+
+  UPDATE_HYPERPARAMS = {
+    void modelTuning(String): TRAIN
   }
 
 }
