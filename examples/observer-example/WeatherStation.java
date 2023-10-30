@@ -17,21 +17,21 @@ public class WeatherStation {
   private @Ensures("ACK") Observer action(@Requires("IDLE") Observer o, double temp) {
     o.notify(temp);
     if (o instanceof SmartDevice) {
-      SmartDevice tmp = (SmartDevice) o;
-      if(tmp.isTrainingNeeded()) tmp = modelUpdate(tmp);
-      temp_to_notify = tmp.forecast("some time");
-      return tmp;
+      SmartDevice s = (SmartDevice) o;
+      if (s.isTrainingNeeded()) s = modelUpdate(s);
+      temp_to_notify = s.forecast("some time");
+      return s;
     } else {
-      AlarmDevice tmp = (AlarmDevice) o;
-      if(tmp.process()) tmp.alert();
-      return tmp;
+      AlarmDevice a = (AlarmDevice) o;
+      if (a.process()) a.alert();
+      return a;
     }
   }
 
   private @Ensures("NOTIFIED") SmartDevice modelUpdate(@Requires("DATA_VALIDATION") SmartDevice sd) {
-    if(sd.dataValidation()){
+    if (sd.dataValidation()){
       sd.train();
-      while(!sd.modelEvaluation()) {
+      while (!sd.modelEvaluation()) {
         sd.modelTuning("some hyperparams");
         sd.train();
       }
@@ -39,18 +39,30 @@ public class WeatherStation {
     return sd;
   }
 
-  /*public void badBehaviour() {
+  public void badBehaviour() {
     temp_sensor_listening();
     Observer o1 = new AlarmDevice();
-    o1.notify(temp_to_notify);
-    if (o1 instanceof AlarmDevice) o1 = action2((AlarmDevice) o1);
+    Observer o2 = new SmartDevice();
+    o2 = action2(o2, temp_to_notify);
+    o2.ack();
+    o1 = action2(o1, temp_to_notify);
     o1.ack();
-  }*/
+  }
 
-  /*private @Ensures({"ALERT", "NOTIFIED"}) AlarmDevice action2(@Requires("NOTIFIED") AlarmDevice o) {
-    if (o.process()) {}
-    return o;
-  }*/
+  private @Ensures("ACK") Observer action2(@Requires("IDLE") Observer o, double temp) {
+    o.notify(temp);
+    if (o instanceof SmartDevice) {
+      SmartDevice s = (SmartDevice) o;
+      s.isTrainingNeeded();
+      s = modelUpdate(s);
+      temp_to_notify = s.forecast("some time");
+      return s;
+    } else {
+      AlarmDevice a = (AlarmDevice) o;
+      if (a.process()) {}
+      return a;
+    }
+  }
 
   private void temp_sensor_listening() {
     // This method is used to listen to some temp sensors
