@@ -9,26 +9,26 @@ public class WeatherStation {
     Observer o1 = new AlarmDevice();
     Observer o2 = new SmartDevice();
     o2 = action(o2, temp_to_notify);
-    o2.ack();
     o1 = action(o1, temp_to_notify);
-    o1.ack();
   }
 
-  private @Ensures("ACK") Observer action(@Requires("IDLE") Observer o, double temp) {
+  private @Ensures("IDLE") Observer action(@Requires("IDLE") Observer o, double temp) {
     o.notify(temp);
     if (o instanceof SmartDevice) {
       SmartDevice s = (SmartDevice) o;
+      s.ack();
       if (s.isTrainingNeeded()) s = modelUpdate(s);
       temp_to_notify = s.forecast("some time");
       return s;
     } else {
       AlarmDevice a = (AlarmDevice) o;
       if (a.process()) a.alert();
+      a.ack();
       return a;
     }
   }
 
-  private @Ensures("NOTIFIED") SmartDevice modelUpdate(@Requires("DATA_VALIDATION") SmartDevice sd) {
+  private @Ensures("IDLE") SmartDevice modelUpdate(@Requires("DATA_VALIDATION") SmartDevice sd) {
     if (sd.dataValidation()){
       sd.train();
       while (!sd.modelEvaluation()) {
