@@ -1,0 +1,15 @@
+typestate AlarmDeviceProtocol {
+
+  IDLE = {
+    void notify(double): NOTIFIED,
+    drop: end
+  }
+
+  NOTIFIED = {
+    boolean isActionNeeded(): <true: ALERT, false: IDLE>
+  }
+
+  ALERT = {
+    void alert(): IDLE
+  }
+}

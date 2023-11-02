@@ -1,0 +1,33 @@
+typestate SmartDeviceProtocol {
+
+  IDLE = {
+    void notify(double): NOTIFIED,
+    double forecast(String): IDLE,
+    drop: end
+  }
+
+  NOTIFIED =  {
+    boolean isActionNeeded(): <true: DATA_VALIDATION, false: IDLE>
+  }
+
+  DATA_VALIDATION = {
+    boolean dataValidation(): <true: TRAIN, false: DATA_PRUNING>
+  }
+
+  DATA_PRUNING = {
+    void pruneData(): IDLE
+  }
+
+  TRAIN = {
+    void train(): MODEL_EVALUATION
+  }
+
+  MODEL_EVALUATION = {
+    boolean modelEvaluation(): <true: IDLE, false: UPDATE_HYPERPARAMS>
+  }
+
+  UPDATE_HYPERPARAMS = {
+    void modelTuning(String): TRAIN
+  }
+
+}
