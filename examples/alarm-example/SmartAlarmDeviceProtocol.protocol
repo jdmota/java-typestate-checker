@@ -2,12 +2,17 @@ typestate SmartDeviceProtocol {
 
   IDLE = {
     void notify(double): NOTIFIED,
-    double forecast(String): IDLE,
+    boolean isTrainingNeeded(): <true: DATA_VALIDATION, false: IDLE>,
+    boolean predictiveThresholdCheck(String): <true: ALERT, false: IDLE>,
     drop: end
   }
 
   NOTIFIED =  {
-    boolean isActionNeeded(): <true: DATA_VALIDATION, false: IDLE>
+    boolean thresholdCheck(): <true: ALERT, false: IDLE>
+  }
+
+  ALERT = {
+    void alert(): IDLE
   }
 
   DATA_VALIDATION = {

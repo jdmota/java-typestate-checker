@@ -1,32 +1,32 @@
 import jatyc.lib.*;
 
-public class WeatherStation {
+public class ClientCode {
 
   private double temp_to_notify = 0.0;
 
   public void goodBehaviour() {
     temp_sensor_listening();
-    Observer o1 = new AlarmDevice();
-    Observer o2 = new SmartDevice();
-    o2 = action(o2, temp_to_notify);
-    o1 = action(o1, temp_to_notify);
-  }
-
-
-
-
-  private @Ensures("IDLE") Observer action(@Requires("IDLE") Observer o, double temp) {
-    o.notify(temp);
-    if(o.isActionNeeded()) {
-      if (o instanceof SmartDevice) {
-        o = modelUpdate((SmartDevice) o);
-        //temp_to_notify = s.forecast("some time");
-      } else ((AlarmDevice) o).alert();
+    double[] temperatures = {10.5, 20.5, 50.1, 100.0, 5.9, 10.4, 71.6};
+    AlarmDevice a1 = new AlarmDevice();
+    AlarmDevice a2 = new SmartAlarmDevice();
+    for(double t : temperatures) {
+      a2 = action(a2, t);
+      a1 = action(a1, t);
     }
-    return o;
+  }
+  private @Ensures("IDLE") AlarmDevice action(@Requires("IDLE") AlarmDevice a, double temp) {
+    a.notify(temp);
+    if(a.thresholdCheck()) a.alert();
+    if(a instanceof SmartAlarmDevice) {
+      SmartAlarmDevice s = (SmartAlarmDevice) a;
+      if(s.predictiveThresholdCheck("some time")) s.alert();
+      if(s.isTrainingNeeded()) a = modelUpdate(s);
+      else a = s;
+    }
+    return a;
   }
 
-  private @Ensures("IDLE") SmartDevice modelUpdate(@Requires("DATA_VALIDATION") SmartDevice sd) {
+  private @Ensures("IDLE") SmartAlarmDevice modelUpdate(@Requires("DATA_VALIDATION") SmartAlarmDevice sd) {
     if (sd.dataValidation()){
       sd.train();
       while (!sd.modelEvaluation()) {

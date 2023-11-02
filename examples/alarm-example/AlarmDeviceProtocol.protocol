@@ -6,7 +6,7 @@ typestate AlarmDeviceProtocol {
   }
 
   NOTIFIED = {
-    boolean isActionNeeded(): <true: ALERT, false: IDLE>
+    boolean thresholdCheck(): <true: ALERT, false: IDLE>
   }
 
   ALERT = {
