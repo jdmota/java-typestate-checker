@@ -4,21 +4,27 @@ public class ClientCode {
 
   public void goodBehaviour() {
     double[] temperatures = {10.5, 20.5, 50.1, 100.0, 5.9, 10.4, 71.6};
-    AlarmDevice a1 = connectToDevice("AlarmDevice");
-    AlarmDevice a2 = connectToDevice("PredictiveAlarmDevice");
+    AlarmDevice a1 = connectToDevice(new AlarmDevice());
+    AlarmDevice a2 = connectToDevice(new PredictiveAlarmDevice());
     for (double t : temperatures) {
       a2 = action(a2, t);
       a1 = action(a1, t);
     }
+    a1.disconnect();
+    a2.disconnect();
   }
-  private @Ensures("IDLE") AlarmDevice connectToDevice(String device) {
-    if(device.equals("PredictiveAlarmDevice")) {
-      PredictiveAlarmDevice d = new PredictiveAlarmDevice();
-      if(d.isTrainingNeeded()) d = modelUpdate(d);
-      return d;
-    } else return new AlarmDevice();
+  private @Ensures("CONN") AlarmDevice connectToDevice(@Requires("DISC") AlarmDevice device) {
+    device.connect();
+    device.setThreshold(50);
+    if(device instanceof PredictiveAlarmDevice) {
+      PredictiveAlarmDevice tmp = (PredictiveAlarmDevice) device;
+      if (tmp.isTrainingNeeded()) tmp = modelUpdate(tmp);
+      tmp.setInferenceTimeStep("1 hour");
+      return tmp;
+    }
+    return device;
   }
-  private @Ensures("IDLE") PredictiveAlarmDevice modelUpdate(@Requires("DATA_VALIDATION") PredictiveAlarmDevice sd) {
+  private @Ensures("CONN") PredictiveAlarmDevice modelUpdate(@Requires("DATA_VALIDATION") PredictiveAlarmDevice sd) {
     if (sd.dataValidation()) {
       sd.train();
       while (!sd.modelEvaluation()) {
@@ -29,7 +35,7 @@ public class ClientCode {
     return sd;
   }
 
-  private @Ensures("IDLE") AlarmDevice action(@Requires("IDLE") AlarmDevice a, double temp) {
+  private @Ensures("CONN") AlarmDevice action(@Requires("CONN") AlarmDevice a, double temp) {
     a.notify(temp);
     if (a.thresholdCheck() || (a instanceof PredictiveAlarmDevice && ((PredictiveAlarmDevice) a).predictiveThresholdCheck("some time"))) a.alert();
     return a;

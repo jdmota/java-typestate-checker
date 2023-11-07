@@ -1,16 +1,22 @@
 typestate AlarmDeviceProtocol {
 
-  IDLE = {
-    void notify(double): NOTIFIED,
+  DISC = {
+    void connect(): CONN,
     drop: end
   }
 
+  CONN = {
+    void notify(double): NOTIFIED,
+    void setThreshold(double): CONN,
+    void disconnect(): DISC
+  }
+
   NOTIFIED = {
-    boolean thresholdCheck(): <true: ALERT, false: IDLE>
+    boolean thresholdCheck(): <true: ALERT, false: CONN>
   }
 
   ALERT = {
-    void alert(): IDLE
+    void alert(): CONN
   }
 
 }

@@ -9,6 +9,7 @@ public class PredictiveAlarmDevice extends AlarmDevice {
   public boolean predictiveThresholdCheck(String time) { return true; }
   public boolean dataValidation() { return true; }
   public void pruneData() {}
+  public void setInferenceTimeStep(String timestep) {}
   public void train() {}
   public boolean modelEvaluation() { return true; }
   public void modelTuning(String hyperparms) {}

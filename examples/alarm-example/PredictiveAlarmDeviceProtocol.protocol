@@ -1,18 +1,25 @@
-typestate PredictiveDeviceProtocol {
+typestate PredictiveAlarmDeviceProtocol {
 
-  IDLE = {
-    void notify(double): NOTIFIED,
-    boolean isTrainingNeeded(): <true: DATA_VALIDATION, false: IDLE>,
-    boolean predictiveThresholdCheck(String): <true: ALERT, false: IDLE>,
+  DISC = {
+    void connect(): CONN,
     drop: end
   }
 
+  CONN = {
+    void notify(double): NOTIFIED,
+    boolean isTrainingNeeded(): <true: DATA_VALIDATION, false: CONN>,
+    boolean predictiveThresholdCheck(String): <true: ALERT, false: CONN>,
+    void setThreshold(double): CONN,
+    void setInferenceTimeStep(String): CONN,
+    void disconnect(): DISC
+  }
+
   NOTIFIED =  {
-    boolean thresholdCheck(): <true: ALERT, false: IDLE>
+    boolean thresholdCheck(): <true: ALERT, false: CONN>
   }
 
   ALERT = {
-    void alert(): IDLE
+    void alert(): CONN
   }
 
   DATA_VALIDATION = {
@@ -20,7 +27,7 @@ typestate PredictiveDeviceProtocol {
   }
 
   DATA_PRUNING = {
-    void pruneData(): IDLE
+    void pruneData(): CONN
   }
 
   TRAIN = {
@@ -28,7 +35,7 @@ typestate PredictiveDeviceProtocol {
   }
 
   MODEL_EVALUATION = {
-    boolean modelEvaluation(): <true: IDLE, false: UPDATE_HYPERPARAMS>
+    boolean modelEvaluation(): <true: CONN, false: UPDATE_HYPERPARAMS>
   }
 
   UPDATE_HYPERPARAMS = {
