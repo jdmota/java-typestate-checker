@@ -1,9 +1,9 @@
 import jatyc.lib.*;
 
-@Typestate("SmartAlarmDeviceProtocol")
-public class SmartAlarmDevice extends AlarmDevice {
+@Typestate("PredictiveAlarmDeviceProtocol")
+public class PredictiveAlarmDevice extends AlarmDevice {
 
-  public SmartAlarmDevice() {}
+  public PredictiveAlarmDevice() {}
 
   public boolean isTrainingNeeded() { return true; }
   public boolean predictiveThresholdCheck(String time) { return true; }

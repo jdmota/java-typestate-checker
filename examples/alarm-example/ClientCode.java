@@ -4,27 +4,21 @@ public class ClientCode {
 
   public void goodBehaviour() {
     double[] temperatures = {10.5, 20.5, 50.1, 100.0, 5.9, 10.4, 71.6};
-    AlarmDevice a1 = new AlarmDevice();
-    AlarmDevice a2 = new SmartAlarmDevice();
+    AlarmDevice a1 = connectToDevice("AlarmDevice");
+    AlarmDevice a2 = connectToDevice("PredictiveAlarmDevice");
     for (double t : temperatures) {
       a2 = action(a2, t);
       a1 = action(a1, t);
     }
   }
-
-  private @Ensures("IDLE") AlarmDevice action(@Requires("IDLE") AlarmDevice a, double temp) {
-    a.notify(temp);
-    if (a.thresholdCheck()) a.alert();
-    if (a instanceof SmartAlarmDevice) {
-      SmartAlarmDevice s = (SmartAlarmDevice) a;
-      if (s.predictiveThresholdCheck("some time")) s.alert();
-      if (s.isTrainingNeeded()) a = modelUpdate(s);
-      else a = s;
-    }
-    return a;
+  private @Ensures("IDLE") AlarmDevice connectToDevice(String device) {
+    if(device.equals("PredictiveAlarmDevice")) {
+      PredictiveAlarmDevice d = new PredictiveAlarmDevice();
+      if(d.isTrainingNeeded()) d = modelUpdate(d);
+      return d;
+    } else return new AlarmDevice();
   }
-
-  private @Ensures("IDLE") SmartAlarmDevice modelUpdate(@Requires("DATA_VALIDATION") SmartAlarmDevice sd) {
+  private @Ensures("IDLE") PredictiveAlarmDevice modelUpdate(@Requires("DATA_VALIDATION") PredictiveAlarmDevice sd) {
     if (sd.dataValidation()) {
       sd.train();
       while (!sd.modelEvaluation()) {
@@ -35,7 +29,13 @@ public class ClientCode {
     return sd;
   }
 
-  public void badBehaviour() {
+  private @Ensures("IDLE") AlarmDevice action(@Requires("IDLE") AlarmDevice a, double temp) {
+    a.notify(temp);
+    if (a.thresholdCheck() || (a instanceof PredictiveAlarmDevice && ((PredictiveAlarmDevice) a).predictiveThresholdCheck("some time"))) a.alert();
+    return a;
+  }
+
+  /*public void badBehaviour() {
     AlarmDevice a1 = new AlarmDevice();
     AlarmDevice a2 = new SmartAlarmDevice();
     a1 = action2(a1, 10.5);
@@ -53,6 +53,6 @@ public class ClientCode {
       if (a.thresholdCheck()) {}
       return a;
     }
-  }
+  }*/
 
 }

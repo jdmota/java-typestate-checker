@@ -1,4 +1,4 @@
-typestate SmartDeviceProtocol {
+typestate PredictiveDeviceProtocol {
 
   IDLE = {
     void notify(double): NOTIFIED,
