@@ -1,7 +1,7 @@
 import jatyc.lib.*;
 import java.util.*;
-
 class RemoteController {
+
   public static void goodBehaviour() {
     List<String> tasks = initTasks("weld", "task", "weld", "weld", "task");
     Robot r1 = new Robot();
@@ -20,7 +20,7 @@ class RemoteController {
     r2.turnOff();
   }
 
-  public static void badBehaviour() {
+  public static void badBehaviour() { //it needs to depend on up/downcast
     List<String> tasks = initTasks("weld", "task", "weld", "weld", "task");
     Robot r1 = new WeldingRobot();
     r1.turnOn();
@@ -42,7 +42,6 @@ class RemoteController {
     }
     r1.turnOff();
   }
-
   private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
     switch(task) {
       case "weld":
@@ -64,4 +63,6 @@ class RemoteController {
     for (String task : tasks) taskList.add(task);
     return taskList;
   }
+
+
 }
