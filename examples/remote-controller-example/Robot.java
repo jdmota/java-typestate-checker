@@ -11,7 +11,7 @@ class Robot {
   public void turnOff() {
   }
 
-  public boolean task() {
+  public boolean move(double x, double y) {
     return true;
   }
 

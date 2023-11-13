@@ -1,11 +1,10 @@
 import jatyc.lib.*;
 import java.util.*;
+
 class RemoteController {
 
-  public static void goodBehaviour() {
-    List<String> tasks = initTasks("weld", "task", "weld", "weld", "task");
-    Robot r1 = new Robot();
-    Robot r2 = new WeldingRobot();
+  public static void goodBehaviour(@Requires("OFF") Robot r1, @Requires("OFF") Robot r2) {
+    List<String> tasks = initTasks("weld", "move", "weld", "weld", "move");
     r1.turnOn();
     r2.turnOn();
     while (tasks.size() > 0) {
@@ -20,30 +19,53 @@ class RemoteController {
     r2.turnOff();
   }
 
-  public static void badBehaviour() { //it needs to depend on up/downcast
-    List<String> tasks = initTasks("weld", "task", "weld", "weld", "task");
-    Robot r1 = new WeldingRobot();
-    r1.turnOn();
+  // TODO: tasks objects
+
+  // Bad behavior: wrong method calls
+  public static void badBehaviour1(@Requires("IDLE") Robot r) {
+    List<String> tasks = initTasks("weld", "move", "weld", "weld", "move");
     while (tasks.size() > 0) {
       String curr_task = tasks.remove(0);
-      switch(curr_task) {
-        case "task":
-          r1.task();
+      switch (curr_task) {
+        case "move":
+          r.move(5.0, 0.0); // Problem: forgot to recharge if needed
           break;
         case "weld":
-          if (r1 instanceof WeldingRobot) {
-            WeldingRobot tmp = (WeldingRobot) r1;
+          if (r instanceof WeldingRobot) {
+            WeldingRobot tmp = (WeldingRobot) r;
             if (!tmp.weldMetal()) tmp.heating();
-            r1 = tmp;
+            r = tmp;
           }
           break;
       }
-      if (!r1.taskResult()) tasks.add(curr_task);
+      if (!r.taskResult()) tasks.add(curr_task);
     }
-    r1.turnOff();
+    r.turnOff();
   }
+
+  // Bad behavior: upcast fails
+  public static void badBehaviour2(@Requires("IDLE") Robot r) {
+    List<String> tasks = initTasks("weld", "move", "weld", "weld", "move");
+    while (tasks.size() > 0) {
+      String curr_task = tasks.remove(0);
+      switch (curr_task) {
+        case "move":
+          if (!r.move(5.0, 0.0)) r.recharge();
+          break;
+        case "weld":
+          if (r instanceof WeldingRobot) {
+            ((WeldingRobot) r).weldMetal(); // Problem: forgot to reheat if needed
+          }
+          break;
+      }
+      if (!r.taskResult()) tasks.add(curr_task);
+    }
+    r.turnOff();
+  }
+
+  // Good behavior
   private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
-    switch(task) {
+    switch (task) {
       case "weld":
         if (r instanceof WeldingRobot) {
           WeldingRobot tmp = (WeldingRobot) r;
@@ -51,8 +73,8 @@ class RemoteController {
           r = tmp;
         }
         break;
-      case "task":
-        if (!r.task()) r.recharge();
+      case "move":
+        if (!r.move(5.0, 0.0)) r.recharge();
         break;
     }
     return r;
@@ -63,6 +85,5 @@ class RemoteController {
     for (String task : tasks) taskList.add(task);
     return taskList;
   }
-
 
 }

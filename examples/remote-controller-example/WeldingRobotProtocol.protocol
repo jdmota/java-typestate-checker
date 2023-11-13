@@ -6,7 +6,7 @@ typestate WeldingRobotProtocol {
 
   IDLE = {
     void turnOff(): OFF,
-    boolean task(): <true:IDLE, false: RECHARGE>,
+    boolean move(double, double): <true: IDLE, false: RECHARGE>,
     boolean weldMetal(): <true: IDLE, false: HEAT>
   }
 
