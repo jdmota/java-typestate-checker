@@ -19,7 +19,22 @@ class RemoteController {
     r2.turnOff();
   }
 
-  // TODO: tasks objects
+  // Good behavior
+  private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
+    switch (task) {
+      case "weld":
+        if (r instanceof WeldingRobot) {
+          WeldingRobot w = (WeldingRobot) r;
+          if (!w.weldMetal()) w.reheat();
+          r = w;
+        }
+        break;
+      case "move":
+        if (!r.move(5.0, 0.0)) r.recharge();
+        break;
+    }
+    return r;
+  }
 
   // Bad behavior: wrong method calls
   public static void badBehaviour1(@Requires("IDLE") Robot r) {
@@ -32,9 +47,9 @@ class RemoteController {
           break;
         case "weld":
           if (r instanceof WeldingRobot) {
-            WeldingRobot tmp = (WeldingRobot) r;
-            if (!tmp.weldMetal()) tmp.heating();
-            r = tmp;
+            WeldingRobot w = (WeldingRobot) r;
+            if (!w.weldMetal()) w.reheat(); // Problem: forgot to recharge in previous loop
+            r = w;
           }
           break;
       }
@@ -63,21 +78,27 @@ class RemoteController {
     r.turnOff();
   }
 
-  // Good behavior
-  private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
-    switch (task) {
-      case "weld":
-        if (r instanceof WeldingRobot) {
-          WeldingRobot tmp = (WeldingRobot) r;
-          if (!tmp.weldMetal()) tmp.heating();
-          r = tmp;
-        }
-        break;
-      case "move":
-        if (!r.move(5.0, 0.0)) r.recharge();
-        break;
+  // Bad behavior: upcast fails
+  public static void badBehaviour3(@Requires("IDLE") Robot r) {
+    List<String> tasks = initTasks("weld", "move", "weld", "weld", "move");
+    while (tasks.size() > 0) {
+      String curr_task = tasks.remove(0);
+      switch (curr_task) {
+        case "move":
+          if (!r.move(5.0, 0.0)) r.recharge();
+          break;
+        case "weld":
+          if (r instanceof WeldingRobot) {
+            WeldingRobot w = (WeldingRobot) r;
+            if (!w.weldMetal()) w.reheat();
+            w.removeWelder();
+            r = w; // Problem: forgot to readd the welder before upcasting
+          }
+          break;
+      }
+      if (!r.taskResult()) tasks.add(curr_task);
     }
-    return r;
+    r.turnOff();
   }
 
   private static List<String> initTasks(String... tasks) {
