@@ -13,9 +13,8 @@ public class ClientCode {
   private @Ensures("UNKNOWN") Stack executeTasks(@Requires("UNKNOWN") Stack stack, List<String> tasks) {
     Stack auxiliaryStack = new Stack();
     while(!tasks.isEmpty() && !stack.isEmpty()) {
-      Robot r = stack.pop();
       String curr_task = tasks.remove(0);
-      r = attemptTask(r, curr_task);
+      Robot r = attemptTask(stack.pop(), curr_task);
       if (!r.taskResult()) tasks.add(curr_task);
       auxiliaryStack.push(r);
     }

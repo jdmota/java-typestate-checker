@@ -8,7 +8,7 @@ typestate PredictiveAlarmDeviceProtocol {
   CONN = {
     void notify(double): NOTIFIED,
     boolean isTrainingNeeded(): <true: DATA_VALIDATION, false: CONN>,
-    boolean predictiveThresholdCheck(String): <true: ALERT, false: CONN>,
+    boolean predictiveThresholdCheck(): <true: ALERT, false: CONN>,
     void setThreshold(double): CONN,
     void setInferenceTimeStep(String): CONN,
     void disconnect(): DISC

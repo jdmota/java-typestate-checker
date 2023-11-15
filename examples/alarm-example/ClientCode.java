@@ -37,7 +37,7 @@ public class ClientCode {
 
   private @Ensures("CONN") AlarmDevice action(@Requires("CONN") AlarmDevice a, double temp) {
     a.notify(temp);
-    if (a.thresholdCheck() || (a instanceof PredictiveAlarmDevice && ((PredictiveAlarmDevice) a).predictiveThresholdCheck("some time"))) a.alert();
+    if (a.thresholdCheck() || (a instanceof PredictiveAlarmDevice && ((PredictiveAlarmDevice) a).predictiveThresholdCheck())) a.alert();
     return a;
   }
 
