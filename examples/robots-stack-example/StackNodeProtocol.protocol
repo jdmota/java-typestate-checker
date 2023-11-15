@@ -1,0 +1,10 @@
+
+typestate StackNodeProtocol {
+  INIT =  {
+    Robot getElement(): SHARED
+  }
+
+  SHARED = {
+    StackNode getPrevious(): end
+  }
+}

@@ -1,0 +1,10 @@
+typestate Welder {
+  USE = {
+    boolean use(): <true: USE, false: HEAT>,
+    drop: end
+  }
+
+  HEAT = {
+    void reheat(): USE
+  }
+}
