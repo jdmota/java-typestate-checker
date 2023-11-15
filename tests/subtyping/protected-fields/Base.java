@@ -1,4 +1,4 @@
-import mungo.lib.Typestate;
+import jatyc.lib.Typestate;
 
 @Typestate("Base.protocol")
 // :: error: ([this.obj] did not complete its protocol (found: State{SomeObj, Init}))
@@ -11,10 +11,14 @@ public class Base {
   }
 
   public boolean hasNext() {
-    return false;
+    return someBool();
   }
 
   public void next() {
 
+  }
+
+  private static boolean someBool() {
+    return true;
   }
 }

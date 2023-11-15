@@ -222,6 +222,55 @@ private fun checkersFlowRuleToSimpleFlowRule(rule: Store.FlowRule): SimpleFlowRu
   }
 }
 
+private class ProcessingClass(
+  val tree: JCTree.JCClassDecl,
+  val isStatic: Boolean,
+  val thisRef: IdReference?
+)
+
+private class ProcessingCode(
+  val tree: Tree,
+  val clazz: ProcessingClass
+) : DetailedCFGInfo() {
+  private fun checkSelect(r: Reference?) {
+    var ref = r
+    while (ref is SelectReference) {
+      if (ref.isFieldOf(clazz.thisRef)) {
+        potentiallyModified.add(ref)
+        break
+      }
+      ref = ref.parent
+    }
+  }
+
+  private fun checkMethodCall(call: MethodCall) {
+    innerCalls.add(call)
+  }
+
+  fun visitCode(code: CodeExpr) {
+    when (code) {
+      is Assign -> {
+        checkSelect(Reference.make(code.left))
+        checkSelect(Reference.make(code.right))
+      }
+      is ParamAssign -> {
+        checkSelect(Reference.make(code.expr))
+      }
+      is Return -> {
+        if (code.expr != null) {
+          checkSelect(Reference.make(code.expr))
+        }
+      }
+      is MethodCall -> {
+        checkMethodCall(code)
+      }
+      else -> {
+        // Nothing
+      }
+    }
+  }
+}
+
 class CFAdapter(val checker: JavaTypestateChecker) {
   private val utils = checker.utils
   private val hierarchy get() = utils.hierarchy
@@ -356,9 +405,8 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     return typeIntroducer.getInitialType(getCorrectReceiverType(method))
   }
 
-  // Stack of pairs: Java class and an isStatic boolean
-  private val classesStack = Stack<Pair<JCTree.JCClassDecl, Boolean>>()
-  private val methodsStack = Stack<Tree>()
+  private val classesStack = Stack<ProcessingClass>()
+  private val codeBodyStack = Stack<ProcessingCode>()
   private val modifiersIsStatic = { it: ModifiersTree -> it.flags.contains(Modifier.STATIC) }
   private val modifiersIsNotStatic = { it: ModifiersTree -> !it.flags.contains(Modifier.STATIC) }
 
@@ -368,12 +416,11 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     }
   }
 
-  private fun transformClass(classTree: JCTree.JCClassDecl, isStatic: Boolean): ClassDecl {
+  private fun transformClass(classTree: JCTree.JCClassDecl, isStatic: Boolean, thisRef: IdReference?): ClassDecl {
     val filter = if (isStatic) modifiersIsStatic else modifiersIsNotStatic
     val graph = if (isStatic) null else utils.classUtils.visitClassSymbol(classTree.sym)
-    val thisRef = if (isStatic) null else Reference.make(renamer.transformThis(classTree.type))
 
-    val fields = mutableListOf<FieldDeclaration>()
+    val fields = mutableMapOf<String, FieldDeclaration>()
     val methods = mutableListOf<FuncDeclaration>()
     val overrides = mutableMapOf<FuncDeclaration, List<FuncInterface>>()
     val publicMethods = mutableListOf<FuncDeclaration>()
@@ -390,14 +437,16 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       if (field.initializer != null) {
         initializers.add(Pair(processCFG(field), (field as JCTree).pos))
       }
-      fields.add(FieldDeclaration(
+      val fieldName = field.name.toString()
+      assert(!fields.containsKey(fieldName))
+      fields[fieldName] = FieldDeclaration(
         renamer.transformDecl(field),
         getFieldJavaType(field),
         getFieldType(field),
         isPrivate = field.modifiers.flags.contains(Modifier.PRIVATE),
         isProtected = field.modifiers.flags.contains(Modifier.PROTECTED),
         isPublic = field.modifiers.flags.contains(Modifier.PUBLIC),
-      ).set(field).set(root).set(checker))
+      ).set(field).set(root).set(checker)
     }
 
     // Build the blocks CFGs and store them for later
@@ -488,11 +537,13 @@ class CFAdapter(val checker: JavaTypestateChecker) {
 
   fun transformClass(classTree: JCTree.JCClassDecl): ClassDeclAndCompanion {
     return transformedClasses.computeIfAbsent(classTree) {
-      classesStack.push(Pair(classTree, true))
-      val staticClass = transformClass(classTree, isStatic = true)
+      classesStack.push(ProcessingClass(classTree, true, null))
+      val staticClass = transformClass(classTree, isStatic = true, null)
       classesStack.pop()
-      classesStack.push(Pair(classTree, false))
-      val nonStaticClass = transformClass(classTree, isStatic = false)
+
+      val thisRef = Reference.make(renamer.transformThis(classTree.type)) as IdReference
+      classesStack.push(ProcessingClass(classTree, false, thisRef))
+      val nonStaticClass = transformClass(classTree, isStatic = false, thisRef)
       classesStack.pop()
       ClassDeclAndCompanion(nonStatic = nonStaticClass, static = staticClass).set(classTree).set(classTree.type, hierarchy).set(root).set(checker)
     }
@@ -505,6 +556,14 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   private fun transformMethod(method: JCTree.JCMethodDecl, cfg: SimpleCFG): FuncDeclaration {
     val func = funcInterfaces.transform(method.sym)
     return FuncDeclaration(func.name, func.parameters, cfg, func.returnType, func.returnJavaType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract).set(method).set(root).set(checker)
+  }
+
+  private fun transformLambda(tree: JCTree.JCLambda, node: Node): MultipleAdaptResult {
+    val (returnType, returnJavaType) = getReturnType(tree)
+    return MultipleAdaptResult(listOf(
+      FuncDeclaration(null, getParamTypes(tree), processCFG(tree), returnType, returnJavaType, isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node, hierarchy),
+      NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node, hierarchy)
+    ))
   }
 
   private fun treeToAst(tree: Tree, classTree: JCTree.JCClassDecl): UnderlyingAST {
@@ -521,19 +580,25 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   }
 
   private fun processCFG(tree: Tree): SimpleCFG {
-    if (tree is MethodTree) {
+    val clazz = classesStack.peek()
+    val ast = treeToAst(tree, clazz.tree)
+    val processingCode = ProcessingCode(tree, clazz)
+    codeBodyStack.push(processingCode)
+    val cfg = if (tree is MethodTree) {
       if (tree.modifiers.flags.contains(Modifier.NATIVE)) {
         // TODO should be an expression that invalidates the information right?
-        return createOneExprCFG(NoOPExpr("native method").let { it.javaType2 = hierarchy.VOID; it })
+        createOneExprCFG(NoOPExpr("native method").let { it.javaType2 = hierarchy.VOID; it })
       } else if (tree.modifiers.flags.contains(Modifier.ABSTRACT) || tree.body == null) {
         // Note that abstract methods in an interface have a null body but do not have an ABSTRACT flag
-        return createOneExprCFG(ThrowExpr(null).let { it.javaType2 = hierarchy.BOT; it })
+        createOneExprCFG(ThrowExpr(null).let { it.javaType2 = hierarchy.BOT; it })
+      } else {
+        checkersCFGtoSimpleCFG(CFCFGBuilder.build(root, ast, processingEnv))
       }
+    } else {
+      checkersCFGtoSimpleCFG(CFCFGBuilder.build(root, ast, processingEnv))
     }
-    val ast = treeToAst(tree, classesStack.peek().first)
-    methodsStack.push(tree)
-    val cfg = checkersCFGtoSimpleCFG(CFCFGBuilder.build(root, ast, processingEnv))
-    methodsStack.pop()
+    cfg.detailedInfo = processingCode
+    codeBodyStack.pop()
     return cfg
   }
 
@@ -618,6 +683,8 @@ class CFAdapter(val checker: JavaTypestateChecker) {
         var first = true
         var lastNode = prev
         for (c in result.list) {
+          codeBodyStack.firstOrNull()?.visitCode(c)
+
           val simpleNode = SimpleCodeNode(c)
           c.set(root).set(checker)
 
@@ -632,6 +699,8 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       }
 
       is SingleAdaptResult -> {
+        codeBodyStack.firstOrNull()?.visitCode(result.code)
+
         val simpleNode = SimpleCodeNode(result.code)
         result.code.set(root).set(checker)
 
@@ -686,7 +755,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   }
 
   private fun makeReturn(node: Node, result: Node?): Return {
-    val (type, javaType) = when (val enclosing = methodsStack.peek()) {
+    val (type, javaType) = when (val enclosing = codeBodyStack.peek().tree) {
       is JCTree.JCMethodDecl -> getReturnType(enclosing)
       is JCTree.JCLambda -> getReturnType(enclosing)
       else -> error("Unexpected enclosing method ${enclosing::class.java}")
@@ -712,11 +781,11 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   }
 
   private fun makeThis(node: Node): CodeExpr {
-    val (classTree, isStatic) = classesStack.peek()
-    if (isStatic) {
-      return makeTypeRef(classTree.type).set(node, hierarchy)
+    val c = classesStack.peek()
+    if (c.isStatic) {
+      return makeTypeRef(c.tree.type).set(node, hierarchy)
     }
-    return renamer.transformThis(classTree.type).set(node, hierarchy)
+    return renamer.transformThis(c.tree.type).set(node, hierarchy)
   }
 
   // See https://github.com/typetools/checker-framework/tree/master/dataflow/src/main/java/org/checkerframework/dataflow/cfg/node
@@ -821,13 +890,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
           // TODO Cannot create reference for non-anytime method
           TODO("method references are not supported yet")
         }
-        is JCTree.JCLambda -> {
-          val (returnType, returnJavaType) = getReturnType(tree)
-          MultipleAdaptResult(listOf(
-            FuncDeclaration(null, getParamTypes(tree), processCFG(tree), returnType, returnJavaType, isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node, hierarchy),
-            NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node, hierarchy)
-          ))
-        }
+        is JCTree.JCLambda -> transformLambda(tree, node)
         else -> error("Unexpected tree ${node.javaClass} in FunctionalInterfaceNode")
       }
       is InstanceOfNode -> SingleAdaptResult(BinaryExpr(t(node.operand), makeTypeRef(node.refType), BinaryOP.Is).set(node, hierarchy))

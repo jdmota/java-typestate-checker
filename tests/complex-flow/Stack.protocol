@@ -1,0 +1,18 @@
+typestate Stack {
+  EMPTY = {
+    void push(Socket): NON_EMPTY,
+    boolean isEmpty(): <true: EMPTY, false: NON_EMPTY>,
+    drop: end
+  }
+
+  NON_EMPTY = {
+     void push(Socket): NON_EMPTY,
+     Socket pop(): UNKNOWN,
+     boolean isEmpty(): <true: EMPTY, false: NON_EMPTY>
+  }
+
+  UNKNOWN = {
+    void push(Socket): NON_EMPTY,
+    boolean isEmpty(): <true: EMPTY, false: NON_EMPTY>
+  }
+}

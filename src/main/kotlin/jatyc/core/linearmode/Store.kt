@@ -144,6 +144,10 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
     return mapKeys { it.replaceCondition(from, to) }
   }
 
+  fun addCondition(pattern: CasePattern): StoreInfo {
+    return mapKeys { it.addCondition(pattern) }
+  }
+
   fun fixThis(from: Reference, to: Reference): StoreInfo {
     return mapKeys { it.fixThis(from, to) }
   }
@@ -288,6 +292,14 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     val store = Store()
     for ((ref, info) in this) {
       store[ref] = info.withLabel(condition, label)
+    }
+    return store
+  }
+
+  fun addFact(pattern: CasePattern): Store {
+    val store = Store()
+    for ((ref, info) in this) {
+      store[ref] = info.addCondition(pattern)
     }
     return store
   }

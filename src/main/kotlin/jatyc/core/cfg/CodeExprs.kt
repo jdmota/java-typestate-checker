@@ -4,10 +4,7 @@ import com.sun.source.tree.CompilationUnitTree
 import javax.lang.model.type.TypeMirror
 import com.sun.source.tree.Tree
 import jatyc.JavaTypestateChecker
-import jatyc.core.JTCType
-import jatyc.core.JavaType
-import jatyc.core.JavaTypesHierarchy
-import jatyc.core.Reference
+import jatyc.core.*
 import org.checkerframework.dataflow.cfg.node.*
 import jatyc.typestate.graph.Graph
 
@@ -225,6 +222,15 @@ class FuncDeclaration(
   isAbstract: Boolean,
   var clazz: ClassDecl? = null
 ) : FuncInterface(name, parameters, returnType, returnJavaType, isPublic, isAnytime, isPure, isAbstract) {
+  fun potentiallyModifiedFields(): Sequence<SelectReference>? {
+    val info = body.detailedInfo
+    return if (info.innerCalls.any { !it.methodExpr.isPure }) {
+      null
+    } else {
+      info.potentiallyModified.asSequence()
+    }
+  }
+
   override fun format(indent: String): String {
     return "$indent(fun ${name ?: "anonymous"}(...) -> ...)" // ${parameters.joinToString(", ")}
   }
@@ -260,7 +266,7 @@ class FieldDeclaration(val id: IdLHS, val javaType: JavaType, val type: JTCType,
 
 class ClassDecl(
   val name: String,
-  val fields: List<FieldDeclaration>,
+  val fields: Map<String, FieldDeclaration>,
   val methods: List<FuncDeclaration>, // == publicMethods + nonPublicMethods
   val publicMethods: List<FuncDeclaration>,
   val nonPublicMethods: List<FuncDeclaration>,
@@ -276,9 +282,8 @@ class ClassDecl(
         yield(method)
       }
     }
-    for (baseName in extends) {
-      val base = classes[baseName]
-      if (base != null) yieldAll(base.nonStatic.allPublicMethods(classes))
+    for (base in resolveExtends(classes)) {
+      yieldAll(base.nonStatic.allPublicMethods(classes))
     }
   }
 
@@ -288,27 +293,43 @@ class ClassDecl(
         yield(method)
       }
     }
-    for (baseName in extends) {
-      val base = classes[baseName]
-      if (base != null) yieldAll(base.nonStatic.protocolMethods(classes))
+    for (base in resolveExtends(classes)) {
+      yieldAll(base.nonStatic.protocolMethods(classes))
     }
   }
 
   fun allFields(classes: Map<String, ClassDeclAndCompanion>): Sequence<FieldDeclaration> = sequence {
-    for (field in fields) {
-      yield(field)
-    }
-    for (baseName in extends) {
-      val base = classes[baseName]
-      if (base != null) yieldAll(base.nonStatic.allFields(classes))
+    yieldAll(fields.values)
+    yieldAll(superFields(classes))
+  }
+
+  fun superFields(classes: Map<String, ClassDeclAndCompanion>): Sequence<FieldDeclaration> = sequence {
+    for (base in resolveExtends(classes)) {
+      yieldAll(base.nonStatic.allFields(classes))
     }
   }
 
-  fun allFieldsExceptOurs(classes: Map<String, ClassDeclAndCompanion>): Sequence<FieldDeclaration> = sequence {
-    for (baseName in extends) {
-      val base = classes[baseName]
-      if (base != null) yieldAll(base.nonStatic.allFields(classes))
+  fun superMethods(classes: Map<String, ClassDeclAndCompanion>): Sequence<FuncDeclaration> = sequence {
+    for (base in resolveExtends(classes)) {
+      yieldAll(base.nonStatic.methods)
     }
+  }
+
+  fun resolveExtends(classes: Map<String, ClassDeclAndCompanion>) = sequence {
+    for (name in extends) {
+      val base = classes[name]
+      if (base != null) yield(base)
+    }
+  }
+
+  fun resolveField(classes: Map<String, ClassDeclAndCompanion>, name: String, uuid: Long): FieldDeclaration? {
+    val f = fields[name]
+    if (f != null && f.id.uuid == uuid) return f
+    for (base in resolveExtends(classes)) {
+      val f = base.nonStatic.resolveField(classes, name, uuid)
+      if (f != null) return f
+    }
+    return null
   }
 
   fun constructors(): Sequence<FuncDeclaration> = sequence {

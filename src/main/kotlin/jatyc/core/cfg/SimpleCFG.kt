@@ -1,5 +1,6 @@
 package jatyc.core.cfg
 
+import jatyc.core.SelectReference
 import java.util.*
 
 // This file includes the implementation of a simplified version of Checker's CFG
@@ -42,22 +43,39 @@ class SimpleCFG(
   val entry: SimpleMarkerEntry = SimpleMarkerEntry(),
   val exit: SimpleMarkerExit = SimpleMarkerExit(),
   val allNodes: MutableList<SimpleNode> = mutableListOf(entry, exit)
-)
+) {
+  lateinit var detailedInfo: DetailedCFGInfo
+}
+
+open class DetailedCFGInfo(
+  val potentiallyModified: MutableSet<SelectReference> = mutableSetOf(),
+  val innerCalls: MutableSet<MethodCall> = mutableSetOf()
+) {
+  fun addAll(info: DetailedCFGInfo) {
+    potentiallyModified.addAll(info.potentiallyModified)
+    innerCalls.addAll(info.innerCalls)
+  }
+}
 
 fun joinCFGs(list: Collection<SimpleCFG>): SimpleCFG {
+  val info = DetailedCFGInfo()
   val allNodes = mutableListOf<SimpleNode>()
   val iterator = list.iterator()
   val first = iterator.next()
   val entry = first.entry
   var last = first.exit
   allNodes.addAll(first.allNodes)
+  info.addAll(first.detailedInfo)
   while (iterator.hasNext()) {
     val next = iterator.next()
     last.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, next.entry))
     last = next.exit
     allNodes.addAll(next.allNodes)
+    info.addAll(next.detailedInfo)
   }
-  return SimpleCFG(entry, last, allNodes)
+  val cfg = SimpleCFG(entry, last, allNodes)
+  cfg.detailedInfo = info
+  return cfg
 }
 
 fun createOneExprCFG(expr: CodeExpr): SimpleCFG {

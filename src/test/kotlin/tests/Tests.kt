@@ -192,9 +192,9 @@ class ClassAnalysisTests(testFiles: List<File>) : PerDirectoryTest(
   }
 }
 
-private const val dir13 = "switch-case-order"
+private const val dir13 = "complex-flow"
 
-class SwitchCaseOrderTests(testFiles: List<File>) : PerDirectoryTest(
+class ComplexFlowTests(testFiles: List<File>) : PerDirectoryTest(
   dir13,
   testFiles,
   defaultOpts

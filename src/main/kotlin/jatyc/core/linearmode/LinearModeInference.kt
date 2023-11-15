@@ -96,8 +96,8 @@ class LinearModeInference(
     val ref = Reference.make(from.code)
     return when (rule) {
       SimpleFlowRule.ALL -> a.propagateTo(b)
-      SimpleFlowRule.THEN -> a.withLabel(ref, "true").propagateTo(b)
-      SimpleFlowRule.ELSE -> a.withLabel(ref, "false").propagateTo(b)
+      SimpleFlowRule.THEN -> a.withLabel(ref, "true").addFact(CasePattern(ref, "true", true)).propagateTo(b)
+      SimpleFlowRule.ELSE -> a.withLabel(ref, "false").addFact(CasePattern(ref, "true", false)).propagateTo(b)
     }
   }
 

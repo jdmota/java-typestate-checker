@@ -1,0 +1,10 @@
+typestate ObjectWithProtocol {
+  INIT = {
+    void close(): END
+  }
+
+  END = {
+    void close(): END,
+    drop: end
+  }
+}

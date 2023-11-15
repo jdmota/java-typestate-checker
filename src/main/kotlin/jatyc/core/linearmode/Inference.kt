@@ -202,7 +202,19 @@ class Inference(
           // If this is a self call we need to invalidate the information about the fields
           // Remember that we do not allow field accesses unless we are in a method of the object
           // so the only way to modify fields is to perform a self call
-          val modified = clazz.allFields(classAnalysis.classes)
+          val modified = if (node.isSuperCall) {
+            // If it is a super call, we can resolve it and get more precise information
+            clazz.superMethods(classAnalysis.classes).filter {
+              it.name == node.methodExpr.name
+            }.flatMap { superF ->
+              val fields = superF.potentiallyModifiedFields()
+              fields?.mapNotNull {
+                clazz.resolveField(classAnalysis.classes, it.id, it.uuid)
+              } ?: clazz.allFields(classAnalysis.classes)
+            }
+          } else {
+            clazz.allFields(classAnalysis.classes)
+          }
           for (field in modified) {
             post[Reference.make(thisRef, field)] = TypeInfo.make(field.javaType, field.type)
           }

@@ -1,0 +1,9 @@
+typestate StackNode {
+  INIT =  {
+    Socket getElement(): NO_ELEM
+  }
+
+  NO_ELEM = {
+    StackNode getPrevious(): end
+  }
+}
