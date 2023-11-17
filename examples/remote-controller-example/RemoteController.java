@@ -128,7 +128,7 @@ class RemoteController {
     r1.unplugArm();
     Robot r2 = new BenderRobot();
     r2.turnOn();
-    goodBehaviour(r2,r1);
+    goodBehaviour(r2,r1); //upcast fails
   }
   private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
     r.executeTask(task);
