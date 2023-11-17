@@ -6,11 +6,6 @@ typestate RobotProtocol {
 
   IDLE = {
     void turnOff(): OFF,
-    boolean move(double, double): <true: IDLE, false: RECHARGE>
-  }
-
-  RECHARGE = {
-    void turnOff(): OFF,
-    void recharge(): IDLE
+    void executeTask(String): IDLE
   }
 }

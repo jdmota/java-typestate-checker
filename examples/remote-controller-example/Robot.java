@@ -1,23 +1,11 @@
-import jatyc.lib.Typestate;
+import jatyc.lib.*;
 
 @Typestate("RobotProtocol")
-class Robot {
-  public Robot() {
-  }
-
-  public void turnOn() {
-  }
-
-  public void turnOff() {
-  }
-
-  public boolean move(double x, double y) {
-    return true;
-  }
-
-  public void recharge() {
-  }
-
+abstract class Robot {
+  public Robot() {}
+  public void turnOn() {}
+  public void turnOff() {}
+  public abstract void executeTask(@Nullable String task);
   public boolean taskResult() {
     return true;
   }

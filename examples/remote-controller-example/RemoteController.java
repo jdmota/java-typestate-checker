@@ -1,9 +1,10 @@
+
 import jatyc.lib.*;
 import java.util.*;
 
 class RemoteController {
 
-  public static void goodBehaviour(@Requires("OFF") Robot r1, @Requires("OFF") Robot r2) {
+  /*public static void goodBehaviour(@Requires("OFF") Robot r1, @Requires("OFF") Robot r2) {
     List<String> tasks = initTasks("weld", "move", "weld", "weld", "move");
     r1.turnOn();
     r2.turnOn();
@@ -99,7 +100,42 @@ class RemoteController {
       if (!r.taskResult()) tasks.add(curr_task);
     }
     r.turnOff();
+  }*/
+  public static void upcastFails() {
+    List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
+    Robot r1 = new BenderRobot();
+    Robot r2 = new MultiTaskRobot(new CutterArm());
+    r1.turnOn();
+    r2.turnOn();
+    while (tasks.size() > 0) {
+      String curr_task = tasks.remove(0);
+      r1 = attemptTask(r1, curr_task);
+      if (!r1.taskResult()) {
+        r2 = attemptTask(r2, curr_task);
+        ((MultiTaskRobot) r2).unplugArm(); //upcast fails
+      }
+    }
+    r1.turnOff();
+    r2.turnOff();
   }
+  private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
+    r.executeTask(task);
+    if (!r.taskResult() && r instanceof MultiTaskRobot) {
+      MultiTaskRobot multiTaskRobot = (MultiTaskRobot) r;
+      multiTaskRobot.unplugArm();
+      multiTaskRobot = plugArm(multiTaskRobot, task);
+      multiTaskRobot.executeTask(task);
+      r = multiTaskRobot;
+    }
+    return r;
+  }
+  private static @Ensures("IDLE") MultiTaskRobot plugArm(@Requires("UNPLUGGED") MultiTaskRobot r, @Nullable String task) {
+    if(task.equals("weld")) r.plugArm(new WelderArm());
+    else if(task.equals("cut")) r.plugArm(new CutterArm());
+    else r.plugArm(new BenderArm());
+    return r;
+  }
+
 
   private static List<String> initTasks(String... tasks) {
     List<String> taskList = new ArrayList<>();
@@ -108,3 +144,4 @@ class RemoteController {
   }
 
 }
+
