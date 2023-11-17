@@ -101,35 +101,45 @@ class RemoteController {
     }
     r.turnOff();
   }*/
-  public static void upcastFails() {
+  public static void goodBehaviour(@Requires("IDLE") Robot r1, @Requires("IDLE") Robot r2) {
     List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
-    Robot r1 = new BenderRobot();
-    Robot r2 = new MultiTaskRobot(new CutterArm());
-    r1.turnOn();
-    r2.turnOn();
     while (tasks.size() > 0) {
       String curr_task = tasks.remove(0);
       r1 = attemptTask(r1, curr_task);
-      if (!r1.taskResult()) {
-        r2 = attemptTask(r2, curr_task);
-        ((MultiTaskRobot) r2).unplugArm(); //upcast fails
-      }
+      if (!r1.taskResult()) r2 = attemptTask(r2, curr_task);
     }
     r1.turnOff();
     r2.turnOff();
   }
+
+
+  public static void upcastFails() {
+    List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
+    MultiTaskRobot r1 = new MultiTaskRobot(new CutterArm());
+    r1.turnOn();
+    while (tasks.size() > 0) {
+      String curr_task = tasks.remove(0);
+      r1.executeTask(curr_task);
+      if(!r1.taskResult()) {
+        r1 = switchArm(r1, curr_task);
+        tasks.add(0, curr_task);
+      }
+    }
+    r1.unplugArm();
+    Robot r2 = new BenderRobot();
+    r2.turnOn();
+    goodBehaviour(r2,r1);
+  }
   private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, @Nullable String task) {
     r.executeTask(task);
     if (!r.taskResult() && r instanceof MultiTaskRobot) {
-      MultiTaskRobot multiTaskRobot = (MultiTaskRobot) r;
-      multiTaskRobot.unplugArm();
-      multiTaskRobot = plugArm(multiTaskRobot, task);
-      multiTaskRobot.executeTask(task);
-      r = multiTaskRobot;
+      r = switchArm((MultiTaskRobot) r, task);
+      r.executeTask(task);
     }
     return r;
   }
-  private static @Ensures("IDLE") MultiTaskRobot plugArm(@Requires("UNPLUGGED") MultiTaskRobot r, @Nullable String task) {
+  private static @Ensures("IDLE") MultiTaskRobot switchArm(@Requires("IDLE") MultiTaskRobot r, @Nullable String task) {
+    r.unplugArm();
     if(task.equals("weld")) r.plugArm(new WelderArm());
     else if(task.equals("cut")) r.plugArm(new CutterArm());
     else r.plugArm(new BenderArm());
