@@ -1,0 +1,21 @@
+typestate XRayDrone {
+
+  IDLE = {
+    void takeOff(): HOVERING,
+    void shutDown(): end
+  }
+
+  HOVERING = {
+    void land(): IDLE,
+    void moveTo(double, double): FLYING
+  }
+
+  FLYING = {
+    void moveTo(double, double): FLYING,
+    void stop(): HOVERING,
+    void takePicutre(): FLYING,
+    void xRayAnalysis(): FLYING,
+    boolean hasArrived(): <true: HOVERING, false: FLYING>
+  }
+
+}
