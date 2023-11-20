@@ -10,7 +10,7 @@ public class MultiTaskRobot extends Robot {
   }
 
   //overriding
-  public void executeTask(@Nullable String task) {
+  public void executeTask(String task) {
     arm.use();
   }
 

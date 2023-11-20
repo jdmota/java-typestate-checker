@@ -8,7 +8,7 @@ class BenderRobot extends Robot {
     arm = new BenderArm();
   }
 
-  public void executeTask(@Nullable String task) {
+  public void executeTask(String task) {
     arm.use();
   }
 
