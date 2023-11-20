@@ -1,0 +1,17 @@
+typestate MultiTaskRobotProtocol {
+  OFF = {
+    void turnOn(): IDLE,
+    drop: end
+  }
+
+  IDLE = {
+    void turnOff(): OFF,
+    void executeTask(String): IDLE,
+    void unplugArm(): UNPLUGGED
+  }
+
+  UNPLUGGED = {
+    void plugArm(MechanicalArm): IDLE
+  }
+
+}

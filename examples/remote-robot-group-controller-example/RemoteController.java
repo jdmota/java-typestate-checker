@@ -2,40 +2,20 @@ import jatyc.lib.*;
 import java.util.*;
 
 class RemoteController {
-  public static void useMultipleRobot(@Requires("NON_EMPTY") RobotGroup queue) {
+  public static void useMultipleRobot() {
     List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
+    RobotGroup group = poweredRobotRobotGroup(4);
     while (!tasks.isEmpty()) {
       String curr_task = tasks.remove(0);
       if (curr_task != null) {
-        Robot r = attemptTask(queue.take(), curr_task);
+        Robot r = attemptTask(group.take(), curr_task);
         if (!r.taskResult()) tasks.add(curr_task);
-        queue.putBack(r);
-        queue.next();
+        group.putBack(r);
+        group.next();
       }
     }
-    queue.turnAllOff();
+    group.turnAllOff();
   }
-
-  public static void upcastFails() {
-    List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
-    MultiTaskRobot r1 = new MultiTaskRobot(new CutterArm());
-    r1.turnOn();
-    while (tasks.size() > 0) {
-      String curr_task = tasks.remove(0);
-      if (curr_task != null) {
-        r1.executeTask(curr_task);
-        if (!r1.taskResult()) {
-          r1 = switchArm(r1, curr_task);
-          tasks.add(0, curr_task);
-        }
-      }
-    }
-    r1.unplugArm();
-    RobotGroup queue = poweredRobotRobotGroup(4);
-    queue.add(r1); // upcast fails
-    useMultipleRobot(queue);
-  }
-
   private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, String task) {
     r.executeTask(task);
     if (!r.taskResult() && r instanceof MultiTaskRobot) {
@@ -54,16 +34,16 @@ class RemoteController {
   }
 
   private static @Ensures("NON_EMPTY") RobotGroup poweredRobotRobotGroup(int n_robot) {
-    RobotGroup queue = new RobotGroup();
+    RobotGroup group = new RobotGroup();
     do {
       Robot r = null;
       if (n_robot % 2 == 0) r = new BenderRobot();
       else r = new MultiTaskRobot(new CutterArm());
       n_robot--;
       r.turnOn();
-      queue.add(r);
+      group.add(r);
     } while (n_robot > 0);
-    return queue;
+    return group;
   }
 
   private static List<String> initTasks(String... tasks) {
