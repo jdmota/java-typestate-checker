@@ -8,7 +8,7 @@ typestate RobotGroupProtocol {
   NON_EMPTY = {
     void add(Robot): NON_EMPTY,
     Robot take(): PUT_BACK,
-    void rotate(): NON_EMPTY,
+    void next(): NON_EMPTY,
     void turnAllOff(): EMPTY
   }
 

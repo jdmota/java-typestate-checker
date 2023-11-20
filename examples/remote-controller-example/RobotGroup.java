@@ -22,7 +22,7 @@ public class RobotGroup {
     fst.putBack(r);
   }
 
-  public void rotate() {
+  public void next() {
     RobotNode n = fst;
     fst = n.getNext();
 

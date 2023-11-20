@@ -3,14 +3,14 @@ import java.util.*;
 
 class RemoteController {
   public static void useMultipleRobot(@Requires("NON_EMPTY") RobotGroup queue) {
-    List<String> tasks = initTasks("weld", "move", "weld", "weld", "move");
+    List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
     while (!tasks.isEmpty()) {
       String curr_task = tasks.remove(0);
       if (curr_task != null) {
         Robot r = attemptTask(queue.take(), curr_task);
         if (!r.taskResult()) tasks.add(curr_task);
         queue.putBack(r);
-        queue.rotate();
+        queue.next();
       }
     }
     queue.turnAllOff();
