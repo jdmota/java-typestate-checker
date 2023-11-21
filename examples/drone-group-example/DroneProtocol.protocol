@@ -8,12 +8,11 @@ typestate DroneProtocol {
   HOVERING = {
     void land(): IDLE,
     void moveTo(double, double): FLYING,
-    void takePicture(): FLYING
+    void takePicture(): HOVERING
   }
 
   FLYING = {
     void moveTo(double, double): FLYING,
-    void stop(): HOVERING,
     boolean hasArrived(): <true: HOVERING, false: FLYING>
   }
 }

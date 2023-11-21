@@ -8,7 +8,6 @@ public class Drone {
   public void land() {}
   public void moveTo(double x, double y) {}
   public void takePicture() {}
-  public void stop() {}
   public boolean hasArrived() {
     return true;
   }

@@ -7,35 +7,25 @@ class RemoteController {
     List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
     MultiTaskRobot r1 = new MultiTaskRobot(new CutterArm());
     r1.turnOn();
-    r1 = sequentialTasksExecution(tasks, r1);
+    r1 = (MultiTaskRobot) sequentialTasksExecution(tasks, r1);
     r1.unplugArm();
-    tasks = initTasks("weld", "cut", "bend", "weld", "bend");
+    List<String> tasks1 = initTasks("weld", "cut", "bend", "weld", "bend");
+    List<String> tasks2 = initTasks("weld", "cut", "bend", "weld", "bend");
     Robot r2 = new BenderRobot();
-    parallelTasksExecution(tasks, r2, r1); //fixme what if the tasks are not completely done?
+    r2.turnOn();
+    r1 = (MultiTaskRobot) sequentialTasksExecution(tasks1, r1); //errors: typestate upcast fails
+    r2 = sequentialTasksExecution(tasks2, r2);
+    r1.turnOff();
+    r2.turnOff();
   }
-
-
-  public static void parallelTasksExecution(List<String> tasks, @Requires("IDLE") Robot r1, @Requires("IDLE") Robot r2) {
-    while (tasks.size() > 0) {
-      String curr_task = tasks.remove(0);
-      if (curr_task != null) {
-        r1 = attemptTask(r1, curr_task);
-        if (!r1.taskResult()) {
-          r2 = attemptTask(r2, curr_task);
-          if (!r2.taskResult()) tasks.add(curr_task);
-        }
-      }
-    }
-  }
-
   public static @Ensures("IDLE") Robot sequentialTasksExecution(List<String> tasks, @Requires("IDLE") Robot r) {
     int i = 0;
     while (i < tasks.size()) {
       String curr_task = tasks.get(i);
       i++;
       if (curr_task != null) {
-        r1 = attemptTask(r1, curr_task);
-        if (r1.taskResult()) tasks.remove(0);
+        r = attemptTask(r, curr_task);
+        if(r.taskResult()) tasks.remove(0);
       }
     }
     return r;

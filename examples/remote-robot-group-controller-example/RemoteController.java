@@ -4,7 +4,7 @@ import java.util.*;
 class RemoteController {
   public static void useMultipleRobot() {
     List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
-    RobotGroup group = poweredRobotRobotGroup(4);
+    RobotGroup group = poweredRobotGroup(4);
     while (!tasks.isEmpty()) {
       String curr_task = tasks.remove(0);
       if (curr_task != null) {
@@ -33,7 +33,7 @@ class RemoteController {
     return r;
   }
 
-  private static @Ensures("NON_EMPTY") RobotGroup poweredRobotRobotGroup(int n_robot) {
+  private static @Ensures("NON_EMPTY") RobotGroup poweredRobotGroup(int n_robot) {
     RobotGroup group = new RobotGroup();
     do {
       Robot r = null;

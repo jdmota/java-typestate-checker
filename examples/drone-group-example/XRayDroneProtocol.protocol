@@ -8,19 +8,17 @@ typestate XRayDroneProtocol {
   HOVERING = {
     void land(): IDLE,
     void moveTo(double, double): FLYING,
-    void takePicture(): FLYING,
-    void xRayPicture(): FLYING
+    void takePicture(): HOVERING,
+    void xRayPicture(): HOVERING
   }
 
   FLYING = {
     void moveTo(double, double): FLYING,
-    void stop(): HOVERING,
     void recordVideo(): RECORDING,
     boolean hasArrived(): <true: HOVERING, false: FLYING>
   }
 
   RECORDING = {
-    void moveTo(double, double): RECORDING,
-    void stopRecording(): FLYING
+    boolean hasArrived(): <true: HOVERING, false: FLYING>
   }
 }
