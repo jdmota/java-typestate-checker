@@ -13,6 +13,7 @@ class ClientCode {
       }
       socket.close();
     }
+    System.out.println("Done!");
   }
 
   private static @Ensures("CONN") Socket forward(@Requires("CONN") Socket s, String datum) {

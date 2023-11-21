@@ -3,30 +3,33 @@ import java.util.*;
 
 public class ClientCode {
 
-  public static void droneController() {
+  public static void main(String[] args) {
     DroneGroup group = flyingDroneGroup(4);
-    List<DroneTask> taskList = initTask(new DroneTask(10.4034, 11.4392, "pic"),
+    List<DroneTask> taskList = initTask(
+      new DroneTask(10.4034, 11.4392, "pic"),
       new DroneTask(10.4034, 64.4392, "video"),
       new DroneTask(11.4034, 0.4392, "xRayPic"),
-      new DroneTask(-6.4034, 1.4392, "video"));
-    while(!taskList.isEmpty()) {
+      new DroneTask(-6.4034, 1.4392, "video")
+    );
+    while (!taskList.isEmpty()) {
       DroneTask task = taskList.remove(0);
-      if(task != null) {
+      if (task != null) {
         Drone d = areaScan(group.take(), task);
         group.putBack(d);
         group.next();
       }
     }
     group.landAll();
+    System.out.println("Done!");
   }
 
   private static @Ensures("HOVERING") Drone areaScan(@Requires("HOVERING") Drone d, DroneTask task) {
     d.moveTo(task.getX(), task.getY());
-    if(d instanceof XRayDrone) {
+    if (d instanceof XRayDrone) {
       XRayDrone xr = (XRayDrone) d;
-      if(task.getTask().equals("video")) xr.recordVideo();
-      while(!xr.hasArrived()) {}
-      switch(task.getTask()) {
+      if (task.getTask().equals("video")) xr.recordVideo();
+      while (!xr.hasArrived()) {}
+      switch (task.getTask()) {
         case "pic":
           xr.takePicture();
           break;
@@ -36,7 +39,7 @@ public class ClientCode {
       }
       d = xr;
     } else {
-      while(!d.hasArrived()) {}
+      while (!d.hasArrived()) {}
       d.takePicture();
     }
     return d;

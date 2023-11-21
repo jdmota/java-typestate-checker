@@ -1,4 +1,5 @@
-public class WelderArm extends MechanicalArm{
-  public void use() {
-  }
+public class WelderArm extends MechanicalArm {
+
+  public void use() {}
+
 }

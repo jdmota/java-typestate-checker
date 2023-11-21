@@ -13,5 +13,4 @@ typestate MultiTaskRobotProtocol {
   UNPLUGGED = {
     void plugArm(MechanicalArm): IDLE
   }
-
 }

@@ -1,8 +1,5 @@
-
-
 public class CutterArm extends MechanicalArm {
 
-  public void use() {
-  }
+  public void use() {}
 
 }

@@ -11,5 +11,4 @@ class BenderRobot extends Robot {
   public void executeTask(String task) {
     arm.use();
   }
-
 }

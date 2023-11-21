@@ -1,11 +1,8 @@
-
-
 public class DroneTask {
+  private final double x;
+  private final double y;
+  private final String task;
 
-  private double x;
-  private double y;
-
-  private String task;
   public DroneTask(double x, double y, String task) {
     this.x = x;
     this.y = y;

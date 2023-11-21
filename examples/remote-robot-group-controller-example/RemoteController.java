@@ -2,7 +2,7 @@ import jatyc.lib.*;
 import java.util.*;
 
 class RemoteController {
-  public static void useMultipleRobot() {
+  public static void main(String[] args) {
     List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
     RobotGroup group = poweredRobotGroup(4);
     while (!tasks.isEmpty()) {
@@ -15,7 +15,9 @@ class RemoteController {
       }
     }
     group.turnAllOff();
+    System.out.println("Done!");
   }
+
   private static @Ensures("IDLE") Robot attemptTask(@Requires("IDLE") Robot r, String task) {
     r.executeTask(task);
     if (!r.taskResult() && r instanceof MultiTaskRobot) {
