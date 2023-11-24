@@ -48,7 +48,7 @@ public class ClientCode {
   }
 
   private static @Ensures("NON_EMPTY") DroneGroup flyingDroneGroup(int n_drone) {
-    if(n_drone <= 0) System.out.println("n_drone must be > 0, creating 1 anyway");
+    if (n_drone <= 0) System.out.println("n_drone must be > 0, creating 1 anyway");
     DroneGroup group = new DroneGroup();
     do {
       Drone d = null;
@@ -68,7 +68,7 @@ public class ClientCode {
   }
 
   private static void sleep(int millisec) {
-    try {Thread.sleep(millisec);}
-    catch(InterruptedException e ){}
+    try { Thread.sleep(millisec); }
+    catch (InterruptedException e ) {}
   }
 }

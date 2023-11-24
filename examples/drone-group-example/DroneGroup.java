@@ -8,8 +8,8 @@ public class DroneGroup {
     fst = null;
   }
 
-  public void add(@Requires("HOVERING") Drone r) {
-    DroneNode n = new DroneNode(r);
+  public void add(@Requires("HOVERING") Drone d) {
+    DroneNode n = new DroneNode(d);
     if (fst == null) fst = n;
     else fst.setLast(n);
   }
@@ -18,8 +18,8 @@ public class DroneGroup {
     return fst.take();
   }
 
-  public void putBack(@Requires("HOVERING") Drone r) {
-    fst.putBack(r);
+  public void putBack(@Requires("HOVERING") Drone d) {
+    fst.putBack(d);
   }
 
   public void next() {

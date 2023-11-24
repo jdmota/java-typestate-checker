@@ -8,18 +8,18 @@ public class DroneGroup {
     fst = null;
   }
 
-  public void add(@Requires("HOVERING") Drone r) {
-    DroneNode n = new DroneNode(r);
+  public void add(@Requires({"NO_TASK_HOVERING", "WITH_TASK_FLYING"}) PendingDrone p) {
+    DroneNode n = new DroneNode(p);
     if (fst == null) fst = n;
     else fst.setLast(n);
   }
 
-  public @Ensures("HOVERING") Drone take() {
+  public @Ensures({"NO_TASK_HOVERING", "WITH_TASK_FLYING"}) PendingDrone take() {
     return fst.take();
   }
 
-  public void putBack(@Requires("HOVERING") Drone r) {
-    fst.putBack(r);
+  public void putBack(@Requires({"NO_TASK_HOVERING", "WITH_TASK_FLYING"}) PendingDrone p) {
+    fst.putBack(p);
   }
 
   public void next() {
@@ -32,7 +32,14 @@ public class DroneGroup {
 
   public void landAll() {
     while (fst != null) {
-      Drone drone = fst.take();
+      PendingDrone p = fst.take();
+      Drone drone;
+      if (p.completed()) {
+        drone = p.takeHoveringDrone();
+      } else {
+        drone = p.takeFlyingDrone();
+        while (!drone.hasArrived()) {}
+      }
       drone.land();
       drone.shutDown();
       fst = fst.getNext();
