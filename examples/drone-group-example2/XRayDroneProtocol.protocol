@@ -14,11 +14,6 @@ typestate XRayDroneProtocol {
 
   FLYING = {
     void setDestination(double, double): FLYING,
-    void recordVideo(): RECORDING,
     boolean hasArrived(): <true: HOVERING, false: FLYING>
-  }
-
-  RECORDING = {
-    boolean hasArrived(): <true: HOVERING, false: RECORDING>
   }
 }

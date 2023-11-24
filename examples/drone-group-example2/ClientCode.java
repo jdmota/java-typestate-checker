@@ -27,16 +27,6 @@ public class ClientCode {
             p.setTask(d, task);
             taskList.remove(0);
             break;
-          case "video":
-            if (d instanceof XRayDrone) {
-              d.setDestination(task.getX(), task.getY());
-              ((XRayDrone) d).recordVideo();
-              p.setTask(d, task);
-              taskList.remove(0);
-            } else {
-              p.finishTask(d);
-            }
-            break;
           case "xRayPic":
             if (d instanceof XRayDrone) {
               d.setDestination(task.getX(), task.getY());
@@ -57,8 +47,6 @@ public class ClientCode {
             switch (p.getTask().getTask()) {
               case "pic":
                 d.takePicture();
-                break;
-              case "video":
                 break;
               case "xRayPic":
                 ((XRayDrone) d).xRayPicture();
