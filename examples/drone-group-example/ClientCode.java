@@ -30,7 +30,7 @@ public class ClientCode {
     if (d instanceof XRayDrone) {
       XRayDrone xr = (XRayDrone) d;
       if (task.getTask().equals("video")) xr.recordVideo();
-      while (!xr.hasArrived()) {}
+      while (!xr.hasArrived()) sleep(5000);
       switch (task.getTask()) {
         case "pic":
           xr.takePicture();
@@ -41,14 +41,14 @@ public class ClientCode {
       }
       d = xr;
     } else {
-      while (!d.hasArrived()) {}
+      while (!d.hasArrived()) sleep(5000);
       d.takePicture();
     }
     return d;
   }
 
   private static @Ensures("NON_EMPTY") DroneGroup flyingDroneGroup(int n_drone) {
-    if(n_drone == 0) System.out.println("n_drone must be > 0");
+    if(n_drone <= 0) System.out.println("n_drone must be > 0, creating 1 anyway");
     DroneGroup group = new DroneGroup();
     do {
       Drone d = null;
@@ -65,5 +65,10 @@ public class ClientCode {
     List<DroneTask> taskList = new ArrayList<>();
     for (DroneTask task : taskList) taskList.add(task);
     return taskList;
+  }
+
+  private static void sleep(int millisec) {
+    try {Thread.sleep(millisec);}
+    catch(InterruptedException e ){}
   }
 }
