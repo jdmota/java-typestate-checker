@@ -136,6 +136,8 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
     if (f != null) Pair(f, it.second) else null
   })
 
+  fun isBottom() = cases.isEmpty()
+
   fun removeCondition(condition: Reference): StoreInfo {
     return mapKeys { it.removeCondition(condition) }
   }
@@ -348,6 +350,9 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     fun mergeFieldsToNew(a: Store, b: Store, thisRef: Reference): Store {
       val store = a.clone()
       for ((ref, info) in b) {
+        if (info.isBottom()) {
+          return a.clone()
+        }
         if (ref.isFieldOf(thisRef)) {
           store.merge(ref, info)
         }

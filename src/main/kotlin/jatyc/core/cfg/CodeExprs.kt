@@ -39,6 +39,12 @@ fun <T : AdaptedThing> T.set(type: TypeMirror?, hierarchy: JavaTypesHierarchy): 
   return this
 }
 
+fun <T : AdaptedThing> T.set(javaType: JavaType): T {
+  cfType = javaType.original
+  javaType2 = javaType
+  return this
+}
+
 fun <T : AdaptedThing> T.set(root: CompilationUnitTree): T {
   cfRoot = root
   return this

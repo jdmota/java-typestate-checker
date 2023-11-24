@@ -52,8 +52,6 @@ sealed class Reference(val javaType: JavaType) {
     fun makeFromLHS(assign: Assign) = make(assign.left)
     fun makeFromLHS(assign: ParamAssign) = ParamInReference(assign.call, assign.idx)
 
-    fun old(assign: Assign) = OldReference(assign)
-
     fun makeThis(func: FuncDeclaration) = func.parameters.firstOrNull()?.let { if (it.isThis) make(it.id) else null }
   }
 
@@ -79,7 +77,6 @@ sealed class Reference(val javaType: JavaType) {
     return when (this) {
       is IdReference -> if (this == from) to else this
       is SelectReference -> SelectReference(parent.fixThis(from, to), id, uuid, javaType)
-      is OldReference -> this
       is ParamInReference -> this
       is CodeExprReference -> this
     }
@@ -162,23 +159,5 @@ class CodeExprReference(val code: CodeExpr, javaType: JavaType) : RootReference(
 
   override fun format(): String {
     return code.format("")
-  }
-}
-
-class OldReference(val assign: Assign) : RootReference(assign.left.javaType) {
-  override fun equals(other: Any?): Boolean {
-    return other is OldReference && assign === other.assign
-  }
-
-  override fun hashCode(): Int {
-    return assign.left.hashCode()
-  }
-
-  override fun toString(): String {
-    return "OldRef{$assign}"
-  }
-
-  override fun format(): String {
-    return "#old(${assign.format("")})"
   }
 }

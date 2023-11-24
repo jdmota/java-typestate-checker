@@ -240,13 +240,12 @@ class JavaIteratorWrapper8 {
   }
 
   public boolean hasNext() {
-    // :: warning: (this.iterator: State{JavaIterator, HasNext})
-    // :: warning: (this.iterator: State{JavaIterator, Next})
+    // :: warning: (this.iterator: Bottom)
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (this.iterator: State{JavaIterator, Next})
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 
@@ -274,13 +273,12 @@ class JavaIteratorWrapper9 {
   }
 
   public boolean hasNext() {
-    // :: warning: (this.iterator: State{JavaIterator, HasNext})
-    // :: warning: (this.iterator: State{JavaIterator, Next})
+    // :: warning: (this.iterator: Bottom)
     return iterator.hasNext();
   }
 
   public String next() {
-    // :: warning: (this.iterator: State{JavaIterator, Next})
+    // :: warning: (this.iterator: Bottom)
     return iterator.next();
   }
 

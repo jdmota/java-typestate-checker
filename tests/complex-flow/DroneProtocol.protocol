@@ -1,0 +1,18 @@
+typestate DroneProtocol {
+
+  IDLE = {
+    void takeOff(): HOVERING,
+    void shutDown(): end
+  }
+
+  HOVERING = {
+    void land(): IDLE,
+    void setDestination(double, double): FLYING,
+    void takePicture(): HOVERING
+  }
+
+  FLYING = {
+    void setDestination(double, double): FLYING,
+    boolean hasArrived(): <true: HOVERING, false: FLYING>
+  }
+}

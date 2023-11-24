@@ -48,6 +48,15 @@ public final class JavaIterator {
     }
   }
 
+  public static void errorOnOld() {
+    JavaIterator it = new JavaIterator();
+    // :: warning: (it: State{JavaIterator, HasNext})
+    // :: error: (The previous value of [it] did not complete its protocol (found: State{JavaIterator, HasNext}))
+    it = null;
+
+    throw new RuntimeException();
+  }
+
   public static void nullUse() {
     JavaIterator it = new JavaIterator();
     // :: warning: (it: State{JavaIterator, HasNext})

@@ -33,7 +33,10 @@ class Inference(
     val targetJavaType = leftRef.javaType
 
     if (node is Assign) {
-      post[Reference.old(node)] = pre[leftRef].type
+      val previousType = pre[leftRef].type
+      if (!previousType.canDrop()) {
+        inference.addError(node, "The previous value of [${leftRef.format()}] did not complete its protocol (found: ${previousType.format()})")
+      }
     }
 
     // Correct conditional information to account for the assignment
@@ -75,7 +78,7 @@ class Inference(
 
     post[leftRef] = newTargetType
     post[rightRef] = typeInExpr
-    post[Reference.make(node)] = if (node is Return) TypeInfo.make(hierarchy.BOT, JTCBottomType.SINGLETON) else pre[rightRef].toShared()
+    post[Reference.make(node)] = pre[rightRef].toShared()
 
     when {
       targetType is JTCBottomType -> inference.addError(node, "Cannot assign because [${leftRef.format()}] is not accessible here")
@@ -166,7 +169,7 @@ class Inference(
       is Return -> {
         if (node.expr == null) {
           post[Reference.returnRef(node.javaType)] = TypeInfo.make(node.javaType, JTCNullType.SINGLETON)
-          post[Reference.make(node)] = TypeInfo.make(hierarchy.BOT, JTCBottomType.SINGLETON)
+          post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCNullType.SINGLETON)
         } else {
           val leftRef = Reference.returnRef(node.javaType)
           val rightRef = Reference.make(node.expr)
@@ -660,10 +663,7 @@ class Inference(
         continue
       }
       if (!type.canDrop()) {
-        if (ref is OldReference) {
-          val leftRef = Reference.make(ref.assign.left)
-          inference.addError(ref.assign, "The previous value of [${leftRef.format()}] did not complete its protocol (found: ${type.format()})")
-        } else if (ref is CodeExprReference && ref.code is MethodCall) {
+        if (ref is CodeExprReference && ref.code is MethodCall) {
           inference.addError(ref.code, "Returned value did not complete its protocol (found: ${type.format()})")
         } else {
           inference.addError(func, "[${ref.format()}] did not complete its protocol (found: ${type.format()})")
@@ -683,14 +683,11 @@ class Inference(
     }
   }
 
-  fun analyzeExit(exit: CodeExpr, store: Store) {
+  private fun analyzeExit(exit: CodeExpr, store: Store) {
     for ((ref, info) in store) {
       val type = info.type
       if (!type.canDrop()) {
-        if (ref is OldReference) {
-          val leftRef = Reference.make(ref.assign.left)
-          inference.addError(ref.assign, "The previous value of [${leftRef.format()}] did not complete its protocol (found: ${type.format()})")
-        } else if (ref is CodeExprReference && ref.code is MethodCall) {
+        if (ref is CodeExprReference && ref.code is MethodCall) {
           inference.addError(ref.code, "Returned value did not complete its protocol (found: ${type.format()})")
         } else {
           inference.addError(exit, "[${ref.format()}] did not complete its protocol (found: ${type.format()})")

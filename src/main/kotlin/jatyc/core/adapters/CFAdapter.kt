@@ -44,7 +44,7 @@ fun getCorrectReceiverType(sym: Symbol.MethodSymbol): Type {
   return ElementUtils.enclosingTypeElement(sym)!!.asType() as Type
 }
 
-class CorrectedMethodSymbol(private val sym: Symbol.MethodSymbol, private val newReceiverType: Type) : Symbol.MethodSymbol(sym.flags_field, sym.name, sym.type, sym.owner) {
+class CorrectedMethodSymbol(private val sym: MethodSymbol, private val newReceiverType: Type) : Symbol.MethodSymbol(sym.flags_field, sym.name, sym.type, sym.owner) {
   init {
     this.code = sym.code
     this.extraParams = sym.extraParams
@@ -760,9 +760,11 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       is JCTree.JCLambda -> getReturnType(enclosing)
       else -> error("Unexpected enclosing method ${enclosing::class.java}")
     }
-    val ret = Return(if (result == null) null else getAdapted(result), type, javaType).set(node, hierarchy)
-    ret.javaType2 = hierarchy.BOT
-    return ret
+    if (result == null) {
+      return Return(null, type, javaType).set(node, hierarchy).set(javaType)
+    }
+    val adaptedResult = getAdapted(result)
+    return Return(adaptedResult, type, javaType).set(node, hierarchy).set(adaptedResult.javaType2!!)
   }
 
   private fun makeCall2(methodExpr: FuncInterface, parameters: List<CodeExpr>, cfNode: Node): AdaptResult {
