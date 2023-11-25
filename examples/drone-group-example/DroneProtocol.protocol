@@ -9,6 +9,7 @@ typestate DroneProtocol {
     void land(): IDLE,
     void setDestination(double, double): FLYING,
     void takePicture(): HOVERING
+
   }
 
   FLYING = {

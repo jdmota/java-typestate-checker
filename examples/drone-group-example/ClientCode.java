@@ -63,7 +63,7 @@ public class ClientCode {
 
   private static List<DroneTask> initTask(DroneTask... tasks) {
     List<DroneTask> taskList = new ArrayList<>();
-    for (DroneTask task : taskList) taskList.add(task);
+    for (DroneTask task : tasks) taskList.add(task);
     return taskList;
   }
 
