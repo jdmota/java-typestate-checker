@@ -31,19 +31,11 @@ public class ClientCode {
       XRayDrone xr = (XRayDrone) d;
       if (task.getTask().equals("video")) xr.recordVideo();
       while (!xr.hasArrived()) sleep(5000);
-      switch (task.getTask()) {
-        case "pic":
-          xr.takePicture();
-          break;
-        case "xRayPic":
-          xr.xRayPicture();
-          break;
-      }
-      d = xr;
-    } else {
-      while (!d.hasArrived()) sleep(5000);
-      d.takePicture();
+      if (task.getTask().equals("xRayPic")) xr.xRayPicture();
+      return xr;
     }
+    while (!d.hasArrived()) sleep(5000);
+    d.takePicture();
     return d;
   }
 
