@@ -1,9 +1,16 @@
 import jatyc.lib.Requires;
 
 public class ClientCode {
-  public static void example() {
+  public static void example1() {
     SUV sc = new SUV();
     while (!sc.turnOn()) { System.out.println("turning on..."); }
+    sc.switchMode();
+    switchSUVAndSetSpeed(sc);
+  }
+
+  public static void example2() {
+    SUV sc = new SUV();
+    while (sc.turnOn()) { System.out.println("turning on..."); }
     sc.switchMode();
     switchSUVAndSetSpeed(sc);
   }

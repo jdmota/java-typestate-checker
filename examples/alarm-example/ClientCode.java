@@ -2,7 +2,7 @@ import jatyc.lib.*;
 
 public class ClientCode {
 
-  public void goodBehaviour() {
+  public static void main(String[] args) {
     double[] temperatures = {10.5, 20.5, 50.1, 100.0, 5.9, 10.4, 71.6};
     AlarmDevice a1 = connectToDevice(new AlarmDevice());
     AlarmDevice a2 = connectToDevice(new PredictiveAlarmDevice());
