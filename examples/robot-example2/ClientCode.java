@@ -1,7 +1,7 @@
 import jatyc.lib.*;
 import java.util.*;
 
-class RemoteController {
+class ClientCode {
 
   public static void main(String[] args) {
     List<String> tasks = initTasks("weld", "cut", "bend", "weld", "bend");
