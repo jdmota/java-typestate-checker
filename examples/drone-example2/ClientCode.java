@@ -19,7 +19,7 @@ public class ClientCode {
         Drone d = p.takeHoveringDrone();
         DroneTask task = taskList.get(0);
         if (task == null) throw new RuntimeException();
-        if(task.getTask().equals("xRayPic") && !(d instanceof XRayDrone)) p.finishTask(d);
+        if (task.getTask().equals("xRayPic") && !(d instanceof XRayDrone)) p.finishTask(d);
         else {
           d.setDestination(task.getX(), task.getY());
           p.setTask(d, task);
@@ -28,10 +28,10 @@ public class ClientCode {
       } else {
         Drone d = p.takeFlyingDrone();
         if (d.hasArrived()) {
-          if(p.getTask().getTask().equals("xRayPic") && d instanceof XRayDrone) ((XRayDrone) d).xRayPicture();
+          if (p.getTask().getTask().equals("xRayPic") && d instanceof XRayDrone) ((XRayDrone) d).xRayPicture();
           else d.takePicture();
           p.finishTask(d);
-        } else  p.continueTask(d);
+        } else p.continueTask(d);
       }
       group.putBack(p);
       group.next();

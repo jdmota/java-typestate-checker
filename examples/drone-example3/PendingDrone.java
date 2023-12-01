@@ -16,8 +16,7 @@ public class PendingDrone {
   }
 
   public void setTask(@Requires("FLYING") Drone drone, DroneTask task) {
-    // forgetting this assignment causes the code to not type check
-    // this.task = task;
+    this.task = task;
     this.drone = drone;
   }
 
@@ -31,7 +30,7 @@ public class PendingDrone {
   }
 
   public boolean completed() {
-    return this.task == null;
+    return this.task != null; // Wrong test
   }
 
   public @Ensures("HOVERING") Drone takeHoveringDrone() {
