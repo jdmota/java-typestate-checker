@@ -5,6 +5,7 @@ public class ClientCode {
     AutoDrivingCar car = new AutoDrivingCar();
     while (!car.turnOn()) { System.out.println("turning on..."); }
     setSpeedAndPark(car);
+    System.out.println("Done!");
   }
   private static void setSpeedAndPark(@Requires("ON") Car c) {
     c.setSpeed(50);

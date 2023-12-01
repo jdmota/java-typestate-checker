@@ -6,6 +6,7 @@ public class ClientCode {
     while (!sc.turnOn()) { System.out.println("turning on..."); }
     sc.switchMode();
     switchSUVAndSetSpeed(sc);
+    System.out.println("Done!");
   }
   private static void switchSUVAndSetSpeed(@Requires("ON") Car c) {
     if (c instanceof SUV && ((SUV) c).switchMode() == Mode.SPORT){

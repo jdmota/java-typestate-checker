@@ -12,8 +12,10 @@ public class ClientCode {
     }
     a1.disconnect();
     a2.disconnect();
+    System.out.println("Done!");
   }
-  private @Ensures("CONN") AlarmDevice connectToDevice(@Requires("DISC") AlarmDevice device) {
+
+  private static @Ensures("CONN") AlarmDevice connectToDevice(@Requires("DISC") AlarmDevice device) {
     device.connect();
     device.setThreshold(50);
     if(device instanceof PredictiveAlarmDevice) {
@@ -24,7 +26,8 @@ public class ClientCode {
     }
     return device;
   }
-  private @Ensures("CONN") PredictiveAlarmDevice modelUpdate(@Requires("DATA_VALIDATION") PredictiveAlarmDevice sd) {
+
+  private static @Ensures("CONN") PredictiveAlarmDevice modelUpdate(@Requires("DATA_VALIDATION") PredictiveAlarmDevice sd) {
     if (sd.dataValidation()) {
       sd.train();
       while (!sd.modelEvaluation()) {
@@ -35,7 +38,7 @@ public class ClientCode {
     return sd;
   }
 
-  private @Ensures("CONN") AlarmDevice action(@Requires("CONN") AlarmDevice a, double temp) {
+  private static @Ensures("CONN") AlarmDevice action(@Requires("CONN") AlarmDevice a, double temp) {
     a.notify(temp);
     if (a.thresholdCheck() || (a instanceof PredictiveAlarmDevice && ((PredictiveAlarmDevice) a).predictiveThresholdCheck())) a.alert();
     return a;
