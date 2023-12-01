@@ -1,0 +1,26 @@
+typestate PendingDroneProtocol {
+
+  NO_TASK_HOVERING = {
+    Drone takeHoveringDrone(): NO_TASK,
+    boolean completed(): <true: NO_TASK_HOVERING, false: WITH_TASK_FLYING>
+  }
+
+  NO_TASK = {
+    void setTask(Drone, DroneTask): WITH_TASK_FLYING,
+    void finishTask(Drone): NO_TASK_HOVERING,
+    drop: end
+  }
+
+  WITH_TASK_FLYING = {
+    Drone takeFlyingDrone(): WITH_TASK,
+    boolean completed(): <true: NO_TASK_HOVERING, false: WITH_TASK_FLYING>
+  }
+
+  WITH_TASK = {
+    DroneTask getTask(): WITH_TASK,
+    void continueTask(Drone): WITH_TASK_FLYING,
+    void finishTask(Drone): NO_TASK_HOVERING,
+    drop: end
+  }
+
+}

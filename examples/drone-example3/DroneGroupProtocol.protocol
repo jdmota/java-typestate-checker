@@ -1,0 +1,19 @@
+typestate DroneGroupProtocol {
+
+  EMPTY = {
+    void add(PendingDrone): NON_EMPTY,
+    drop: end
+  }
+
+  NON_EMPTY = {
+    void add(PendingDrone): NON_EMPTY,
+    PendingDrone take(): PUT_BACK,
+    void next(): NON_EMPTY,
+    void landAll(): EMPTY
+  }
+
+  PUT_BACK = {
+    void putBack(PendingDrone): NON_EMPTY
+  }
+
+}

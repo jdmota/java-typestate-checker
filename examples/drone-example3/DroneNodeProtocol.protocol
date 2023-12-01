@@ -1,0 +1,12 @@
+typestate DroneNodeProtocol {
+  INIT =  {
+    PendingDrone take(): TAKEN,
+    DroneNode getNext(): INIT,
+    void setLast(DroneNode): INIT
+  }
+
+  TAKEN = {
+    void putBack(PendingDrone): INIT,
+    DroneNode getNext(): end
+  }
+}
