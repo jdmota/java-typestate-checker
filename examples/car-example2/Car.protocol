@@ -1,0 +1,11 @@
+typestate Car {
+  OFF = {
+    boolean turnOn(): <true: ON, false: OFF>,
+    drop: end
+  }
+
+  ON = {
+    void turnOff(): OFF,
+    void setSpeed(int): ON
+  }
+}
