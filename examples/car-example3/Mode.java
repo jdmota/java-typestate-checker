@@ -1,1 +1,1 @@
-public enum Mode { AUTO_DRIVE, MANUAL_DRIVE }
+public enum Mode { SPORT, COMFORT }
