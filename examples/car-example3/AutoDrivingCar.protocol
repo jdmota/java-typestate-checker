@@ -1,0 +1,19 @@
+typestate AutoDrivingCar {
+  OFF = {
+    boolean turnOn(): <true: MANUAL_ON, false: OFF>,
+    drop: end
+  }
+
+  MANUAL_ON = {
+    void turnOff(): OFF,
+    void setSpeed(int): MANUAL_ON,
+    Mode switchMode(): <AUTO_DRIVE: AUTO_ON, MANUAL_DRIVE: MANUAL_ON>
+  }
+
+  AUTO_ON = {
+    void turnOff(): OFF,
+    void setSpeed(int): AUTO_ON,
+    Mode switchMode(): <AUTO_DRIVE: AUTO_ON, MANUAL_DRIVE: MANUAL_ON>,
+    void autoPark(): AUTO_ON
+  }
+}
