@@ -116,7 +116,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
       is ArrayType -> { //TODO CHECK
 //        JTCSharedType(hierarchy.get(type)).toMaybeNullable(isNullable)
           val javaType = hierarchy.get(type)
-          JTCLinearArrayType(javaType, listOf()).toMaybeNullable(isNullable)
+          JTCLinearArrayType(javaType, listOf()).toMaybeNullable(isNullable) //TODO THIS CAUSES PROBLEM FOR ARRAY ASSIGNMENT WITH VALUES
       }
       is DeclaredType -> {
         val javaType = hierarchy.get(type)

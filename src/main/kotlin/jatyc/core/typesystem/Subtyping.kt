@@ -78,7 +78,6 @@ object Subtyping {
         else -> a.types.any { itA -> isSubtype(itA, b) }
       }
       is JTCLinearArrayType -> {
-        println(a == b)
         when (b) { //TODO CHECK
           is JTCUnknownType -> true
           is JTCLinearArrayType -> a == b
