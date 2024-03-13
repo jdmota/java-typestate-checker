@@ -303,11 +303,11 @@ class JTCBottomType private constructor() : JTCTypeSingletons(3) {
 }
 
 
-class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<JTCType>) : JTCType() {
+class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<JTCType>) : JTCType() { //TODO CHECK
   fun updateTypes(updatedTypes: List<JTCType>) = JTCLinearArrayType(javaType, updatedTypes)
   override fun equals(other: Any?) = when {
     this === other -> true
-//    other is JTCLinearArrayType -> types == other.types
+    other is JTCLinearArrayType -> types == other.types
     else -> false
   }
 
