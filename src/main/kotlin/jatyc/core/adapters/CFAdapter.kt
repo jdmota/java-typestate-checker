@@ -816,9 +816,15 @@ class CFAdapter(val checker: JavaTypestateChecker) {
         val javaComponentType = hierarchy.get(type.componentType)
         val componentType = typeIntroducer.getArrayComponentType(type.componentType)
         SingleAdaptResult(if (node.dimensions.isNotEmpty()) {
-          NewArrayWithDimensions(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.dimensions.map(t))
+          when(componentType) {
+            is JTCStateType -> NewArrayWithDimensions(JTCLinearArrayType(javaType, listOf()), javaType, componentType, javaComponentType, node.dimensions.map(t))
+            else -> NewArrayWithDimensions(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.dimensions.map(t))
+          }
         } else {
-          NewArrayWithValues(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.initializers.map(t))
+          when(componentType) {
+            is JTCStateType -> NewArrayWithValues(JTCLinearArrayType(javaType, listOf(*Array(node.initializers.size) { componentType })), javaType, componentType, javaComponentType, node.initializers.map(t))
+            else -> NewArrayWithValues(JTCSharedType(javaType), javaType, componentType, javaComponentType, node.initializers.map(t))
+          }
         }).set(node, hierarchy)
       }
 

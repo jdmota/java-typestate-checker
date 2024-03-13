@@ -113,7 +113,11 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     return when (type) {
       is WildcardType,
       is TypeVariable,
-      is ArrayType -> JTCSharedType(hierarchy.get(type)).toMaybeNullable(isNullable)
+      is ArrayType -> { //TODO CHECK
+//        JTCSharedType(hierarchy.get(type)).toMaybeNullable(isNullable)
+          val javaType = hierarchy.get(type)
+          JTCLinearArrayType(javaType, listOf()).toMaybeNullable(isNullable)
+      }
       is DeclaredType -> {
         val javaType = hierarchy.get(type)
         val graph = javaType.getGraph()
@@ -142,9 +146,11 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
       is WildcardType,
       is TypeVariable,
       is ArrayType -> JTCSharedType(hierarchy.get(type)).toMaybeNullable(true)
-      is DeclaredType -> {
+      is DeclaredType -> { //TODO CHECK
+        val initialType = getInitialType(type)
         val javaType = hierarchy.get(type)
-        JTCSharedType(javaType).toMaybeNullable(true)
+        if(initialType is JTCStateType) initialType
+        else JTCSharedType(javaType).toMaybeNullable(true)
       }
       is ExecutableType -> JTCUnknownType.SINGLETON
       is PrimitiveType -> hierarchy.getPrimitive(type as Type.JCPrimitiveType)

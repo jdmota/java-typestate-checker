@@ -101,6 +101,7 @@ sealed class JTCType {
       // Since "types" does not include union types, "toShared" will also not produce union types
       // So we do not break the pre-condition of "intersectionSeq"
       is JTCIntersectionType -> createIntersection(intersectionSeq(types.map { it.toShared() }))
+      is JTCLinearArrayType -> JTCSharedType(javaType)
     }
   }
 
@@ -301,6 +302,26 @@ class JTCBottomType private constructor() : JTCTypeSingletons(3) {
   override fun format() = "Bottom"
 }
 
+
+class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<JTCType>) : JTCType() {
+  fun updateTypes(updatedTypes: List<JTCType>) = JTCLinearArrayType(javaType, updatedTypes)
+  override fun equals(other: Any?) = when {
+    this === other -> true
+//    other is JTCLinearArrayType -> types == other.types
+    else -> false
+  }
+
+  override fun hashCode() = types.hashCode()
+  override fun toString() = "JTCLinearArrayType$types"
+
+  private var formatCache: String? = null
+  override fun format() = formatCache ?: run {
+    val cache = JTCTypeFormatter.formatLinearArray(types)
+    formatCache = cache
+    cache
+  }
+}
+
 private object JTCTypeFormatter {
 
   private fun index(t: JTCType): Int {
@@ -314,6 +335,7 @@ private object JTCTypeFormatter {
       is JTCNullType -> 8
       is JTCPrimitiveType -> 9
       is JTCBottomType -> 10
+      is JTCLinearArrayType -> 11
     }
   }
 
@@ -350,6 +372,10 @@ private object JTCTypeFormatter {
 
   fun formatIntersection(types: Collection<JTCType>): String {
     return "(${types.sortedWith(JTCTypeComparator).joinToString(" & ") { it.format() }})"
+  }
+
+  fun formatLinearArray(types: Collection<JTCType>): String {
+    return  "[${types.sortedWith(JTCTypeComparator).joinToString(", "){ it.format() }}]"
   }
 
 }

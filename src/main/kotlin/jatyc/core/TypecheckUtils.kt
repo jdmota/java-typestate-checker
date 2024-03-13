@@ -70,6 +70,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCBottomType -> true
       is JTCUnionType -> type.types.all { check(it, call) }
       is JTCIntersectionType -> type.types.any { check(it, call) }
+      is JTCLinearArrayType -> false //TODO CHECK
     }
   }
 
@@ -83,6 +84,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCBottomType -> type
       is JTCUnionType -> JTCType.createUnion(type.types.map { refine(it, call, predicate) })
       is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) }.filterNot { it == JTCBottomType.SINGLETON })
+      is JTCLinearArrayType -> type //TODO CHECK
     }
   }
 
@@ -138,6 +140,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> false
         is JTCUnionType -> type.types.any { isInDroppableStateNotEnd(it) }
         is JTCIntersectionType -> type.types.any { isInDroppableStateNotEnd(it) }
+        is JTCLinearArrayType -> type.types.any { isInDroppableStateNotEnd(it) } //TODO CHECK
       }
     }
 
@@ -152,6 +155,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> true
         is JTCUnionType -> type.types.all { canDrop(it) }
         is JTCIntersectionType -> type.types.any { canDrop(it) }
+        is JTCLinearArrayType -> type.types.all { canDrop(it) } //TODO CHECK
       }
     }
 
@@ -176,6 +180,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> JTCBottomType.SINGLETON
         is JTCUnionType -> JTCType.createUnion(type.types.map { invariant(it) })
         is JTCIntersectionType -> JTCType.createIntersection(type.types.map { invariant(it) })
+        is JTCLinearArrayType -> type //TODO CHECK
       }
     }
 
@@ -190,6 +195,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> true
         is JTCUnionType -> type.types.any { requiresLinear(ref, it) }
         is JTCIntersectionType -> type.types.any { requiresLinear(ref, it) }
+        is JTCLinearArrayType -> type.types.any { requiresLinear(ref, it) } //TODO CHECK
       }
     }
   }

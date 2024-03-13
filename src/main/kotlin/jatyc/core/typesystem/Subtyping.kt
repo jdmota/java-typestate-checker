@@ -77,6 +77,11 @@ object Subtyping {
         is JTCIntersectionType -> a.types.any { itA -> isSubtype(itA, b) } || b.types.all { itB -> isSubtype(a, itB) }
         else -> a.types.any { itA -> isSubtype(itA, b) }
       }
+      is JTCLinearArrayType -> when (b) { //TODO CHECK
+        is JTCUnknownType -> true
+        is JTCLinearArrayType -> a == b
+        else -> false
+      }
     }
   }
 
@@ -118,6 +123,7 @@ object Subtyping {
       is JTCBottomType -> JTCBottomType.SINGLETON
       is JTCPrimitiveType -> t
       is JTCNullType -> t
+      is JTCLinearArrayType -> t
     }
   }
 
