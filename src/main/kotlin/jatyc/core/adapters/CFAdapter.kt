@@ -737,10 +737,8 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       is ArrayAccessNode -> {
         val type = left.array.type as ArrayType
         val componentType = typeIntroducer.getArrayComponentType(type.componentType)
-        println(componentType)
         val componentJavaType = hierarchy.get(type.componentType)
         val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
-        println(thisType)
         val params = listOf(
           FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hasEnsures = false),
           FuncParam(IdLHS("index", 0, hierarchy.INTEGER.javaType), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hasEnsures = false),
