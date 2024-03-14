@@ -1,6 +1,7 @@
 package jatyc.core.typesystem
 
 import jatyc.core.*
+import jatyc.core.TypecheckUtils.Companion.canDrop
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
 
@@ -82,6 +83,8 @@ object Subtyping {
           is JTCUnknownType -> true
           is JTCLinearArrayType -> a == b
           is JTCUnionType -> b.types.any { isSubtype(a, it) }
+          is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
+          is JTCSharedType -> b.javaType.isJavaArray() && a.types.all { canDrop(it) }
           else -> false
         }
       }

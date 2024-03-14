@@ -113,10 +113,9 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
     return when (type) {
       is WildcardType,
       is TypeVariable,
-      is ArrayType -> { //TODO CHECK
-//        JTCSharedType(hierarchy.get(type)).toMaybeNullable(isNullable)
-          val javaType = hierarchy.get(type)
-          JTCLinearArrayType(javaType, listOf()).toMaybeNullable(isNullable) //TODO THIS CAUSES PROBLEM FOR ARRAY ASSIGNMENT WITH VALUES
+      is ArrayType -> {
+        val javaType = hierarchy.get(type)
+        JTCSharedType(javaType).union(JTCLinearArrayType(javaType, listOf())).toMaybeNullable(isNullable)
       }
       is DeclaredType -> {
         val javaType = hierarchy.get(type)
@@ -147,10 +146,13 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
       is TypeVariable,
       is ArrayType -> JTCSharedType(hierarchy.get(type)).toMaybeNullable(true)
       is DeclaredType -> { //TODO CHECK
-        val initialType = getInitialType(type)
         val javaType = hierarchy.get(type)
-        if(initialType is JTCStateType) initialType
-        else JTCSharedType(javaType).toMaybeNullable(true)
+        val graph = javaType.getGraph()
+        if (graph == null) {
+          JTCSharedType(javaType)/*.union(JTCNoProtocolType(javaType, isActualType))*/.toMaybeNullable(true)
+        } else {
+          JTCStateType(javaType, graph, graph.getUnknownState()).toMaybeNullable(true)
+        }
       }
       is ExecutableType -> JTCUnknownType.SINGLETON
       is PrimitiveType -> hierarchy.getPrimitive(type as Type.JCPrimitiveType)

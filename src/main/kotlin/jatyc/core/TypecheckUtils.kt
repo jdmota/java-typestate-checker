@@ -84,7 +84,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCBottomType -> type
       is JTCUnionType -> JTCType.createUnion(type.types.map { refine(it, call, predicate) })
       is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) }.filterNot { it == JTCBottomType.SINGLETON })
-      is JTCLinearArrayType -> type //TODO CHECK
+      is JTCLinearArrayType -> JTCBottomType.SINGLETON
     }
   }
 
@@ -180,7 +180,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> JTCBottomType.SINGLETON
         is JTCUnionType -> JTCType.createUnion(type.types.map { invariant(it) })
         is JTCIntersectionType -> JTCType.createIntersection(type.types.map { invariant(it) })
-        is JTCLinearArrayType -> type //TODO CHECK
+        is JTCLinearArrayType -> JTCLinearArrayType(type.javaType, type.types.map { invariant(it) })
       }
     }
 

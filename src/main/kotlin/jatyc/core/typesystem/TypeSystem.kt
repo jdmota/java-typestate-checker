@@ -375,7 +375,7 @@ private object JTCTypeFormatter {
   }
 
   fun formatLinearArray(types: Collection<JTCType>): String {
-    return  "[${types.sortedWith(JTCTypeComparator).joinToString(", "){ it.format() }}]"
+    return  "[${types.joinToString(", "){ it.format() }}]"
   }
 
 }
