@@ -588,14 +588,16 @@ class Inference(
       }
 
       is NewArrayWithValues -> {
+        var types = listOf<TypeInfo>()
         for ((idx, init) in node.initializers.withIndex()) {
-          val valueType = pre[Reference.make(init)].toShared()
-          if (!valueType.isSubtype(node.componentType)) {
-            inference.addError(node, "Array value in index $idx with type ${valueType.format()} is not a subtype of ${node.componentType.format()}")
-            break
-          }
+          val valueType = pre[Reference.make(init)]
+          types = types + valueType.type
+//          if (!valueType.isSubtype(node.componentType)) {
+//            inference.addError(node, "Array value in index $idx with type ${valueType.format()} is not a subtype of ${node.componentType.format()}")
+//            break
+//          }
         }
-        post[Reference.make(node)] = TypeInfo.make(node.javaType, node.type)
+        post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCLinearArrayType(node.javaType, types))
       }
 
       is SynchronizedExprEnd -> {

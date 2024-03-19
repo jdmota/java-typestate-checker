@@ -1,6 +1,7 @@
 package jatyc.core
 
 import jatyc.core.typesystem.Subtyping
+import jatyc.core.typesystem.TypeInfo
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
 import jatyc.utils.JTCUtils
@@ -303,8 +304,8 @@ class JTCBottomType private constructor() : JTCTypeSingletons(3) {
 }
 
 
-class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<JTCType>) : JTCType() { //TODO CHECK
-  fun updateTypes(updatedTypes: List<JTCType>) = JTCLinearArrayType(javaType, updatedTypes)
+class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<TypeInfo>) : JTCType() { //TODO CHECK
+  fun updateTypes(updatedTypes: List<TypeInfo>) = JTCLinearArrayType(javaType, updatedTypes)
   override fun equals(other: Any?) = when {
     this === other -> true
     other is JTCLinearArrayType -> types == other.types
@@ -374,7 +375,7 @@ private object JTCTypeFormatter {
     return "(${types.sortedWith(JTCTypeComparator).joinToString(" & ") { it.format() }})"
   }
 
-  fun formatLinearArray(types: Collection<JTCType>): String {
+  fun formatLinearArray(types: Collection<TypeInfo>): String {
     return  "[${types.joinToString(", "){ it.format() }}]"
   }
 
