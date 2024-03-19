@@ -591,6 +591,7 @@ class Inference(
         var types = listOf<TypeInfo>()
         for ((idx, init) in node.initializers.withIndex()) {
           val valueType = pre[Reference.make(init)]
+          post[Reference.make(init)] = TypeInfo.make(valueType.javaType, valueType.type.jtcType.toShared())
           types = types + valueType.type
 //          if (!valueType.isSubtype(node.componentType)) {
 //            inference.addError(node, "Array value in index $idx with type ${valueType.format()} is not a subtype of ${node.componentType.format()}")
