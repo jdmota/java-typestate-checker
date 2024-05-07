@@ -171,7 +171,7 @@ class NewObj(val type: JTCType, val javaType: JavaType) : CodeExpr() {
   }
 }
 
-class NewArrayWithDimensions(val type: JTCType, val javaType: JavaType, val componentType: JTCType, val componentJavaType: JavaType, val dimensions: List<CodeExpr>) : CodeExpr() {
+class NewArrayWithDimensions(val javaType: JavaType, val componentJavaType: JavaType, val dimensions: List<CodeExpr>) : CodeExpr() {
   init {
     javaType2 = javaType
   }
@@ -181,7 +181,7 @@ class NewArrayWithDimensions(val type: JTCType, val javaType: JavaType, val comp
   }
 }
 
-class NewArrayWithValues(val type: JTCType, val javaType: JavaType, val componentType: JTCType, val componentJavaType: JavaType, val initializers: List<CodeExpr>) : CodeExpr() {
+class NewArrayWithValues(val javaType: JavaType, val componentJavaType: JavaType, val initializers: List<CodeExpr>) : CodeExpr() {
   init {
     javaType2 = javaType
   }

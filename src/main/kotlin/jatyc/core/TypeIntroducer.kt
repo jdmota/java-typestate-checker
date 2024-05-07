@@ -115,7 +115,7 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
       is TypeVariable,
       is ArrayType -> {
         val javaType = hierarchy.get(type)
-        JTCSharedType(javaType).union(JTCLinearArrayType(javaType, listOf())).toMaybeNullable(isNullable)
+        JTCSharedType(javaType).union(JTCLinearArrayType(javaType, listOf(), true)).toMaybeNullable(isNullable)
       }
       is DeclaredType -> {
         val javaType = hierarchy.get(type)

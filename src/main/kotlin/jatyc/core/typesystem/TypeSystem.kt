@@ -304,20 +304,31 @@ class JTCBottomType private constructor() : JTCTypeSingletons(3) {
 }
 
 
-class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<TypeInfo>) : JTCType() { //TODO CHECK
-  fun updateTypes(updatedTypes: List<TypeInfo>) = JTCLinearArrayType(javaType, updatedTypes)
+class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<TypeInfo>, val unknownSize: Boolean) : JTCType() {
+  init {
+    if (unknownSize) {
+      if (types.isNotEmpty()) {
+        println(types)
+        JTCUtils.printStack()
+        throw AssertionError("intersection invariant")
+      }
+    }
+  }
+
+  // fun updateTypes(updatedTypes: List<TypeInfo>) = JTCLinearArrayType(javaType, updatedTypes)
+
   override fun equals(other: Any?) = when {
     this === other -> true
-    other is JTCLinearArrayType -> types == other.types
+    other is JTCLinearArrayType -> javaType == other.javaType && types == other.types && unknownSize == other.unknownSize
     else -> false
   }
 
   override fun hashCode() = types.hashCode()
-  override fun toString() = "JTCLinearArrayType$types"
+  override fun toString() = "JTCLinearArrayType${if (unknownSize) "[?]" else "$types"}"
 
   private var formatCache: String? = null
   override fun format() = formatCache ?: run {
-    val cache = JTCTypeFormatter.formatLinearArray(types)
+    val cache = JTCTypeFormatter.formatLinearArray(types, unknownSize)
     formatCache = cache
     cache
   }
@@ -375,8 +386,8 @@ private object JTCTypeFormatter {
     return "(${types.sortedWith(JTCTypeComparator).joinToString(" & ") { it.format() }})"
   }
 
-  fun formatLinearArray(types: Collection<TypeInfo>): String {
-    return  "[${types.joinToString(", "){ it.format() }}]"
+  fun formatLinearArray(types: Collection<TypeInfo>, unknownSize: Boolean): String {
+    return if (unknownSize) "LinearArray[?]" else "LinearArray[${types.joinToString(", "){ it.format() }}]"
   }
 
 }

@@ -577,28 +577,53 @@ class Inference(
       }
 
       is NewArrayWithDimensions -> {
-        for ((idx, init) in node.dimensions.withIndex()) {
-          val valueType = pre[Reference.make(init)].toShared()
-          if (!valueType.isSubtype(hierarchy.INTEGER)) {
-            inference.addError(node, "Dimension in index $idx with type ${valueType.format()} is not a subtype of ${hierarchy.INTEGER}")
-            break
+        // node.javaType = Car[3][10]
+
+        val dimReversed = node.dimensions.asReversed().mapNotNull { if (it is IntegerLiteral) it.value else null }
+
+        // dimReversed = [10, 3]
+
+        if (dimReversed.size == node.dimensions.size) {
+          val javaTypes = mutableListOf<JavaType>()
+          var lastJavaType = node.javaType
+          javaTypes.add(0, lastJavaType)
+
+          while (lastJavaType.isJavaArray()) {
+            lastJavaType = lastJavaType.getArrayComponent()!!
+            javaTypes.add(0, lastJavaType)
           }
+
+          // javaTypes = [ Car , Car[10] , Car[10][3] ]
+
+          val innerMostJavaType = javaTypes[0]
+          javaTypes.removeFirst()
+
+          // innerMostJavaType = Car
+          // javaTypes = [ Car[10] , Car[10][3] ]
+
+          val typeInfos = mutableListOf<TypeInfo>()
+          var lastTypeInfo = TypeInfo.make(innerMostJavaType, JTCNullType.SINGLETON)
+          typeInfos.add(lastTypeInfo)
+
+          for ((idx, javaType) in javaTypes.withIndex()) {
+            lastTypeInfo = TypeInfo.make(javaType, JTCLinearArrayType(javaType, MutableList(dimReversed[idx]) { lastTypeInfo }, false))
+            typeInfos.add(lastTypeInfo)
+          }
+
+          post[Reference.make(node)] = lastTypeInfo
+        } else {
+          post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCSharedType(node.javaType))
         }
-        post[Reference.make(node)] = TypeInfo.make(node.javaType, node.type)
       }
 
       is NewArrayWithValues -> {
         var types = listOf<TypeInfo>()
-        for ((idx, init) in node.initializers.withIndex()) {
+        for (init in node.initializers) {
           val valueType = pre[Reference.make(init)]
           post[Reference.make(init)] = pre[Reference.make(init)].toShared()
           types = types + valueType.type
-//          if (!valueType.isSubtype(node.componentType)) {
-//            inference.addError(node, "Array value in index $idx with type ${valueType.format()} is not a subtype of ${node.componentType.format()}")
-//            break
-//          }
         }
-        post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCLinearArrayType(node.javaType, types))
+        post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCLinearArrayType(node.javaType, types, false))
       }
 
       is SynchronizedExprEnd -> {

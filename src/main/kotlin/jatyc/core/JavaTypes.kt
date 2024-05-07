@@ -26,6 +26,13 @@ class JavaType internal constructor(val original: Type, val superTypes: Set<Java
   fun isJavaEnum() = original.toString() == "java.lang.Enum<E>"
   fun isJavaArray() = original is ArrayType
 
+  fun getArrayComponent(): JavaType? {
+    if (original is ArrayType) {
+      return checker.utils.hierarchy.get(original.componentType)
+    }
+    return null
+  }
+
   fun getGraph() = checker.utils.classUtils.getGraph(original)
   fun hasProtocol() = checker.utils.classUtils.hasProtocol(original)
 

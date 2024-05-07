@@ -79,12 +79,16 @@ object Subtyping {
         else -> a.types.any { itA -> isSubtype(itA, b) }
       }
       is JTCLinearArrayType -> {
-        when (b) { //TODO CHECK
+        when (b) {
           is JTCUnknownType -> true
-          is JTCLinearArrayType -> a == b
+          is JTCLinearArrayType -> if (b.unknownSize) {
+            a.javaType == b.javaType
+          } else {
+            a == b
+          }
           is JTCUnionType -> b.types.any { isSubtype(a, it) }
           is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
-          is JTCSharedType -> b.javaType.isJavaArray() && a.types.all { it.canDrop() }
+          is JTCSharedType -> a.javaType == b.javaType && canDrop(a)
           else -> false
         }
       }
@@ -129,7 +133,7 @@ object Subtyping {
       is JTCBottomType -> JTCBottomType.SINGLETON
       is JTCPrimitiveType -> t
       is JTCNullType -> t
-      is JTCLinearArrayType -> t
+      is JTCLinearArrayType -> t // TODO
     }
   }
 

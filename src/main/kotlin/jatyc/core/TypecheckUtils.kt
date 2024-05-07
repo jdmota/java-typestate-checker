@@ -6,6 +6,7 @@ import com.sun.tools.javac.comp.Env
 import jatyc.JavaTypestateChecker
 import jatyc.core.cfg.FuncInterface
 import jatyc.core.cfg.MethodCall
+import jatyc.core.typesystem.TypeInfo
 import jatyc.typestate.graph.DecisionState
 import jatyc.typestate.graph.MethodTransition
 import jatyc.typestate.graph.State
@@ -70,7 +71,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCBottomType -> true
       is JTCUnionType -> type.types.all { check(it, call) }
       is JTCIntersectionType -> type.types.any { check(it, call) }
-      is JTCLinearArrayType -> false //TODO CHECK
+      is JTCLinearArrayType -> false
     }
   }
 
@@ -140,7 +141,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> false
         is JTCUnionType -> type.types.any { isInDroppableStateNotEnd(it) }
         is JTCIntersectionType -> type.types.any { isInDroppableStateNotEnd(it) }
-        is JTCLinearArrayType -> type.types.any { it.isInDroppableStateNotEnd() } //TODO CHECK
+        is JTCLinearArrayType -> !type.unknownSize && type.types.any { it.isInDroppableStateNotEnd() }
       }
     }
 
@@ -155,7 +156,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> true
         is JTCUnionType -> type.types.all { canDrop(it) }
         is JTCIntersectionType -> type.types.any { canDrop(it) }
-        is JTCLinearArrayType -> type.types.all { it.canDrop() } //TODO CHECK
+        is JTCLinearArrayType -> !type.unknownSize && type.types.all { it.canDrop() }
       }
     }
 
@@ -180,7 +181,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> JTCBottomType.SINGLETON
         is JTCUnionType -> JTCType.createUnion(type.types.map { invariant(it) })
         is JTCIntersectionType -> JTCType.createIntersection(type.types.map { invariant(it) })
-        is JTCLinearArrayType -> JTCLinearArrayType(type.javaType, type.types) //TODO FIX ME
+        is JTCLinearArrayType -> JTCLinearArrayType(type.javaType, type.types.map { TypeInfo.make(it.javaType, invariant(it.jtcType)) }, type.unknownSize)
       }
     }
 
@@ -195,7 +196,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> true
         is JTCUnionType -> type.types.any { requiresLinear(ref, it) }
         is JTCIntersectionType -> type.types.any { requiresLinear(ref, it) }
-        is JTCLinearArrayType -> type.types.any {it.requiresLinear(ref) } //TODO CHECK
+        is JTCLinearArrayType -> type.unknownSize || type.types.any { it.requiresLinear(ref) }
       }
     }
   }
