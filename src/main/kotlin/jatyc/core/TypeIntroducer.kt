@@ -101,7 +101,11 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
           JTCSharedType(javaType)
           // JTCNoProtocolType(javaType, false)
         } else {
-          JTCSharedType(javaType)
+          if (javaType.isJavaArray()) {
+            JTCSharedType(javaType).union(JTCLinearArrayType(javaType, listOf(), true))
+          } else {
+            JTCSharedType(javaType)
+          }
         }
       } else {
         JTCStateType(javaType, graph, graph.getUnknownState())
@@ -138,30 +142,6 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
 
   fun getCastType(type: TypeMirror): JTCType {
     return getUpperBound(type, isNullable = true, isActualType = false)
-  }
-
-  fun getArrayComponentType(type: TypeMirror): JTCType {
-    return when (type) {
-      is WildcardType,
-      is TypeVariable,
-      is ArrayType -> JTCSharedType(hierarchy.get(type)).toMaybeNullable(true)
-      is DeclaredType -> { //TODO CHECK
-        val javaType = hierarchy.get(type)
-        val graph = javaType.getGraph()
-        if (graph == null) {
-          JTCSharedType(javaType)/*.union(JTCNoProtocolType(javaType, isActualType))*/.toMaybeNullable(true)
-        } else {
-          JTCStateType(javaType, graph, graph.getUnknownState()).toMaybeNullable(true)
-        }
-      }
-      is ExecutableType -> JTCUnknownType.SINGLETON
-      is PrimitiveType -> hierarchy.getPrimitive(type as Type.JCPrimitiveType)
-      is NoType -> JTCNullType.SINGLETON // void
-      is NullType -> JTCNullType.SINGLETON
-      is IntersectionType -> JTCUnknownType.SINGLETON
-      is UnionType -> JTCUnknownType.SINGLETON
-      else -> throw AssertionError("unexpected ${type.kind}")
-    }
   }
 
   fun getFieldUpperBound(tree: VariableTree, type: AnnotatedTypeMirror): JTCType {

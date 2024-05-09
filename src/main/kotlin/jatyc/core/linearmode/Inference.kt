@@ -626,6 +626,14 @@ class Inference(
         post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCLinearArrayType(node.javaType, types, false))
       }
 
+      is ArrayAccess -> {
+        TODO()
+      }
+
+      is ArraySet -> {
+        TODO()
+      }
+
       is SynchronizedExprEnd -> {
         // TODO
       }

@@ -733,22 +733,11 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   }
 
   private fun makeAssignment(left: Node, right: CodeExpr, node: Node): AdaptResult {
+    val t = ::getAdapted
     return when (left) {
       is ArrayAccessNode -> {
         val type = left.array.type as ArrayType
-        val componentType = typeIntroducer.getArrayComponentType(type.componentType)
-        val componentJavaType = hierarchy.get(type.componentType)
-        val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
-        val params = listOf(
-          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hasEnsures = false),
-          FuncParam(IdLHS("index", 0, hierarchy.INTEGER.javaType), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hasEnsures = false),
-          FuncParam(IdLHS("value", 0, hierarchy.get(type.componentType)), componentType, componentType, isThis = false, hasEnsures = false)
-        )
-        makeCall2(
-          FuncInterface("#helpers.arraySet", params, returnType = componentType, componentJavaType, isPublic = true, isAnytime = true, isPure = false, isAbstract = false),
-          listOf(left.array, left.index).map(::getAdapted).plus(right),
-          node
-        )
+        SingleAdaptResult(ArraySet(t(left.array),t(left.index), right, hierarchy.get(type), right.javaType2!!))
       }
       else -> SingleAdaptResult(Assign(transformLHS(left), right, typeIntroducer.getUpperBound(left.type)).set(node, hierarchy))
     }
@@ -796,18 +785,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     return when (node) {
       is ArrayAccessNode -> {
         val type = node.array.type as ArrayType
-        val componentType = typeIntroducer.getArrayComponentType(type.componentType)
-        val componentJavaType = hierarchy.get(type.componentType)
-        val thisType = typeIntroducer.getThisType(type, isAnytime = true, isConstructor = false)
-        val params = listOf(
-          FuncParam(renamer.transformThisLHS(type), thisType, thisType, isThis = true, hasEnsures = false),
-          FuncParam(IdLHS("index", 0, hierarchy.INTEGER.javaType), hierarchy.INTEGER, hierarchy.INTEGER, isThis = false, hasEnsures = false)
-        )
-        makeCall(
-          FuncInterface("#helpers.arrayAccess", params, returnType = componentType, componentJavaType, isPublic = true, isAnytime = true, isPure = true, isAbstract = false),
-          listOf(node.array, node.index),
-          node
-        )
+        SingleAdaptResult(ArrayAccess(t(node.array), t(node.index), hierarchy.get(type)))
       }
 
       is ArrayCreationNode -> {

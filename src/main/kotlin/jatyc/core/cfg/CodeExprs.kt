@@ -191,6 +191,18 @@ class NewArrayWithValues(val javaType: JavaType, val componentJavaType: JavaType
   }
 }
 
+class ArrayAccess(val array: CodeExpr, val idx: CodeExpr, val arrayType: JavaType) : CodeExpr() {
+  override fun format(indent: String): String {
+    return "$array[$idx]"
+  }
+}
+
+class ArraySet(val array: CodeExpr, val idx: CodeExpr, val assignee: CodeExpr, val arrayType: JavaType, val valueType: JavaType) : CodeExpr() {
+  override fun format(indent: String): String {
+    return "$array[$idx] = $assignee"
+  }
+}
+
 class MethodCall(val methodExpr: FuncInterface, val parameters: List<ParamAssign>, val isSuperCall: Boolean) : CodeExpr() {
   init {
     if (methodExpr.parameters.size != parameters.size) {
