@@ -627,10 +627,19 @@ class Inference(
       }
 
       is ArrayAccess -> {
+        val currArrayType = pre[Reference.make(node.array)]
+        val index = node.idx
+        post[Reference.make(node.array)] = TypeInfo.make(node.arrayType, typecheckUtils.refineArray(currArrayType.type.jtcType, index, null))
+        // post[Reference.make(node)] =
         TODO()
       }
 
       is ArraySet -> {
+        val currArrayType = pre[Reference.make(node.array)]
+        val index = node.idx
+        val currAssigneeType = pre[Reference.make(node.assignee)]
+        post[Reference.make(node.array)] = TypeInfo.make(node.arrayType, typecheckUtils.refineArray(currArrayType.type.jtcType, index, currAssigneeType.type))
+        post[Reference.make(node.assignee)] = currAssigneeType.toShared() // TODO CHECK
         TODO()
       }
 

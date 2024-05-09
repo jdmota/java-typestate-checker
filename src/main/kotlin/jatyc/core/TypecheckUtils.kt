@@ -4,6 +4,7 @@ import com.sun.tools.javac.code.Symbol
 import com.sun.tools.javac.comp.AttrContext
 import com.sun.tools.javac.comp.Env
 import jatyc.JavaTypestateChecker
+import jatyc.core.cfg.CodeExpr
 import jatyc.core.cfg.FuncInterface
 import jatyc.core.cfg.MethodCall
 import jatyc.core.typesystem.TypeInfo
@@ -115,6 +116,24 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         }*/
       }
     })
+  }
+
+  fun refineArray(type: JTCType, idx: CodeExpr, assigneeType: TypeInfo?): JTCType {
+    return when (type) {
+      is JTCUnknownType -> type
+      is JTCPrimitiveType,
+      is JTCNullType -> JTCBottomType.SINGLETON
+      is JTCSharedType -> {
+        TODO()
+      }
+      is JTCStateType -> JTCBottomType.SINGLETON
+      is JTCBottomType -> type
+      is JTCUnionType -> JTCType.createUnion(type.types.map { refineArray(it, idx, assigneeType) })
+      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refineArray(it, idx, assigneeType) }.filterNot { it == JTCBottomType.SINGLETON })
+      is JTCLinearArrayType -> {
+        TODO()
+      }
+    }
   }
 
   companion object {
