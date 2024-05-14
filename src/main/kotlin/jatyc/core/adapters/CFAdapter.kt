@@ -737,7 +737,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     return when (left) {
       is ArrayAccessNode -> {
         val type = left.array.type as ArrayType
-        SingleAdaptResult(ArraySet(t(left.array),t(left.index), right, hierarchy.get(type), right.javaType2!!))
+        SingleAdaptResult(ArraySet(t(left.array),t(left.index), right, hierarchy.get(type), right.javaType2!!)).set(node, hierarchy)
       }
       else -> SingleAdaptResult(Assign(transformLHS(left), right, typeIntroducer.getUpperBound(left.type)).set(node, hierarchy))
     }
@@ -785,9 +785,8 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     return when (node) {
       is ArrayAccessNode -> {
         val type = node.array.type as ArrayType
-        SingleAdaptResult(ArrayAccess(t(node.array), t(node.index), hierarchy.get(type)))
+        SingleAdaptResult(ArrayAccess(t(node.array), t(node.index), hierarchy.get(type))).set(node, hierarchy)
       }
-
       is ArrayCreationNode -> {
         val javaType = hierarchy.get(node.type)
         val javaComponentType = javaType.getArrayComponent()!!
@@ -964,10 +963,10 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       is SynchronizedNode -> SingleAdaptResult((if (node.isStartOfBlock) SynchronizedExprStart(t(node.expression)) else SynchronizedExprEnd(t(node.expression))).set(node, hierarchy))
       is TernaryExpressionNode -> SingleAdaptResult(TernaryExpr(t(node.conditionOperand), t(node.thenOperand), t(node.elseOperand)).set(node, hierarchy))
       is ThisNode -> SingleAdaptResult(when (node) {
-        is ExplicitThisNode,
-        is ImplicitThisNode -> makeThis(node)
-        else -> error("Unexpected node ${node.javaClass}")
-      })
+          is ExplicitThisNode,
+          is ImplicitThisNode -> makeThis(node)
+          else -> error("Unexpected node ${node.javaClass}")
+        })
       is ThrowNode -> SingleAdaptResult(ThrowExpr(t(node.expression)).set(node, hierarchy))
       is TypeCastNode -> SingleAdaptResult(makeCast(t(node.operand), node.type).set(node, hierarchy))
       is UnaryOperationNode -> {

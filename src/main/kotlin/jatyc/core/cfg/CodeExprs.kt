@@ -193,13 +193,13 @@ class NewArrayWithValues(val javaType: JavaType, val componentJavaType: JavaType
 
 class ArrayAccess(val array: CodeExpr, val idx: CodeExpr, val arrayType: JavaType) : CodeExpr() {
   override fun format(indent: String): String {
-    return "$array[$idx]"
+    return "${array.format(indent)}[$idx]"
   }
 }
 
 class ArraySet(val array: CodeExpr, val idx: CodeExpr, val assignee: CodeExpr, val arrayType: JavaType, val valueType: JavaType) : CodeExpr() {
   override fun format(indent: String): String {
-    return "$array[$idx] = $assignee"
+    return "${array.format(indent)}[$idx] = ${assignee.format("")}"
   }
 }
 

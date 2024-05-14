@@ -6,6 +6,7 @@ import com.sun.tools.javac.comp.Env
 import jatyc.JavaTypestateChecker
 import jatyc.core.cfg.CodeExpr
 import jatyc.core.cfg.FuncInterface
+import jatyc.core.cfg.IntegerLiteral
 import jatyc.core.cfg.MethodCall
 import jatyc.core.typesystem.TypeInfo
 import jatyc.typestate.graph.DecisionState
@@ -124,14 +125,17 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCPrimitiveType,
       is JTCNullType -> JTCBottomType.SINGLETON
       is JTCSharedType -> {
-        TODO()
+        type
+        //TODO()
       }
       is JTCStateType -> JTCBottomType.SINGLETON
       is JTCBottomType -> type
       is JTCUnionType -> JTCType.createUnion(type.types.map { refineArray(it, idx, assigneeType) })
       is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refineArray(it, idx, assigneeType) }.filterNot { it == JTCBottomType.SINGLETON })
       is JTCLinearArrayType -> {
-        TODO()
+        val index = idx as IntegerLiteral //TODO: RAISE AN ERROR IF IDX IS NOT A LITERAL
+        JTCLinearArrayType(type.javaType, type.types.mapIndexed { i, e -> if(i == index.value) assigneeType ?: e.toShared() else e }, type.unknownSize)
+        //TODO()
       }
     }
   }

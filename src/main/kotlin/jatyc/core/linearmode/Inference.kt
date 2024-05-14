@@ -7,6 +7,7 @@ import jatyc.core.*
 import jatyc.core.cfg.*
 import jatyc.core.typesystem.TypeInfo
 import jatyc.utils.JTCUtils
+import javax.lang.model.type.ArrayType
 
 class Inference(
   private val utils: JTCUtils,
@@ -186,7 +187,6 @@ class Inference(
         val parameters = methodExpr.parameters
         val paramsIt = parameters.iterator()
         val isSelfCall = thisRef != null && parameters.isNotEmpty() && parameters.first().isThis && Reference.make(arguments.first().expr) == thisRef
-
         if (
           isSelfCall &&
           !func.isConstructor && !methodExpr.isConstructor &&
@@ -269,6 +269,7 @@ class Inference(
                 inference.addError(node, "Cannot call [${node.methodExpr.name}] on ${currentType.format()}")
               }
             }
+
             // Whatever is in the "parameter variable", restore it to the "parameter expression"
             // only if the method requested linear type
             // If the method did not request linear type, it means the linear permission is still in the expression
@@ -629,9 +630,10 @@ class Inference(
       is ArrayAccess -> {
         val currArrayType = pre[Reference.make(node.array)]
         val index = node.idx
+        val currJTCType = currArrayType.type.jtcType as JTCLinearArrayType
         post[Reference.make(node.array)] = TypeInfo.make(node.arrayType, typecheckUtils.refineArray(currArrayType.type.jtcType, index, null))
-        // post[Reference.make(node)] =
-        TODO()
+       // post[Reference.make(node)] = ASSIGN THE TYPE OF THE CORRESPONDIG ELEMENT IN THE LINEAR ARRAY TYPE
+        //TODO()
       }
 
       is ArraySet -> {
@@ -640,7 +642,7 @@ class Inference(
         val currAssigneeType = pre[Reference.make(node.assignee)]
         post[Reference.make(node.array)] = TypeInfo.make(node.arrayType, typecheckUtils.refineArray(currArrayType.type.jtcType, index, currAssigneeType.type))
         post[Reference.make(node.assignee)] = currAssigneeType.toShared() // TODO CHECK
-        TODO()
+      //TODO()
       }
 
       is SynchronizedExprEnd -> {

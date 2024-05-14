@@ -1,6 +1,7 @@
 typestate Car {
   OFF = {
-    boolean turnOn(): <true: ON, false: OFF>
+    boolean turnOn(): <true: ON, false: OFF>,
+    drop: end
   }
 
   ON = {

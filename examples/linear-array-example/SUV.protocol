@@ -1,6 +1,7 @@
 typestate SUV {
   OFF = {
-    boolean turnOn(): <true: COMFORT_ON, false: OFF>
+    boolean turnOn(): <true: COMFORT_ON, false: OFF>,
+    drop: end
   }
 
   COMFORT_ON = {
