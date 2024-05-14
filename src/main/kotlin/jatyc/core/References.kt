@@ -3,28 +3,6 @@ package jatyc.core
 import jatyc.core.cfg.*
 import jatyc.utils.JTCUtils
 
-sealed class ReverseRefComponent
-
-class ReverseRefRoot(val root: RootReference) : ReverseRefComponent() {
-  override fun equals(other: Any?): Boolean {
-    return other is ReverseRefRoot && root == other.root
-  }
-
-  override fun hashCode(): Int {
-    return root.hashCode()
-  }
-}
-
-class ReverseRefId(val id: String) : ReverseRefComponent() {
-  override fun equals(other: Any?): Boolean {
-    return other is ReverseRefId && id == other.id
-  }
-
-  override fun hashCode(): Int {
-    return id.hashCode()
-  }
-}
-
 sealed class Reference(val javaType: JavaType) {
   companion object {
     fun make(code: LeftHS): Reference {

@@ -59,7 +59,10 @@ fun <T : AdaptedThing> T.set(checker: JavaTypestateChecker): T {
 
 /** Left Hand Side */
 sealed class LeftHS(val javaType: JavaType) : AdaptedThing() {
+  abstract fun format(indent: String): String
   abstract fun toCode(): CodeExpr
+
+  fun format() = format("")
 }
 
 class SelectLHS(val obj: CodeExpr, val id: String, val uuid: Long, javaType: JavaType) : LeftHS(javaType) {
@@ -76,6 +79,10 @@ class SelectLHS(val obj: CodeExpr, val id: String, val uuid: Long, javaType: Jav
     result = 31 * result + id.hashCode()
     result = 31 * result + uuid.hashCode()
     return result
+  }
+
+  override fun format(indent: String): String {
+    return "${obj.format(indent)}.$id"
   }
 
   override fun toString() = "$obj.$id[${uuid}]"
@@ -96,6 +103,10 @@ class IdLHS(val name: String, val uuid: Long, javaType: JavaType) : LeftHS(javaT
     return result
   }
 
+  override fun format(indent: String): String {
+    return indent + name
+  }
+
   override fun toString() = "$name[$uuid]"
 }
 
@@ -103,6 +114,8 @@ class IdLHS(val name: String, val uuid: Long, javaType: JavaType) : LeftHS(javaT
 sealed class CodeExpr : AdaptedThing() {
   abstract fun format(indent: String): String
   override fun toString() = format("")
+
+  fun format() = format("")
 }
 
 class Select(val expr: CodeExpr, val id: String, val uuid: Long, val javaType: JavaType) : CodeExpr() {
@@ -197,9 +210,9 @@ class ArrayAccess(val array: CodeExpr, val idx: CodeExpr, val arrayType: JavaTyp
   }
 }
 
-class ArraySet(val array: CodeExpr, val idx: CodeExpr, val assignee: CodeExpr, val arrayType: JavaType, val valueType: JavaType) : CodeExpr() {
+class ArraySet(val left: ArrayAccess, val assignee: CodeExpr, val valueType: JavaType) : CodeExpr() {
   override fun format(indent: String): String {
-    return "${array.format(indent)}[$idx] = ${assignee.format("")}"
+    return "${left.format(indent)} = ${assignee.format("")}"
   }
 }
 

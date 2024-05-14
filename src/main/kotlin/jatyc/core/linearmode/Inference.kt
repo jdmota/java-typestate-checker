@@ -7,7 +7,6 @@ import jatyc.core.*
 import jatyc.core.cfg.*
 import jatyc.core.typesystem.TypeInfo
 import jatyc.utils.JTCUtils
-import javax.lang.model.type.ArrayType
 
 class Inference(
   private val utils: JTCUtils,
@@ -607,7 +606,7 @@ class Inference(
           typeInfos.add(lastTypeInfo)
 
           for ((idx, javaType) in javaTypes.withIndex()) {
-            lastTypeInfo = TypeInfo.make(javaType, JTCLinearArrayType(javaType, MutableList(dimReversed[idx]) { lastTypeInfo }, false))
+            lastTypeInfo = TypeInfo.make(javaType, JTCLinearArrayType(javaType, MutableList(dimReversed[idx]) { lastTypeInfo.jtcType }, false))
             typeInfos.add(lastTypeInfo)
           }
 
@@ -624,25 +623,33 @@ class Inference(
           post[Reference.make(init)] = pre[Reference.make(init)].toShared()
           types = types + valueType.type
         }
-        post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCLinearArrayType(node.javaType, types, false))
+        post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCLinearArrayType(node.javaType, types.map { it.jtcType }, false))
       }
 
       is ArrayAccess -> {
-        val currArrayType = pre[Reference.make(node.array)]
-        val index = node.idx
-        val currJTCType = currArrayType.type.jtcType as JTCLinearArrayType
-        post[Reference.make(node.array)] = TypeInfo.make(node.arrayType, typecheckUtils.refineArray(currArrayType.type.jtcType, index, null))
-       // post[Reference.make(node)] = ASSIGN THE TYPE OF THE CORRESPONDIG ELEMENT IN THE LINEAR ARRAY TYPE
-        //TODO()
+        // Preserve conditional information
+        for ((ref, info) in pre) {
+          post[ref] = info
+        }
+
+        val arrayRef = Reference.make(node.array)
+        val currArrayType = pre[arrayRef].type.jtcType
+        // Just check we can access the array
+        TypecheckUtils.arrayGet(currArrayType, (node.idx as? IntegerLiteral)?.value) { msg -> inference.addError(node, msg) }
+        // (see Store#getOrNull and Store#set to understand how array accesses are handled)
       }
 
       is ArraySet -> {
-        val currArrayType = pre[Reference.make(node.array)]
-        val index = node.idx
-        val currAssigneeType = pre[Reference.make(node.assignee)]
-        post[Reference.make(node.array)] = TypeInfo.make(node.arrayType, typecheckUtils.refineArray(currArrayType.type.jtcType, index, currAssigneeType.type))
-        post[Reference.make(node.assignee)] = currAssigneeType.toShared() // TODO CHECK
-      //TODO()
+        val arrayRef = Reference.make(node.left.array)
+        val currArrayType = pre[arrayRef].type.jtcType
+        val assigneeRef = Reference.make(node.assignee)
+        val currAssigneeType = pre[assigneeRef]
+        // Check we can set to the array
+        TypecheckUtils.arraySet(currArrayType, (node.left.idx as? IntegerLiteral)?.value, currAssigneeType.type.jtcType) { msg -> inference.addError(node, msg) }
+        // Ensure the array slot has the right value (see Store#getOrNull and Store#set to understand how array accesses are handled)
+        post[Reference.make(node.left)] = currAssigneeType
+        post[assigneeRef] = currAssigneeType.toShared()
+        post[Reference.make(node)] = currAssigneeType.toShared()
       }
 
       is SynchronizedExprEnd -> {

@@ -304,7 +304,9 @@ class JTCBottomType private constructor() : JTCTypeSingletons(3) {
 }
 
 
-class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<TypeInfo>, val unknownSize: Boolean) : JTCType() {
+class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<JTCType>, val unknownSize: Boolean) : JTCType() {
+  val javaComponentType = javaType.getArrayComponent()!!
+
   init {
     if (unknownSize) {
       if (types.isNotEmpty()) {
@@ -314,8 +316,6 @@ class JTCLinearArrayType internal constructor(val javaType: JavaType, val types:
       }
     }
   }
-
-  // fun updateTypes(updatedTypes: List<TypeInfo>) = JTCLinearArrayType(javaType, updatedTypes)
 
   override fun equals(other: Any?) = when {
     this === other -> true
@@ -386,7 +386,7 @@ private object JTCTypeFormatter {
     return "(${types.sortedWith(JTCTypeComparator).joinToString(" & ") { it.format() }})"
   }
 
-  fun formatLinearArray(types: Collection<TypeInfo>, unknownSize: Boolean): String {
+  fun formatLinearArray(types: Collection<JTCType>, unknownSize: Boolean): String {
     return if (unknownSize) "LinearArray[?]" else "LinearArray[${types.joinToString(", "){ it.format() }}]"
   }
 

@@ -1,7 +1,11 @@
 package jatyc.core.linearmode
 
+import jatyc.core.CodeExprReference
 import jatyc.core.JavaType
 import jatyc.core.Reference
+import jatyc.core.TypecheckUtils
+import jatyc.core.cfg.ArrayAccess
+import jatyc.core.cfg.IntegerLiteral
 import jatyc.core.typesystem.TypeInfo
 import jatyc.utils.JTCUtils
 
@@ -236,13 +240,33 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
 }
 
 class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) {
-  operator fun contains(ref: Reference) = map.contains(ref)
-  operator fun get(ref: Reference): StoreInfo = map[ref]
-    ?: StoreInfo.regular(TypeInfo.make(ref.javaType, ref.javaType.getDefaultJTCType()))
+  // The core functions that use "this.map" directly
+
+  operator fun contains(ref: Reference): Boolean {
+    return map.contains(ref)
+  }
+
+  fun getOrNull(ref: Reference): StoreInfo? {
+    if (ref is CodeExprReference && ref.code is ArrayAccess) {
+      val arrayRef = Reference.make(ref.code.array)
+      val arrayType = getOrNull(arrayRef) ?: return null
+      return StoreInfo.regular(TypeInfo.make(ref.javaType, TypecheckUtils.arrayGet(arrayType.type.jtcType, (ref.code.idx as? IntegerLiteral)?.value) {}))
+    }
+    return map[ref]
+  }
+
+  operator fun set(ref: Reference, info: StoreInfo) {
+    info.checkJavaTypeInvariant(ref.javaType)
+    if (ref is CodeExprReference && ref.code is ArrayAccess) {
+      val arrayRef = Reference.make(ref.code.array)
+      val arrayType = get(arrayRef)
+      set(arrayRef, TypeInfo.make(arrayRef.javaType, TypecheckUtils.arraySet(arrayType.type.jtcType, (ref.code.idx as? IntegerLiteral)?.value, info.type.jtcType) {}))
+    } else {
+      map[ref] = info
+    }
+  }
 
   operator fun iterator(): Iterator<Map.Entry<Reference, StoreInfo>> = map.iterator()
-
-  fun getOrNull(ref: Reference): StoreInfo? = map[ref]
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -257,36 +281,36 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     return map.toString()
   }
 
-  operator fun set(ref: Reference, info: StoreInfo) {
-    info.checkJavaTypeInvariant(ref.javaType)
-    map[ref] = info
+  fun clone(): Store {
+    return Store(map.toMutableMap())
   }
+
+  // The functions below do not make use of "this.map" directly
+
+  operator fun get(ref: Reference): StoreInfo = getOrNull(ref)
+    ?: StoreInfo.regular(TypeInfo.make(ref.javaType, ref.javaType.getDefaultJTCType()))
 
   operator fun set(ref: Reference, type: TypeInfo) {
     type.checkJavaTypeInvariant(ref.javaType)
-    map[ref] = StoreInfo.regular(type)
+    this[ref] = StoreInfo.regular(type)
   }
 
   fun merge(ref: Reference, info: StoreInfo): Boolean {
-    val curr = map[ref]
+    val curr = getOrNull(ref)
     if (curr == null) {
-      map[ref] = info
+      this[ref] = info
       return true // It changed
     }
     if (info.implies(curr)) {
       return false
     }
-    map[ref] = curr.or(info)
+    this[ref] = curr.or(info)
     return true // It changed
   }
 
-  fun clone(): Store {
-    return Store(map.toMutableMap())
-  }
-
   fun toBottom() {
-    for ((ref, _) in map) {
-      map[ref] = StoreInfo.bottom(ref.javaType)
+    for ((ref, _) in this) {
+      this[ref] = StoreInfo.bottom(ref.javaType)
     }
   }
 

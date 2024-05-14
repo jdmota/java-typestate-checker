@@ -737,7 +737,8 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     return when (left) {
       is ArrayAccessNode -> {
         val type = left.array.type as ArrayType
-        SingleAdaptResult(ArraySet(t(left.array),t(left.index), right, hierarchy.get(type), right.javaType2!!)).set(node, hierarchy)
+        val lhs = ArrayAccess(t(left.array), t(left.index), hierarchy.get(type)).set(left, hierarchy)
+        SingleAdaptResult(ArraySet(lhs, right, right.javaType2!!)).set(node, hierarchy)
       }
       else -> SingleAdaptResult(Assign(transformLHS(left), right, typeIntroducer.getUpperBound(left.type)).set(node, hierarchy))
     }

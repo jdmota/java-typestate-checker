@@ -119,28 +119,88 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
     })
   }
 
-  fun refineArray(type: JTCType, idx: CodeExpr, assigneeType: TypeInfo?): JTCType {
-    return when (type) {
-      is JTCUnknownType -> type
-      is JTCPrimitiveType,
-      is JTCNullType -> JTCBottomType.SINGLETON
-      is JTCSharedType -> {
-        type
-        //TODO()
-      }
-      is JTCStateType -> JTCBottomType.SINGLETON
-      is JTCBottomType -> type
-      is JTCUnionType -> JTCType.createUnion(type.types.map { refineArray(it, idx, assigneeType) })
-      is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refineArray(it, idx, assigneeType) }.filterNot { it == JTCBottomType.SINGLETON })
-      is JTCLinearArrayType -> {
-        val index = idx as IntegerLiteral //TODO: RAISE AN ERROR IF IDX IS NOT A LITERAL
-        JTCLinearArrayType(type.javaType, type.types.mapIndexed { i, e -> if(i == index.value) assigneeType ?: e.toShared() else e }, type.unknownSize)
-        //TODO()
+  companion object {
+    fun arrayGet(type: JTCType, idx: Int?, error: (String) -> Unit): JTCType {
+      return when (type) {
+        is JTCUnknownType,
+        is JTCPrimitiveType,
+        is JTCNullType,
+        is JTCStateType -> {
+          error("${type.format()} is not of an array type")
+          JTCBottomType.SINGLETON
+        }
+        is JTCSharedType -> {
+          if (type.javaType.isJavaArray()) {
+            JTCSharedType(type.javaType.getArrayComponent()!!)
+          } else {
+            error("${type.format()} is not of an array type")
+            JTCBottomType.SINGLETON
+          }
+        }
+        is JTCLinearArrayType -> {
+          if (type.unknownSize || idx == null) {
+            type.javaComponentType.getDefaultJTCType()
+          } else if (idx < type.types.size) {
+            type.types[idx]
+          } else {
+            error("$idx is out of bounds in array type ${type.format()}")
+            JTCBottomType.SINGLETON
+          }
+        }
+        is JTCUnionType -> JTCType.createUnion(type.types.map { arrayGet(it, idx, error) })
+        is JTCIntersectionType -> JTCType.createIntersection(type.types.map { arrayGet(it, idx, error) }.filterNot { it == JTCBottomType.SINGLETON })
+        is JTCBottomType -> JTCBottomType.SINGLETON
       }
     }
-  }
 
-  companion object {
+    fun arraySet(type: JTCType, idx: Int?, assignee: JTCType, error: (String) -> Unit): JTCType {
+      return when (type) {
+        is JTCUnknownType,
+        is JTCPrimitiveType,
+        is JTCNullType,
+        is JTCStateType -> {
+          error("${type.format()} is not of an array type")
+          JTCBottomType.SINGLETON
+        }
+        is JTCSharedType -> {
+          if (type.javaType.isJavaArray()) {
+            if (!canDrop(assignee)) {
+              error("${type.format()} cannot be stored in shared array")
+            }
+            type
+          } else {
+            error("${type.format()} is not of an array type")
+            JTCBottomType.SINGLETON
+          }
+        }
+        is JTCLinearArrayType -> {
+          if (type.unknownSize) {
+            type
+          } else if (idx == null) {
+            error("Cannot assign to unknown position in array type ${type.format()}")
+            JTCBottomType.SINGLETON
+          } else if (idx < type.types.size) {
+            JTCLinearArrayType(type.javaType, type.types.mapIndexed { i, t -> run {
+              if (i == idx) {
+                if (!canDrop(t)) {
+                  error("The previous value in position $idx did not complete its protocol (found: ${t.format()})")
+                }
+                assignee
+              } else {
+                t
+              }
+            } }, false)
+          } else {
+            error("$idx is out of bounds in array type ${type.format()}")
+            JTCBottomType.SINGLETON
+          }
+        }
+        is JTCUnionType -> JTCType.createUnion(type.types.map { arraySet(it, idx, assignee, error) })
+        is JTCIntersectionType -> JTCType.createIntersection(type.types.map { arraySet(it, idx, assignee, error) }.filterNot { it == JTCBottomType.SINGLETON })
+        is JTCBottomType -> JTCBottomType.SINGLETON
+      }
+    }
+
     fun refineToNonNull(type: JTCType): JTCType {
       return when (type) {
         is JTCNullType -> JTCBottomType.SINGLETON
@@ -164,7 +224,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> false
         is JTCUnionType -> type.types.any { isInDroppableStateNotEnd(it) }
         is JTCIntersectionType -> type.types.any { isInDroppableStateNotEnd(it) }
-        is JTCLinearArrayType -> !type.unknownSize && type.types.any { it.isInDroppableStateNotEnd() }
+        is JTCLinearArrayType -> !type.unknownSize && type.types.any { isInDroppableStateNotEnd(it) }
       }
     }
 
@@ -179,7 +239,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> true
         is JTCUnionType -> type.types.all { canDrop(it) }
         is JTCIntersectionType -> type.types.any { canDrop(it) }
-        is JTCLinearArrayType -> !type.unknownSize && type.types.all { it.canDrop() }
+        is JTCLinearArrayType -> !type.unknownSize && type.types.all { canDrop(it) }
       }
     }
 
@@ -204,7 +264,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> JTCBottomType.SINGLETON
         is JTCUnionType -> JTCType.createUnion(type.types.map { invariant(it) })
         is JTCIntersectionType -> JTCType.createIntersection(type.types.map { invariant(it) })
-        is JTCLinearArrayType -> JTCLinearArrayType(type.javaType, type.types.map { TypeInfo.make(it.javaType, invariant(it.jtcType)) }, type.unknownSize)
+        is JTCLinearArrayType -> JTCLinearArrayType(type.javaType, type.types.map { invariant(it) }, type.unknownSize)
       }
     }
 
@@ -219,7 +279,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCBottomType -> true
         is JTCUnionType -> type.types.any { requiresLinear(ref, it) }
         is JTCIntersectionType -> type.types.any { requiresLinear(ref, it) }
-        is JTCLinearArrayType -> type.unknownSize || type.types.any { it.requiresLinear(ref) }
+        is JTCLinearArrayType -> type.unknownSize || type.types.any { requiresLinear(ref, it) }
       }
     }
   }
