@@ -140,6 +140,8 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
     if (f != null) Pair(f, it.second) else null
   })
 
+  fun mapType(javaType: JavaType, fn: (TypeInfo) -> TypeInfo) = cases(javaType, cases.map { Pair(it.first, fn(it.second)) })
+
   fun isBottom() = cases.isEmpty()
 
   fun removeCondition(condition: Reference): StoreInfo {
@@ -248,9 +250,10 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
 
   fun getOrNull(ref: Reference): StoreInfo? {
     if (ref is CodeExprReference && ref.code is ArrayAccess) {
+      val idx = (ref.code.idx as? IntegerLiteral)?.value
       val arrayRef = Reference.make(ref.code.array)
       val arrayType = getOrNull(arrayRef) ?: return null
-      return StoreInfo.regular(TypeInfo.make(ref.javaType, TypecheckUtils.arrayGet(arrayType.type.jtcType, (ref.code.idx as? IntegerLiteral)?.value) {}))
+      return StoreInfo.regular(TypeInfo.make(ref.javaType, TypecheckUtils.arrayGet(arrayType.type.jtcType, idx) {}))
     }
     return map[ref]
   }
@@ -258,9 +261,12 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   operator fun set(ref: Reference, info: StoreInfo) {
     info.checkJavaTypeInvariant(ref.javaType)
     if (ref is CodeExprReference && ref.code is ArrayAccess) {
+      val idx = (ref.code.idx as? IntegerLiteral)?.value
       val arrayRef = Reference.make(ref.code.array)
       val arrayType = get(arrayRef)
-      set(arrayRef, TypeInfo.make(arrayRef.javaType, TypecheckUtils.arraySet(arrayType.type.jtcType, (ref.code.idx as? IntegerLiteral)?.value, info.type.jtcType) {}))
+      set(arrayRef, info.mapType(arrayRef.javaType) { typeInfo ->
+        TypeInfo.make(arrayRef.javaType, TypecheckUtils.arraySet(arrayType.type.jtcType, idx, typeInfo.jtcType) {})
+      })
     } else {
       map[ref] = info
     }
