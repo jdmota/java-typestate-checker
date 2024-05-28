@@ -59,6 +59,13 @@ sealed class Reference(val javaType: JavaType) {
       is CodeExprReference -> this
     }
   }
+
+  fun checkJavaTypeInvariant(javaType: JavaType) {
+    if (this.javaType !== javaType) {
+      JTCUtils.printStack()
+      error("Reference.javaType: expected ${this.javaType} got $javaType")
+    }
+  }
 }
 
 class SelectReference(val parent: Reference, val id: String, val uuid: Long, javaType: JavaType) : Reference(javaType) {

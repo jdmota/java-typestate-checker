@@ -15,7 +15,7 @@ private const val dir0 = "debug"
 class DebugTests(testFiles: List<File>) : PerDirectoryTest(
   dir0,
   testFiles,
-  defaultOpts
+  arrayOf("-Anomsgtext", "-AshowTypeInfo")
 ) {
   companion object {
     @JvmStatic

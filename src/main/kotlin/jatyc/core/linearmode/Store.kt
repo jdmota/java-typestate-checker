@@ -124,7 +124,7 @@ class CasePatterns(val list: List<CasePattern>) {
 }
 
 class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair<CasePatterns, TypeInfo>>) {
-  fun checkJavaTypeInvariant(javaType: JavaType) {
+  private fun checkJavaTypeInvariant(javaType: JavaType) {
     if (this.javaType !== javaType) {
       JTCUtils.printStack()
       error("StoreInfo.javaType: expected ${this.javaType} got $javaType")
@@ -259,7 +259,7 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   }
 
   operator fun set(ref: Reference, info: StoreInfo) {
-    info.checkJavaTypeInvariant(ref.javaType)
+    ref.checkJavaTypeInvariant(info.javaType)
     if (ref is CodeExprReference && ref.code is ArrayAccess) {
       val idx = (ref.code.idx as? IntegerLiteral)?.value
       val arrayRef = Reference.make(ref.code.array)
@@ -297,7 +297,7 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     ?: StoreInfo.regular(TypeInfo.make(ref.javaType, ref.javaType.getDefaultJTCType()))
 
   operator fun set(ref: Reference, type: TypeInfo) {
-    type.checkJavaTypeInvariant(ref.javaType)
+    ref.checkJavaTypeInvariant(type.javaType)
     this[ref] = StoreInfo.regular(type)
   }
 

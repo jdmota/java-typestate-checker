@@ -644,10 +644,16 @@ class Inference(
         val currArrayType = pre[arrayRef].type.jtcType
         val assigneeRef = Reference.make(node.assignee)
         val currAssigneeType = pre[assigneeRef]
+        // Cast
+        val javaComponentType = arrayRef.javaType.getArrayComponent()!!
+        val typeToAssignCasted = pre[assigneeRef].cast(javaComponentType)
+        if (!currAssigneeType.type.isUnknown() && typeToAssignCasted.type.isUnknown()) {
+          inference.addError(node, "Cannot assign: cannot cast ${currAssigneeType.type.format()} to $javaComponentType")
+        }
         // Check we can set to the array
-        TypecheckUtils.arraySet(currArrayType, (node.left.idx as? IntegerLiteral)?.value, currAssigneeType.type.jtcType) { msg -> inference.addError(node, msg) }
+        TypecheckUtils.arraySet(currArrayType, (node.left.idx as? IntegerLiteral)?.value, typeToAssignCasted.type.jtcType) { msg -> inference.addError(node, msg) }
         // Ensure the array slot has the right value (see Store#getOrNull and Store#set to understand how array accesses are handled)
-        post[Reference.make(node.left)] = currAssigneeType
+        post[Reference.make(node.left)] = typeToAssignCasted
         post[assigneeRef] = currAssigneeType.toShared()
         post[Reference.make(node)] = currAssigneeType.toShared()
       }

@@ -211,6 +211,10 @@ class ArrayAccess(val array: CodeExpr, val idx: CodeExpr, val arrayType: JavaTyp
 }
 
 class ArraySet(val left: ArrayAccess, val assignee: CodeExpr, val valueType: JavaType) : CodeExpr() {
+  init {
+    javaType2 = assignee.javaType2
+  }
+
   override fun format(indent: String): String {
     return "${left.format(indent)} = ${assignee.format("")}"
   }
