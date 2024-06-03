@@ -617,11 +617,17 @@ class Inference(
       }
 
       is NewArrayWithValues -> {
+        val javaComponentType = node.javaType.getArrayComponent()!!
         var types = listOf<TypeInfo>()
-        for (init in node.initializers) {
-          val valueType = pre[Reference.make(init)]
+        for ((idx, init) in node.initializers.withIndex()) {
+          val currAssigneeType = pre[Reference.make(init)]
           post[Reference.make(init)] = pre[Reference.make(init)].toShared()
-          types = types + valueType.type
+          // Cast
+          val typeToAssignCasted = currAssigneeType.cast(javaComponentType)
+          if (!currAssigneeType.type.isUnknown() && typeToAssignCasted.type.isUnknown()) {
+            inference.addError(node, "Cannot assign: cannot cast in position $idx ${currAssigneeType.type.format()} to $javaComponentType")
+          }
+          types = types + typeToAssignCasted.type
         }
         post[Reference.make(node)] = TypeInfo.make(node.javaType, JTCLinearArrayType(node.javaType, types.map { it.jtcType }, false))
       }

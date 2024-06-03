@@ -3,8 +3,9 @@ package tests
 import org.junit.runners.Parameterized.Parameters
 import java.io.File
 
-val ignore = listOf("linked-list", "generics")
+val ignore = listOf("linked-list", "generics", "debug")
 val only = emptyList<String>()
+//val only = listOf("debug")
 
 private val defaultOptsNoTypeInfo = arrayOf("-Anomsgtext", "-AtypestateTrees=disable")
 private val defaultOpts = defaultOptsNoTypeInfo.plus("-AshowTypeInfo")
