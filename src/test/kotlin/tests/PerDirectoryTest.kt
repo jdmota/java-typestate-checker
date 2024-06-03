@@ -19,7 +19,7 @@ abstract class PerDirectoryTest(val originalTestDir: String, testFiles: List<Fil
     if (only.isNotEmpty() && !only.contains(originalTestDir)) {
       return
     }
-    if (ignore.contains(originalTestDir)) {
+    if (only.isEmpty() && ignore.contains(originalTestDir)) {
       return
     }
     val shouldEmitDebugInfo = TestUtilities.getShouldEmitDebugInfo()
