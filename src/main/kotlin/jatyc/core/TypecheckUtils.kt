@@ -64,6 +64,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
     return when (type) {
       is JTCUnknownType,
       is JTCPrimitiveType,
+      is JTCIntegerType, //TODO CHECK
       is JTCNullType -> false
       is JTCSharedType -> method.isAnytime
       is JTCStateType -> {
@@ -88,6 +89,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCUnionType -> JTCType.createUnion(type.types.map { refine(it, call, predicate) })
       is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) }.filterNot { it == JTCBottomType.SINGLETON })
       is JTCLinearArrayType -> JTCBottomType.SINGLETON
+      is JTCIntegerType -> JTCBottomType.SINGLETON //TODO CHECK
     }
   }
 
@@ -124,6 +126,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       return when (type) {
         is JTCUnknownType,
         is JTCPrimitiveType,
+        is JTCIntegerType, //TODO CHECK
         is JTCNullType,
         is JTCStateType -> {
           error("${type.format()} is not of an array type")
@@ -157,6 +160,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       return when (type) {
         is JTCUnknownType,
         is JTCPrimitiveType,
+        is JTCIntegerType, //TODO CHECK
         is JTCNullType,
         is JTCStateType -> {
           error("${type.format()} is not of an array type")
@@ -218,6 +222,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCUnknownType -> false
         is JTCPrimitiveType -> false
         is JTCNullType -> false
+        is JTCIntegerType -> false //TODO CHECK
         is JTCSharedType -> false
         // is JTCNoProtocolType -> false
         is JTCStateType -> type.state.canDropHere() && type.state.hasTransitions()
@@ -232,6 +237,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       return when (type) {
         is JTCUnknownType -> false
         is JTCPrimitiveType -> true
+        is JTCIntegerType -> true
         is JTCNullType -> true
         is JTCSharedType -> true
         // is JTCNoProtocolType -> type.exact
@@ -249,6 +255,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       return when (type) {
         is JTCUnknownType -> type
         is JTCPrimitiveType -> type
+        is JTCIntegerType -> type //TODO CHECK
         is JTCNullType -> type
         is JTCSharedType -> {
           val javaType = type.javaType
@@ -274,6 +281,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCUnknownType,
         is JTCSharedType,
         is JTCPrimitiveType,
+        is JTCIntegerType, //TODO CHECK
         is JTCNullType -> false
         is JTCStateType,
         is JTCBottomType -> true

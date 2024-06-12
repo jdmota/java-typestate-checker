@@ -375,7 +375,7 @@ class Inference(
           is CharLiteral -> hierarchy.CHAR
           is DoubleLiteral -> hierarchy.DOUBLE
           is FloatLiteral -> hierarchy.FLOAT
-          is IntegerLiteral -> hierarchy.INTEGER
+          is IntegerLiteral -> JTCIntegerType.SINGLETON(node.value)
           is LongLiteral -> hierarchy.LONG
           is ShortLiteral -> hierarchy.SHORT
           is NullLiteral -> JTCNullType.SINGLETON
@@ -578,11 +578,17 @@ class Inference(
 
       is NewArrayWithDimensions -> {
         // node.javaType = Car[3][10]
-
-        val dimReversed = node.dimensions.asReversed().mapNotNull { if (it is IntegerLiteral) it.value else null }
+        val dimReversed = node.dimensions.asReversed().mapNotNull {
+          if (it is IntegerLiteral) it.value
+          else if (it is Id) {
+            val jtcType = post[Reference.make(it)].type.jtcType
+            if(jtcType is JTCIntegerType) jtcType.value
+            else null
+          }
+          else null
+          }
 
         // dimReversed = [10, 3]
-
         if (dimReversed.size == node.dimensions.size) {
           val javaTypes = mutableListOf<JavaType>()
           var lastJavaType = node.javaType
@@ -641,7 +647,13 @@ class Inference(
         val arrayRef = Reference.make(node.array)
         val currArrayType = pre[arrayRef].type.jtcType
         // Just check we can access the array
-        TypecheckUtils.arrayGet(currArrayType, (node.idx as? IntegerLiteral)?.value) { msg -> inference.addError(node, msg) }
+        var index: Int? = null
+        if (node.idx is IntegerLiteral) index = node.idx.value
+        if (node.idx is Id) {
+          var integerSingleton = post[Reference.make(node.idx)].type.jtcType
+          if (integerSingleton is JTCIntegerType) index = integerSingleton.value
+        }
+        TypecheckUtils.arrayGet(currArrayType, index) { msg -> inference.addError(node, msg) }
         // (see Store#getOrNull and Store#set to understand how array accesses are handled)
       }
 
@@ -656,8 +668,14 @@ class Inference(
         if (!currAssigneeType.type.isUnknown() && typeToAssignCasted.type.isUnknown()) {
           inference.addError(node, "Cannot assign: cannot cast ${currAssigneeType.type.format()} to $javaComponentType")
         }
+        var index: Int? = null
+        if (node.left.idx is IntegerLiteral) index = node.left.idx.value
+        if (node.left.idx is Id) {
+          var integerSingleton = post[Reference.make(node.left.idx)].type.jtcType
+          if (integerSingleton is JTCIntegerType) index = integerSingleton.value
+        }
         // Check we can set to the array
-        TypecheckUtils.arraySet(currArrayType, (node.left.idx as? IntegerLiteral)?.value, typeToAssignCasted.type.jtcType) { msg -> inference.addError(node, msg) }
+        TypecheckUtils.arraySet(currArrayType, index, typeToAssignCasted.type.jtcType) { msg -> inference.addError(node, msg) }
         // Ensure the array slot has the right value (see Store#getOrNull and Store#set to understand how array accesses are handled)
         post[Reference.make(node.left)] = typeToAssignCasted
         post[assigneeRef] = currAssigneeType.toShared()

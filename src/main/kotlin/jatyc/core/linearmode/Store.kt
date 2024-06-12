@@ -1,10 +1,8 @@
 package jatyc.core.linearmode
 
-import jatyc.core.CodeExprReference
-import jatyc.core.JavaType
-import jatyc.core.Reference
-import jatyc.core.TypecheckUtils
+import jatyc.core.*
 import jatyc.core.cfg.ArrayAccess
+import jatyc.core.cfg.Id
 import jatyc.core.cfg.IntegerLiteral
 import jatyc.core.typesystem.TypeInfo
 import jatyc.utils.JTCUtils
@@ -250,10 +248,16 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
 
   fun getOrNull(ref: Reference): StoreInfo? {
     if (ref is CodeExprReference && ref.code is ArrayAccess) {
-      val idx = (ref.code.idx as? IntegerLiteral)?.value
+      var index: Int? = null
+      val idx = ref.code.idx
+      if (idx is IntegerLiteral) index = idx.value
+      if (idx is Id) {
+        val integerSingleton = map[Reference.make(idx)]?.type?.jtcType
+        if (integerSingleton is JTCIntegerType) index = integerSingleton.value
+      }
       val arrayRef = Reference.make(ref.code.array)
       val arrayType = getOrNull(arrayRef) ?: return null
-      return StoreInfo.regular(TypeInfo.make(ref.javaType, TypecheckUtils.arrayGet(arrayType.type.jtcType, idx) {}))
+      return StoreInfo.regular(TypeInfo.make(ref.javaType, TypecheckUtils.arrayGet(arrayType.type.jtcType, index) {}))
     }
     return map[ref]
   }
@@ -261,11 +265,17 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   operator fun set(ref: Reference, info: StoreInfo) {
     ref.checkJavaTypeInvariant(info.javaType)
     if (ref is CodeExprReference && ref.code is ArrayAccess) {
-      val idx = (ref.code.idx as? IntegerLiteral)?.value
+      var index: Int? = null
+      val idx = ref.code.idx
+      if (idx is IntegerLiteral) index = idx.value
+      if (idx is Id) {
+        val integerSingleton = map[Reference.make(idx)]?.type?.jtcType
+        if (integerSingleton is JTCIntegerType) index = integerSingleton.value
+      }
       val arrayRef = Reference.make(ref.code.array)
       val arrayType = get(arrayRef)
       set(arrayRef, info.mapType(arrayRef.javaType) { typeInfo ->
-        TypeInfo.make(arrayRef.javaType, TypecheckUtils.arraySet(arrayType.type.jtcType, idx, typeInfo.jtcType) {})
+        TypeInfo.make(arrayRef.javaType, TypecheckUtils.arraySet(arrayType.type.jtcType, index, typeInfo.jtcType) {})
       })
     } else {
       map[ref] = info

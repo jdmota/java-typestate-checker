@@ -88,6 +88,17 @@ object Subtyping {
           else -> false
         }
       }
+      is JTCIntegerType -> {
+        when (b) {
+          is JTCUnknownType -> true
+          is JTCIntegerType -> a.value == b.value //TODO CHECK
+          is JTCPrimitiveType -> true
+          is JTCUnionType -> b.types.any { isSubtype(a, it) }
+          is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
+          else -> false
+
+        }
+      }
     }
   }
 
@@ -128,6 +139,7 @@ object Subtyping {
       is JTCIntersectionType -> JTCType.createIntersection(t.types.map { cast(it, j, doUpcast) })
       is JTCBottomType -> JTCBottomType.SINGLETON
       is JTCPrimitiveType -> t
+      is JTCIntegerType -> t //TODO CHECK
       is JTCNullType -> t
       is JTCLinearArrayType -> t // TODO
     }

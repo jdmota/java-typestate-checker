@@ -96,6 +96,7 @@ sealed class JTCType {
       is JTCPrimitiveType,
       is JTCNullType,
       is JTCSharedType,
+      is JTCIntegerType,
       is JTCBottomType -> this
       is JTCStateType -> JTCSharedType(javaType)
       is JTCUnionType -> createUnion(unionSeq(types.map { it.toShared() }))
@@ -260,6 +261,28 @@ sealed class JTCTypeSingletons(private val hashCode: Int) : JTCType() {
   override fun hashCode() = hashCode
 }
 
+//TODO CHECK CLASS
+class JTCIntegerType private constructor(val value: Int) : JTCTypeSingletons(4) {
+  companion object {
+    fun SINGLETON(value: Int): JTCIntegerType {
+      return JTCIntegerType(value)
+    }
+  }
+
+  override fun union(other: JTCType): JTCType {
+    if(other is JTCIntegerType) return createUnion(unionSeq(this,other))
+    return JTCUnknownType.SINGLETON
+  }
+
+  override fun intersect(other: JTCType): JTCType {
+    if(other is JTCIntegerType) return createIntersection(intersectionSeq(this,other))
+    return JTCUnknownType.SINGLETON
+  }
+
+  override fun toString() = "JTCIntegerType(${value})"
+  override fun format() = "Integer"
+}
+
 class JTCUnknownType private constructor() : JTCTypeSingletons(1) {
   companion object {
     val SINGLETON = JTCUnknownType()
@@ -348,6 +371,7 @@ private object JTCTypeFormatter {
       is JTCPrimitiveType -> 9
       is JTCBottomType -> 10
       is JTCLinearArrayType -> 11
+      is JTCIntegerType -> 12
     }
   }
 
