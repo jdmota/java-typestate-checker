@@ -72,6 +72,8 @@ class JTCUtils(val checker: JavaTypestateChecker) {
 
   fun shouldReportTypeInfo() = checker.shouldReportTypeInfo()
 
+  fun shouldReportVerbose() = checker.shouldReportVerbose()
+
   fun getTypeFromStub(elt: Element) = factory.getTypeFromStub(elt)
 
   // Adapted from SourceChecker#report and JavacTrees#printMessage

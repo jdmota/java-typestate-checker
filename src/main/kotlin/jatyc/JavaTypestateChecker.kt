@@ -18,6 +18,7 @@ import javax.lang.model.element.TypeElement
 import javax.tools.Diagnostic
 
 const val showTypeInfoOpt = "showTypeInfo"
+const val showVerboseOpt = "showVerbose"
 const val configFileOpt = "configFile"
 const val typestateTreesOpt = "typestateTrees"
 const val messagesFile = "/messages.properties"
@@ -26,9 +27,11 @@ class JavaTypestateChecker : SourceChecker() {
 
   val utils = JTCUtils(this)
 
-  override fun getSupportedOptions() = super.getSupportedOptions().plus(arrayOf(showTypeInfoOpt, configFileOpt, typestateTreesOpt))
+  override fun getSupportedOptions() = super.getSupportedOptions().plus(arrayOf(showTypeInfoOpt, showVerboseOpt, configFileOpt, typestateTreesOpt))
 
   fun shouldReportTypeInfo() = hasOption(showTypeInfoOpt)
+
+  fun shouldReportVerbose() = hasOption(showVerboseOpt)
 
   override fun createSourceVisitor(): SourceVisitor<*, *> {
     return CFVisitor(this)

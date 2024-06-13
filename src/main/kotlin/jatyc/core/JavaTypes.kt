@@ -18,6 +18,7 @@ class JavaType internal constructor(val original: Type, val superTypes: Set<Java
   val isBot = original.tag == TypeTag.BOT
 
   fun isInterface() = original.isInterface
+  fun isInt() = original.tag == TypeTag.INT
   fun isPrimitive() = original.isPrimitiveOrVoid
   fun isFinal() = original.isFinal || original.isPrimitiveOrVoid || original.kind == TypeKind.NULL
   fun isImmutable() = TypesUtils.isImmutableTypeInJdk(original)

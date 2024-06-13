@@ -375,7 +375,7 @@ class Inference(
           is CharLiteral -> hierarchy.CHAR
           is DoubleLiteral -> hierarchy.DOUBLE
           is FloatLiteral -> hierarchy.FLOAT
-          is IntegerLiteral -> JTCIntegerType.SINGLETON(node.value)
+          is IntegerLiteral -> JTCIntegerType.value(node.value)
           is LongLiteral -> hierarchy.LONG
           is ShortLiteral -> hierarchy.SHORT
           is NullLiteral -> JTCNullType.SINGLETON
@@ -535,7 +535,10 @@ class Inference(
             )
             post[nodeRef] = TypeInfo.make(hierarchy.BOOLEAN)
           }
-          BinaryOP.Add,
+          BinaryOP.Add -> {
+            // TODO linear arrays + integers
+            post[Reference.make(node)] = TypeInfo.make(hierarchy.getPrimitive(node.cfType as Type.JCPrimitiveType))
+          }
           BinaryOP.Sub,
           BinaryOP.Mult,
           BinaryOP.FloatDivision,
@@ -550,15 +553,15 @@ class Inference(
           BinaryOP.UnsignedRightShift -> post[Reference.make(node)] = TypeInfo.make(hierarchy.getPrimitive(node.cfType as Type.JCPrimitiveType))
           BinaryOP.GreaterThan,
           BinaryOP.GreaterThanOrEqual,
-          BinaryOP.LessThan -> {
+          BinaryOP.LessThan -> { // TODO linear arrays + integers
             val leftRef = Reference.make(node.left)
             val rightRef = Reference.make(node.right)
             val leftType = pre[leftRef].type
-            val righType = pre[rightRef].type
+            val rightType = pre[rightRef].type
             val leftJTCType = leftType.jtcType
-            val righJTCType = righType.jtcType
-            if(leftJTCType is JTCIntegerType && righJTCType is JTCIntegerType) {
-              post[leftRef] = TypeInfo.createUnion(leftType.javaType,(leftJTCType.value..righJTCType.value).map { TypeInfo.make(leftType.javaType, JTCIntegerType.SINGLETON(it)) })
+            val rightJTCType = rightType.jtcType
+            if (leftJTCType is JTCIntegerType && rightJTCType is JTCIntegerType) {
+              post[leftRef] = TypeInfo.make(leftType.javaType, JTCIntegerType.range(leftJTCType.value until rightJTCType.value))
             }
             post[Reference.make(node)] = TypeInfo.make(hierarchy.BOOLEAN)
           }
@@ -590,14 +593,8 @@ class Inference(
       is NewArrayWithDimensions -> {
         // node.javaType = Car[3][10]
         val dimReversed = node.dimensions.asReversed().mapNotNull {
-          if (it is IntegerLiteral) it.value
-          else if (it is Id) {
-            val jtcType = post[Reference.make(it)].type.jtcType
-            if(jtcType is JTCIntegerType) jtcType.value
-            else null
-          }
-          else null
-          }
+          TypecheckUtils.getIntValues(post[Reference.make(it)].type.jtcType) { err -> inference.addError(node, err) }
+        }
 
         // dimReversed = [10, 3]
         if (dimReversed.size == node.dimensions.size) {
@@ -619,11 +616,11 @@ class Inference(
           // javaTypes = [ Car[10] , Car[10][3] ]
 
           val typeInfos = mutableListOf<TypeInfo>()
-          var lastTypeInfo = TypeInfo.make(innerMostJavaType, JTCNullType.SINGLETON)
+          var lastTypeInfo = TypeInfo.make(innerMostJavaType, if (innerMostJavaType.isPrimitive()) innerMostJavaType.getDefaultJTCType() else JTCNullType.SINGLETON)
           typeInfos.add(lastTypeInfo)
 
           for ((idx, javaType) in javaTypes.withIndex()) {
-            lastTypeInfo = TypeInfo.make(javaType, JTCLinearArrayType(javaType, MutableList(dimReversed[idx]) { lastTypeInfo.jtcType }, false))
+            lastTypeInfo = TypeInfo.make(javaType, JTCType.createUnion(dimReversed[idx].map { JTCLinearArrayType(javaType, MutableList(it) { lastTypeInfo.jtcType }, false) }))
             typeInfos.add(lastTypeInfo)
           }
 
@@ -658,13 +655,12 @@ class Inference(
         val arrayRef = Reference.make(node.array)
         val currArrayType = pre[arrayRef].type.jtcType
         // Just check we can access the array
-        var index: Int? = null
-        if (node.idx is IntegerLiteral) index = node.idx.value
-        if (node.idx is Id) {
-          var integerSingleton = post[Reference.make(node.idx)].type.jtcType
-          if (integerSingleton is JTCIntegerType) index = integerSingleton.value
+        val intValues = TypecheckUtils.getIntValues(post[Reference.make(node.idx)].type.jtcType) { msg -> inference.addError(node, msg) }
+        if (intValues == null) {
+          TypecheckUtils.arrayGet(currArrayType, null) {}
+        } else {
+          intValues.forEach { TypecheckUtils.arrayGet(currArrayType, it) { msg -> inference.addError(node, msg) } }
         }
-        TypecheckUtils.arrayGet(currArrayType, index) { msg -> inference.addError(node, msg) }
         // (see Store#getOrNull and Store#set to understand how array accesses are handled)
       }
 
@@ -679,14 +675,13 @@ class Inference(
         if (!currAssigneeType.type.isUnknown() && typeToAssignCasted.type.isUnknown()) {
           inference.addError(node, "Cannot assign: cannot cast ${currAssigneeType.type.format()} to $javaComponentType")
         }
-        var index: Int? = null
-        if (node.left.idx is IntegerLiteral) index = node.left.idx.value
-        if (node.left.idx is Id) {
-          var integerSingleton = post[Reference.make(node.left.idx)].type.jtcType
-          if (integerSingleton is JTCIntegerType) index = integerSingleton.value
-        }
         // Check we can set to the array
-        TypecheckUtils.arraySet(currArrayType, index, typeToAssignCasted.type.jtcType) { msg -> inference.addError(node, msg) }
+        val intValues = TypecheckUtils.getIntValues(post[Reference.make(node.left.idx)].type.jtcType) { msg -> inference.addError(node, msg) }
+        if (intValues == null) {
+          TypecheckUtils.arrayGet(currArrayType, null) {}
+        } else {
+          intValues.forEach { TypecheckUtils.arraySet(currArrayType, it, typeToAssignCasted.type.jtcType) { msg -> inference.addError(node, msg) } }
+        }
         // Ensure the array slot has the right value (see Store#getOrNull and Store#set to understand how array accesses are handled)
         post[Reference.make(node.left)] = typeToAssignCasted
         post[assigneeRef] = currAssigneeType.toShared()
@@ -834,7 +829,7 @@ class Inference(
     if (!utils.shouldReportTypeInfo()) {
       return
     }
-    if (currentType.debugIsPrimitive()) {
+    if (!utils.shouldReportVerbose() && currentType.debugIsPrimitive()) {
       return
     }
     val ref = Reference.make(node)

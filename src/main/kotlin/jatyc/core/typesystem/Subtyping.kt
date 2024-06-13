@@ -91,12 +91,11 @@ object Subtyping {
       is JTCIntegerType -> {
         when (b) {
           is JTCUnknownType -> true
-          is JTCIntegerType -> a.value == b.value //TODO CHECK
-          is JTCPrimitiveType -> true
+          is JTCIntegerType -> a.value == b.value
+          is JTCPrimitiveType -> b.javaType.isInt()
           is JTCUnionType -> b.types.any { isSubtype(a, it) }
           is JTCIntersectionType -> b.types.all { isSubtype(a, it) }
           else -> false
-
         }
       }
     }
@@ -139,7 +138,7 @@ object Subtyping {
       is JTCIntersectionType -> JTCType.createIntersection(t.types.map { cast(it, j, doUpcast) })
       is JTCBottomType -> JTCBottomType.SINGLETON
       is JTCPrimitiveType -> t
-      is JTCIntegerType -> t //TODO CHECK
+      is JTCIntegerType -> t
       is JTCNullType -> t
       is JTCLinearArrayType -> t // TODO
     }
@@ -168,6 +167,7 @@ object Subtyping {
     return when (a) {
       is JTCSharedType -> when (b) {
         is JTCPrimitiveType,
+        is JTCIntegerType,
         is JTCNullType -> true
         is JTCSharedType -> areNotRelated(a.javaType, b.javaType)
         is JTCStateType -> !b.state.canDropHere() || areNotRelated(a.javaType, b.javaType)
@@ -175,13 +175,15 @@ object Subtyping {
       }
       is JTCStateType -> when (b) {
         is JTCPrimitiveType,
+        is JTCIntegerType,
         is JTCNullType -> true
         is JTCSharedType -> !a.state.canDropHere() || areNotRelated(a.javaType, b.javaType)
         is JTCStateType -> areNotRelated(a.javaType, b.javaType)
         else -> false
       }
       is JTCPrimitiveType -> b is JTCNullType || b is JTCSharedType || b is JTCStateType
-      is JTCNullType -> b is JTCPrimitiveType || b is JTCSharedType || b is JTCStateType
+      is JTCIntegerType -> b is JTCNullType || b is JTCSharedType || b is JTCStateType
+      is JTCNullType -> b is JTCPrimitiveType || b is JTCIntegerType || b is JTCSharedType || b is JTCStateType
       else -> false
     }
   }

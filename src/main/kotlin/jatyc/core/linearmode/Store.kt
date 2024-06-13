@@ -248,16 +248,15 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
 
   fun getOrNull(ref: Reference): StoreInfo? {
     if (ref is CodeExprReference && ref.code is ArrayAccess) {
-      var index: Int? = null
-      val idx = ref.code.idx
-      if (idx is IntegerLiteral) index = idx.value
-      if (idx is Id) {
-        val integerSingleton = map[Reference.make(idx)]?.type?.jtcType
-        if (integerSingleton is JTCIntegerType) index = integerSingleton.value
-      }
       val arrayRef = Reference.make(ref.code.array)
       val arrayType = getOrNull(arrayRef) ?: return null
-      return StoreInfo.regular(TypeInfo.make(ref.javaType, TypecheckUtils.arrayGet(arrayType.type.jtcType, index) {}))
+      val intValues = TypecheckUtils.getIntValues(get(Reference.make(ref.code.idx)).type.jtcType) {}
+      val elementType = if (intValues == null) {
+        TypecheckUtils.arrayGet(arrayType.type.jtcType, null) {}
+      } else {
+        JTCType.createUnion(intValues.map { TypecheckUtils.arrayGet(arrayType.type.jtcType, it) {} })
+      }
+      return StoreInfo.regular(TypeInfo.make(ref.javaType, elementType))
     }
     return map[ref]
   }
@@ -265,17 +264,16 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
   operator fun set(ref: Reference, info: StoreInfo) {
     ref.checkJavaTypeInvariant(info.javaType)
     if (ref is CodeExprReference && ref.code is ArrayAccess) {
-      var index: Int? = null
-      val idx = ref.code.idx
-      if (idx is IntegerLiteral) index = idx.value
-      if (idx is Id) {
-        val integerSingleton = map[Reference.make(idx)]?.type?.jtcType
-        if (integerSingleton is JTCIntegerType) index = integerSingleton.value
-      }
       val arrayRef = Reference.make(ref.code.array)
       val arrayType = get(arrayRef)
+      val intValues = TypecheckUtils.getIntValues(get(Reference.make(ref.code.idx)).type.jtcType) {}
       set(arrayRef, info.mapType(arrayRef.javaType) { typeInfo ->
-        TypeInfo.make(arrayRef.javaType, TypecheckUtils.arraySet(arrayType.type.jtcType, index, typeInfo.jtcType) {})
+        val newArrayType = if (intValues == null) {
+          TypecheckUtils.arraySet(arrayType.type.jtcType, null, typeInfo.jtcType) {}
+        } else {
+          JTCType.createUnion(intValues.map { TypecheckUtils.arraySet(arrayType.type.jtcType, it, typeInfo.jtcType) {} })
+        }
+        TypeInfo.make(arrayRef.javaType, newArrayType)
       })
     } else {
       map[ref] = info

@@ -1,7 +1,6 @@
 package jatyc.core
 
 import jatyc.core.typesystem.Subtyping
-import jatyc.core.typesystem.TypeInfo
 import jatyc.typestate.graph.Graph
 import jatyc.typestate.graph.State
 import jatyc.utils.JTCUtils
@@ -261,16 +260,19 @@ sealed class JTCTypeSingletons(private val hashCode: Int) : JTCType() {
   override fun hashCode() = hashCode
 }
 
-//TODO CHECK CLASS
 class JTCIntegerType private constructor(val value: Int) : JTCTypeSingletons(4) {
   companion object {
-    fun SINGLETON(value: Int): JTCIntegerType {
+    fun value(value: Int): JTCIntegerType {
       return JTCIntegerType(value)
+    }
+
+    fun range(r: IntProgression): JTCType {
+      return createUnion(r.map { value(it) })
     }
   }
 
   override fun toString() = "JTCIntegerType(${value})"
-  override fun format() = "Integer"
+  override fun format() = "int($value)"
 }
 
 class JTCUnknownType private constructor() : JTCTypeSingletons(1) {
@@ -316,7 +318,6 @@ class JTCBottomType private constructor() : JTCTypeSingletons(3) {
   override fun format() = "Bottom"
 }
 
-
 class JTCLinearArrayType internal constructor(val javaType: JavaType, val types: List<JTCType>, val unknownSize: Boolean) : JTCType() {
   val javaComponentType = javaType.getArrayComponent()!!
 
@@ -348,7 +349,6 @@ class JTCLinearArrayType internal constructor(val javaType: JavaType, val types:
 }
 
 private object JTCTypeFormatter {
-
   private fun index(t: JTCType): Int {
     return when (t) {
       is JTCUnknownType -> 1
@@ -359,9 +359,9 @@ private object JTCTypeFormatter {
       is JTCStateType -> 7
       is JTCNullType -> 8
       is JTCPrimitiveType -> 9
-      is JTCBottomType -> 10
-      is JTCLinearArrayType -> 11
-      is JTCIntegerType -> 12
+      is JTCIntegerType -> 10
+      is JTCBottomType -> 11
+      is JTCLinearArrayType -> 12
     }
   }
 
@@ -403,5 +403,4 @@ private object JTCTypeFormatter {
   fun formatLinearArray(types: Collection<JTCType>, unknownSize: Boolean): String {
     return if (unknownSize) "LinearArray[?]" else "LinearArray[${types.joinToString(", "){ it.format() }}]"
   }
-
 }

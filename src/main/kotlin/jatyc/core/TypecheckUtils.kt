@@ -64,7 +64,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
     return when (type) {
       is JTCUnknownType,
       is JTCPrimitiveType,
-      is JTCIntegerType, //TODO CHECK
+      is JTCIntegerType,
       is JTCNullType -> false
       is JTCSharedType -> method.isAnytime
       is JTCStateType -> {
@@ -89,7 +89,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       is JTCUnionType -> JTCType.createUnion(type.types.map { refine(it, call, predicate) })
       is JTCIntersectionType -> JTCType.createIntersection(type.types.map { refine(it, call, predicate) }.filterNot { it == JTCBottomType.SINGLETON })
       is JTCLinearArrayType -> JTCBottomType.SINGLETON
-      is JTCIntegerType -> JTCBottomType.SINGLETON //TODO CHECK
+      is JTCIntegerType -> JTCBottomType.SINGLETON
     }
   }
 
@@ -122,11 +122,30 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
   }
 
   companion object {
+    // Return a list of possible integers values or null if any value is possible
+    fun getIntValues(type: JTCType, error: (String) -> Unit): List<Int>? {
+      return when (type) {
+        is JTCUnknownType -> null
+        is JTCPrimitiveType -> null
+        is JTCIntegerType -> listOf(type.value)
+        is JTCNullType,
+        is JTCStateType,
+        is JTCSharedType,
+        is JTCLinearArrayType -> {
+          error("${type.format()} is not of an integer type")
+          emptyList()
+        }
+        is JTCUnionType -> type.types.mapNotNull { getIntValues(it, error) }.let { if (it.size < type.types.size) null else it.flatten() }
+        is JTCIntersectionType -> type.types.mapNotNull { getIntValues(it, error) }.flatten()
+        is JTCBottomType -> emptyList()
+      }
+    }
+
     fun arrayGet(type: JTCType, idx: Int?, error: (String) -> Unit): JTCType {
       return when (type) {
         is JTCUnknownType,
         is JTCPrimitiveType,
-        is JTCIntegerType, //TODO CHECK
+        is JTCIntegerType,
         is JTCNullType,
         is JTCStateType -> {
           error("${type.format()} is not of an array type")
@@ -141,8 +160,11 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
           }
         }
         is JTCLinearArrayType -> {
-          if (type.unknownSize || idx == null) {
+          if (type.unknownSize) {
             type.javaComponentType.getDefaultJTCType()
+          } else if (idx == null) {
+            error("Unknown index may be out of bounds in array type ${type.format()}")
+            JTCType.createUnion(type.types)
           } else if (idx < type.types.size) {
             type.types[idx]
           } else {
@@ -160,7 +182,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       return when (type) {
         is JTCUnknownType,
         is JTCPrimitiveType,
-        is JTCIntegerType, //TODO CHECK
+        is JTCIntegerType,
         is JTCNullType,
         is JTCStateType -> {
           error("${type.format()} is not of an array type")
@@ -181,8 +203,19 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
           if (type.unknownSize) {
             type
           } else if (idx == null) {
-            error("Cannot assign to unknown position in array type ${type.format()}")
-            JTCBottomType.SINGLETON
+            error("Unknown index may be out of bounds in array type ${type.format()}")
+            JTCType.createUnion(type.types.mapIndexed { idx, assignee ->
+              JTCLinearArrayType(type.javaType, type.types.mapIndexed { i, t -> run {
+                if (i == idx) {
+                  if (!canDrop(t)) {
+                    error("The previous value in position $idx did not complete its protocol (found: ${t.format()})")
+                  }
+                  assignee
+                } else {
+                  t
+                }
+              } }, false)
+            })
           } else if (idx < type.types.size) {
             JTCLinearArrayType(type.javaType, type.types.mapIndexed { i, t -> run {
               if (i == idx) {
@@ -222,7 +255,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCUnknownType -> false
         is JTCPrimitiveType -> false
         is JTCNullType -> false
-        is JTCIntegerType -> false //TODO CHECK
+        is JTCIntegerType -> false
         is JTCSharedType -> false
         // is JTCNoProtocolType -> false
         is JTCStateType -> type.state.canDropHere() && type.state.hasTransitions()
@@ -255,7 +288,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
       return when (type) {
         is JTCUnknownType -> type
         is JTCPrimitiveType -> type
-        is JTCIntegerType -> type //TODO CHECK
+        is JTCIntegerType -> type
         is JTCNullType -> type
         is JTCSharedType -> {
           val javaType = type.javaType
@@ -281,7 +314,7 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
         is JTCUnknownType,
         is JTCSharedType,
         is JTCPrimitiveType,
-        is JTCIntegerType, //TODO CHECK
+        is JTCIntegerType,
         is JTCNullType -> false
         is JTCStateType,
         is JTCBottomType -> true
