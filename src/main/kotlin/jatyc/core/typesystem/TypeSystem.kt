@@ -269,16 +269,6 @@ class JTCIntegerType private constructor(val value: Int) : JTCTypeSingletons(4) 
     }
   }
 
-  override fun union(other: JTCType): JTCType {
-    if(other is JTCIntegerType) return createUnion(unionSeq(this,other))
-    return JTCUnknownType.SINGLETON
-  }
-
-  override fun intersect(other: JTCType): JTCType {
-    if(other is JTCIntegerType) return createIntersection(intersectionSeq(this,other))
-    return JTCUnknownType.SINGLETON
-  }
-
   override fun toString() = "JTCIntegerType(${value})"
   override fun format() = "Integer"
 }

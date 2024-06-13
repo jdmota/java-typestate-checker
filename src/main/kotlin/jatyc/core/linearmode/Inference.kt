@@ -550,7 +550,18 @@ class Inference(
           BinaryOP.UnsignedRightShift -> post[Reference.make(node)] = TypeInfo.make(hierarchy.getPrimitive(node.cfType as Type.JCPrimitiveType))
           BinaryOP.GreaterThan,
           BinaryOP.GreaterThanOrEqual,
-          BinaryOP.LessThan,
+          BinaryOP.LessThan -> {
+            val leftRef = Reference.make(node.left)
+            val rightRef = Reference.make(node.right)
+            val leftType = pre[leftRef].type
+            val righType = pre[rightRef].type
+            val leftJTCType = leftType.jtcType
+            val righJTCType = righType.jtcType
+            if(leftJTCType is JTCIntegerType && righJTCType is JTCIntegerType) {
+              post[leftRef] = TypeInfo.createUnion(leftType.javaType,(leftJTCType.value..righJTCType.value).map { TypeInfo.make(leftType.javaType, JTCIntegerType.SINGLETON(it)) })
+            }
+            post[Reference.make(node)] = TypeInfo.make(hierarchy.BOOLEAN)
+          }
           BinaryOP.LessThanOrEqual -> post[Reference.make(node)] = TypeInfo.make(hierarchy.BOOLEAN)
           BinaryOP.StringConcat -> post[Reference.make(node)] = TypeInfo.make(hierarchy.STRING)
         }
