@@ -800,13 +800,39 @@ class CFAdapter(val checker: JavaTypestateChecker) {
 
       is ArrayTypeNode -> error("Unexpected node ${node.javaClass}")
       is AssertionErrorNode -> {
-        val argNumber = if (node.detail == null) 1 else 2
-        val params = listOf(
-          FuncParam(IdLHS("condition", 0, hierarchy.BOOLEAN.javaType), hierarchy.BOOLEAN, hierarchy.BOOLEAN, isThis = false, hasEnsures = false),
-          FuncParam(IdLHS("detail", 0, hierarchy.STRING.javaType), hierarchy.STRING, hierarchy.STRING, isThis = false, hasEnsures = false)
-        ).subList(0, argNumber)
-        val paramExprs = listOf(node.condition, node.detail).subList(0, argNumber)
-        makeCall(FuncInterface("#helpers.assert$argNumber", params, returnType = JTCNullType.SINGLETON, hierarchy.VOID, isPublic = true, isAnytime = true, isPure = true, isAbstract = false), paramExprs, node)
+        var result: AdaptResult? = null
+        val condition = node.condition
+        if (condition is MethodInvocationNode) {
+          val sym = condition.target.method as Symbol.MethodSymbol
+          val receiver = ((condition.target.receiver as? ClassNameNode)?.element as? Symbol.ClassSymbol)?.qualifiedName
+          if (receiver.toString() == "jatyc.lib.Utils" && sym.name.toString() == "loopInvariant") {
+            // Example: Utils.loopInvariant(x, "Off", i, "null")
+            val parameters = condition.arguments
+            val array = parameters[0]
+            val typeBefore = parameters[1]
+            val idx = parameters[2]
+            val typeAfter = parameters[3]
+            if (array is LocalVariableNode && idx is LocalVariableNode && typeBefore is StringLiteralNode && typeAfter is StringLiteralNode) {
+              result = SingleAdaptResult(LoopInvariant(
+                renamer.transformLocal(array).set(node, hierarchy),
+                typeBefore.value ?: "",
+                renamer.transformLocal(idx).set(node, hierarchy),
+                typeAfter.value ?: ""
+              )).set(node, hierarchy)
+            } else {
+              // TODO error
+            }
+          }
+        }
+        if (result == null) {
+          val argNumber = if (node.detail == null) 1 else 2
+          val params = listOf(
+            FuncParam(IdLHS("condition", 0, hierarchy.BOOLEAN.javaType), hierarchy.BOOLEAN, hierarchy.BOOLEAN, isThis = false, hasEnsures = false),
+            FuncParam(IdLHS("detail", 0, hierarchy.STRING.javaType), hierarchy.STRING, hierarchy.STRING, isThis = false, hasEnsures = false)
+          ).subList(0, argNumber)
+          val paramExprs = listOf(node.condition, node.detail).subList(0, argNumber)
+          makeCall(FuncInterface("#helpers.assert$argNumber", params, returnType = JTCNullType.SINGLETON, hierarchy.VOID, isPublic = true, isAnytime = true, isPure = true, isAbstract = false), paramExprs, node)
+        } else result
       }
       is AssignmentNode -> makeAssignment(node.target, t(node.expression), node)
       is BinaryOperationNode -> {

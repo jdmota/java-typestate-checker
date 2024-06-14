@@ -28,6 +28,21 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
   val nonNullableShared = TypeIntroOpts(forceShared = true, forceNullable = false, annotation = null)
   val nullableShared = TypeIntroOpts(forceShared = true, forceNullable = true, annotation = null)
 
+  fun getTypeFromString(javaType: JavaType, type: String, error: (String) -> Unit): JTCType {
+    val stateNames = type.split("|").map { it.trim() }.toSet()
+    if (stateNames.size == 1 && stateNames.first() == "null") {
+      return JTCNullType.SINGLETON
+    }
+    val graph = javaType.getGraph()
+    return if (graph == null) {
+      error("$javaType has no protocol") // TODO or warn?
+      JTCBottomType.SINGLETON
+    } else {
+      val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
+      JTCType.createUnion(states.map { JTCStateType(javaType, graph, it) }).toMaybeNullable(stateNames.contains("null"))
+    }
+  }
+
   private fun processArrayType(type: TypeMirror, annotations: Set<AnnotationMirror>, opts: TypeIntroOpts): JTCType {
     val javaType = hierarchy.get(type)
     val isNullable = opts.forceNullable || annotations.any { JTCUtils.nullableAnnotations.contains(AnnotationUtils.annotationName(it)) }

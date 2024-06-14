@@ -560,9 +560,9 @@ class Inference(
             val rightType = pre[rightRef].type
             val leftJTCType = leftType.jtcType
             val rightJTCType = rightType.jtcType
-            if (leftJTCType is JTCIntegerType && rightJTCType is JTCIntegerType) {
+            /*if (leftJTCType is JTCIntegerType && rightJTCType is JTCIntegerType) {
               post[leftRef] = TypeInfo.make(leftType.javaType, JTCIntegerType.range(leftJTCType.value until rightJTCType.value))
-            }
+            }*/
             post[Reference.make(node)] = TypeInfo.make(hierarchy.BOOLEAN)
           }
           BinaryOP.LessThanOrEqual -> post[Reference.make(node)] = TypeInfo.make(hierarchy.BOOLEAN)
@@ -587,6 +587,37 @@ class Inference(
             post[nodeRef] = TypeInfo.make(hierarchy.BOOLEAN)
           }
           UnaryOP.ToString -> post[Reference.make(node)] = TypeInfo.make(hierarchy.STRING)
+        }
+      }
+
+      is LoopInvariant -> {
+        // Preserve conditional information
+        for ((ref, info) in pre) {
+          post[ref] = info
+        }
+        //
+        val errFn = { err: String -> inference.addError(node, "In loop invariant: $err") }
+        // assert Utils.loopInvariant(arr, "Off", i, "null") : "";
+        val arrayType = pre[Reference.make(node.array)]
+        val idxType = pre[Reference.make(node.idx)]
+        val arrayJavaType = arrayType.javaType
+        val typeBefore = typeIntroducer.getTypeFromString(arrayJavaType.getArrayComponent()!!, node.typeBefore, errFn)
+        val typeAfter = typeIntroducer.getTypeFromString(arrayJavaType.getArrayComponent()!!, node.typeAfter, errFn)
+        // TODO check
+        val arrayJtcType = arrayType.type.jtcType
+        val possibleIdxs = TypecheckUtils.getIntValues(idxType.type.jtcType, errFn)
+        if (arrayJtcType is JTCLinearArrayType && !arrayJtcType.unknownSize && possibleIdxs?.size == 1) {
+          for (i in 0 until arrayJtcType.types.size) {
+            if (i < possibleIdxs[0]) {
+              if (!arrayJtcType.types[i].isSubtype(typeBefore)) {
+                errFn("invariant does not hold at idx $i: ${arrayJtcType.types[i].format()} is not a subtype of ${typeBefore.format()}")
+              }
+            } else {
+              if (!arrayJtcType.types[i].isSubtype(typeAfter)) {
+                errFn("invariant does not hold at idx $i: ${arrayJtcType.types[i].format()} is not a subtype of ${typeAfter.format()}")
+              }
+            }
+          }
         }
       }
 

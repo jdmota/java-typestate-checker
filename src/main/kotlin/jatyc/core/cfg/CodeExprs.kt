@@ -220,6 +220,12 @@ class ArraySet(val left: ArrayAccess, val assignee: CodeExpr, val valueType: Jav
   }
 }
 
+class LoopInvariant(val array: Id, val typeBefore: String, val idx: Id, val typeAfter: String) : CodeExpr() {
+  override fun format(indent: String): String {
+    return indent + "LoopInvariant($array, $typeBefore, $idx, $typeAfter)"
+  }
+}
+
 class MethodCall(val methodExpr: FuncInterface, val parameters: List<ParamAssign>, val isSuperCall: Boolean) : CodeExpr() {
   init {
     if (methodExpr.parameters.size != parameters.size) {
