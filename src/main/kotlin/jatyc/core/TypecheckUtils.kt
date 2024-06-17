@@ -204,15 +204,15 @@ class TypecheckUtils(private val cfChecker: JavaTypestateChecker, private val ty
             type
           } else if (idx == null) {
             error("Unknown index may be out of bounds in array type ${type.format()}")
-            JTCType.createUnion(type.types.mapIndexed { idx, assignee ->
-              JTCLinearArrayType(type.javaType, type.types.mapIndexed { i, t -> run {
-                if (i == idx) {
-                  if (!canDrop(t)) {
-                    error("The previous value in position $idx did not complete its protocol (found: ${t.format()})")
+            JTCType.createUnion(type.types.mapIndexed { i1, t1 ->
+              JTCLinearArrayType(type.javaType, type.types.mapIndexed { i2, t2 -> run {
+                if (i2 == i1) {
+                  if (!canDrop(t2)) {
+                    error("The previous value in position $i1 did not complete its protocol (found: ${t2.format()})")
                   }
-                  assignee
+                  t1
                 } else {
-                  t
+                  t2
                 }
               } }, false)
             })

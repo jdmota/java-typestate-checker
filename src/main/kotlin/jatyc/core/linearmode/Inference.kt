@@ -32,6 +32,7 @@ class Inference(
   private fun assign(node: CodeExpr, targetType: JTCType, pre: Store, post: Store, leftRef: Reference, rightRef: Reference, thisParam: Boolean) {
     val targetJavaType = leftRef.javaType
 
+
     if (node is Assign) {
       val previousType = pre[leftRef].type
       if (!previousType.canDrop()) {
@@ -556,17 +557,24 @@ class Inference(
             val rightType = pre[rightRef].type
             val leftJTCType = leftType.jtcType
             val rightJTCType = rightType.jtcType
-            if (leftJTCType is JTCUnionType) {
-              if (rightJTCType is JTCIntegerType) {
-                val incremented = JTCType.createUnion(leftJTCType.types.map { JTCIntegerType.value((it as JTCIntegerType).value + rightJTCType.value) })
-                post[nodeRef] = TypeInfo.make(leftType.javaType, incremented)
+            when(leftJTCType) {
+              is JTCUnionType -> {
+                when(rightJTCType)  {
+                  is JTCIntegerType -> {
+                    val incremented = JTCType.createUnion(leftJTCType.types.map { JTCIntegerType.value((it as JTCIntegerType).value + rightJTCType.value) })
+                    post[nodeRef] = TypeInfo.make(leftType.javaType, incremented)
+                  }
+                  else -> post[nodeRef] = TypeInfo.make(leftType.javaType, JTCBottomType.SINGLETON)
+                }
               }
-            } else {
-              if (rightJTCType is JTCIntegerType) {
-                post[nodeRef] = TypeInfo.make(leftType.javaType, JTCIntegerType.value((leftJTCType as JTCIntegerType).value + rightJTCType.value))
+              is JTCIntegerType -> {
+                when(rightJTCType)  {
+                  is JTCIntegerType -> post[nodeRef] = TypeInfo.make(leftType.javaType, JTCIntegerType.value(leftJTCType.value + rightJTCType.value))
+                  else -> post[nodeRef] = TypeInfo.make(leftType.javaType, JTCBottomType.SINGLETON)
+                }
               }
+              else -> post[nodeRef] = TypeInfo.make(leftType.javaType, JTCBottomType.SINGLETON)
             }
-            post[leftRef] = post[nodeRef]
             //post[Reference.make(node)] = TypeInfo.make(hierarchy.getPrimitive(node.cfType as Type.JCPrimitiveType))
           }
           BinaryOP.Sub,
@@ -592,15 +600,26 @@ class Inference(
             val leftJTCType = leftType.jtcType
             val rightJTCType = rightType.jtcType
             //TODO CHECK
-            if(leftJTCType is JTCUnionType) {
-              if(rightJTCType is JTCIntegerType) {
-                val filtered = JTCType.createUnion(leftJTCType.types.filter { (it as JTCIntegerType).value < rightJTCType.value })
-                post[leftRef] = StoreInfo.conditional(nodeRef, TypeInfo.make(leftRef.javaType, filtered), leftType)
+            when(leftJTCType) {
+              is JTCUnionType -> {
+                when(rightJTCType) {
+                  is JTCIntegerType -> {
+                    val thenType = JTCType.createUnion(leftJTCType.types.filter { (it as JTCIntegerType).value < rightJTCType.value })
+                    val elseType = JTCType.createUnion(leftJTCType.types.filter { (it as JTCIntegerType).value >= rightJTCType.value })
+                    post[leftRef] = StoreInfo.conditional(nodeRef, TypeInfo.make(leftRef.javaType, thenType), TypeInfo.make(leftRef.javaType, elseType))
+                  }
+                  else -> post[leftRef] = TypeInfo.make(leftType.javaType, JTCBottomType.SINGLETON)
+                }
               }
-            } else {
-              if (rightJTCType is JTCIntegerType) {
-                post[leftRef] = StoreInfo.conditional(nodeRef, leftType, leftType)
+              is JTCIntegerType -> {
+                when(rightJTCType) {
+                  is JTCIntegerType -> {
+                    post[leftRef] = StoreInfo.conditional(nodeRef, leftType, rightType)
+                  }
+                  else -> post[leftRef] = TypeInfo.make(leftType.javaType, JTCBottomType.SINGLETON)
+                }
               }
+              else -> post[leftRef] = TypeInfo.make(leftType.javaType, JTCBottomType.SINGLETON)
             }
             /*if (leftJTCType is JTCIntegerType && rightJTCType is JTCIntegerType) {
               post[leftRef] = TypeInfo.make(leftType.javaType, JTCIntegerType.range(leftJTCType.value until rightJTCType.value))
@@ -645,19 +664,17 @@ class Inference(
         val arrayJavaType = arrayType.javaType
         val typeBefore = typeIntroducer.getTypeFromString(arrayJavaType.getArrayComponent()!!, node.typeBefore, errFn)
         val typeAfter = typeIntroducer.getTypeFromString(arrayJavaType.getArrayComponent()!!, node.typeAfter, errFn)
-        // TODO check
         val arrayJtcType = arrayType.type.jtcType
         val possibleIdxs = TypecheckUtils.getIntValues(idxType.type.jtcType, errFn)!!.sortedDescending()
-        println(possibleIdxs[0])
-        if (arrayJtcType is JTCLinearArrayType && !arrayJtcType.unknownSize && possibleIdxs?.size == 1) {
-          for (i in 0 until arrayJtcType.types.size) {
+        if (arrayJtcType is JTCLinearArrayType && !arrayJtcType.unknownSize) { // && possibleIdxs.size == 1) {
+            for (i in 0 until arrayJtcType.types.size) {
             if (i < possibleIdxs[0]) {
               if (!arrayJtcType.types[i].isSubtype(typeBefore)) {
-                errFn("invariant does not hold at idx $i: ${arrayJtcType.types[i].format()} is not a subtype of ${typeBefore.format()}")
+                errFn("${possibleIdxs[0]} invariant does not hold at idx $i: ${arrayJtcType.types[i].format()} is not a subtype of ${typeBefore.format()}")
               }
             } else {
               if (!arrayJtcType.types[i].isSubtype(typeAfter)) {
-                errFn("invariant does not hold at idx $i: ${arrayJtcType.types[i].format()} is not a subtype of ${typeAfter.format()}")
+                errFn("${possibleIdxs[0]} invariant does not hold at idx $i: ${arrayJtcType.types[i].format()} is not a subtype of ${typeAfter.format()}")
               }
             }
           }
@@ -733,7 +750,8 @@ class Inference(
         if (intValues == null) {
           TypecheckUtils.arrayGet(currArrayType, null) {}
         } else {
-          intValues.forEach { TypecheckUtils.arrayGet(currArrayType, it) { msg -> inference.addError(node, msg) } }
+          TypecheckUtils.arrayGet(currArrayType, intValues.maxOf { it }) { msg -> inference.addError(node, msg) }
+          //intValues.forEach { TypecheckUtils.arrayGet(currArrayType, it) { msg -> inference.addError(node, msg) } }
         }
         // (see Store#getOrNull and Store#set to understand how array accesses are handled)
       }
@@ -754,7 +772,8 @@ class Inference(
         if (intValues == null) {
           TypecheckUtils.arrayGet(currArrayType, null) {}
         } else {
-          intValues.forEach { TypecheckUtils.arraySet(currArrayType, it, typeToAssignCasted.type.jtcType) { msg -> inference.addError(node, msg) } }
+          TypecheckUtils.arraySet(currArrayType, intValues.maxOf { it }, typeToAssignCasted.type.jtcType) { msg -> inference.addError(node, msg) }
+          //intValues.forEach { TypecheckUtils.arraySet(currArrayType, it, typeToAssignCasted.type.jtcType) { msg -> inference.addError(node, msg) } }
         }
         // Ensure the array slot has the right value (see Store#getOrNull and Store#set to understand how array accesses are handled)
         post[Reference.make(node.left)] = typeToAssignCasted

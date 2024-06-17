@@ -254,7 +254,8 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
       val elementType = if (intValues == null) {
         TypecheckUtils.arrayGet(arrayType.type.jtcType, null) {}
       } else {
-        JTCType.createUnion(intValues.map { TypecheckUtils.arrayGet(arrayType.type.jtcType, it) {} })
+        TypecheckUtils.arrayGet(arrayType.type.jtcType, intValues.maxOf { it }) {}
+       // JTCType.createUnion(intValues.map { TypecheckUtils.arrayGet(arrayType.type.jtcType, it) {} })
       }
       return StoreInfo.regular(TypeInfo.make(ref.javaType, elementType))
     }
@@ -271,7 +272,8 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
         val newArrayType = if (intValues == null) {
           TypecheckUtils.arraySet(arrayType.type.jtcType, null, typeInfo.jtcType) {}
         } else {
-          JTCType.createUnion(intValues.map { TypecheckUtils.arraySet(arrayType.type.jtcType, it, typeInfo.jtcType) {} })
+          TypecheckUtils.arraySet(arrayType.type.jtcType, intValues.maxOf { it }, typeInfo.jtcType) {}
+          //JTCType.createUnion(intValues.map { TypecheckUtils.arraySet(arrayType.type.jtcType, it, typeInfo.jtcType) {} })
         }
         TypeInfo.make(arrayRef.javaType, newArrayType)
       })
