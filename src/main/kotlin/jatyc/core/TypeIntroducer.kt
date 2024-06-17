@@ -39,7 +39,12 @@ class TypeIntroducer(private val checker: JavaTypestateChecker, private val hier
       JTCBottomType.SINGLETON
     } else {
       val states = graph.getAllConcreteStates().filter { stateNames.contains(it.name) }
-      JTCType.createUnion(states.map { JTCStateType(javaType, graph, it) }).toMaybeNullable(stateNames.contains("null"))
+      if (states.isEmpty()) {
+        error("Invalid state(s)") //TODO REVISE ERROR MESSAGE
+        JTCBottomType.SINGLETON
+      } else {
+        JTCType.createUnion(states.map { JTCStateType(javaType, graph, it) }).toMaybeNullable(stateNames.contains("null"))
+      }
     }
   }
 
