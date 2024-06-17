@@ -549,7 +549,25 @@ class Inference(
           }
           BinaryOP.Add -> {
             // TODO linear arrays + integers
-            post[Reference.make(node)] = TypeInfo.make(hierarchy.getPrimitive(node.cfType as Type.JCPrimitiveType))
+            val nodeRef = Reference.make(node)
+            val leftRef = Reference.make(node.left)
+            val rightRef = Reference.make(node.right)
+            val leftType = pre[leftRef].type
+            val rightType = pre[rightRef].type
+            val leftJTCType = leftType.jtcType
+            val rightJTCType = rightType.jtcType
+            if (leftJTCType is JTCUnionType) {
+              if (rightJTCType is JTCIntegerType) {
+                val incremented = JTCType.createUnion(leftJTCType.types.map { JTCIntegerType.value((it as JTCIntegerType).value + rightJTCType.value) })
+                post[nodeRef] = TypeInfo.make(leftType.javaType, incremented)
+              }
+            } else {
+              if (rightJTCType is JTCIntegerType) {
+                post[nodeRef] = TypeInfo.make(leftType.javaType, JTCIntegerType.value((leftJTCType as JTCIntegerType).value + rightJTCType.value))
+              }
+            }
+            post[leftRef] = post[nodeRef]
+            //post[Reference.make(node)] = TypeInfo.make(hierarchy.getPrimitive(node.cfType as Type.JCPrimitiveType))
           }
           BinaryOP.Sub,
           BinaryOP.Mult,
@@ -566,12 +584,24 @@ class Inference(
           BinaryOP.GreaterThan,
           BinaryOP.GreaterThanOrEqual,
           BinaryOP.LessThan -> { // TODO linear arrays + integers
+            val nodeRef = Reference.make(node)
             val leftRef = Reference.make(node.left)
             val rightRef = Reference.make(node.right)
             val leftType = pre[leftRef].type
             val rightType = pre[rightRef].type
             val leftJTCType = leftType.jtcType
             val rightJTCType = rightType.jtcType
+            //TODO CHECK
+            if(leftJTCType is JTCUnionType) {
+              if(rightJTCType is JTCIntegerType) {
+                val filtered = JTCType.createUnion(leftJTCType.types.filter { (it as JTCIntegerType).value < rightJTCType.value })
+                post[leftRef] = StoreInfo.conditional(nodeRef, TypeInfo.make(leftRef.javaType, filtered), leftType)
+              }
+            } else {
+              if (rightJTCType is JTCIntegerType) {
+                post[leftRef] = StoreInfo.conditional(nodeRef, leftType, leftType)
+              }
+            }
             /*if (leftJTCType is JTCIntegerType && rightJTCType is JTCIntegerType) {
               post[leftRef] = TypeInfo.make(leftType.javaType, JTCIntegerType.range(leftJTCType.value until rightJTCType.value))
             }*/
@@ -617,7 +647,8 @@ class Inference(
         val typeAfter = typeIntroducer.getTypeFromString(arrayJavaType.getArrayComponent()!!, node.typeAfter, errFn)
         // TODO check
         val arrayJtcType = arrayType.type.jtcType
-        val possibleIdxs = TypecheckUtils.getIntValues(idxType.type.jtcType, errFn)
+        val possibleIdxs = TypecheckUtils.getIntValues(idxType.type.jtcType, errFn)!!.sortedDescending()
+        println(possibleIdxs[0])
         if (arrayJtcType is JTCLinearArrayType && !arrayJtcType.unknownSize && possibleIdxs?.size == 1) {
           for (i in 0 until arrayJtcType.types.size) {
             if (i < possibleIdxs[0]) {
