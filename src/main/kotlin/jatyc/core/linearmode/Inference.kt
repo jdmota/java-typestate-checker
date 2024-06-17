@@ -113,6 +113,12 @@ class Inference(
   }
 
   fun analyzeCode(func: FuncDeclaration, pre: Store, node: CodeExpr, post: Store) {
+    val skip = {
+      for ((ref, info) in pre) {
+        post[ref] = info
+      }
+    }
+
     inference.resetErrorsAndWarnings(node)
     val clazz = func.clazz
     val thisRef = Reference.makeThis(func)
@@ -160,6 +166,9 @@ class Inference(
       }
 
       is ParamAssign -> {
+        if (node.call.methodExpr.fullname == "jatyc.lib.Utils.loopInvariant") {
+          return skip()
+        }
         val leftRef = Reference.makeFromLHS(node)
         val rightRef = Reference.make(node.expr)
         val param = node.call.methodExpr.parameters[node.idx]
@@ -178,6 +187,9 @@ class Inference(
       }
 
       is MethodCall -> {
+        if (node.methodExpr.fullname == "jatyc.lib.Utils.loopInvariant") {
+          return skip()
+        }
         // Note for later: a call is non-virtual if static or init or super call or private call
         val nodeRef = Reference.make(node)
         val methodExpr = node.methodExpr

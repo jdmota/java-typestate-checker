@@ -320,7 +320,11 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       thisParam.plus(getParamTypes(it))
     }
     val (returnType, returnJavaType) = if (isConstructor) Pair(JTCNullType.SINGLETON, hierarchy.VOID) else getReturnType(it)
-    FuncInterface(funcName, params, returnType, returnJavaType, isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract).set(it.asType(), hierarchy)
+    FuncInterface(
+      funcName, params, returnType, returnJavaType,
+      isPublic = isPublic, isAnytime = isAnytime, isPure = isPure, isAbstract = isAbstract,
+      "${receiver}.${funcName}"
+    ).set(it.asType(), hierarchy)
   }
 
   fun setRoot(root: CompilationUnitTree) {
@@ -487,7 +491,11 @@ class CFAdapter(val checker: JavaTypestateChecker) {
     if (!hasDeclaredConstructor && initializers.isNotEmpty()) {
       if (isStatic) {
         val cfg = joinCFGs(initializers.map { it.first })
-        val method = FuncDeclaration("<init>", listOf(), cfg, JTCNullType.SINGLETON, hierarchy.VOID, isPublic = true, isAnytime = true, isPure = false, isAbstract = false).set(classTree).set(root).set(checker)
+        val method = FuncDeclaration(
+          "<init>", listOf(), cfg, JTCNullType.SINGLETON, hierarchy.VOID,
+          isPublic = true, isAnytime = true, isPure = false, isAbstract = false,
+          "${classTree.sym.fullname}.<init>"
+        ).set(classTree).set(root).set(checker)
         methods.add(method)
         publicMethods.add(method)
       } else {
@@ -555,13 +563,17 @@ class CFAdapter(val checker: JavaTypestateChecker) {
 
   private fun transformMethod(method: JCTree.JCMethodDecl, cfg: SimpleCFG): FuncDeclaration {
     val func = funcInterfaces.transform(method.sym)
-    return FuncDeclaration(func.name, func.parameters, cfg, func.returnType, func.returnJavaType, isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract).set(method).set(root).set(checker)
+    return FuncDeclaration(
+      func.name, func.parameters, cfg, func.returnType, func.returnJavaType,
+      isPublic = func.isPublic, isAnytime = func.isAnytime, isPure = func.isPure, isAbstract = func.isAbstract,
+      func.fullname
+    ).set(method).set(root).set(checker)
   }
 
   private fun transformLambda(tree: JCTree.JCLambda, node: Node): MultipleAdaptResult {
     val (returnType, returnJavaType) = getReturnType(tree)
     return MultipleAdaptResult(listOf(
-      FuncDeclaration(null, getParamTypes(tree), processCFG(tree), returnType, returnJavaType, isPublic = false, isAnytime = true, isPure = false, isAbstract = false).set(node, hierarchy),
+      FuncDeclaration(null, getParamTypes(tree), processCFG(tree), returnType, returnJavaType, isPublic = false, isAnytime = true, isPure = false, isAbstract = false, null).set(node, hierarchy),
       NewObj(typeIntroducer.getInitialType(node.type), hierarchy.get(node.type)).set(node, hierarchy)
     ))
   }
@@ -831,7 +843,10 @@ class CFAdapter(val checker: JavaTypestateChecker) {
             FuncParam(IdLHS("detail", 0, hierarchy.STRING.javaType), hierarchy.STRING, hierarchy.STRING, isThis = false, hasEnsures = false)
           ).subList(0, argNumber)
           val paramExprs = listOf(node.condition, node.detail).subList(0, argNumber)
-          makeCall(FuncInterface("#helpers.assert$argNumber", params, returnType = JTCNullType.SINGLETON, hierarchy.VOID, isPublic = true, isAnytime = true, isPure = true, isAbstract = false), paramExprs, node)
+          makeCall(FuncInterface(
+            "#helpers.assert$argNumber", params, returnType = JTCNullType.SINGLETON, hierarchy.VOID,
+            isPublic = true, isAnytime = true, isPure = true, isAbstract = false,
+            "#helpers.assert$argNumber"), paramExprs, node)
         } else result
       }
       is AssignmentNode -> makeAssignment(node.target, t(node.expression), node)

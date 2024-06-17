@@ -261,8 +261,9 @@ class FuncDeclaration(
   isAnytime: Boolean,
   isPure: Boolean,
   isAbstract: Boolean,
+  fullname: String?,
   var clazz: ClassDecl? = null
-) : FuncInterface(name, parameters, returnType, returnJavaType, isPublic, isAnytime, isPure, isAbstract) {
+) : FuncInterface(name, parameters, returnType, returnJavaType, isPublic, isAnytime, isPure, isAbstract, fullname) {
   fun potentiallyModifiedFields(): Sequence<SelectReference>? {
     val info = body.detailedInfo
     return if (info.innerCalls.any { !it.methodExpr.isPure }) {
@@ -273,7 +274,7 @@ class FuncDeclaration(
   }
 
   override fun format(indent: String): String {
-    return "$indent(fun ${name ?: "anonymous"}(...) -> ...)" // ${parameters.joinToString(", ")}
+    return "$indent(fun ${fullname ?: name ?: "anonymous"}(...) -> ...)" // ${parameters.joinToString(", ")}
   }
 }
 
@@ -285,11 +286,12 @@ open class FuncInterface(
   val isPublic: Boolean,
   val isAnytime: Boolean,
   val isPure: Boolean,
-  val isAbstract: Boolean
+  val isAbstract: Boolean,
+  val fullname: String?
 ) : CodeExpr() {
   val isConstructor = name == "<init>"
   override fun format(indent: String): String {
-    return "$indent(fun_i ${name ?: "anonymous"}(...) -> ...)" // ${parameters.joinToString(", ")}
+    return "$indent(fun_i ${fullname ?: name ?: "anonymous"}(...) -> ...)" // ${parameters.joinToString(", ")}
   }
 }
 
