@@ -10,6 +10,7 @@ public class ClientCode {
       assert Utils.loopInvariant(cars, "OFF", i, "null") : "";
       cars[i] = new Car();
     }
+    cars[0].turnOn();
   }
 }
 
