@@ -14,7 +14,7 @@ enum class SimpleFlowRule {
   THEN, ELSE, ALL
 }
 
-class SimpleEdge(val rule: SimpleFlowRule, val node: SimpleNode) {
+class SimpleEdge(val rule: SimpleFlowRule, val node: SimpleNode, val backEdge: Boolean) {
   operator fun component1() = rule
   operator fun component2() = node
 }
@@ -33,6 +33,7 @@ class SimpleMarkerExit : SimpleMarker()
 
 class SimpleCodeNode(val code: CodeExpr) : SimpleNode() {
   var isCondition: Boolean = false
+  var isLooping: Boolean = false
 
   override fun toString(): String {
     return code.toString()
@@ -68,7 +69,7 @@ fun joinCFGs(list: Collection<SimpleCFG>): SimpleCFG {
   info.addAll(first.detailedInfo)
   while (iterator.hasNext()) {
     val next = iterator.next()
-    last.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, next.entry))
+    last.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, next.entry, false))
     last = next.exit
     allNodes.addAll(next.allNodes)
     info.addAll(next.detailedInfo)
@@ -82,8 +83,8 @@ fun createOneExprCFG(expr: CodeExpr): SimpleCFG {
   val entry = SimpleMarkerEntry()
   val node = SimpleCodeNode(expr)
   val exit = SimpleMarkerExit()
-  entry.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, node))
-  node.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, exit))
+  entry.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, node, false))
+  node.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, exit, false))
   return SimpleCFG(entry, exit, mutableListOf(node))
 }
 

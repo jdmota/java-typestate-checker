@@ -110,7 +110,7 @@ class LinearModeInference(
 
   private fun analyzeCodeNode(func: FuncDeclaration, pre: Store, node: SimpleCodeNode, post: Store) {
     val code = node.code
-    inference.analyzeCode(func, pre, code, post)
+    inference.analyzeCode(func, pre, node, post)
 
     if (node.isCondition) {
       val codeRef = Reference.make(code)

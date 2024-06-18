@@ -113,7 +113,8 @@ class Inference(
     return newInfo
   }
 
-  fun analyzeCode(func: FuncDeclaration, pre: Store, node: CodeExpr, post: Store) {
+  fun analyzeCode(func: FuncDeclaration, pre: Store, cfgNode: SimpleCodeNode, post: Store) {
+    val node = cfgNode.code
     val skip = {
       for ((ref, info) in pre) {
         post[ref] = info
