@@ -117,7 +117,8 @@ object Subtyping {
           if (doUpcast) {
             val graph = j.getGraph()
             if (graph == null) {
-              JTCUnknownType.SINGLETON
+              if (t.state.canDropHere()) JTCSharedType(j)
+              else JTCUnknownType.SINGLETON
             } else {
               JTCType.createIntersection(graph.getAllConcreteStates().map { JTCStateType(j, graph, it) }.filter { isSubtype(t, it) })
             }
