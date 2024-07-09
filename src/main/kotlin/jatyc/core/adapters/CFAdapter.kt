@@ -615,49 +615,55 @@ class CFAdapter(val checker: JavaTypestateChecker) {
   }
 
   private fun checkersCFGtoSimpleCFG(original: ControlFlowGraph): SimpleCFG {
-    val seen = IdentityHashMap<Block, SimpleNode>()
-    val stack = IdentityHashMap<Block, Boolean>()
+    val seen = IdentityHashMap<Block, MutableList<SimpleNode>>()
+    val stack = ArrayDeque<Block>()
     val cfg = SimpleCFG()
     connect(cfg, seen, stack, cfg.entry, original.entryBlock, SimpleFlowRule.ALL)
     return cfg
   }
 
-  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Block, SimpleNode>, stack: IdentityHashMap<Block, Boolean>, prev: SimpleNode, block: Block, flowRule: Store.FlowRule) {
+  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Block, MutableList<SimpleNode>>, stack: ArrayDeque<Block>, prev: SimpleNode, block: Block, flowRule: Store.FlowRule) {
     return connect(cfg, seen, stack, prev, block, checkersFlowRuleToSimpleFlowRule(flowRule))
   }
 
-  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Block, SimpleNode>, stack: IdentityHashMap<Block, Boolean>, prev: SimpleNode, block: Block, flowRule: SimpleFlowRule) {
+  private fun connect(cfg: SimpleCFG, seen: IdentityHashMap<Block, MutableList<SimpleNode>>, stack: ArrayDeque<Block>, prev: SimpleNode, block: Block, flowRule: SimpleFlowRule) {
     val previouslySeen = seen[block]
     if (previouslySeen != null) {
-      if (stack.containsKey(block)) {
-        (previouslySeen as SimpleCodeNode).isLooping = true
-        prev.addOutEdge(SimpleEdge(flowRule, previouslySeen, true))
+      val blockStart = previouslySeen.first()
+      if (stack.contains(block)) {
+        blockStart.isLoopEntry = true
+        prev.addOutEdge(SimpleEdge(flowRule, blockStart, true))
+
+        val it = stack.iterator()
+        while (it.hasNext()) {
+          val b = it.next()
+          for (n in seen[b]!!) {
+            n.isInsideLoop = true
+          }
+          if (b === block) break
+        }
       } else {
-        prev.addOutEdge(SimpleEdge(flowRule, previouslySeen, false))
+        prev.addOutEdge(SimpleEdge(flowRule, blockStart, false))
       }
       return
     }
-    stack[block] = true
+    val list = mutableListOf<SimpleNode>()
+    seen[block] = list
+    stack.push(block)
     when (block) {
       is RegularBlock -> {
-        var first = true
         var last = prev
         var lastFlow = flowRule
         val nodes = if (block.nodes.isEmpty()) listOf(MarkerNode(null, "empty block", utils.typeUtils)) else block.nodes
         for (n in nodes) {
-          last = connect(cfg, last, n, lastFlow)
+          last = connect(cfg, last, n, lastFlow, list)
           lastFlow = SimpleFlowRule.ALL
-          if (first) {
-            seen[block] = last
-            first = false
-          }
         }
         block.successor?.let { connect(cfg, seen, stack, last, it, block.flowRule) }
       }
 
       is ExceptionBlock -> {
-        val last = connect(cfg, prev, block.node, flowRule)
-        seen[block] = last
+        val last = connect(cfg, prev, block.node, flowRule, list)
         block.successor?.let { connect(cfg, seen, stack, last, it, block.flowRule) }
         // TODO
         /*for ((cause, value) in block.exceptionalSuccessors) {
@@ -682,6 +688,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
           }
 
           SpecialBlock.SpecialBlockType.EXIT -> {
+            list.add(cfg.exit)
             prev.addOutEdge(SimpleEdge(flowRule, cfg.exit, false))
           }
 
@@ -693,12 +700,12 @@ class CFAdapter(val checker: JavaTypestateChecker) {
 
       else -> throw RuntimeException("Unexpected block type: ${block.type}")
     }
-    stack.remove(block)
+    stack.pop()
   }
 
   private val adaptedCache = IdentityHashMap<Node, AdaptResult>()
 
-  private fun connect(cfg: SimpleCFG, prev: SimpleNode, node: Node, flowRule: SimpleFlowRule): SimpleNode {
+  private fun connect(cfg: SimpleCFG, prev: SimpleNode, node: Node, flowRule: SimpleFlowRule, list: MutableList<SimpleNode>): SimpleNode {
     return when (val result = adaptedCache.computeIfAbsent(node) { transformHelper(it) }) {
       is MultipleAdaptResult -> {
         var first = true
@@ -712,9 +719,8 @@ class CFAdapter(val checker: JavaTypestateChecker) {
           cfg.allNodes.add(simpleNode)
           lastNode.addOutEdge(SimpleEdge(if (first) flowRule else SimpleFlowRule.ALL, simpleNode, false))
           lastNode = simpleNode
-          if (first) {
-            first = false
-          }
+          list.add(simpleNode)
+          first = false
         }
         lastNode
       }
@@ -727,6 +733,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
 
         cfg.allNodes.add(simpleNode)
         prev.addOutEdge(SimpleEdge(flowRule, simpleNode, false))
+        list.add(simpleNode)
         simpleNode
       }
     }

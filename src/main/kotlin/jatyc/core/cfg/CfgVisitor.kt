@@ -8,7 +8,7 @@ abstract class CfgVisitor<A : Store> {
   abstract fun analyzeNode(func: FuncDeclaration, pre: A, node: SimpleNode, post: A)
   abstract fun defaultAssertion(node: SimpleNode): A
   abstract fun makeInitialAssertion(func: FuncDeclaration, cfg: SimpleCFG, initialAssertion: A): A
-  abstract fun propagate(from: SimpleNode, rule: SimpleFlowRule, a: A, b: A): Boolean // True if it should analyze again
+  abstract fun propagate(from: SimpleNode, edge: SimpleEdge, a: A, b: A): Boolean // True if it should analyze again
   abstract fun analyzeEnd(func: FuncDeclaration, exitAssertion: A)
 
   private val assertions = IdentityHashMap<SimpleNode, Pair<A, A>>()
@@ -66,13 +66,14 @@ abstract class CfgVisitor<A : Store> {
       println("post : $post\n")
     }
 
-    for ((rule, child) in node.outEdges) {
+    for (edge in node.outEdges) {
+      val child = edge.to
       if (debugAllMore && debug(func)) {
         println("child : ${child.javaClass} : $child")
       }
       val firstTime = !assertions.containsKey(child)
       val (childPre, _) = getAssertions(child)
-      if (propagate(node, rule, post, childPre) || firstTime) {
+      if (propagate(node, edge, post, childPre) || firstTime) {
         worklist.add(child)
         if (debugAllMore && debug(func)) {
           println("propagated! changed!")

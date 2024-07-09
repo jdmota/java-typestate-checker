@@ -14,10 +14,7 @@ enum class SimpleFlowRule {
   THEN, ELSE, ALL
 }
 
-class SimpleEdge(val rule: SimpleFlowRule, val node: SimpleNode, val backEdge: Boolean) {
-  operator fun component1() = rule
-  operator fun component2() = node
-}
+class SimpleEdge(val rule: SimpleFlowRule, val to: SimpleNode, val backEdge: Boolean)
 
 sealed class SimpleNode {
   val outEdges = mutableListOf<SimpleEdge>()
@@ -25,19 +22,26 @@ sealed class SimpleNode {
   fun addOutEdge(edge: SimpleEdge) {
     outEdges.add(edge)
   }
+
+  var isCondition: Boolean = false
+  var isLoopEntry: Boolean = false
+  var isInsideLoop: Boolean = false
+
+  abstract fun format(): String
 }
 
-sealed class SimpleMarker : SimpleNode()
+sealed class SimpleMarker : SimpleNode() {
+  override fun format() = toString()
+}
 class SimpleMarkerEntry : SimpleMarker()
 class SimpleMarkerExit : SimpleMarker()
 
 class SimpleCodeNode(val code: CodeExpr) : SimpleNode() {
-  var isCondition: Boolean = false
-  var isLooping: Boolean = false
-
   override fun toString(): String {
     return code.toString()
   }
+
+  override fun format() = code.format()
 }
 
 class SimpleCFG(
@@ -100,9 +104,9 @@ fun getDepthFirstOrderedNodes(cfg: SimpleCFG): List<SimpleNode> {
       worklist.removeLast()
     } else {
       visited.add(cur)
-      for ((_, node) in cur.outEdges) {
-        if (!visited.contains(node)) {
-          worklist.add(node)
+      for (edge in cur.outEdges) {
+        if (!visited.contains(edge.to)) {
+          worklist.add(edge.to)
         }
       }
     }

@@ -152,6 +152,10 @@ class Assign(val left: LeftHS, val right: CodeExpr, val type: JTCType) : CodeExp
   }
 
   override fun format(indent: String): String {
+    return "${left.format(indent)} = ${right.format()}"
+  }
+
+  override fun toString(): String {
     return "$left = $right"
   }
 }
@@ -164,13 +168,13 @@ class ParamAssign(val idx: Int, val expr: CodeExpr) : CodeExpr() {
   lateinit var call: MethodCall
 
   override fun format(indent: String): String {
-    return "param$idx = $expr (the call: $call)"
+    return indent + "param$idx = ${expr.format()} (the call: $call)"
   }
 }
 
 class Return(val expr: CodeExpr?, val type: JTCType, val javaType: JavaType) : CodeExpr() {
   override fun format(indent: String): String {
-    return "${indent}return ${expr?.format("")}"
+    return "${indent}return ${expr?.format()}"
   }
 }
 
@@ -190,7 +194,7 @@ class NewArrayWithDimensions(val javaType: JavaType, val componentJavaType: Java
   }
 
   override fun format(indent: String): String {
-    return "${indent}new $javaType [${dimensions.joinToString(", ") { it.format("") }}]"
+    return "${indent}new $componentJavaType[${dimensions.joinToString(", ") { it.format("") }}]"
   }
 }
 
@@ -206,7 +210,7 @@ class NewArrayWithValues(val javaType: JavaType, val componentJavaType: JavaType
 
 class ArrayAccess(val array: CodeExpr, val idx: CodeExpr, val arrayType: JavaType) : CodeExpr() {
   override fun format(indent: String): String {
-    return "${array.format(indent)}[$idx]"
+    return "$indent${array.format()}[${idx.format()}]"
   }
 }
 
@@ -216,7 +220,7 @@ class ArraySet(val left: ArrayAccess, val assignee: CodeExpr, val valueType: Jav
   }
 
   override fun format(indent: String): String {
-    return "${left.format(indent)} = ${assignee.format("")}"
+    return "${left.format(indent)} = ${assignee.format()}"
   }
 }
 
@@ -297,7 +301,11 @@ open class FuncInterface(
 
 class VarDeclaration(val id: IdLHS, val javaType: JavaType, val type: JTCType) : CodeExpr() {
   override fun format(indent: String): String {
-    return indent + "var $id"
+    return indent + "var ${id.format()}"
+  }
+
+  override fun toString(): String {
+    return "var $id"
   }
 }
 
@@ -392,7 +400,7 @@ class ClassDecl(
   }
 
   override fun format(indent: String): String {
-    return "${indent}class $name {"
+    return "${indent}class $name {}"
     /*val lines = mutableListOf<String>()
     lines.add("${indent}class $name {")
     for (f in fields) {

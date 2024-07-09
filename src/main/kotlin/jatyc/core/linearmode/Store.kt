@@ -254,8 +254,7 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
       val elementType = if (intValues == null) {
         TypecheckUtils.arrayGet(arrayType.type.jtcType, null) {}
       } else {
-        TypecheckUtils.arrayGet(arrayType.type.jtcType, intValues.maxOf { it }) {}
-       // JTCType.createUnion(intValues.map { TypecheckUtils.arrayGet(arrayType.type.jtcType, it) {} })
+        JTCType.createUnion(intValues.map { TypecheckUtils.arrayGet(arrayType.type.jtcType, it) {} })
       }
       return StoreInfo.regular(TypeInfo.make(ref.javaType, elementType))
     }
@@ -272,8 +271,7 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
         val newArrayType = if (intValues == null) {
           TypecheckUtils.arraySet(arrayType.type.jtcType, null, typeInfo.jtcType) {}
         } else {
-          TypecheckUtils.arraySet(arrayType.type.jtcType, intValues.maxOf { it }, typeInfo.jtcType) {}
-          //JTCType.createUnion(intValues.map { TypecheckUtils.arraySet(arrayType.type.jtcType, it, typeInfo.jtcType) {} })
+          JTCType.createUnion(intValues.map { TypecheckUtils.arraySet(arrayType.type.jtcType, it, typeInfo.jtcType) {} })
         }
         TypeInfo.make(arrayRef.javaType, newArrayType)
       })
@@ -324,10 +322,22 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     return true // It changed
   }
 
-  fun toBottom() {
+  fun override(ref: Reference, info: StoreInfo): Boolean {
+    val curr = getOrNull(ref)
+    if (curr != info) {
+      this[ref] = info
+      return true // It changed
+    }
+    return false
+  }
+
+  fun hasBottom() = map.any { it.value.isBottom() }
+
+  fun toBottom(): Store {
     for ((ref, _) in this) {
       this[ref] = StoreInfo.bottom(ref.javaType)
     }
+    return this
   }
 
   fun withLabel(condition: Reference, label: String): Store {
@@ -370,6 +380,14 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     return changed
   }
 
+  fun overrideTo(other: Store): Boolean {
+    var changed = false
+    for ((ref, info) in this) {
+      changed = other.override(ref, info) || changed
+    }
+    return changed
+  }
+
   // This function is only used when transferring information about fields
   // between method analyses of a class
   fun fixThis(from: Reference, to: Reference): Store {
@@ -385,6 +403,8 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     }
     return store
   }
+
+  fun debugGet(ref: String) = map.filterKeys { it.toString().contains(ref) }.entries.joinToString("\n")
 
   companion object {
     fun mergeFieldsToNew(a: Store, b: Store, thisRef: Reference): Store {

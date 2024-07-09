@@ -30,7 +30,7 @@ class LinearModeInference(
     return result
   }
 
-  // We might analyze a code expression more than once because of loops
+  // Reset code expression if we analyze it more than once
   fun resetErrorsAndWarnings(code: CodeExpr) {
     errors.computeIfAbsent(errorContext.peek()) { IdentityHashMap() }.remove(code)
     warnings.computeIfAbsent(errorContext.peek()) { IdentityHashMap() }.remove(code)
@@ -85,20 +85,31 @@ class LinearModeInference(
     inference.analyzeEnd(func, exitAssertion)
   }
 
-  override fun propagate(from: SimpleNode, rule: SimpleFlowRule, a: Store, b: Store): Boolean {
+  private val seen = mutableMapOf<SimpleNode, Int>()
+
+  override fun propagate(from: SimpleNode, edge: SimpleEdge, a: Store, b: Store): Boolean {
+    val rule = edge.rule
     when (from) {
       is SimpleMarkerEntry -> return a.propagateTo(b)
       is SimpleMarkerExit -> return a.propagateTo(b)
-      is SimpleCodeNode -> {
-      }
+      is SimpleCodeNode -> {}
     }
 
+    val times = seen.computeIfAbsent(from) { 0 }
+    val override = times < 10 && from.isInsideLoop && edge.to.isInsideLoop
+
     val ref = Reference.make(from.code)
-    return when (rule) {
-      SimpleFlowRule.ALL -> a.propagateTo(b)
-      SimpleFlowRule.THEN -> a.withLabel(ref, "true").addFact(CasePattern(ref, "true", true)).propagateTo(b)
-      SimpleFlowRule.ELSE -> a.withLabel(ref, "false").addFact(CasePattern(ref, "true", false)).propagateTo(b)
+    val fromStore = when (rule) {
+      SimpleFlowRule.ALL -> a
+      SimpleFlowRule.THEN -> a.withLabel(ref, "true").addFact(CasePattern(ref, "true", true))
+      SimpleFlowRule.ELSE -> a.withLabel(ref, "false").addFact(CasePattern(ref, "true", false))
     }
+
+    if (fromStore.hasBottom()) {
+      return fromStore.clone().toBottom().propagateTo(b)
+    }
+
+    return if (override) fromStore.overrideTo(b) else fromStore.propagateTo(b)
   }
 
   override fun analyzeNode(func: FuncDeclaration, pre: Store, node: SimpleNode, post: Store) {
@@ -109,8 +120,11 @@ class LinearModeInference(
   }
 
   private fun analyzeCodeNode(func: FuncDeclaration, pre: Store, node: SimpleCodeNode, post: Store) {
+    val times = seen.computeIfAbsent(node) { 0 }
+    seen[node] = times + 1
+
     val code = node.code
-    inference.analyzeCode(func, pre, node, post)
+    inference.analyzeCode(func, pre, node, post, node.isInsideLoop && times + 1 < 10)
 
     if (node.isCondition) {
       val codeRef = Reference.make(code)
