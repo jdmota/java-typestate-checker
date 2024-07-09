@@ -86,6 +86,7 @@ class LinearModeInference(
   }
 
   private val seen = mutableMapOf<SimpleNode, Int>()
+  private val LOOP_LIMIT = 20
 
   override fun propagate(from: SimpleNode, edge: SimpleEdge, a: Store, b: Store): Boolean {
     val rule = edge.rule
@@ -94,10 +95,8 @@ class LinearModeInference(
       is SimpleMarkerExit -> return a.propagateTo(b)
       is SimpleCodeNode -> {}
     }
-
     val times = seen.computeIfAbsent(from) { 0 }
-    val override = times < 10 && from.isInsideLoop && edge.to.isInsideLoop
-
+    val override = times < LOOP_LIMIT && from.isInsideLoop && edge.to.isInsideLoop
     val ref = Reference.make(from.code)
     val fromStore = when (rule) {
       SimpleFlowRule.ALL -> a
@@ -120,11 +119,14 @@ class LinearModeInference(
   }
 
   private fun analyzeCodeNode(func: FuncDeclaration, pre: Store, node: SimpleCodeNode, post: Store) {
+    val code = node.code
     val times = seen.computeIfAbsent(node) { 0 }
     seen[node] = times + 1
 
-    val code = node.code
-    inference.analyzeCode(func, pre, node, post, node.isInsideLoop && times + 1 < 10)
+    if (!node.isInsideLoop || times + 1 >= LOOP_LIMIT) {
+      resetErrorsAndWarnings(code)
+    }
+    inference.analyzeCode(func, pre, node, post)
 
     if (node.isCondition) {
       val codeRef = Reference.make(code)

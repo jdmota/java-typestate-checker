@@ -113,16 +113,12 @@ class Inference(
     return newInfo
   }
 
-  fun analyzeCode(func: FuncDeclaration, pre: Store, cfgNode: SimpleCodeNode, post: Store, repeating: Boolean) {
+  fun analyzeCode(func: FuncDeclaration, pre: Store, cfgNode: SimpleCodeNode, post: Store) {
     val node = cfgNode.code
     val skip = {
       for ((ref, info) in pre) {
         post[ref] = info
       }
-    }
-
-    if (!repeating) {
-      inference.resetErrorsAndWarnings(node)
     }
 
     val clazz = func.clazz
