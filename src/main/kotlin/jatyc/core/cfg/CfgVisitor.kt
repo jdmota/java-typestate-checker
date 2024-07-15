@@ -118,15 +118,16 @@ abstract class CfgVisitor<A : Store> {
 
   private fun propagateJob(edge: SimpleEdge, a: A, b: A): Boolean {
     return if (inOverrideMode) {
+      val store = defaultAssertion(edge.to)
       if (edge.backEdge) {
-        val store = defaultAssertion(edge.to)
         edge.to.inEdgesBack().forEach { propagate(it, getAssertions(it.from).second, store, false) }
-        propagate(edge, store, b, true)
       } else {
-        val store = defaultAssertion(edge.to)
         edge.to.inEdgesNotBack().forEach { propagate(it, getAssertions(it.from).second, store, false) }
-        propagate(edge, store, b, true)
       }
+      if (store.hasBottom()) {
+        return store.toBottom().propagateTo(b)
+      }
+      store.overrideTo(b)
     } else {
       propagate(edge, a, b, false)
     }

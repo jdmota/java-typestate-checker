@@ -16,8 +16,10 @@ public class ClientCode {
     Car[] cars = new Car[x];
     for (int i = 0; i < x; i++) {
       cars[i] = new Car();
-      if (!cars[i].turnOn()) { System.out.println("turning on..."); }
-      //Car c = cars[i];
+      while (!cars[i].turnOn()) {
+        System.out.println("turning on...");
+      }
     }
+    Car[] cars2 = cars;
   }
 }

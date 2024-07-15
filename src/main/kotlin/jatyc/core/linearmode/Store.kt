@@ -62,17 +62,17 @@ class CasePattern(val condition: Reference, val label: String, val equal: Boolea
   }
 }
 
-class CasePatterns(val list: List<CasePattern>) {
+class CasePatterns(val list: Set<CasePattern>) {
   fun removeCondition(condition: Reference): CasePatterns? {
     return if (list.any { it.matchesCondition(condition) }) null else this
   }
 
   fun replaceCondition(from: Reference, to: Reference): CasePatterns {
-    return CasePatterns(list.map { it.replaceCondition(from, to) })
+    return CasePatterns(list.map { it.replaceCondition(from, to) }.toSet())
   }
 
   fun fixThis(from: Reference, to: Reference): CasePatterns {
-    return CasePatterns(list.map { it.fixThis(from, to) })
+    return CasePatterns(list.map { it.fixThis(from, to) }.toSet())
   }
 
   fun withLabel(condition: Reference, label: String): CasePatterns? {
@@ -90,7 +90,7 @@ class CasePatterns(val list: List<CasePattern>) {
   }
 
   fun not(original: Reference, negation: Reference): CasePatterns {
-    return CasePatterns(list.map { it.not(original, negation) })
+    return CasePatterns(list.map { it.not(original, negation) }.toSet())
   }
 
   fun implies(other: CasePatterns): Boolean {
@@ -112,16 +112,16 @@ class CasePatterns(val list: List<CasePattern>) {
 
   companion object {
     fun labelled(condition: Reference, label: String, equal: Boolean): CasePatterns {
-      return CasePatterns(listOf(CasePattern(condition, label, equal)))
+      return CasePatterns(setOf(CasePattern(condition, label, equal)))
     }
 
     fun trueCase(): CasePatterns {
-      return CasePatterns(listOf())
+      return CasePatterns(setOf())
     }
   }
 }
 
-class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair<CasePatterns, TypeInfo>>) {
+class StoreInfo private constructor(val javaType: JavaType, val cases: Set<Pair<CasePatterns, TypeInfo>>) {
   private fun checkJavaTypeInvariant(javaType: JavaType) {
     if (this.javaType !== javaType) {
       JTCUtils.printStack()
@@ -136,9 +136,9 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
   private fun mapKeys(javaType: JavaType, fn: (CasePatterns) -> CasePatterns?) = cases(javaType, cases.mapNotNull {
     val f = fn(it.first)
     if (f != null) Pair(f, it.second) else null
-  })
+  }.toSet())
 
-  fun mapType(javaType: JavaType, fn: (TypeInfo) -> TypeInfo) = cases(javaType, cases.map { Pair(it.first, fn(it.second)) })
+  fun mapType(javaType: JavaType, fn: (TypeInfo) -> TypeInfo) = cases(javaType, cases.map { Pair(it.first, fn(it.second)) }.toSet())
 
   fun isBottom() = cases.isEmpty()
 
@@ -194,7 +194,7 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
   }
 
   fun cast(javaType: JavaType): StoreInfo {
-    return StoreInfo(javaType, cases.map { Pair(it.first, it.second.cast(javaType)) })
+    return StoreInfo(javaType, cases.map { Pair(it.first, it.second.cast(javaType)) }.toSet())
   }
 
   override fun equals(other: Any?): Boolean {
@@ -211,7 +211,7 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
 
   companion object {
     fun regular(type: TypeInfo): StoreInfo {
-      return cases(type.javaType, listOf(Pair(CasePatterns.trueCase(), type)))
+      return cases(type.javaType, setOf(Pair(CasePatterns.trueCase(), type)))
     }
 
     fun conditional(condition: Reference, thenInfo: StoreInfo, elseInfo: StoreInfo): StoreInfo {
@@ -228,13 +228,13 @@ class StoreInfo private constructor(val javaType: JavaType, val cases: List<Pair
       return conditional(condition, regular(thenType), regular(elseType))
     }
 
-    fun cases(javaType: JavaType, cases: List<Pair<CasePatterns, TypeInfo>>): StoreInfo {
+    fun cases(javaType: JavaType, cases: Set<Pair<CasePatterns, TypeInfo>>): StoreInfo {
       cases.forEach { it.second.checkJavaTypeInvariant(javaType) }
-      return StoreInfo(javaType, cases.filter { !it.second.isBottom() })
+      return StoreInfo(javaType, cases.filter { !it.second.isBottom() }.toSet())
     }
 
     fun bottom(javaType: JavaType): StoreInfo {
-      return StoreInfo(javaType, emptyList())
+      return StoreInfo(javaType, emptySet())
     }
   }
 }

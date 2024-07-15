@@ -266,7 +266,7 @@ class Inference(
                     for (label in labels) {
                       cases[CasePatterns.labelled(nodeRef, "$qualifiedName.$label", true)] = currentType.refine(typecheckUtils, node) { it == label }
                     }
-                    post[argRef] = StoreInfo.cases(argRef.javaType, cases.toList())
+                    post[argRef] = StoreInfo.cases(argRef.javaType, cases.toList().toSet())
                   } else {
                     post[argRef] = currentType.refine(typecheckUtils, node, allLabels)
                   }

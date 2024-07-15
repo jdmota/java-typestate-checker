@@ -110,6 +110,16 @@ sealed class TypeInfo {
 }
 
 class BasicTypeInfo internal constructor(override val javaType: JavaType, override val jtcType: JTCType) : TypeInfo() {
+  override fun equals(other: Any?): Boolean {
+    return other is BasicTypeInfo && javaType == other.javaType && jtcType == other.jtcType
+  }
+
+  override fun hashCode(): Int {
+    var result = javaType.hashCode()
+    result = 31 * result + jtcType.hashCode()
+    return result
+  }
+
   override fun toShared(): TypeInfo {
     return BasicTypeInfo(javaType, jtcType.toShared())
   }
@@ -157,6 +167,16 @@ class TypestateTreeInfo internal constructor(val tree: TypestateTree) : TypeInfo
 
   override val javaType get() = tree.jc
   override val jtcType get() = tree.ts
+
+  override fun equals(other: Any?): Boolean {
+    return other is TypestateTreeInfo && tree == other.tree
+  }
+
+  override fun hashCode(): Int {
+    var result = javaType.hashCode()
+    result = 31 * result + jtcType.hashCode()
+    return result
+  }
 
   override fun toShared(): TypeInfo {
     return TypestateTreeInfo(tree) { it.toShared() }

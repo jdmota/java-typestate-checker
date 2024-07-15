@@ -13,6 +13,16 @@ class TypestateTree constructor(val jc: JavaType, val ts: JTCType, val children:
   override fun toString(): String {
     return "($jc:$ts:[${children.map { it.toSimpleString() }}])"
   }
+
+  override fun equals(other: Any?): Boolean {
+    return other is TypestateTree && jc == other.jc && ts == other.ts && children == other.children
+  }
+
+  override fun hashCode(): Int {
+    var result = jc.hashCode()
+    result = 31 * result + ts.hashCode()
+    return result
+  }
 }
 
 object TypestateTreeUtilities {
