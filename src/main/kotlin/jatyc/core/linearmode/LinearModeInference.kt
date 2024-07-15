@@ -31,9 +31,10 @@ class LinearModeInference(
   }
 
   // Reset code expression if we analyze it more than once
-  fun resetErrorsAndWarnings(code: CodeExpr) {
-    errors.computeIfAbsent(errorContext.peek()) { IdentityHashMap() }.remove(code)
-    warnings.computeIfAbsent(errorContext.peek()) { IdentityHashMap() }.remove(code)
+  override fun cleanUp(code: CodeExpr) {
+    val ctx = errorContext.peek()
+    errors.computeIfAbsent(ctx) { IdentityHashMap() }.remove(code)
+    warnings.computeIfAbsent(ctx) { IdentityHashMap() }.remove(code)
   }
 
   fun addWarning(code: CodeExpr, warning: String) {
@@ -85,18 +86,15 @@ class LinearModeInference(
     inference.analyzeEnd(func, exitAssertion)
   }
 
-  private val seen = mutableMapOf<SimpleNode, Int>()
-  private val LOOP_LIMIT = 20
-
-  override fun propagate(from: SimpleNode, edge: SimpleEdge, a: Store, b: Store): Boolean {
+  override fun propagate(edge: SimpleEdge, a: Store, b: Store, override: Boolean): Boolean {
+    val from = edge.from
     val rule = edge.rule
     when (from) {
       is SimpleMarkerEntry -> return a.propagateTo(b)
       is SimpleMarkerExit -> return a.propagateTo(b)
       is SimpleCodeNode -> {}
     }
-    val times = seen.computeIfAbsent(from) { 0 }
-    val override = times < LOOP_LIMIT && from.isInsideLoop && edge.to.isInsideLoop
+
     val ref = Reference.make(from.code)
     val fromStore = when (rule) {
       SimpleFlowRule.ALL -> a
@@ -120,11 +118,8 @@ class LinearModeInference(
 
   private fun analyzeCodeNode(func: FuncDeclaration, pre: Store, node: SimpleCodeNode, post: Store) {
     val code = node.code
-    val times = seen.computeIfAbsent(node) { 0 }
-    seen[node] = times + 1
-
-    if (!node.isInsideLoop || times + 1 >= LOOP_LIMIT) {
-      resetErrorsAndWarnings(code)
+    if (!getOverrideMode()) {
+      cleanUp(code)
     }
     inference.analyzeCode(func, pre, node, post)
 

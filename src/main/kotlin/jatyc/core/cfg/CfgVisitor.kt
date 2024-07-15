@@ -1,14 +1,16 @@
 package jatyc.core.cfg
 
 import jatyc.core.linearmode.Store
+import org.checkerframework.org.plumelib.util.WeakIdentityHashMap
 import java.util.*
 
 abstract class CfgVisitor<A : Store> {
 
   abstract fun analyzeNode(func: FuncDeclaration, pre: A, node: SimpleNode, post: A)
   abstract fun defaultAssertion(node: SimpleNode): A
+  abstract fun cleanUp(code: CodeExpr)
   abstract fun makeInitialAssertion(func: FuncDeclaration, cfg: SimpleCFG, initialAssertion: A): A
-  abstract fun propagate(from: SimpleNode, edge: SimpleEdge, a: A, b: A): Boolean // True if it should analyze again
+  abstract fun propagate(edge: SimpleEdge, a: A, b: A, override: Boolean): Boolean // True if it should analyze again
   abstract fun analyzeEnd(func: FuncDeclaration, exitAssertion: A)
 
   private val assertions = IdentityHashMap<SimpleNode, Pair<A, A>>()
@@ -16,12 +18,31 @@ abstract class CfgVisitor<A : Store> {
   private val debugAll = false
   private val debugAllMore = false
 
+  private val LOOP_LIMIT = 30
+
+  private var inOverrideMode = false
+  protected fun getOverrideMode() = inOverrideMode
+
   fun analyze(func: FuncDeclaration, initialAssertion: A): A {
+    return try {
+      inOverrideMode = true
+      analyzeFunc(func, initialAssertion)
+    } catch (error: LoopLimitException) {
+      inOverrideMode = false
+      analyzeFunc(func, initialAssertion)
+    }
+  }
+
+  private fun analyzeFunc(func: FuncDeclaration, initialAssertion: A): A {
+    val seen = WeakIdentityHashMap<SimpleNode, Int>()
     val cfg = func.body
 
     // Clean up
     for (node in cfg.allNodes) {
       assertions.remove(node)
+      if (node is SimpleCodeNode) {
+        cleanUp(node.code)
+      }
     }
 
     // Prepare
@@ -38,6 +59,14 @@ abstract class CfgVisitor<A : Store> {
 
     var node = worklist.poll()
     while (node != null) {
+      if (inOverrideMode) {
+        val times = seen.computeIfAbsent(node) { 0 }
+        seen[node] = times + 1
+        if (times >= LOOP_LIMIT) {
+          throw LoopLimitException()
+        }
+      }
+
       analyze(worklist, func, node)
       node = worklist.poll()
     }
@@ -73,7 +102,7 @@ abstract class CfgVisitor<A : Store> {
       }
       val firstTime = !assertions.containsKey(child)
       val (childPre, _) = getAssertions(child)
-      if (propagate(node, edge, post, childPre) || firstTime) {
+      if (propagateJob(edge, post, childPre) || firstTime) {
         worklist.add(child)
         if (debugAllMore && debug(func)) {
           println("propagated! changed!")
@@ -81,10 +110,30 @@ abstract class CfgVisitor<A : Store> {
         }
       } else {
         if (debugAllMore && debug(func)) {
-          println("propagated! did node change!")
+          println("propagated! did not change!")
         }
       }
     }
   }
+
+  private fun propagateJob(edge: SimpleEdge, a: A, b: A): Boolean {
+    return if (inOverrideMode) {
+      if (edge.backEdge) {
+        val store = defaultAssertion(edge.to)
+        edge.to.inEdgesBack().forEach { propagate(it, getAssertions(it.from).second, store, false) }
+        propagate(edge, store, b, true)
+      } else {
+        val store = defaultAssertion(edge.to)
+        edge.to.inEdgesNotBack().forEach { propagate(it, getAssertions(it.from).second, store, false) }
+        propagate(edge, store, b, true)
+      }
+    } else {
+      propagate(edge, a, b, false)
+    }
+  }
+
+}
+
+class LoopLimitException : Throwable() {
 
 }

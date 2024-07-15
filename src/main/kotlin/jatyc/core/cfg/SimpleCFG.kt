@@ -14,14 +14,21 @@ enum class SimpleFlowRule {
   THEN, ELSE, ALL
 }
 
-class SimpleEdge(val rule: SimpleFlowRule, val to: SimpleNode, val backEdge: Boolean)
+class SimpleEdge(val from: SimpleNode, val rule: SimpleFlowRule, val to: SimpleNode, val backEdge: Boolean)
 
 sealed class SimpleNode {
+  val inEdges = mutableListOf<SimpleEdge>()
   val outEdges = mutableListOf<SimpleEdge>()
 
-  fun addOutEdge(edge: SimpleEdge) {
+  fun addOutEdge(rule: SimpleFlowRule, to: SimpleNode, backEdge: Boolean) {
+    val edge = SimpleEdge(this, rule, to, backEdge)
+    to.inEdges.add(edge)
     outEdges.add(edge)
   }
+
+  fun inEdgesBack() = inEdges.filter { it.backEdge }
+
+  fun inEdgesNotBack() = inEdges.filter { !it.backEdge }
 
   var isCondition: Boolean = false
   var isLoopEntry: Boolean = false
@@ -73,7 +80,7 @@ fun joinCFGs(list: Collection<SimpleCFG>): SimpleCFG {
   info.addAll(first.detailedInfo)
   while (iterator.hasNext()) {
     val next = iterator.next()
-    last.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, next.entry, false))
+    last.addOutEdge(SimpleFlowRule.ALL, next.entry, false)
     last = next.exit
     allNodes.addAll(next.allNodes)
     info.addAll(next.detailedInfo)
@@ -87,8 +94,8 @@ fun createOneExprCFG(expr: CodeExpr): SimpleCFG {
   val entry = SimpleMarkerEntry()
   val node = SimpleCodeNode(expr)
   val exit = SimpleMarkerExit()
-  entry.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, node, false))
-  node.addOutEdge(SimpleEdge(SimpleFlowRule.ALL, exit, false))
+  entry.addOutEdge(SimpleFlowRule.ALL, node, false)
+  node.addOutEdge(SimpleFlowRule.ALL, exit, false)
   return SimpleCFG(entry, exit, mutableListOf(node))
 }
 

@@ -295,11 +295,11 @@ class Store(private val map: MutableMap<Reference, StoreInfo> = mutableMapOf()) 
     return map.toString()
   }
 
+  // The functions below do not make use of "this.map" directly
+
   fun clone(): Store {
     return Store(map.toMutableMap())
   }
-
-  // The functions below do not make use of "this.map" directly
 
   operator fun get(ref: Reference): StoreInfo = getOrNull(ref)
     ?: StoreInfo.regular(TypeInfo.make(ref.javaType, ref.javaType.getDefaultJTCType()))

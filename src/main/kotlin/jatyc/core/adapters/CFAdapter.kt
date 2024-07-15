@@ -632,7 +632,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
       val blockStart = previouslySeen.first()
       if (stack.contains(block)) {
         blockStart.isLoopEntry = true
-        prev.addOutEdge(SimpleEdge(flowRule, blockStart, true))
+        prev.addOutEdge(flowRule, blockStart, true)
 
         val it = stack.iterator()
         while (it.hasNext()) {
@@ -643,7 +643,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
           if (b === block) break
         }
       } else {
-        prev.addOutEdge(SimpleEdge(flowRule, blockStart, false))
+        prev.addOutEdge(flowRule, blockStart, false)
       }
       return
     }
@@ -689,7 +689,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
 
           SpecialBlock.SpecialBlockType.EXIT -> {
             list.add(cfg.exit)
-            prev.addOutEdge(SimpleEdge(flowRule, cfg.exit, false))
+            prev.addOutEdge(flowRule, cfg.exit, false)
           }
 
           SpecialBlock.SpecialBlockType.EXCEPTIONAL_EXIT -> {
@@ -717,7 +717,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
           c.set(root).set(checker)
 
           cfg.allNodes.add(simpleNode)
-          lastNode.addOutEdge(SimpleEdge(if (first) flowRule else SimpleFlowRule.ALL, simpleNode, false))
+          lastNode.addOutEdge(if (first) flowRule else SimpleFlowRule.ALL, simpleNode, false)
           lastNode = simpleNode
           list.add(simpleNode)
           first = false
@@ -732,7 +732,7 @@ class CFAdapter(val checker: JavaTypestateChecker) {
         result.code.set(root).set(checker)
 
         cfg.allNodes.add(simpleNode)
-        prev.addOutEdge(SimpleEdge(flowRule, simpleNode, false))
+        prev.addOutEdge(flowRule, simpleNode, false)
         list.add(simpleNode)
         simpleNode
       }
