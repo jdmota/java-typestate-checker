@@ -1,25 +1,27 @@
 import jatyc.lib.Utils;
 
 public class ClientCode {
-  public static void main(String[] args) {
-    /*int x = 5;
-    Car[] cars = new Car[x];
-    int i = 0;
-    for (i = 0; i < 2; i++) {
-      // assert Utils.loopInvariant(cars, "OFF", i, "null") : "";
-      cars[i] = new Car();
-    }
-    cars[0].turnOn();
-    Car[] cars2 = cars;*/
-
+  public static void example() {
     int x = 5;
-    Car[] cars = new Car[x];
+    SUV[] suvs = new SUV[x];
     for (int i = 0; i < x; i++) {
-      cars[i] = new Car();
-      while (!cars[i].turnOn()) {
-        System.out.println("turning on...");
-      }
+      suvs[i] = new SUV();
+      while (!suvs[i].turnOn()) { System.out.println("turning on..."); }
+      suvs[i].switchMode();
+      setSpeed(suvs[i]);
     }
-    Car[] cars2 = cars;
+  }
+
+  private static void setSpeed(@jatyc.lib.Requires("ON") Car car) {
+    if (car instanceof SUV && ((SUV) car).switchMode() == Mode.SPORT)
+      ((SUV) car).setFourWheels(true);
+    car.setSpeed(50);
+    car.turnOff();
+  }
+  public static void main(String[] args) {
+    example();
+    System.out.println("Done!");
   }
 }
+
+
