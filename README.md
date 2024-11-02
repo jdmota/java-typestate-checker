@@ -81,10 +81,12 @@ java -jar DOWNLOADS/checker-framework-3.28.0/checker/dist/checker.jar -classpath
 ## Resources
 
 - [Examples](./examples)
-- [Tutorial](https://youtu.be/_zrcqYPe8-8)
+- [Tutorial Slides (presented at BehAPI Tutorials - Satellite Workshop of DisCoTec 2023)](./docs/jatyc-behapi-tutorial-discotec-2023.pdf)
+- [Video Tutorial](https://youtu.be/_zrcqYPe8-8)
 
 ## Publications
 
+- [Behavioural Up/down Casting For Statically Typed Languages](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ECOOP.2024.5). Lorenzo Bacchiani, Mario Bravetti, Marco Giunti, João Mota, António Ravara. ECOOP 2024. ([pdf](https://drops.dagstuhl.de/storage/00lipics/lipics-vol313-ecoop2024/LIPIcs.ECOOP.2024.5/LIPIcs.ECOOP.2024.5.pdf))
 - [A Java typestate checker supporting inheritance](https://www.sciencedirect.com/science/article/pii/S0167642322000776). Lorenzo Bacchiani, Mario Bravetti, Marco Giunti, João Mota, António Ravara. Science of Computer Programming 2022. ([pdf](./docs/a-java-typestate-checker-supporting-inheritance.pdf))
 - [Java Typestate Checker](https://link.springer.com/chapter/10.1007/978-3-030-78142-2_8). João Mota, Marco Giunti, António Ravara. COORDINATION 2021. ([pdf](./docs/jatyc-paper.pdf))
 - Coping with the reality: adding crucial features to a typestate-oriented language. João Mota. Master Thesis 2021. ([pdf](./docs/msc-thesis.pdf))
