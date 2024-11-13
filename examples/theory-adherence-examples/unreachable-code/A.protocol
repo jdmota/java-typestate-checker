@@ -1,0 +1,9 @@
+typestate A {
+  A1 = {
+     boolean m1(): <true: A2, false: A1>,
+     drop: end
+  }
+  A2 = {
+    void m2(): end
+  }
+}
