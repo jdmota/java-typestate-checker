@@ -1,0 +1,11 @@
+typestate A {
+  A1 = {
+     boolean m1(): A2,
+     drop: end
+  }
+
+  A2 = {
+      void m2(): end,
+      drop: end
+  }
+}

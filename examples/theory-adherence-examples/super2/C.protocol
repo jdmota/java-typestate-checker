@@ -1,0 +1,6 @@
+typestate C {
+  C1 = {
+     void m1(): end,
+     drop: end
+  }
+}

@@ -1,0 +1,6 @@
+typestate A {
+  A1 = {
+    Pippo m(): <L4:end, L2: end, L5: end>,
+    Paperino m1(): <L1:end, L2: end, L3: end>
+  }
+}

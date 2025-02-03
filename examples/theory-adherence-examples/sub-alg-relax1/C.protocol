@@ -1,0 +1,16 @@
+typestate C {
+  C1 = {
+     boolean m1(): <true:C1, false: C2>,
+     void m2(): end
+     drop: end
+  }
+  C2 = {
+       void m2(): C3,
+       void m3(): C3
+       drop: end
+  }
+  C3 = {
+    void m3(): end
+    drop: end
+  }
+}

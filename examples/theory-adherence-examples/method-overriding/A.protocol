@@ -1,0 +1,6 @@
+typestate A {
+  A1 = {
+     A m5(): end,
+     drop: end
+  }
+}
