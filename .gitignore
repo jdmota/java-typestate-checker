@@ -17,3 +17,4 @@ jatyc-lib/src
 # Examples
 
 examples/**/*.class
+.DS_Store
