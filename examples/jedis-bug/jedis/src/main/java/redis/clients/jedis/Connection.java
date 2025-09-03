@@ -87,26 +87,8 @@ public class Connection implements Closeable {
     this.soTimeout = soTimeout;
   }
 
-  public void setTimeoutInfinite() {
-    try {
-      if (!isConnected()) {
-        connect();
-      }
-      socket.setSoTimeout(0);
-    } catch (SocketException ex) {
-      broken = true;
-      throw new JedisConnectionException(ex);
-    }
-  }
 
-  public void rollbackTimeout() {
-    try {
-      socket.setSoTimeout(soTimeout);
-    } catch (SocketException ex) {
-      broken = true;
-      throw new JedisConnectionException(ex);
-    }
-  }
+
 
   public void sendCommand(final ProtocolCommand cmd, final String... args) {
     final byte[][] bargs = new byte[args.length][];
@@ -201,7 +183,7 @@ public class Connection implements Closeable {
         inputStream = new RedisInputStream(socket.getInputStream());
       } catch (IOException ex) {
         broken = true;
-        throw new JedisConnectionException("Failed connecting to host " 
+        throw new JedisConnectionException("Failed connecting to host "
             + host + ":" + port, ex);
       }
     }
@@ -209,55 +191,21 @@ public class Connection implements Closeable {
 
   @Override
   public void close() {
-    disconnect();
+
   }
 
-  public void disconnect() {
-    if (isConnected()) {
-      try {
-        outputStream.flush();
-        socket.close();
-      } catch (IOException ex) {
-        broken = true;
-        throw new JedisConnectionException(ex);
-      } finally {
-        IOUtils.closeQuietly(socket);
-      }
-    }
-  }
 
   public boolean isConnected() {
     return socket != null && socket.isBound() && !socket.isClosed() && socket.isConnected()
         && !socket.isInputShutdown() && !socket.isOutputShutdown();
   }
 
-  public String getStatusCodeReply() {
-    flush();
-    final byte[] resp = (byte[]) readProtocolWithCheckingBroken();
-    if (null == resp) {
-      return null;
-    } else {
-      return SafeEncoder.encode(resp);
-    }
-  }
 
-  public String getBulkReply() {
-    final byte[] result = getBinaryBulkReply();
-    if (null != result) {
-      return SafeEncoder.encode(result);
-    } else {
-      return null;
-    }
-  }
+
 
   public byte[] getBinaryBulkReply() {
     flush();
     return (byte[]) readProtocolWithCheckingBroken();
-  }
-
-  public Long getIntegerReply() {
-    flush();
-    return (Long) readProtocolWithCheckingBroken();
   }
 
   public List<String> getMultiBulkReply() {
@@ -270,35 +218,6 @@ public class Connection implements Closeable {
     return (List<byte[]>) readProtocolWithCheckingBroken();
   }
 
-  @Deprecated
-  public List<Object> getRawObjectMultiBulkReply() {
-    return getUnflushedObjectMultiBulkReply();
-  }
-
-  @SuppressWarnings("unchecked")
-  public List<Object> getUnflushedObjectMultiBulkReply() {
-    return (List<Object>) readProtocolWithCheckingBroken();
-  }
-
-  public List<Object> getObjectMultiBulkReply() {
-    flush();
-    return getUnflushedObjectMultiBulkReply();
-  }
-
-  @SuppressWarnings("unchecked")
-  public List<Long> getIntegerMultiBulkReply() {
-    flush();
-    return (List<Long>) readProtocolWithCheckingBroken();
-  }
-
-  public Object getOne() {
-    flush();
-    return readProtocolWithCheckingBroken();
-  }
-
-  public boolean isBroken() {
-    return broken;
-  }
 
   protected void flush() {
     try {

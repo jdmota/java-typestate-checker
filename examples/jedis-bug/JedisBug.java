@@ -2,25 +2,30 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 import java.util.Set;
-
-import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Client;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Response;
 
 public class JedisBug {
 
   public static void main(String[] args) {
-    int timeout = Integer.parseInt(args[0]);
-    int bugNo = Integer.parseInt(args[1]);
+    String to = args[0];
+    String bug = args[1];
+    int timeout = 1000;
+    int bugNo = 1;
+    if (to != null) timeout = Integer.parseInt(to);
+    if (bug != null) bugNo = Integer.parseInt(bug);
 
     System.out.println("Running with timeout:" + timeout + " and bugNo:" + bugNo);
 
-    Thread serverThread = new Thread(JedisBug::serverLoop);
+    Thread serverThread = new Thread(() -> JedisBug.serverLoop());
     serverThread.start();
 
-    // Direct Jedis connection instead of pool
-    try (Jedis jedis = new Jedis("localhost", 8123, timeout)) {
+    try (Client jedis = new Client("localhost", 8123)) {
+      jedis.setConnectionTimeout(timeout);
+      jedis.setSoTimeout(timeout);
       if (bugNo == 1) {
         firstBug(jedis);
       } else if (bugNo == 2) {
@@ -31,14 +36,16 @@ public class JedisBug {
     }
   }
 
-  private static void firstBug(Jedis jedis) {
+  private static void firstBug(Client jedis) {
     // same buggy behavior as before
-    Set<String> result = jedis.zrevrange("somekey", 0, 1);
+    jedis.zrevrange("somekey", 0, 1);
+    final List<String> result = jedis.getMultiBulkReply();
     System.err.println("Received: " + result);
   }
 
-  private static void secondBug(Jedis jedis) {
-    try (Pipeline pipeline = jedis.pipelined()) {
+  private static void secondBug(Client jedis) {
+    try (Pipeline pipeline = new Pipeline()) {
+      pipeline.setClient(jedis);
       Response<Set<String>> response = pipeline.zrevrange("somekey", 0, 1);
       pipeline.sync();
       System.err.println("Received: " + response.get());

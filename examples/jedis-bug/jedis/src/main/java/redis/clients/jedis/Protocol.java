@@ -220,27 +220,27 @@ public final class Protocol {
     return process(is);
   }
 
-  public static final byte[] toByteArray(final boolean value) {
-    return value ? BYTES_TRUE : BYTES_FALSE;
-  }
-
-  public static final byte[] toByteArray(final int value) {
-    return SafeEncoder.encode(String.valueOf(value));
-  }
+//  public static final byte[] toByteArray(final boolean value) {
+//    return value ? BYTES_TRUE : BYTES_FALSE;
+//  }
+//
+//  public static final byte[] toByteArray(final int value) {
+//    return SafeEncoder.encode(String.valueOf(value));
+//  }
 
   public static final byte[] toByteArray(final long value) {
     return SafeEncoder.encode(String.valueOf(value));
   }
 
-  public static final byte[] toByteArray(final double value) {
-    if (value == Double.POSITIVE_INFINITY) {
-      return POSITIVE_INFINITY_BYTES;
-    } else if (value == Double.NEGATIVE_INFINITY) {
-      return NEGATIVE_INFINITY_BYTES;
-    } else {
-      return SafeEncoder.encode(String.valueOf(value));
-    }
-  }
+//  public static final byte[] toByteArray(final double value) {
+//    if (value == Double.POSITIVE_INFINITY) {
+//      return POSITIVE_INFINITY_BYTES;
+//    } else if (value == Double.NEGATIVE_INFINITY) {
+//      return NEGATIVE_INFINITY_BYTES;
+//    } else {
+//      return SafeEncoder.encode(String.valueOf(value));
+//    }
+//  }
 
   public static enum Command implements ProtocolCommand {
     PING, SET, GET, QUIT, EXISTS, DEL, UNLINK, TYPE, FLUSHDB, KEYS, RANDOMKEY, RENAME, RENAMENX,
@@ -277,8 +277,8 @@ public final class Protocol {
     AGGREGATE, ALPHA, ASC, BY, DESC, GET, LIMIT, MESSAGE, NO, NOSORT, PMESSAGE, PSUBSCRIBE,
     PUNSUBSCRIBE, OK, ONE, QUEUED, SET, STORE, SUBSCRIBE, UNSUBSCRIBE, WEIGHTS, WITHSCORES,
     RESETSTAT, REWRITE, RESET, FLUSH, EXISTS, LOAD, KILL, LEN, REFCOUNT, ENCODING, IDLETIME,
-    GETNAME, SETNAME, LIST, MATCH, COUNT, PING, PONG, UNLOAD, REPLACE, KEYS, PAUSE, DOCTOR, 
-    BLOCK, NOACK, STREAMS, KEY, CREATE, MKSTREAM, SETID, DESTROY, DELCONSUMER, MAXLEN, GROUP, 
+    GETNAME, SETNAME, LIST, MATCH, COUNT, PING, PONG, UNLOAD, REPLACE, KEYS, PAUSE, DOCTOR,
+    BLOCK, NOACK, STREAMS, KEY, CREATE, MKSTREAM, SETID, DESTROY, DELCONSUMER, MAXLEN, GROUP,
     IDLE, TIME, RETRYCOUNT, FORCE;
 
     public final byte[] raw;
