@@ -2,6 +2,7 @@ package redis.clients.jedis;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import jatyc.lib.*;
 
 public class Queable {
   private Queue<Response<?>> pipelinedResponses = new LinkedList<Response<?>>();
@@ -10,7 +11,7 @@ public class Queable {
     pipelinedResponses.clear();
   }
 
-  protected Response<?> generateResponse(Object data) {
+  protected @Nullable Response<?> generateResponse(@Nullable Object data) {
     Response<?> response = pipelinedResponses.poll();
     if (response != null) {
       response.set(data);

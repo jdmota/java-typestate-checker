@@ -16,6 +16,7 @@ import redis.clients.jedis.exceptions.JedisNoScriptException;
 import redis.clients.jedis.util.RedisInputStream;
 import redis.clients.jedis.util.RedisOutputStream;
 import redis.clients.jedis.util.SafeEncoder;
+import jatyc.lib.*;
 
 public final class Protocol {
 
@@ -110,29 +111,29 @@ public final class Protocol {
     }
   }
 
-  private static void processError(final RedisInputStream is) {
-    String message = is.readLine();
-    // TODO: I'm not sure if this is the best way to do this.
-    // Maybe Read only first 5 bytes instead?
-    if (message.startsWith(MOVED_PREFIX)) {
-      String[] movedInfo = parseTargetHostAndSlot(message);
-      throw new JedisMovedDataException(message, new HostAndPort(movedInfo[1],
-          Integer.parseInt(movedInfo[2])), Integer.parseInt(movedInfo[0]));
-    } else if (message.startsWith(ASK_PREFIX)) {
-      String[] askInfo = parseTargetHostAndSlot(message);
-      throw new JedisAskDataException(message, new HostAndPort(askInfo[1],
-          Integer.parseInt(askInfo[2])), Integer.parseInt(askInfo[0]));
-    } else if (message.startsWith(CLUSTERDOWN_PREFIX)) {
-      throw new JedisClusterException(message);
-    } else if (message.startsWith(BUSY_PREFIX)) {
-      throw new JedisBusyException(message);
-    } else if (message.startsWith(NOSCRIPT_PREFIX) ) {
-      throw new JedisNoScriptException(message);
-    }
-    throw new JedisDataException(message);
-  }
+//  private static void processError(final RedisInputStream is) {
+//    String message = is.readLine();
+//    // TODO: I'm not sure if this is the best way to do this.
+//    // Maybe Read only first 5 bytes instead?
+//    if (message.startsWith(MOVED_PREFIX)) {
+//      String[] movedInfo = parseTargetHostAndSlot(message);
+//      throw new JedisMovedDataException(message, new HostAndPort(movedInfo[1],
+//          Integer.parseInt(movedInfo[2])), Integer.parseInt(movedInfo[0]));
+//    } else if (message.startsWith(ASK_PREFIX)) {
+//      String[] askInfo = parseTargetHostAndSlot(message);
+//      throw new JedisAskDataException(message, new HostAndPort(askInfo[1],
+//          Integer.parseInt(askInfo[2])), Integer.parseInt(askInfo[0]));
+//    } else if (message.startsWith(CLUSTERDOWN_PREFIX)) {
+//      throw new JedisClusterException(message);
+//    } else if (message.startsWith(BUSY_PREFIX)) {
+//      throw new JedisBusyException(message);
+//    } else if (message.startsWith(NOSCRIPT_PREFIX) ) {
+//      throw new JedisNoScriptException(message);
+//    }
+//    throw new JedisDataException(message);
+//  }
 
-  public static String readErrorLineIfPossible(RedisInputStream is) {
+  public static @Nullable String readErrorLineIfPossible(RedisInputStream is) {
     final byte b = is.readByte();
     // if buffer contains other type of response, just ignore.
     if (b != MINUS_BYTE) {
@@ -163,7 +164,7 @@ public final class Protocol {
     case COLON_BYTE:
       return processInteger(is);
     case MINUS_BYTE:
-      processError(is);
+      //processError(is);
       return null;
     default:
       throw new JedisConnectionException("Unknown reply: " + (char) b);

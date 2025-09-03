@@ -140,8 +140,12 @@ public class RedisInputStream extends FilterInputStream {
         bout.write(b);
       }
     }
-
-    return bout == null ? new byte[0] : bout.toByteArray();
+    if (bout == null) return new byte[0];
+    else {
+      byte[] ret = bout.toByteArray();
+      if (ret != null) return ret;
+      else return new byte[0];
+    }
   }
 
   public int readIntCrLf() {

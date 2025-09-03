@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 import redis.clients.jedis.Protocol;
 import redis.clients.jedis.exceptions.JedisDataException;
 import redis.clients.jedis.exceptions.JedisException;
+import jatyc.lib.*;
 
 /**
  * The only reason to have this is to be able to compatible with java 1.5 :(
@@ -22,7 +23,7 @@ public final class SafeEncoder {
     return many;
   }
 
-  public static byte[] encode(final String str) {
+  public static byte[] encode(@Nullable final String str) {
     try {
       if (str == null) {
         throw new JedisDataException("value sent to redis cannot be null");

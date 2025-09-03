@@ -1,24 +1,25 @@
 package redis.clients.jedis;
 
 import redis.clients.jedis.exceptions.JedisDataException;
+import jatyc.lib.*;
 
 public class Response<T> {
-  protected T response = null;
-  protected JedisDataException exception = null;
+  protected @Nullable T response = null;
+  protected @Nullable JedisDataException exception = null;
 
   private boolean building = false;
   private boolean built = false;
   private boolean set = false;
 
   private Builder<T> builder;
-  private Object data;
-  private Response<?> dependency = null;
+  private @Nullable Object data;
+  private @Nullable Response<?> dependency = null;
 
   public Response(Builder<T> b) {
     this.builder = b;
   }
 
-  public void set(Object data) {
+  public void set(@Nullable Object data) {
     this.data = data;
     set = true;
   }

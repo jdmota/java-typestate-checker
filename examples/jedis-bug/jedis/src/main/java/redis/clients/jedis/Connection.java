@@ -20,6 +20,7 @@ import redis.clients.jedis.util.IOUtils;
 import redis.clients.jedis.util.RedisInputStream;
 import redis.clients.jedis.util.RedisOutputStream;
 import redis.clients.jedis.util.SafeEncoder;
+import jatyc.lib.*;
 
 public class Connection implements Closeable {
 
@@ -67,9 +68,9 @@ public class Connection implements Closeable {
     this.hostnameVerifier = hostnameVerifier;
   }
 
-  public Socket getSocket() {
-    return socket;
-  }
+//  public Socket getSocket() {
+//    return socket;
+//  }
 
   public int getConnectionTimeout() {
     return connectionTimeout;
@@ -171,7 +172,7 @@ public class Connection implements Closeable {
           if (null != sslParameters) {
             ((SSLSocket) socket).setSSLParameters(sslParameters);
           }
-          if ((null != hostnameVerifier) &&
+          if ((null != hostnameVerifier) && socket != null &&
               (!hostnameVerifier.verify(host, ((SSLSocket) socket).getSession()))) {
             String message = String.format(
                 "The connection to '%s' failed ssl/tls hostname verification.", host);
@@ -179,8 +180,10 @@ public class Connection implements Closeable {
           }
         }
 
-        outputStream = new RedisOutputStream(socket.getOutputStream());
-        inputStream = new RedisInputStream(socket.getInputStream());
+        if (socket != null) {
+          outputStream = new RedisOutputStream(socket.getOutputStream());
+          inputStream = new RedisInputStream(socket.getInputStream());
+        }
       } catch (IOException ex) {
         broken = true;
         throw new JedisConnectionException("Failed connecting to host "
@@ -215,13 +218,19 @@ public class Connection implements Closeable {
   @SuppressWarnings("unchecked")
   public List<byte[]> getBinaryMultiBulkReply() {
     flush();
-    return (List<byte[]>) readProtocolWithCheckingBroken();
+    Object res = readProtocolWithCheckingBroken();
+    if (res instanceof List) {
+      return (List<byte[]>) res;
+    }
+    throw new ClassCastException("Cannot cast List<byte[]>!");
   }
 
 
   protected void flush() {
     try {
-      outputStream.flush();
+      if (outputStream != null) {
+        outputStream.flush();
+      }
     } catch (IOException ex) {
       broken = true;
       throw new JedisConnectionException(ex);

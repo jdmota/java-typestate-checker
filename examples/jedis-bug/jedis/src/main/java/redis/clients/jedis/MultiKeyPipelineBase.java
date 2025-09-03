@@ -5,10 +5,11 @@ import redis.clients.jedis.commands.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import jatyc.lib.*;
 
 public abstract class MultiKeyPipelineBase extends PipelineBase {
 
-  protected Client client = null;
+  protected Client client;
 
 //  @Override
 //  public Response<List<String>> brpop(String... args) {
